@@ -1,0 +1,23 @@
+# Authorised scope - the interim ownership gate before Phase 6.
+#
+# Standard and Deep mode read this file and DENY BY DEFAULT. No entry, an
+# expired entry, or a revoked entry means the scan does not run. Light mode is
+# passive and ignores this file entirely.
+#
+# Rules (docs/09-ownership-verification.md):
+#   - Every edit is a reviewed commit. The git history is the audit log.
+#   - The evidence file proving the nonce is committed alongside the row.
+#     A row asserting verification without its proof is not verification, and
+#     core/authz.py refuses to load one.
+#   - Records expire after 90 days. Domains change hands; a two-year-old TXT
+#     check is not evidence about today.
+#   - Targets we personally own are marked method: self_owned - still an
+#     explicit row, never an implicit exemption.
+#
+# Schema per row:
+#   authz_id, org_id, target{type,value,wildcard}, method, proof{observed,
+#   observed_at, evidence_file}, verified_at, expires_at, verified_by,
+#   attestation_ref, revoked_at, revocation_reason
+#
+# Empty on purpose: no active scan is authorised from this checkout yet.
+[]
