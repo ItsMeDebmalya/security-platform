@@ -2,8 +2,7 @@ __pycache__/
 *.pyc
 .venv/
 .env
-corpus/results/*.json
-!corpus/results/baseline.json
+corpus/results/latest.json
 .mypy_cache/
 .pytest_cache/
 tools/bin/

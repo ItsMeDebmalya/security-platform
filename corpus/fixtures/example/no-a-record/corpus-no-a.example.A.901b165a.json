@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "corpus-no-a.example",
+  "rcode": "NODATA",
+  "records": [],
+  "resolver": null,
+  "rrtype": "A",
+  "ttl": 300
+}

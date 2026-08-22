@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "corpus-good.example",
+  "rcode": "NOERROR",
+  "records": [
+    "93.184.216.34"
+  ],
+  "resolver": null,
+  "rrtype": "A",
+  "ttl": 300
+}

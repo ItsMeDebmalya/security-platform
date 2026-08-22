@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "corpus-broken.example",
+  "rcode": "SERVFAIL",
+  "records": [],
+  "resolver": null,
+  "rrtype": "A",
+  "ttl": null
+}

@@ -1,0 +1,48 @@
+# Corpus definition for the reference scanner.
+#
+# tier      - what the case is for: vulnerable (a known-broken target),
+#             known_good (a correctly configured one; anything reported here is
+#             a false positive by definition), or benchmark (deferred to Phase 2).
+# source    - frozen (replayed from corpus/fixtures, deterministic, what CI
+#             gates on) or live (real traffic, run by hand).
+# expect_inconclusive - the case is a target where no definite answer is
+#             possible. It is excluded from the inconclusive-rate denominator
+#             (docs/10-measurement.md measures that rate "where a definite
+#             answer is expected") and asserted separately: the scanner MUST
+#             return inconclusive here, and must not error or guess.
+
+gate:
+  precision: 0.99
+  recall: 0.95
+  inconclusive_max: 0.15
+  recall_definition: absolute  # the check set is finite and RFC-defined
+
+cases:
+  - id: resolves
+    tier: known_good
+    source: frozen
+    mode: light
+    target: { type: domain, value: corpus-good.example }
+    fixtures: corpus/fixtures/example/resolves
+
+  - id: no-a-record
+    tier: vulnerable
+    source: frozen
+    mode: light
+    target: { type: domain, value: corpus-no-a.example }
+    fixtures: corpus/fixtures/example/no-a-record
+
+  - id: nxdomain
+    tier: vulnerable
+    source: frozen
+    mode: light
+    target: { type: domain, value: corpus-gone.example }
+    fixtures: corpus/fixtures/example/nxdomain
+
+  - id: servfail
+    tier: vulnerable
+    source: frozen
+    mode: light
+    expect_inconclusive: true
+    target: { type: domain, value: corpus-broken.example }
+    fixtures: corpus/fixtures/example/servfail

@@ -1,0 +1,14 @@
+# The known-correct answers, as check_id + location pairs per case.
+# A case with an empty list must produce no reported finding at all.
+
+resolves: []
+
+no-a-record:
+  - { check_id: example-a-record-missing, location: "$" }
+
+nxdomain:
+  - { check_id: example-a-record-missing, location: "$" }
+
+# servfail is declared expect_inconclusive in corpus/targets/example.yaml:
+# the correct answer is "we could not tell", not a claim either way.
+servfail: []
