@@ -90,6 +90,26 @@ class ScanContext:
     cost: CostMeter = field(default_factory=CostMeter)
     progress: ProgressReporter = _noop_progress
 
+    def __post_init__(self) -> None:
+        """Wire the ambient services into the clients we were handed.
+
+        A client constructed without a cost meter or a kill switch would
+        silently opt out of accounting and cancellation. Rather than trusting
+        every caller to pass them, the context fills in what is missing - it
+        never overwrites something the caller set deliberately.
+        """
+        for client in (self.http, self.dns):
+            if isinstance(client, UnconfiguredClient):
+                continue
+            if getattr(client, "_cost", None) is None:
+                client._cost = self.cost
+            if getattr(client, "_killswitch", None) is None:
+                client._killswitch = self.killswitch
+            if getattr(client, "_scan_id", None) in (None, "local"):
+                client._scan_id = self.scan_id
+            if getattr(client, "_org_id", None) in (None, "org_internal"):
+                client._org_id = self.org_id
+
     def check_alive(self) -> None:
         """Raise `ScanKilledError` if this scan must stop. Call between every request."""
         self.killswitch.check(scan_id=self.scan_id, org_id=self.org_id)
