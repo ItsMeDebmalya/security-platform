@@ -1,0 +1,213 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://security-platform.invalid/contracts/finding.schema.json",
+  "title": "Finding",
+  "description": "A thing we believe about a target. Severity, confidence and state are three separate axes; state is derived by core/state.py and never hand-set.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id", "org_id", "scanner", "scanner_version", "check_id", "title",
+    "target", "location", "severity", "confidence", "confidence_provisional",
+    "state", "detection_methods", "validation", "evidence", "status",
+    "description", "impact", "remediation",
+    "first_seen", "first_seen_scan_id", "last_seen", "last_seen_scan_id"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "sha256(scanner + check_id + target.value + normalise(location) + (instance_key or '')). scanner_version is deliberately not an input."
+    },
+    "org_id": { "type": "string", "minLength": 1 },
+    "scanner": { "type": "string", "minLength": 1 },
+    "scanner_version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "check_id": { "type": "string", "minLength": 1 },
+    "renamed_from": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Former check_ids. A stored finding whose check_id appears here is the same finding."
+    },
+    "title": { "type": "string", "minLength": 1 },
+
+    "target": { "$ref": "#/$defs/asset" },
+    "location": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Where precisely. The reserved value '$' means the target as a whole."
+    },
+    "instance_key": {
+      "type": ["string", "null"],
+      "description": "Discriminator when one check legitimately fires more than once at one location - typically the payload_id."
+    },
+
+    "severity": { "enum": ["critical", "high", "medium", "low", "info"] },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "confidence_provisional": { "type": "boolean" },
+    "state": {
+      "enum": ["confirmed", "highly_likely", "suspected", "informational", "inconclusive"]
+    },
+    "no_verdict_reason": {
+      "type": ["string", "null"],
+      "description": "Set when the check ran but reached no verdict. Its presence is what makes state inconclusive.",
+      "enum": ["timeout", "servfail", "waf_block", "blocked_prerequisite", "oob_unavailable", "ambiguous_response", "rate_limited", null]
+    },
+
+    "detection_methods": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["method", "likelihood_ratio", "independence_class", "prior", "prior_justification"],
+        "properties": {
+          "method": { "type": "string", "minLength": 1 },
+          "likelihood_ratio": { "type": "number", "exclusiveMinimum": 0 },
+          "independence_class": { "type": "string", "minLength": 1 },
+          "prior": { "type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1 },
+          "prior_justification": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attempted", "outcome"],
+      "properties": {
+        "attempted": { "type": "boolean" },
+        "outcome": { "enum": ["passed", "failed", "unavailable", "not_applicable"] },
+        "method": { "type": ["string", "null"] }
+      }
+    },
+
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "https://security-platform.invalid/contracts/evidence.schema.json" }
+    },
+    "related_assets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "value", "relation"],
+        "properties": {
+          "type": { "type": "string" },
+          "value": { "type": "string" },
+          "relation": { "type": "string" }
+        }
+      }
+    },
+
+    "status": { "enum": ["open", "closed", "accepted_risk", "false_positive"] },
+    "status_history": {
+      "type": "array",
+      "description": "Populated from Phase 6; the field exists from day one.",
+      "items": {
+        "type": "object",
+        "required": ["from", "to", "at", "by"],
+        "properties": {
+          "from": { "type": ["string", "null"] },
+          "to": { "type": "string" },
+          "at": { "type": "string", "format": "date-time" },
+          "by": { "type": "string" },
+          "scan_id": { "type": ["string", "null"] }
+        }
+      }
+    },
+
+    "description": { "type": "string", "minLength": 1 },
+    "impact": { "type": "string", "minLength": 1 },
+    "remediation": { "type": "string", "minLength": 1 },
+    "references": { "type": "array", "items": { "type": "string" } },
+    "taxonomy": {
+      "type": "object",
+      "additionalProperties": { "type": "array", "items": { "type": "string" } }
+    },
+
+    "first_seen": { "type": "string", "format": "date-time" },
+    "first_seen_scan_id": { "type": "string", "minLength": 1 },
+    "last_seen": { "type": "string", "format": "date-time" },
+    "last_seen_scan_id": { "type": "string", "minLength": 1 },
+    "cost": { "$ref": "#/$defs/cost" }
+  },
+  "$defs": {
+    "asset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "value"],
+      "properties": {
+        "type": { "enum": ["domain", "url", "ip", "cidr", "repo", "cloud_account", "image", "email"] },
+        "value": { "type": "string", "minLength": 1 }
+      }
+    },
+    "cost": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "requests": { "type": "integer", "minimum": 0 },
+        "wall_ms": { "type": "integer", "minimum": 0 },
+        "ai_tokens": { "type": "integer", "minimum": 0 }
+      }
+    }
+  },
+  "examples": [
+    {
+      "id": "sha256:3067d73f49ae0699c68b53aba56ee35abd986d04f51fbdcd8ed6e3998243c732",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.0.0",
+      "check_id": "dmarc-policy-none",
+      "renamed_from": [],
+      "title": "DMARC policy is set to 'none'",
+      "target": { "type": "domain", "value": "example.com" },
+      "location": "$",
+      "instance_key": null,
+      "severity": "medium",
+      "confidence": 0.97,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_txt_parse",
+          "likelihood_ratio": 12.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "DMARC records are unambiguous when they parse"
+        }
+      ],
+      "validation": { "attempted": true, "outcome": "passed", "method": "independent_reparse" },
+      "evidence": [
+        {
+          "kind": "dns_answer",
+          "label": "TXT at _dmarc.example.com",
+          "captured_at": "2026-08-22T09:14:00Z",
+          "test": {
+            "query": { "name": "_dmarc.example.com", "rrtype": "TXT", "resolver": "1.1.1.1" },
+            "answer": { "rcode": "NOERROR", "records": ["v=DMARC1; p=none"], "ttl": 300 }
+          },
+          "control": {
+            "query": { "name": "sp-wildcard-probe-9f3a.example.com", "rrtype": "TXT", "resolver": "1.1.1.1" },
+            "answer": { "rcode": "NXDOMAIN", "records": [], "ttl": null }
+          },
+          "control_rationale": "random-label probe proves the zone has no TXT wildcard"
+        }
+      ],
+      "related_assets": [
+        { "type": "domain", "value": "example.com", "relation": "observed_on" }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "The domain publishes a DMARC record whose policy is 'none'.",
+      "impact": "Receiving mail servers are told to take no action on mail that fails authentication.",
+      "remediation": "Change p=none to p=quarantine, then p=reject once rua reports are clean.",
+      "references": ["https://www.rfc-editor.org/rfc/rfc7489"],
+      "taxonomy": { "cwe": ["CWE-1021"] },
+      "first_seen": "2026-08-22T09:14:00Z",
+      "first_seen_scan_id": "01J8ZZZZZZZZZZZZZZZZZZZZZZ",
+      "last_seen": "2026-08-22T09:14:00Z",
+      "last_seen_scan_id": "01J8ZZZZZZZZZZZZZZZZZZZZZZ",
+      "cost": { "requests": 3, "wall_ms": 412, "ai_tokens": 0 }
+    }
+  ]
+}

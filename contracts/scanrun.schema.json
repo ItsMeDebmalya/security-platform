@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://security-platform.invalid/contracts/scanrun.schema.json",
+  "title": "ScanRun",
+  "description": "One execution. Findings persist across runs; runs do not. Findings reference runs via first_seen_scan_id / last_seen_scan_id, never the other way round.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["scan_id", "org_id", "target", "mode", "scanners", "started_at", "outcome"],
+  "properties": {
+    "scan_id": { "type": "string", "minLength": 26, "description": "ULID, sortable by time" },
+    "org_id": { "type": "string", "minLength": 1 },
+    "target": { "$ref": "https://security-platform.invalid/contracts/finding.schema.json#/$defs/asset" },
+    "mode": { "enum": ["light", "standard", "deep"] },
+    "scanners": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "version"],
+        "properties": {
+          "name": { "type": "string" },
+          "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" }
+        }
+      }
+    },
+    "started_at": { "type": "string", "format": "date-time" },
+    "finished_at": { "type": ["string", "null"], "format": "date-time" },
+    "outcome": { "enum": ["succeeded", "partial", "errored", "killed"] },
+    "authz_ref": {
+      "type": ["string", "null"],
+      "description": "What authorised this run. Null is permitted for light mode only; core/authz.py denies standard and deep without it."
+    },
+    "cost": { "$ref": "https://security-platform.invalid/contracts/finding.schema.json#/$defs/cost" }
+  },
+  "examples": [
+    {
+      "scan_id": "01J8ZZZZZZZZZZZZZZZZZZZZZZ",
+      "org_id": "org_internal",
+      "target": { "type": "domain", "value": "example.com" },
+      "mode": "light",
+      "scanners": [{ "name": "email", "version": "1.0.0" }],
+      "started_at": "2026-08-22T09:13:58Z",
+      "finished_at": "2026-08-22T09:14:06Z",
+      "outcome": "succeeded",
+      "authz_ref": null,
+      "cost": { "requests": 41, "wall_ms": 8300, "ai_tokens": 0 }
+    }
+  ]
+}

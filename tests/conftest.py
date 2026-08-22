@@ -68,7 +68,9 @@ def make_finding(dns_evidence: dict[str, Any]):
             "evidence": [dns_evidence],
             "description": "The domain publishes a DMARC record whose policy is 'none'.",
             "impact": "Receiving mail servers are told to take no action on spoofed mail.",
-            "remediation": "Change p=none to p=quarantine, then p=reject once rua reports are clean.",
+            "remediation": (
+                "Change p=none to p=quarantine, then p=reject once rua reports are clean."
+            ),
             "first_seen": CAPTURED_AT,
             "first_seen_scan_id": "01J8ZZZZZZZZZZZZZZZZZZZZZZ",
             "last_seen": CAPTURED_AT,

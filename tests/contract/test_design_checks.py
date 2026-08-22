@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from core.models import Evidence, Finding, ScanError, ScanResult, Telemetry
+from core.models import Evidence, ScanError, ScanResult, Telemetry
 
 NOW = datetime(2026, 8, 22, 9, 14, tzinfo=UTC)
 
@@ -235,8 +235,9 @@ def test_two_instances_of_one_check_at_one_location_get_different_ids(make_findi
 
 
 def test_a_renamed_check_keeps_the_history_of_its_former_id(make_finding):
-    renamed = make_finding(check_id="dmarc-policy-monitoring-only",
-                           renamed_from=["dmarc-policy-none"])
+    renamed = make_finding(
+        check_id="dmarc-policy-monitoring-only", renamed_from=["dmarc-policy-none"]
+    )
 
     assert renamed.matches_stored_check_id("dmarc-policy-none")
     assert renamed.matches_stored_check_id("dmarc-policy-monitoring-only")

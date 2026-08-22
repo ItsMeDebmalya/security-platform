@@ -1,0 +1,210 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://security-platform.invalid/contracts/evidence.schema.json",
+  "title": "Evidence",
+  "description": "What makes a finding defensible. Structured, never a blob of text. Every kind carries a control alongside its test, in whatever form the kind allows.",
+  "type": "object",
+  "required": ["kind", "label", "captured_at"],
+  "properties": {
+    "kind": {
+      "enum": ["http_pair", "oob_callback", "timing", "dns_answer", "tls_handshake", "screenshot", "file_excerpt"]
+    },
+    "label": { "type": "string", "minLength": 1 },
+    "captured_at": { "type": "string", "format": "date-time" },
+    "redactions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Fields removed at capture time. We never hold a customer secret."
+    }
+  },
+  "oneOf": [
+    { "$ref": "#/$defs/http_pair" },
+    { "$ref": "#/$defs/oob_callback" },
+    { "$ref": "#/$defs/timing" },
+    { "$ref": "#/$defs/dns_answer" },
+    { "$ref": "#/$defs/reserved" }
+  ],
+  "$defs": {
+    "http_message": {
+      "type": "object",
+      "required": ["request", "response"],
+      "properties": {
+        "request": {
+          "type": "object",
+          "required": ["method", "url"],
+          "properties": {
+            "method": { "type": "string" },
+            "url": { "type": "string" },
+            "headers": { "type": "object" },
+            "body": { "type": ["string", "null"] },
+            "body_truncated": { "type": "boolean" }
+          }
+        },
+        "response": {
+          "type": "object",
+          "required": ["status"],
+          "properties": {
+            "status": { "type": "integer" },
+            "headers": { "type": "object" },
+            "body": { "type": ["string", "null"] },
+            "body_truncated": { "type": "boolean" },
+            "elapsed_ms": { "type": ["integer", "null"] }
+          }
+        }
+      }
+    },
+    "http_pair": {
+      "properties": {
+        "kind": { "const": "http_pair" },
+        "control": { "$ref": "#/$defs/http_message" },
+        "test": { "$ref": "#/$defs/http_message" },
+        "delta": { "type": "object", "additionalProperties": { "type": "string" } },
+        "payload_id": { "type": ["string", "null"] }
+      },
+      "required": ["kind", "control", "test"]
+    },
+    "oob_callback": {
+      "description": "The control is the absence of a callback: tokens emitted in the same run that were never hit.",
+      "properties": {
+        "kind": { "const": "oob_callback" },
+        "token": { "type": "string" },
+        "emitted_in": { "type": "string" },
+        "emitted_at": { "type": "string", "format": "date-time" },
+        "window_s": { "type": "integer", "minimum": 1 },
+        "hit": {
+          "type": ["object", "null"],
+          "required": ["received_at", "protocol", "raw_request"],
+          "properties": {
+            "received_at": { "type": "string", "format": "date-time" },
+            "source_ip": { "type": ["string", "null"] },
+            "protocol": { "enum": ["dns", "http", "https", "smtp"] },
+            "raw_request": { "type": "string" }
+          }
+        },
+        "control_tokens_unhit": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1
+        }
+      },
+      "required": ["kind", "token", "emitted_in", "emitted_at", "window_s", "control_tokens_unhit"]
+    },
+    "timing": {
+      "description": "A single before/after pair is not how timing is validated. Samples, and a statistic.",
+      "properties": {
+        "kind": { "const": "timing" },
+        "baseline_samples_ms": { "type": "array", "items": { "type": "number" }, "minItems": 5 },
+        "test_samples_ms": { "type": "array", "items": { "type": "number" }, "minItems": 5 },
+        "n": { "type": "integer", "minimum": 10 },
+        "delta_ms": { "type": "number" },
+        "method": { "enum": ["welch_t", "mann_whitney"] },
+        "p_value": { "type": "number", "minimum": 0, "maximum": 1 },
+        "payload_id": { "type": ["string", "null"] }
+      },
+      "required": ["kind", "baseline_samples_ms", "test_samples_ms", "n", "delta_ms", "method", "p_value"]
+    },
+    "dns_query": {
+      "type": "object",
+      "required": ["query", "answer"],
+      "properties": {
+        "query": {
+          "type": "object",
+          "required": ["name", "rrtype"],
+          "properties": {
+            "name": { "type": "string" },
+            "rrtype": { "type": "string" },
+            "resolver": { "type": ["string", "null"] }
+          }
+        },
+        "answer": {
+          "type": "object",
+          "required": ["rcode", "records"],
+          "properties": {
+            "rcode": { "type": "string" },
+            "records": { "type": "array", "items": { "type": "string" } },
+            "ttl": { "type": ["integer", "null"] },
+            "flags": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "dns_answer": {
+      "description": "The control is normally a random-label probe proving the zone has no wildcard. Where no control is possible, control_rationale must say why.",
+      "properties": {
+        "kind": { "const": "dns_answer" },
+        "test": { "$ref": "#/$defs/dns_query" },
+        "control": { "oneOf": [{ "$ref": "#/$defs/dns_query" }, { "type": "null" }] },
+        "control_rationale": { "type": "string", "minLength": 1 }
+      },
+      "required": ["kind", "test", "control_rationale"]
+    },
+    "reserved": {
+      "description": "tls_handshake, screenshot and file_excerpt are reserved. Their shapes are specified when the first scanner needs them; until then they carry the base fields and a stated rationale for their control.",
+      "properties": {
+        "kind": { "enum": ["tls_handshake", "screenshot", "file_excerpt"] },
+        "control_rationale": { "type": "string", "minLength": 1 },
+        "data": { "type": "object" }
+      },
+      "required": ["kind", "control_rationale", "data"]
+    }
+  },
+  "examples": [
+    {
+      "kind": "http_pair",
+      "label": "Boolean-based SQL injection: true vs false condition",
+      "captured_at": "2026-08-22T09:14:00Z",
+      "redactions": ["set-cookie", "authorization"],
+      "control": {
+        "request": { "method": "GET", "url": "https://t/?id=1 AND 1=2", "headers": {} },
+        "response": { "status": 200, "headers": {}, "body": "" }
+      },
+      "test": {
+        "request": { "method": "GET", "url": "https://t/?id=1 AND 1=1", "headers": {} },
+        "response": { "status": 200, "headers": {}, "body": "47 rows" }
+      },
+      "delta": { "status": "200 -> 200", "length": "8421 -> 122" },
+      "payload_id": "sqli/boolean/or-1-1-v3"
+    },
+    {
+      "kind": "oob_callback",
+      "label": "Blind SSRF via Location header",
+      "captured_at": "2026-08-22T09:14:00Z",
+      "token": "abc123",
+      "emitted_in": "param=q",
+      "emitted_at": "2026-08-22T09:13:00Z",
+      "window_s": 60,
+      "hit": {
+        "received_at": "2026-08-22T09:13:04Z",
+        "source_ip": "203.0.113.7",
+        "protocol": "dns",
+        "raw_request": "abc123.oob.example.invalid IN A"
+      },
+      "control_tokens_unhit": ["def456"]
+    },
+    {
+      "kind": "timing",
+      "label": "Time-based blind SQL injection",
+      "captured_at": "2026-08-22T09:14:00Z",
+      "baseline_samples_ms": [102, 98, 110, 101, 99, 104],
+      "test_samples_ms": [5104, 5098, 5110, 5101, 5099, 5104],
+      "n": 12,
+      "delta_ms": 5000,
+      "method": "welch_t",
+      "p_value": 0.0001
+    },
+    {
+      "kind": "dns_answer",
+      "label": "TXT at _dmarc.example.com",
+      "captured_at": "2026-08-22T09:14:00Z",
+      "test": {
+        "query": { "name": "_dmarc.example.com", "rrtype": "TXT", "resolver": "1.1.1.1" },
+        "answer": { "rcode": "NOERROR", "records": ["v=DMARC1; p=none"], "ttl": 300 }
+      },
+      "control": {
+        "query": { "name": "sp-wildcard-probe-9f3a.example.com", "rrtype": "TXT", "resolver": "1.1.1.1" },
+        "answer": { "rcode": "NXDOMAIN", "records": [], "ttl": null }
+      },
+      "control_rationale": "random-label probe proves the zone has no TXT wildcard"
+    }
+  ]
+}

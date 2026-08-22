@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://security-platform.invalid/contracts/scanresult.schema.json",
+  "title": "ScanResult",
+  "description": "What one scanner returns within a run. The scan-error vs inconclusive-finding boundary is enforced here: a scanner that could not execute at all produces zero findings and a fatal errors[] entry; a check that ran but reached no verdict produces an inconclusive finding and is never silently omitted.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["scanner", "scanner_version", "target", "mode", "findings", "errors", "telemetry", "outcome"],
+  "properties": {
+    "scanner": { "type": "string", "minLength": 1 },
+    "scanner_version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "target": { "$ref": "https://security-platform.invalid/contracts/finding.schema.json#/$defs/asset" },
+    "mode": { "enum": ["light", "standard", "deep"] },
+    "started_at": { "type": ["string", "null"], "format": "date-time" },
+    "finished_at": { "type": ["string", "null"], "format": "date-time" },
+    "killed": { "type": "boolean" },
+    "outcome": { "enum": ["succeeded", "partial", "errored", "killed"] },
+    "findings": {
+      "type": "array",
+      "items": { "$ref": "https://security-platform.invalid/contracts/finding.schema.json" }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["stage", "message", "fatal"],
+        "properties": {
+          "stage": { "type": "string", "minLength": 1 },
+          "message": { "type": "string", "minLength": 1 },
+          "fatal": {
+            "type": "boolean",
+            "description": "true means the scanner could not execute at all. A fatal error forbids findings."
+          },
+          "check_id": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "telemetry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["checks_run"],
+      "properties": {
+        "checks_run": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Every check that executed. The denominator of inconclusive_rate (docs/10-measurement.md), and what makes silent omission detectable."
+        },
+        "suppressed": {
+          "type": "array",
+          "description": "Candidates below the reporting threshold (confidence < 0.40). Logged, never surfaced as findings.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["check_id", "location", "confidence", "reason"],
+            "properties": {
+              "check_id": { "type": "string" },
+              "location": { "type": "string" },
+              "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+              "reason": { "type": "string" }
+            }
+          }
+        },
+        "requests": { "type": "integer", "minimum": 0 },
+        "wall_ms": { "type": "integer", "minimum": 0 },
+        "ai_tokens": { "type": "integer", "minimum": 0 }
+      }
+    }
+  },
+  "examples": [
+    {
+      "scanner": "email",
+      "scanner_version": "1.0.0",
+      "target": { "type": "domain", "value": "example.com" },
+      "mode": "light",
+      "started_at": "2026-08-22T09:13:58Z",
+      "finished_at": "2026-08-22T09:14:06Z",
+      "killed": false,
+      "outcome": "succeeded",
+      "findings": [],
+      "errors": [],
+      "telemetry": {
+        "checks_run": ["dmarc-policy-none"],
+        "suppressed": [
+          { "check_id": "dmarc-policy-none", "location": "$", "confidence": 0.22, "reason": "below_reporting_threshold" }
+        ],
+        "requests": 4,
+        "wall_ms": 8300,
+        "ai_tokens": 0
+      }
+    }
+  ]
+}

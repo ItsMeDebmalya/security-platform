@@ -20,6 +20,7 @@ dev = [
     "mypy>=1.13",
     "types-pyyaml",
     "types-jsonschema",
+    "referencing>=0.37.0",
 ]
 
 [build-system]
@@ -32,6 +33,8 @@ packages = ["core", "scanners", "cli"]
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+# The document set is the spec. Never reformat it.
+extend-exclude = ["docs"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "N", "RUF"]
