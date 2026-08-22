@@ -413,8 +413,25 @@ class Suppressed(Strict):
     reason: str
 
 
+CheckOutcome = Literal["reported", "clear", "inconclusive", "suppressed", "error"]
+
+
+class CheckRun(Strict):
+    """One check's execution and what it concluded.
+
+    A check that ran and found nothing wrong is `clear` - reporting nothing is
+    the correct outcome, and it is still accounted for here. That accounting is
+    what makes a silently dropped check detectable, and it is the denominator
+    of inconclusive_rate (docs/10-measurement.md).
+    """
+
+    check_id: str = Field(min_length=1)
+    outcome: CheckOutcome
+    location: str = TARGET_LEVEL
+
+
 class Telemetry(Strict):
-    checks_run: list[str] = Field(default_factory=list)
+    checks_run: list[CheckRun] = Field(default_factory=list)
     suppressed: list[Suppressed] = Field(default_factory=list)
     requests: int = 0
     wall_ms: int = 0
@@ -454,28 +471,43 @@ class ScanResult(Strict):
             derived = "succeeded"
         object.__setattr__(self, "outcome", derived)
 
-        if not fatal and not self.killed:
-            accounted = {f.check_id for f in self.findings}
-            accounted |= {s.check_id for s in self.telemetry.suppressed}
-            accounted |= {e.check_id for e in self.errors if e.check_id}
-            unaccounted = [c for c in self.telemetry.checks_run if c not in accounted]
-            if unaccounted:
-                raise ValueError(
-                    f"checks ran but reported nothing: {unaccounted}. A check that "
-                    "reached no verdict emits an inconclusive finding; one below the "
-                    "reporting threshold goes in telemetry.suppressed. Never dropped."
-                )
-
-        unknown = [f.check_id for f in self.findings if f.check_id not in self.telemetry.checks_run]
+        ran = {c.check_id for c in self.telemetry.checks_run}
+        unknown = [f.check_id for f in self.findings if f.check_id not in ran]
         if unknown:
-            raise ValueError(f"findings from checks absent from telemetry.checks_run: {unknown}")
+            raise ValueError(
+                f"findings from checks absent from telemetry.checks_run: {unknown}. "
+                "Every check that produced a finding must account for having run."
+            )
+
+        reported = {f.check_id for f in self.findings}
+        promised = {
+            c.check_id
+            for c in self.telemetry.checks_run
+            if c.outcome in {"reported", "inconclusive"}
+        }
+        missing = sorted(promised - reported)
+        if missing:
+            raise ValueError(
+                f"checks claim an outcome they never delivered: {missing}. A check that "
+                "reached no verdict emits an inconclusive finding rather than vanishing."
+            )
+
+        suppressed = {s.check_id for s in self.telemetry.suppressed}
+        undocumented = sorted(
+            {c.check_id for c in self.telemetry.checks_run if c.outcome == "suppressed"}
+            - suppressed
+        )
+        if undocumented:
+            raise ValueError(
+                f"checks marked suppressed with no telemetry.suppressed entry: {undocumented}"
+            )
         return self
 
     def inconclusive_rate(self) -> float:
         """inconclusive / (all checks that ran), per docs/10-measurement.md."""
         if not self.telemetry.checks_run:
             return 0.0
-        inconclusive = sum(1 for f in self.findings if f.state == "inconclusive")
+        inconclusive = sum(1 for c in self.telemetry.checks_run if c.outcome == "inconclusive")
         return inconclusive / len(self.telemetry.checks_run)
 
 

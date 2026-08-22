@@ -274,3 +274,66 @@ def test_a_long_txt_record_split_across_strings_is_rejoined():
 
 def test_a_single_quoted_txt_string_loses_its_quotes():
     assert join_txt_chunks(['"v=DMARC1; p=none"']) == "v=DMARC1; p=none"
+
+
+# --- independent re-query ---------------------------------------------------
+
+
+def test_a_query_can_be_directed_at_a_named_resolver(answers):
+    seen: list[str | None] = []
+
+    class SpyResolver:
+        def resolve(self, name, rrtype, resolver=None):
+            seen.append(resolver)
+            return answers[("example.com", "TXT")]
+
+    client = DnsClient(resolver=SpyResolver(), resolvers=["1.1.1.1", "8.8.8.8"])
+    client.query("example.com", "TXT")
+    client.query("example.com", "TXT", resolver="8.8.8.8")
+
+    assert seen == ["1.1.1.1", "8.8.8.8"]
+
+
+def test_the_cache_does_not_serve_one_resolvers_answer_for_another(answers):
+    resolver = FakeResolver(answers)
+    client = DnsClient(resolver=resolver, resolvers=["1.1.1.1", "8.8.8.8"])
+
+    client.query("example.com", "TXT")
+    client.query("example.com", "TXT", resolver="8.8.8.8")
+
+    assert len(resolver.calls) == 2
+
+
+def test_a_second_resolver_is_available_for_independent_re_query(answers):
+    client = DnsClient(resolver=FakeResolver(answers), resolvers=["1.1.1.1", "8.8.8.8"])
+
+    assert client.second_resolver() == "8.8.8.8"
+
+
+def test_there_is_no_second_resolver_when_only_one_is_configured(answers):
+    client = DnsClient(resolver=FakeResolver(answers), resolvers=["1.1.1.1"])
+
+    assert client.second_resolver() is None
+
+
+def test_recordings_from_different_resolvers_do_not_overwrite_each_other(answers, tmp_path):
+    class PerResolver:
+        def resolve(self, name, rrtype, resolver=None):
+            return DnsResponse(
+                name=name,
+                rrtype=rrtype,
+                rcode="NOERROR",
+                records=[f"answered by {resolver}"],
+                ttl=60,
+                resolver=resolver,
+            )
+
+    recording = DnsClient(
+        resolver=RecordingResolver(PerResolver(), tmp_path), resolvers=["1.1.1.1", "8.8.8.8"]
+    )
+    recording.query("example.com", "TXT")
+    recording.query("example.com", "TXT", resolver="8.8.8.8")
+
+    replay = DnsClient(resolver=ReplayResolver(tmp_path), resolvers=["1.1.1.1", "8.8.8.8"])
+    assert replay.query("example.com", "TXT").records == ["answered by 1.1.1.1"]
+    assert replay.query("example.com", "TXT", resolver="8.8.8.8").records == ["answered by 8.8.8.8"]

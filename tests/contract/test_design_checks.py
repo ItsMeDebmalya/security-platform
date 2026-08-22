@@ -255,7 +255,11 @@ def test_id_normalisation_ignores_volatile_parts_of_a_location(make_finding):
 
 
 def _telemetry(**kw):
-    base = {"checks_run": ["dmarc-policy-none"], "requests": 3, "wall_ms": 412}
+    base = {
+        "checks_run": [{"check_id": "dmarc-policy-none", "location": "$", "outcome": "reported"}],
+        "requests": 3,
+        "wall_ms": 412,
+    }
     base.update(kw)
     return Telemetry.model_validate(base)
 
@@ -301,16 +305,21 @@ def test_a_check_that_ran_without_a_verdict_emits_an_inconclusive_finding(make_f
         mode="light",
         findings=[make_finding(no_verdict_reason="servfail")],
         errors=[],
-        telemetry=_telemetry(),
+        telemetry=_telemetry(
+            checks_run=[
+                {"check_id": "dmarc-policy-none", "location": "$", "outcome": "inconclusive"}
+            ]
+        ),
     )
 
     assert result.outcome == "succeeded"
     assert [f.state for f in result.findings] == ["inconclusive"]
+    assert result.inconclusive_rate() == 1.0
 
 
 def test_a_check_that_ran_but_reported_nothing_at_all_is_rejected(make_finding):
     """Silently dropping a check that ran is the behaviour that destroys trust."""
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="never delivered"):
         ScanResult(
             scanner="email",
             scanner_version="1.0.0",
@@ -318,8 +327,26 @@ def test_a_check_that_ran_but_reported_nothing_at_all_is_rejected(make_finding):
             mode="light",
             findings=[],
             errors=[],
-            telemetry=_telemetry(checks_run=["dmarc-policy-none"]),
+            telemetry=_telemetry(),
         )
+
+
+def test_a_check_that_ran_and_found_nothing_wrong_is_clear_not_missing(make_finding):
+    """Reporting nothing is the correct outcome for a check that found nothing."""
+    result = ScanResult(
+        scanner="email",
+        scanner_version="1.0.0",
+        target={"type": "domain", "value": "example.com"},
+        mode="light",
+        findings=[],
+        errors=[],
+        telemetry=_telemetry(
+            checks_run=[{"check_id": "dmarc-policy-none", "location": "$", "outcome": "clear"}]
+        ),
+    )
+
+    assert result.outcome == "succeeded"
+    assert result.inconclusive_rate() == 0.0
 
 
 def test_a_check_below_the_reporting_threshold_is_accounted_for_in_telemetry():
@@ -331,6 +358,9 @@ def test_a_check_below_the_reporting_threshold_is_accounted_for_in_telemetry():
         findings=[],
         errors=[],
         telemetry=_telemetry(
+            checks_run=[
+                {"check_id": "dmarc-policy-none", "location": "$", "outcome": "suppressed"}
+            ],
             suppressed=[
                 {
                     "check_id": "dmarc-policy-none",
@@ -338,7 +368,7 @@ def test_a_check_below_the_reporting_threshold_is_accounted_for_in_telemetry():
                     "confidence": 0.22,
                     "reason": "below_reporting_threshold",
                 }
-            ]
+            ],
         ),
     )
 

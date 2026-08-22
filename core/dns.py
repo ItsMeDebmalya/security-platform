@@ -103,9 +103,16 @@ class MissingFixtureError(LookupError):
     """A replay run asked for a query that was never recorded."""
 
 
-def _fixture_name(name: str, rrtype: str) -> str:
+def _fixture_name(name: str, rrtype: str, resolver: str | None = None) -> str:
+    """One file per (name, rrtype, resolver).
+
+    The resolver is part of the key because an independent re-query through a
+    second resolver is a real validation step, and a recording that collapsed
+    the two would make that validation a no-op on replay.
+    """
     safe = _SAFE_NAME.sub("_", name.lower().rstrip("."))
-    digest = hashlib.sha256(f"{name.lower()}|{rrtype.upper()}".encode()).hexdigest()[:8]
+    key = f"{name.lower()}|{rrtype.upper()}|{resolver or ''}"
+    digest = hashlib.sha256(key.encode()).hexdigest()[:8]
     return f"{safe}.{rrtype.upper()}.{digest}.json"
 
 
@@ -135,7 +142,7 @@ class RecordingResolver:
 
     def resolve(self, name: str, rrtype: str, resolver: str | None = None) -> DnsResponse:
         response = self._inner.resolve(name, rrtype, resolver)
-        path = self._dir / _fixture_name(name, rrtype)
+        path = self._dir / _fixture_name(name, rrtype, resolver)
         path.write_text(json.dumps(response.to_dict(), indent=2, sort_keys=True) + "\n")
         return response
 
@@ -147,10 +154,11 @@ class ReplayResolver:
         self._dir = Path(directory)
 
     def resolve(self, name: str, rrtype: str, resolver: str | None = None) -> DnsResponse:
-        path = self._dir / _fixture_name(name, rrtype)
+        path = self._dir / _fixture_name(name, rrtype, resolver)
         if not path.exists():
             raise MissingFixtureError(
-                f"no recorded answer for {name} {rrtype.upper()} in {self._dir}. "
+                f"no recorded answer for {name} {rrtype.upper()} "
+                f"(resolver {resolver or 'default'}) in {self._dir}. "
                 "Record it with --record before replaying; a replay run never "
                 "falls back to the wire."
             )
@@ -239,11 +247,18 @@ class DnsClient:
         self._ratelimit = ratelimit
         self._scan_id = scan_id
         self._org_id = org_id
-        self._cache: dict[tuple[str, str], DnsResponse] = {}
+        self._cache: dict[tuple[str, str, str | None], DnsResponse] = {}
         self._wildcard_probes: dict[tuple[str, str], DnsResponse] = {}
 
-    def query(self, name: str, rrtype: str) -> DnsResponse:
-        key = (name.lower().rstrip("."), rrtype.upper())
+    def query(self, name: str, rrtype: str, *, resolver: str | None = None) -> DnsResponse:
+        """Look a name up.
+
+        `resolver` directs the query at a specific upstream. Answers are cached
+        per resolver, so an independent re-query is never served from the
+        first resolver's cache.
+        """
+        upstream = resolver or (self._resolvers[0] if self._resolvers else None)
+        key = (name.lower().rstrip("."), rrtype.upper(), upstream)
         cached = self._cache.get(key)
         if cached is not None:
             return cached
@@ -251,7 +266,6 @@ class DnsClient:
         if self._killswitch is not None:
             self._killswitch.check(scan_id=self._scan_id, org_id=self._org_id)
 
-        upstream = self._resolvers[0] if self._resolvers else None
         if self._ratelimit is not None and upstream:
             self._ratelimit.acquire(upstream)
 
@@ -260,6 +274,14 @@ class DnsClient:
             self._cost.record_request()
         self._cache[key] = response
         return response
+
+    def second_resolver(self) -> str | None:
+        """A resolver other than the primary, for independent re-query.
+
+        None when only one is configured: validation that cannot run reports
+        `unavailable`, it does not pretend to have happened.
+        """
+        return self._resolvers[1] if len(self._resolvers) > 1 else None
 
     def has_wildcard(self, domain: str, rrtype: str) -> bool | None:
         """Whether the zone answers for names that should not exist.

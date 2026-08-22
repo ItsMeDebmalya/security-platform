@@ -43,8 +43,20 @@
       "properties": {
         "checks_run": {
           "type": "array",
-          "items": { "type": "string" },
-          "description": "Every check that executed. The denominator of inconclusive_rate (docs/10-measurement.md), and what makes silent omission detectable."
+          "description": "Every check that executed, with what it concluded. The denominator of inconclusive_rate (docs/10-measurement.md), and what makes silent omission detectable: a check that ran is accounted for here whether or not it produced a finding.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["check_id", "outcome"],
+            "properties": {
+              "check_id": { "type": "string", "minLength": 1 },
+              "location": { "type": "string" },
+              "outcome": {
+                "enum": ["reported", "clear", "inconclusive", "suppressed", "error"],
+                "description": "reported = a finding was emitted; clear = the check ran and found nothing wrong; inconclusive = it ran but reached no verdict; suppressed = below the reporting threshold; error = the check itself failed."
+              }
+            }
+          }
         },
         "suppressed": {
           "type": "array",
@@ -80,7 +92,9 @@
       "findings": [],
       "errors": [],
       "telemetry": {
-        "checks_run": ["dmarc-policy-none"],
+        "checks_run": [
+          { "check_id": "dmarc-policy-none", "location": "$", "outcome": "suppressed" }
+        ],
         "suppressed": [
           { "check_id": "dmarc-policy-none", "location": "$", "confidence": 0.22, "reason": "below_reporting_threshold" }
         ],
