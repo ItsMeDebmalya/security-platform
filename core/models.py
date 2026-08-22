@@ -48,8 +48,11 @@ class Strict(BaseModel):
 # --- assets and cost --------------------------------------------------------
 
 
+AssetType = Literal["domain", "url", "ip", "cidr", "repo", "cloud_account", "image", "email"]
+
+
 class Asset(Strict):
-    type: Literal["domain", "url", "ip", "cidr", "repo", "cloud_account", "image", "email"]
+    type: AssetType
     value: str = Field(min_length=1)
 
 

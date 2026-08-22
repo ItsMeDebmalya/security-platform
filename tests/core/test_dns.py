@@ -337,3 +337,14 @@ def test_recordings_from_different_resolvers_do_not_overwrite_each_other(answers
     replay = DnsClient(resolver=ReplayResolver(tmp_path), resolvers=["1.1.1.1", "8.8.8.8"])
     assert replay.query("example.com", "TXT").records == ["answered by 1.1.1.1"]
     assert replay.query("example.com", "TXT", resolver="8.8.8.8").records == ["answered by 8.8.8.8"]
+
+
+def test_a_wildcard_probe_replays_despite_its_random_label(answers, tmp_path):
+    """The probe label is random on the wire; a fixture that could never be
+    replayed would make every recorded corpus case unusable."""
+    recording = DnsClient(resolver=RecordingResolver(FakeResolver(answers), tmp_path))
+    recording.has_wildcard("example.com", "TXT")
+
+    replay = DnsClient(resolver=ReplayResolver(tmp_path))
+
+    assert replay.has_wildcard("example.com", "TXT") is False

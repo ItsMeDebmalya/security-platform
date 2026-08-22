@@ -59,3 +59,21 @@ def register(scanner: type[BaseScanner]) -> type[BaseScanner]:
 
 def get_scanner(name: str) -> type[BaseScanner]:
     return registry.get(name)
+
+
+def discover() -> ScannerRegistry:
+    """Import every package under `scanners/` so its registration runs.
+
+    Explicit and eager: a scanner that is only registered when something
+    happens to import it is a scanner that silently disappears from `scan
+    list`.
+    """
+    import importlib
+    import pkgutil
+
+    import scanners
+
+    for module in pkgutil.iter_modules(scanners.__path__):
+        if module.ispkg:
+            importlib.import_module(f"scanners.{module.name}")
+    return registry

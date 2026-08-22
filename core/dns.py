@@ -38,6 +38,8 @@ DEFINITE_RCODES = frozenset({"NOERROR", "NXDOMAIN", "NODATA"})
 """Answers we can reason from. Anything else means we did not find out."""
 
 _SAFE_NAME = re.compile(r"[^a-z0-9._-]")
+WILDCARD_PROBE_PREFIX = "sp-wildcard-probe-"
+_PROBE_LABEL = re.compile(r"^sp-wildcard-probe-[0-9a-f]+\.")
 
 
 @dataclass(frozen=True)
@@ -109,9 +111,15 @@ def _fixture_name(name: str, rrtype: str, resolver: str | None = None) -> str:
     The resolver is part of the key because an independent re-query through a
     second resolver is a real validation step, and a recording that collapsed
     the two would make that validation a no-op on replay.
+
+    Wildcard probes use a random label on the wire - which is the point, since
+    a fixed one would be cached and could be special-cased by a target - so
+    the random part is canonicalised away here. Otherwise no wildcard probe
+    could ever be replayed. The recorded answer keeps the real name it used.
     """
-    safe = _SAFE_NAME.sub("_", name.lower().rstrip("."))
-    key = f"{name.lower()}|{rrtype.upper()}|{resolver or ''}"
+    canonical = _PROBE_LABEL.sub(f"{WILDCARD_PROBE_PREFIX}.", name.lower().rstrip("."))
+    safe = _SAFE_NAME.sub("_", canonical)
+    key = f"{canonical}|{rrtype.upper()}|{resolver or ''}"
     digest = hashlib.sha256(key.encode()).hexdigest()[:8]
     return f"{safe}.{rrtype.upper()}.{digest}.json"
 
