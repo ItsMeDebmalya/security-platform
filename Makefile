@@ -1,6 +1,6 @@
 UV := uv
 
-.PHONY: install test lint format typecheck corpus scan check
+.PHONY: install test lint format typecheck licence-check corpus scan check
 
 install:
 	$(UV) sync
@@ -19,10 +19,13 @@ format:
 typecheck:
 	$(UV) run mypy
 
+licence-check:
+	$(UV) run python -m cli.licences
+
 corpus:
 	$(UV) run python -m cli.corpus
 
 scan:
 	$(UV) run python -m cli.main $(ARGS)
 
-check: lint typecheck test
+check: lint typecheck test licence-check

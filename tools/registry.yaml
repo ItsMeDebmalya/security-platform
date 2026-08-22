@@ -1,0 +1,150 @@
+# Third-party components: what we use, under what licence, and how isolated.
+#
+# Checked in CI by cli/licences.py, which fails the build on:
+#   - a licence not on the approved list (ADR-003)
+#   - a copyleft component declared `library` rather than `subprocess`/`service`
+#   - a forbidden tool, whatever licence its entry claims
+#   - a direct dependency with no entry here
+#
+# isolation:
+#   library    - imported into our process. Permissive licences only.
+#   subprocess - executed as a separate binary, output parsed. Never linked.
+#   service    - stood up as its own container, talked to over HTTP.
+#   data       - a data set rather than code. Its licence still applies.
+#
+# Transitive dependencies are pinned by uv.lock but not individually licensed
+# here; a full transitive sweep is a Phase 6 task.
+
+# --- Python runtime dependencies -------------------------------------------
+
+- name: pydantic
+  version: "2.13.4"
+  licence: MIT
+  spdx: MIT
+  source: https://github.com/pydantic/pydantic
+  purpose: typed models for the Scanner Contract
+  isolation: library
+  signed_off_by: satwik
+  signed_off_at: 2026-08-22
+
+- name: jsonschema
+  version: "4.26.0"
+  licence: MIT
+  spdx: MIT
+  source: https://github.com/python-jsonschema/jsonschema
+  purpose: validating findings against contracts/*.schema.json
+  isolation: library
+  signed_off_by: satwik
+  signed_off_at: 2026-08-22
+
+- name: pyyaml
+  version: "6.0.3"
+  licence: MIT
+  spdx: MIT
+  source: https://github.com/yaml/pyyaml
+  purpose: corpus definitions, authorised scope, this registry
+  isolation: library
+  signed_off_by: satwik
+  signed_off_at: 2026-08-22
+
+- name: python-ulid
+  version: "4.0.1"
+  licence: MIT
+  spdx: MIT
+  source: https://github.com/mdomke/python-ulid
+  purpose: time-sortable scan_id
+  isolation: library
+  signed_off_by: satwik
+  signed_off_at: 2026-08-22
+
+- name: dnspython
+  version: "2.8.0"
+  licence: ISC
+  spdx: ISC
+  source: https://github.com/rthalley/dnspython
+  purpose: the live resolver behind core/dns.py
+  isolation: library
+  signed_off_by: satwik
+  signed_off_at: 2026-08-22
+
+- name: httpx
+  version: "0.28.1"
+  licence: BSD-3-Clause
+  spdx: BSD-3-Clause
+  source: https://github.com/encode/httpx
+  purpose: the transport behind core/http.py
+  isolation: library
+  signed_off_by: satwik
+  signed_off_at: 2026-08-22
+
+- name: typer
+  version: "0.27.1"
+  licence: MIT
+  spdx: MIT
+  source: https://github.com/fastapi/typer
+  purpose: the scan CLI
+  isolation: library
+  signed_off_by: satwik
+  signed_off_at: 2026-08-22
+
+# --- Development dependencies ----------------------------------------------
+
+- name: pytest
+  version: "9.1.1"
+  licence: MIT
+  spdx: MIT
+  source: https://github.com/pytest-dev/pytest
+  purpose: test runner
+  isolation: library
+  signed_off_by: satwik
+  signed_off_at: 2026-08-22
+
+- name: ruff
+  version: "0.16.4"
+  licence: MIT
+  spdx: MIT
+  source: https://github.com/astral-sh/ruff
+  purpose: lint and format
+  isolation: library
+  signed_off_by: satwik
+  signed_off_at: 2026-08-22
+
+- name: mypy
+  version: "2.3.1"
+  licence: MIT
+  spdx: MIT
+  source: https://github.com/python/mypy
+  purpose: strict type checking of core/
+  isolation: library
+  signed_off_by: satwik
+  signed_off_at: 2026-08-22
+
+- name: referencing
+  version: "0.37.0"
+  licence: MIT
+  spdx: MIT
+  source: https://github.com/python-jsonschema/referencing
+  purpose: cross-file $ref resolution in the contract drift test
+  isolation: library
+  signed_off_by: satwik
+  signed_off_at: 2026-08-22
+
+- name: types-pyyaml
+  version: "6.0.12.20260815"
+  licence: Apache-2.0
+  spdx: Apache-2.0
+  source: https://github.com/python/typeshed
+  purpose: type stubs
+  isolation: library
+  signed_off_by: satwik
+  signed_off_at: 2026-08-22
+
+- name: types-jsonschema
+  version: "4.26.0.20260518"
+  licence: Apache-2.0
+  spdx: Apache-2.0
+  source: https://github.com/python/typeshed
+  purpose: type stubs
+  isolation: library
+  signed_off_by: satwik
+  signed_off_at: 2026-08-22
