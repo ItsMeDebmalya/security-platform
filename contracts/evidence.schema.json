@@ -134,7 +134,11 @@
         "kind": { "const": "dns_answer" },
         "test": { "$ref": "#/$defs/dns_query" },
         "control": { "oneOf": [{ "$ref": "#/$defs/dns_query" }, { "type": "null" }] },
-        "control_rationale": { "type": "string", "minLength": 1 }
+        "control_rationale": { "type": "string", "minLength": 1 },
+        "analysis": {
+          "type": ["object", "null"],
+          "description": "What we made of the answer: a parse tree, a resolved include chain with its lookup count. The raw answer above is the observation; this is our reading of it, kept separate so a user can check our working."
+        }
       },
       "required": ["kind", "test", "control_rationale"]
     },

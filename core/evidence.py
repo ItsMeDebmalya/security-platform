@@ -188,6 +188,7 @@ def dns_evidence(
     test: DnsResponse,
     control: DnsResponse | None,
     control_rationale: str,
+    analysis: dict[str, Any] | None = None,
 ) -> DnsAnswerEvidence:
     """Build DNS evidence.
 
@@ -206,5 +207,6 @@ def dns_evidence(
         test=_exchange(test),
         control=_exchange(control) if control is not None else None,
         control_rationale=control_rationale,
+        analysis=analysis,
         captured_at=datetime.now(UTC),
     )

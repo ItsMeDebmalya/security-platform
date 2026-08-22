@@ -187,6 +187,10 @@ class DnsAnswerEvidence(EvidenceBase):
     test: DnsExchange
     control: DnsExchange | None = None
     control_rationale: str = Field(min_length=1)
+    analysis: dict[str, Any] | None = None
+    """Our reading of the answer - a parse tree, a resolved include chain and
+    its lookup count. Kept separate from the raw answer so a user can check
+    our working rather than take the conclusion on trust."""
 
     def has_control(self) -> bool:
         return self.control is not None
