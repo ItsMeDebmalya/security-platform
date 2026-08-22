@@ -15,8 +15,12 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Protocol
 
+from core.authz import Scope
 from core.cost import CostMeter
+from core.dns import DnsClient
+from core.http import HttpClient
 from core.killswitch import KillSwitch
+from core.ratelimit import ConcurrencyCap, RateLimiter
 
 ProgressReporter = Callable[[str, float], None]
 
@@ -74,8 +78,13 @@ class ScanContext:
     scan_id: str = "01J8TESTTESTTESTTESTTESTTE"
     org_id: str = "org_internal"
     authz_ref: str | None = None
-    http: object = field(default_factory=lambda: UnconfiguredClient("http"))
-    dns: object = field(default_factory=lambda: UnconfiguredClient("dns"))
+    http: HttpClient | UnconfiguredClient = field(
+        default_factory=lambda: UnconfiguredClient("http")
+    )
+    dns: DnsClient | UnconfiguredClient = field(default_factory=lambda: UnconfiguredClient("dns"))
+    scope: Scope | None = None
+    ratelimit: RateLimiter = field(default_factory=RateLimiter)
+    concurrency: ConcurrencyCap = field(default_factory=ConcurrencyCap)
     oob: OobClient = field(default_factory=StubOobClient)
     killswitch: KillSwitch = field(default_factory=KillSwitch)
     cost: CostMeter = field(default_factory=CostMeter)
