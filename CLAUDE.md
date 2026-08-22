@@ -4,9 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository state
 
-**No code yet, and not a git repository.** The repo contains a planning document set only. There is no build system, test runner, or package manifest, so there are no build/lint/test commands to document — the ones referenced below (`make corpus` etc.) are *specified* in the plan, not implemented.
+**Phase 0 is implemented.** The Scanner Contract is frozen, `core/` services exist, the CLI runs, and the corpus harness gates on real numbers.
 
-First implementation task is `git init`, then `docs/04-phase-0-foundations.md` task 0.1.
+Commands: `make install`, `make test`, `make lint`, `make typecheck`, `make licence-check`, `make corpus`, and `scan run <tool> --target <t>`. Python 3.12+, dependencies via `uv`.
+
+To add a scanner, read `docs/how-to-add-a-scanner.md`.
 
 ## Documents
 
@@ -18,6 +20,7 @@ First implementation task is `git init`, then `docs/04-phase-0-foundations.md` t
 - `docs/04-phase-0-foundations.md`, `docs/05-phase-1-first-tools.md` — task-level plans
 - `docs/06-guidelines.md` — rules for all code
 - `docs/07-open-questions.md` — what is undecided
+- `docs/how-to-add-a-scanner.md` — the practical guide, written by building the reference scanner
 - `docs/08-changelog.md` — v2→v3 and v3→v3.1 changes, and revert instructions
 - `docs/09-ownership-verification.md` — the legal gate on active scans; methods per target type, audit record, interim allowlist schema
 - `docs/10-measurement.md` — **how precision/recall/inconclusive-rate are computed**; read before touching the corpus harness
