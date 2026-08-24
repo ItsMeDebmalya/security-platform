@@ -98,6 +98,20 @@ ADR-008 committed to writing a Go OOB server. That objection was aimed at the *p
 
 **Must be validated by end of Phase 3**, before any Phase 4 correlation work starts. If it turns out the schema cannot express it, that is a migration — the exact failure ADR-002 exists to prevent, arriving after the Phase 2 safety checkpoint.
 
+### Q9 🔴 — testssl.sh or our own TLS engine — **new, blocks Tool 2**
+
+[05-phase-1-first-tools.md](05-phase-1-first-tools.md) says start by shelling out to `testssl.sh` and parsing its JSON, replacing it later when its runtime becomes the bottleneck. That was written before Phase 0 existed. Two things have changed since, and both point the other way.
+
+**What shelling out costs us.** testssl.sh is GPLv2, so it is separate-process-only forever — never linked, never adapted, enforced by the CI licence check. Its JSON schema broke between 3.0 and 3.2, so the version pin is load-bearing and every upgrade is a re-verification. It takes 1–3 minutes per host, which sets a hard ceiling on how many hosts a scan can cover. And its output is a *verdict*, not an observation — we would be parsing someone else's conclusions and re-deriving evidence from them, when evidence is the entire product thesis.
+
+**What building costs us.** Python's `ssl` and `socket` give us certificate chains, protocol version negotiation and cipher enumeration directly. That covers the Light-mode surface and most of Standard. The parts that are genuinely hard are the vulnerability checks that need malformed input — and [ADR-004](02-decisions.md#adr-004--no-exploitation-ever) already says we detect those by version and configuration inference rather than by sending them, so we were never going to use testssl.sh's implementations of them anyway.
+
+**The asymmetry:** our own engine gives us the control-vs-test evidence pair for free, because we made the observation. Wrapping testssl.sh means reverse-engineering evidence out of its verdicts to satisfy our own contract.
+
+**Options.** (a) Wrap testssl.sh as planned, replace later. (b) Build our own from the start. (c) Build our own, and keep a testssl.sh comparison harness in the corpus as an independent cross-check — the same role a second resolver plays in the email scanner.
+
+**Needed by:** before Tool 2 starts. **Decide:** developer.
+
 ### Q8 🟡 — Paid data API budget
 
 Passive DNS (Censys or SecurityTrails) materially improves subdomain enumeration recall. VirusTotal and Google Safe Browsing serve reputation and malware checks. These are **data subscriptions, not tool licences**, so they are acceptable under ADR-003 — but they cost money and they become a per-scan cost that must fit the margin model.

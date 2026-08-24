@@ -10,7 +10,7 @@ Scanners: `example` (reference), `email` (Tool 1 — 17 checks, precision 1.000 
 
 Commands: `make install`, `make test`, `make lint`, `make typecheck`, `make licence-check`, `make corpus`, and `scan run <tool> --target <t>`. Python 3.12+, dependencies via `uv`.
 
-To operate the CLI, read `docs/12-cli-runbook.md`. For the vulnerable test targets, `docs/13-test-targets.md` (`make targets-up`). To add a scanner, read `docs/how-to-add-a-scanner.md`.
+Read `docs/14-progress-ledger.md` for where things stand. To operate the CLI, read `docs/12-cli-runbook.md`. For the vulnerable test targets, `docs/13-test-targets.md` (`make targets-up`). To add a scanner, read `docs/how-to-add-a-scanner.md`.
 
 ## Documents
 
@@ -22,6 +22,7 @@ To operate the CLI, read `docs/12-cli-runbook.md`. For the vulnerable test targe
 - `docs/04-phase-0-foundations.md`, `docs/05-phase-1-first-tools.md` — task-level plans
 - `docs/06-guidelines.md` — rules for all code
 - `docs/07-open-questions.md` — what is undecided
+- `docs/14-progress-ledger.md` — **what has been built, what broke, what is owed**; append after each phase or tool
 - `docs/13-test-targets.md` — the vulnerable corpus targets, how to run them, and what we deliberately do not scan
 - `docs/12-cli-runbook.md` — **operator guide for the `scan` CLI**: every command, real output, exit codes, troubleshooting
 - `docs/how-to-add-a-scanner.md` — the practical guide, written by building the reference scanner
