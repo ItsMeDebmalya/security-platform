@@ -144,4 +144,4 @@ Single source of truth for what is owed. Move an item out only when it lands.
 
 **Tool 2 — SSL/TLS Analyzer.** Gate: precision ≥ 0.98, recall ≥ 0.95. `badssl.test` is already authorised in `config/authorised_scope.yaml`; the roadmap calls it a ready-made ground-truth corpus. Recall is true recall here, as with email — the protocol, cipher and certificate surface is finite.
 
-**Open before starting:** whether to shell out to `testssl.sh` or write our own TLS inspection. See [07-open-questions.md](07-open-questions.md) Q9.
+**Open before starting:** whether to shell out to `testssl.sh` or write our own TLS inspection. See [07-open-questions.md](07-open-questions.md) Q12b.
