@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "selector1._domainkey.corpus-nomail.example",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnzE6PIiHT/sKrAyfdiCc+a7kdmUWcniaPH9JhGYxO8vRORbkz/GQFZUNN0kogF3TDDqX9263KJe/yX5+/xoJFDBEOoBX9a8uuOA6BCNImyoHiQ6YWB9bLH0ciUhVHvGjZhH7BGbJMuE/y+eh2uw6APj+7qOpnAs6jyYvOr8LlHDVURaaptx8j9AJx8GHyTD1pzSIy6Cum9di5IL5/I8Ewx7eT5DJ4Z9Gu+8dQdCi431Qbwe0t+4OpdmsBpbDnj333VSUVlI7UIgdAubpCw4ZcqFDIy7vYmlPCrdOZ2J4bpPaLGNslkG+YjZ/X5NScgG/mcds+03QvWh4XrpVxNnHTQIDAQAB"
+  ],
+  "resolver": null,
+  "rrtype": "TXT",
+  "ttl": 300
+}

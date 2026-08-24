@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_mta-sts.corpus-baddmarc.example",
+  "rcode": "NOERROR",
+  "records": [
+    "v=STSv1; id=20260822T000000;"
+  ],
+  "resolver": null,
+  "rrtype": "TXT",
+  "ttl": 300
+}

@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "corpus-badspf.example",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 frobnicate:x ip4:999.0.2.0/24 -all"
+  ],
+  "resolver": null,
+  "rrtype": "TXT",
+  "ttl": 300
+}

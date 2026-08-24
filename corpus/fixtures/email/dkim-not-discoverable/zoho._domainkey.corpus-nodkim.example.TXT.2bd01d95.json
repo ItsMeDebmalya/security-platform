@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "zoho._domainkey.corpus-nodkim.example",
+  "rcode": "NXDOMAIN",
+  "records": [],
+  "resolver": null,
+  "rrtype": "TXT",
+  "ttl": null
+}

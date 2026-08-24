@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_spf.mailhost.example",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 ip4:192.0.2.0/24 -all"
+  ],
+  "resolver": null,
+  "rrtype": "TXT",
+  "ttl": 300
+}

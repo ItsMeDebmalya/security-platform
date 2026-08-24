@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "corpus-nomail.example",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 -all"
+  ],
+  "resolver": null,
+  "rrtype": "TXT",
+  "ttl": 300
+}

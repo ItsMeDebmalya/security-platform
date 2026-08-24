@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_dmarc.corpus-baddmarc.example",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DMARC1; rua=mailto:d@corpus-baddmarc.example; p=reject"
+  ],
+  "resolver": null,
+  "rrtype": "TXT",
+  "ttl": 300
+}

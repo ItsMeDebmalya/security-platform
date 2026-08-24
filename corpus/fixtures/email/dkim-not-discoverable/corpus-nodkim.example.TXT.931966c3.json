@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "corpus-nodkim.example",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 include:_spf.mailhost.example -all"
+  ],
+  "resolver": null,
+  "rrtype": "TXT",
+  "ttl": 300
+}

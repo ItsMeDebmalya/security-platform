@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "k1._domainkey.corpus-bare.example",
+  "rcode": "NXDOMAIN",
+  "records": [],
+  "resolver": null,
+  "rrtype": "TXT",
+  "ttl": null
+}

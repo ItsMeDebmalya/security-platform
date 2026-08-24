@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_dmarc.corpus-relaxed.example",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DMARC1; p=reject; rua=mailto:d@corpus-relaxed.example"
+  ],
+  "resolver": null,
+  "rrtype": "TXT",
+  "ttl": 300
+}

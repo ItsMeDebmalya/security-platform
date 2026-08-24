@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_dmarc.corpus-weakdkim.example",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DMARC1; p=reject; rua=mailto:dmarc@corpus-weakdkim.example; adkim=s; aspf=s"
+  ],
+  "resolver": null,
+  "rrtype": "TXT",
+  "ttl": 300
+}

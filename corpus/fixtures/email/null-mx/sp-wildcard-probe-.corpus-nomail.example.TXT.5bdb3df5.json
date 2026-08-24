@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "sp-wildcard-probe-2aaa6c8c.corpus-nomail.example",
+  "rcode": "NXDOMAIN",
+  "records": [],
+  "resolver": null,
+  "rrtype": "TXT",
+  "ttl": null
+}

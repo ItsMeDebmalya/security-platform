@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "i0.chain.example",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 a -all"
+  ],
+  "resolver": null,
+  "rrtype": "TXT",
+  "ttl": 300
+}

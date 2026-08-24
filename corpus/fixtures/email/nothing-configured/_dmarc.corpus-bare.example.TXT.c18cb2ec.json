@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "_dmarc.corpus-bare.example",
+  "rcode": "NOERROR",
+  "records": [],
+  "resolver": null,
+  "rrtype": "TXT",
+  "ttl": 300
+}

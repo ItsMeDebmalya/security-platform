@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_dmarc.corpus-pct.example",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DMARC1; p=reject; pct=20; rua=mailto:d@corpus-pct.example; adkim=s; aspf=s"
+  ],
+  "resolver": null,
+  "rrtype": "TXT",
+  "ttl": 300
+}

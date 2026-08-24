@@ -1,0 +1,60 @@
+# The known-correct answers per case: check_id + location pairs that must be
+# reported as confirmed or highly_likely. An empty list means the case must
+# report nothing at all.
+
+known-good: []
+null-mx: []
+
+# Relaxed alignment is the RFC default and a legitimate choice. The scanner
+# says so as an informational finding, which docs/10-measurement.md excludes
+# from the gate entirely - it is not a vulnerability claim.
+dmarc-relaxed-alignment: []
+
+nothing-configured:
+  - { check_id: spf-missing, location: "$" }
+  - { check_id: dmarc-missing, location: "$" }
+  - { check_id: mx-missing, location: "$" }
+  - { check_id: mta-sts-missing, location: "$" }
+  - { check_id: tls-rpt-missing, location: "$" }
+  - { check_id: spoofing-possible, location: "$" }
+
+dmarc-monitoring-only:
+  - { check_id: dmarc-policy-none, location: "$" }
+  - { check_id: spoofing-possible, location: "$" }
+
+dmarc-partial-rollout:
+  - { check_id: dmarc-pct-partial, location: "$" }
+  - { check_id: spoofing-possible, location: "$" }
+
+dmarc-no-reporting:
+  - { check_id: dmarc-no-rua, location: "$" }
+
+dmarc-malformed:
+  - { check_id: dmarc-invalid, location: "$" }
+  - { check_id: spoofing-possible, location: "$" }
+
+spf-invalid:
+  - { check_id: spf-invalid, location: "$" }
+
+spf-duplicate:
+  - { check_id: spf-multiple-records, location: "$" }
+
+spf-permissive:
+  - { check_id: spf-too-permissive, location: "$" }
+  - { check_id: spoofing-possible, location: "$" }
+
+spf-lookup-limit:
+  - { check_id: spf-lookup-limit, location: "$" }
+
+dkim-weak-key:
+  - { check_id: dkim-weak-key, location: "$" }
+
+no-transport-security:
+  - { check_id: mta-sts-missing, location: "$" }
+  - { check_id: tls-rpt-missing, location: "$" }
+
+# The selector search failed. The correct answer is "we could not tell",
+# which is an inconclusive finding and no claim at all.
+dkim-not-discoverable: []
+
+servfail: []

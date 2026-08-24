@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_smtp._tls.corpus-plusall.example",
+  "rcode": "NOERROR",
+  "records": [
+    "v=TLSRPTv1; rua=mailto:tls@corpus-plusall.example"
+  ],
+  "resolver": null,
+  "rrtype": "TXT",
+  "ttl": 300
+}

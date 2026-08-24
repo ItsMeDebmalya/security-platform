@@ -4,6 +4,350 @@
       {
         "errors": [],
         "expect_inconclusive": false,
+        "expected": [],
+        "fn": 0,
+        "fp": 0,
+        "id": "known-good",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "tier": "known_good",
+        "tp": 0
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [],
+        "fn": 0,
+        "fp": 0,
+        "id": "null-mx",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "tier": "known_good",
+        "tp": 0
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [],
+        "fn": 0,
+        "fp": 0,
+        "id": "dmarc-relaxed-alignment",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "tier": "known_good",
+        "tp": 0
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [
+          {
+            "check_id": "spf-missing",
+            "location": "$"
+          },
+          {
+            "check_id": "dmarc-missing",
+            "location": "$"
+          },
+          {
+            "check_id": "mx-missing",
+            "location": "$"
+          },
+          {
+            "check_id": "mta-sts-missing",
+            "location": "$"
+          },
+          {
+            "check_id": "tls-rpt-missing",
+            "location": "$"
+          },
+          {
+            "check_id": "spoofing-possible",
+            "location": "$"
+          }
+        ],
+        "fn": 0,
+        "fp": 0,
+        "id": "nothing-configured",
+        "inconclusive": 1,
+        "inconclusive_delivered": true,
+        "tier": "vulnerable",
+        "tp": 6
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [
+          {
+            "check_id": "dmarc-policy-none",
+            "location": "$"
+          },
+          {
+            "check_id": "spoofing-possible",
+            "location": "$"
+          }
+        ],
+        "fn": 0,
+        "fp": 0,
+        "id": "dmarc-monitoring-only",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "tier": "vulnerable",
+        "tp": 2
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [
+          {
+            "check_id": "dmarc-pct-partial",
+            "location": "$"
+          },
+          {
+            "check_id": "spoofing-possible",
+            "location": "$"
+          }
+        ],
+        "fn": 0,
+        "fp": 0,
+        "id": "dmarc-partial-rollout",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "tier": "vulnerable",
+        "tp": 2
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [
+          {
+            "check_id": "dmarc-no-rua",
+            "location": "$"
+          }
+        ],
+        "fn": 0,
+        "fp": 0,
+        "id": "dmarc-no-reporting",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "tier": "vulnerable",
+        "tp": 1
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [
+          {
+            "check_id": "dmarc-invalid",
+            "location": "$"
+          },
+          {
+            "check_id": "spoofing-possible",
+            "location": "$"
+          }
+        ],
+        "fn": 0,
+        "fp": 0,
+        "id": "dmarc-malformed",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "tier": "vulnerable",
+        "tp": 2
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [
+          {
+            "check_id": "spf-invalid",
+            "location": "$"
+          }
+        ],
+        "fn": 0,
+        "fp": 0,
+        "id": "spf-invalid",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "tier": "vulnerable",
+        "tp": 1
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [
+          {
+            "check_id": "spf-multiple-records",
+            "location": "$"
+          }
+        ],
+        "fn": 0,
+        "fp": 0,
+        "id": "spf-duplicate",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "tier": "vulnerable",
+        "tp": 1
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [
+          {
+            "check_id": "spf-too-permissive",
+            "location": "$"
+          },
+          {
+            "check_id": "spoofing-possible",
+            "location": "$"
+          }
+        ],
+        "fn": 0,
+        "fp": 0,
+        "id": "spf-permissive",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "tier": "vulnerable",
+        "tp": 2
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [
+          {
+            "check_id": "spf-lookup-limit",
+            "location": "$"
+          }
+        ],
+        "fn": 0,
+        "fp": 0,
+        "id": "spf-lookup-limit",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "tier": "vulnerable",
+        "tp": 1
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [
+          {
+            "check_id": "dkim-weak-key",
+            "location": "$"
+          }
+        ],
+        "fn": 0,
+        "fp": 0,
+        "id": "dkim-weak-key",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "tier": "vulnerable",
+        "tp": 1
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [
+          {
+            "check_id": "mta-sts-missing",
+            "location": "$"
+          },
+          {
+            "check_id": "tls-rpt-missing",
+            "location": "$"
+          }
+        ],
+        "fn": 0,
+        "fp": 0,
+        "id": "no-transport-security",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "tier": "vulnerable",
+        "tp": 2
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [],
+        "fn": 0,
+        "fp": 0,
+        "id": "dkim-not-discoverable",
+        "inconclusive": 1,
+        "inconclusive_delivered": true,
+        "tier": "vulnerable",
+        "tp": 0
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": true,
+        "expected": [],
+        "fn": 0,
+        "fp": 0,
+        "id": "servfail",
+        "inconclusive": 0,
+        "inconclusive_delivered": true,
+        "tier": "vulnerable",
+        "tp": 0
+      }
+    ],
+    "false_positives_on_known_good": 0,
+    "gate": {
+      "inconclusive_max": 0.15,
+      "precision": 0.99,
+      "recall": 0.95,
+      "recall_definition": "absolute",
+      "recall_label": "absolute (the true set is knowable for this scanner)"
+    },
+    "overall": {
+      "cases": 16,
+      "checks_run": 240,
+      "false_positives_on_known_good": 0,
+      "fn": 0,
+      "fp": 0,
+      "inconclusive_rate": 0.008333333333333333,
+      "precision": 1.0,
+      "recall": 1.0,
+      "suspected_rate": 0.0,
+      "tier": "all",
+      "tp": 21
+    },
+    "passed": true,
+    "reason": "pass",
+    "scanner": "email",
+    "tiers": {
+      "known_good": {
+        "cases": 3,
+        "checks_run": 51,
+        "false_positives_on_known_good": 0,
+        "fn": 0,
+        "fp": 0,
+        "inconclusive_rate": 0.0,
+        "precision": null,
+        "recall": null,
+        "suspected_rate": 0.0,
+        "tier": "known_good",
+        "tp": 0
+      },
+      "vulnerable": {
+        "cases": 13,
+        "checks_run": 189,
+        "false_positives_on_known_good": 0,
+        "fn": 0,
+        "fp": 0,
+        "inconclusive_rate": 0.010582010582010581,
+        "precision": 1.0,
+        "recall": 1.0,
+        "suspected_rate": 0.0,
+        "tier": "vulnerable",
+        "tp": 21
+      }
+    }
+  },
+  {
+    "cases": [
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [],
         "fn": 0,
         "fp": 0,
         "id": "resolves",
@@ -15,6 +359,12 @@
       {
         "errors": [],
         "expect_inconclusive": false,
+        "expected": [
+          {
+            "check_id": "example-a-record-missing",
+            "location": "$"
+          }
+        ],
         "fn": 0,
         "fp": 0,
         "id": "no-a-record",
@@ -26,6 +376,12 @@
       {
         "errors": [],
         "expect_inconclusive": false,
+        "expected": [
+          {
+            "check_id": "example-a-record-missing",
+            "location": "$"
+          }
+        ],
         "fn": 0,
         "fp": 0,
         "id": "nxdomain",
@@ -37,6 +393,7 @@
       {
         "errors": [],
         "expect_inconclusive": true,
+        "expected": [],
         "fn": 0,
         "fp": 0,
         "id": "servfail",

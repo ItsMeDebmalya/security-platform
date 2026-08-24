@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "corpus-bare.example",
+  "rcode": "NOERROR",
+  "records": [],
+  "resolver": null,
+  "rrtype": "MX",
+  "ttl": 300
+}

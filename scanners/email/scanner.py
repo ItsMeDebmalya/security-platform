@@ -26,6 +26,7 @@ finding, and reporting it would be padding.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import UTC, datetime
 from typing import Any
 
@@ -278,6 +279,7 @@ class _Scan:
                     "into ip4:/ip6: terms - those cost no lookups at all."
                 ),
                 analysis={"spf_chain": self.chain.to_dict()},
+                validates=self._rewalk_chain_exceeds,
             )
         else:
             self._clear("spf-lookup-limit")
@@ -338,6 +340,7 @@ class _Scan:
                     "may follow in any order."
                 ),
                 analysis={"dmarc": self.dmarc.to_dict()},
+                validates=lambda answer: _dmarc_is_invalid(answer),
             )
             self._not_applicable("dmarc-policy-none")
             return
@@ -390,6 +393,7 @@ class _Scan:
                     "Raise pct in stages - 25, 50, then 100 - watching your rua reports at each "
                     "step, and remove the tag entirely once you reach 100."
                 ),
+                validates=lambda answer: _dmarc_pct(answer) < 100,
             )
         else:
             self._clear("dmarc-pct-partial")
@@ -409,6 +413,7 @@ class _Scan:
                     f"Add 'rua=mailto:dmarc-reports@{self.domain}' to the record. Reports arrive "
                     "daily as XML; a report analyser makes them readable."
                 ),
+                validates=lambda answer: not _dmarc_rua(answer),
             )
         else:
             self._clear("dmarc-no-rua")
@@ -432,6 +437,7 @@ class _Scan:
                     "adkim=s and aspf=s. If subdomains send mail, relaxed is the correct "
                     "setting and no change is needed."
                 ),
+                validates=lambda answer: _dmarc_relaxed(answer),
             )
         else:
             self._clear("dmarc-alignment")
@@ -455,23 +461,69 @@ class _Scan:
             return
 
         if not self.mx_answer.records:
+            self._report_missing_mx()
+        else:
+            self._clear("mx-missing")
+
+    def _sends_no_mail(self) -> bool:
+        """Whether the domain has already said, in its own records, that it sends no mail.
+
+        `v=spf1 -all` with an enforcing DMARC policy is an explicit no-mail
+        posture. It is a correct configuration missing only its final step, and
+        treating it the same as a broken mail setup would be the kind of noise
+        that teaches people to ignore a scanner.
+        """
+        return (
+            self.spf.record is not None
+            and self.spf.record.all_qualifier == "-"
+            and not self.spf.record.include_targets()
+            and self.dmarc is not None
+            and self.dmarc.valid
+            and self.dmarc.policy in ("quarantine", "reject")
+        )
+
+    def _report_missing_mx(self) -> None:
+        if self._sends_no_mail():
             self._report(
                 "mx-missing",
                 self.mx_answer,
-                description=f"{self.domain} publishes no MX records.",
+                severity="low",
+                title="No MX records, and no explicit statement that the domain takes no mail",
+                description=(
+                    f"{self.domain} publishes no MX records. Its SPF record is 'v=spf1 -all' "
+                    f"and its DMARC policy is p={self.dmarc.policy if self.dmarc else ''}, "
+                    "which together say this domain sends no mail - so the absence of MX "
+                    "records looks deliberate rather than broken."
+                ),
                 impact=(
-                    "Mail addressed to this domain cannot be delivered. If the domain is not "
-                    "meant to receive mail, saying so explicitly is better than silence."
+                    "A sending server has to wait for the lookup to fail and then fall back to "
+                    "the A record before giving up, which delays the bounce and can leave mail "
+                    "queued for days."
                 ),
                 remediation=(
-                    "Publish MX records pointing at your mail provider. If the domain should "
-                    "never receive mail, publish the null MX record 'MX 0 .' (RFC 7505), which "
-                    "tells senders so immediately."
+                    "Publish the null MX record 'MX 0 .' (RFC 7505). It tells senders "
+                    "immediately and unambiguously that this domain accepts no mail, instead of "
+                    "leaving them to infer it."
                 ),
                 validates=lambda answer: not answer.records,
             )
-        else:
-            self._clear("mx-missing")
+            return
+
+        self._report(
+            "mx-missing",
+            self.mx_answer,
+            description=f"{self.domain} publishes no MX records.",
+            impact=(
+                "Mail addressed to this domain cannot be delivered. If the domain is not meant "
+                "to receive mail, saying so explicitly is better than silence."
+            ),
+            remediation=(
+                "Publish MX records pointing at your mail provider. If the domain should never "
+                "receive mail, publish the null MX record 'MX 0 .' (RFC 7505), which tells "
+                "senders so immediately."
+            ),
+            validates=lambda answer: not answer.records,
+        )
 
     # --- DKIM ---------------------------------------------------------------
 
@@ -549,6 +601,7 @@ class _Scan:
                     "once no mail is signed with it."
                 ),
                 analysis={"dkim": self.dkim.to_dict()},
+                validates=lambda answer: _dkim_bits_below(answer, MIN_DKIM_BITS),
             )
         else:
             self._clear("dkim-weak-key")
@@ -636,32 +689,7 @@ class _Scan:
             )
             return
 
-        reasons: list[str] = []
-        if self.dmarc is None:
-            reasons.append(
-                "there is no DMARC record, so a receiver has no instruction to reject mail "
-                "that fails authentication"
-            )
-        elif not self.dmarc.valid:
-            reasons.append(
-                "the DMARC record is malformed and receivers ignore it, which leaves the "
-                "domain in the same position as having none"
-            )
-        elif self.dmarc.policy == "none":
-            reasons.append("the DMARC policy is p=none, which asks receivers to take no action")
-        elif self.dmarc.pct < 100:
-            reasons.append(
-                f"the DMARC policy is applied to only {self.dmarc.pct}% of failing mail, so "
-                f"roughly {100 - self.dmarc.pct}% of forged messages are delivered anyway"
-            )
-
-        if self.spf.record is None:
-            reasons.append("no SPF record identifies which servers may send for the domain")
-        elif self.spf.record.all_qualifier in ("+", "?"):
-            reasons.append(
-                f"the SPF policy ends in '{self.spf.record.all_qualifier}all', which accepts "
-                "any sending server"
-            )
+        reasons = _spoofing_reasons(self.dmarc, self.spf.record)
 
         if not reasons:
             self._clear("spoofing-possible")
@@ -687,7 +715,25 @@ class _Scan:
                 f"at _dmarc.{self.domain}. Move to p=reject only after the rua reports show "
                 "every legitimate sender passing."
             ),
+            validates=self._still_spoofable,
         )
+
+    def _rewalk_chain_exceeds(self, _answer: DnsResponse) -> bool:
+        """Walk the whole include chain again through the second resolver.
+
+        Expensive - it doubles the lookups for this one check - and worth it:
+        a lookup-limit finding rests on every record in the chain, so a
+        re-test that only re-read the root would validate almost nothing.
+        """
+        second = self.dns.second_resolver()
+        if second is None:
+            return False
+        again = resolve_spf_chain(self.domain, self.dns, resolver=second)
+        return again.definite and again.exceeded
+
+    def _still_spoofable(self, answer: DnsResponse) -> bool:
+        """Re-run the receiver simulation on the second resolver's DMARC answer."""
+        return bool(_spoofing_reasons(_parse_dmarc_answer(answer), self.spf.record))
 
     # --- emitting -----------------------------------------------------------
 
@@ -701,8 +747,15 @@ class _Scan:
         remediation: str,
         analysis: dict[str, Any] | None = None,
         validates: Any = None,
+        severity: str | None = None,
+        title: str | None = None,
     ) -> None:
         check = CHECKS[check_id]
+        if severity is not None or title is not None:
+            # Severity is "how bad if true", and that genuinely differs with
+            # context for some checks. Overriding it here keeps the reasoning
+            # next to the evidence for it rather than in a lookup table.
+            check = replace(check, severity=severity or check.severity, title=title or check.title)
         result = self.engine.combine(
             [
                 Signal(
@@ -912,6 +965,68 @@ _REFERENCES = {
     "tls-rpt-missing": ["https://www.rfc-editor.org/rfc/rfc8460"],
     "spoofing-possible": ["https://www.rfc-editor.org/rfc/rfc7489"],
 }
+
+
+def _spoofing_reasons(dmarc: DmarcRecord | None, spf: SpfRecord | None) -> list[str]:
+    """Why a receiving mail server would deliver a forged message.
+
+    Extracted so that validation can re-run exactly the same reasoning against
+    an independently fetched record, rather than re-checking a weaker proxy.
+    """
+    reasons: list[str] = []
+    if dmarc is None:
+        reasons.append(
+            "there is no DMARC record, so a receiver has no instruction to reject mail "
+            "that fails authentication"
+        )
+    elif not dmarc.valid:
+        reasons.append(
+            "the DMARC record is malformed and receivers ignore it, which leaves the "
+            "domain in the same position as having none"
+        )
+    elif dmarc.policy == "none":
+        reasons.append("the DMARC policy is p=none, which asks receivers to take no action")
+    elif dmarc.pct < 100:
+        reasons.append(
+            f"the DMARC policy is applied to only {dmarc.pct}% of failing mail, so "
+            f"roughly {100 - dmarc.pct}% of forged messages are delivered anyway"
+        )
+
+    if spf is None:
+        reasons.append("no SPF record identifies which servers may send for the domain")
+    elif spf.all_qualifier in ("+", "?"):
+        reasons.append(
+            f"the SPF policy ends in '{spf.all_qualifier}all', which accepts any sending server"
+        )
+    return reasons
+
+
+def _dmarc_is_invalid(answer: DnsResponse) -> bool:
+    record = _parse_dmarc_answer(answer)
+    return record is not None and not record.valid
+
+
+def _dmarc_pct(answer: DnsResponse) -> int:
+    record = _parse_dmarc_answer(answer)
+    return record.pct if record else 100
+
+
+def _dmarc_rua(answer: DnsResponse) -> list[str]:
+    record = _parse_dmarc_answer(answer)
+    return record.rua if record else []
+
+
+def _dmarc_relaxed(answer: DnsResponse) -> bool:
+    record = _parse_dmarc_answer(answer)
+    return record is not None and (record.adkim == "r" or record.aspf == "r")
+
+
+def _dkim_bits_below(answer: DnsResponse, minimum: int) -> bool:
+    for record in answer.records:
+        parsed = parse_dkim_key(record)
+        if parsed.key_bits is not None:
+            return parsed.key_bits < minimum
+    return False
 
 
 def _spf_records(answer: DnsResponse) -> list[str]:

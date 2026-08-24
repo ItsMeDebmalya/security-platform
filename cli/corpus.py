@@ -99,10 +99,12 @@ def run_scanner_corpus(scanner_name: str) -> dict[str, Any]:
     gate = Gate(**definition["gate"])
 
     outcomes: list[CaseOutcome] = []
+    expected_by_case_id: dict[str, list[dict[str, str]]] = {}
     for case in definition["cases"]:
         result = _run_case(scanner_name, case)
         expects_inconclusive = bool(case.get("expect_inconclusive"))
-        score = _score(result, expected_by_case.get(case["id"], []) or [])
+        expected_by_case_id[case["id"]] = expected_by_case.get(case["id"], []) or []
+        score = _score(result, expected_by_case_id[case["id"]])
         delivered = any(f.state == "inconclusive" for f in result.findings)
 
         if expects_inconclusive:
@@ -163,6 +165,7 @@ def run_scanner_corpus(scanner_name: str) -> dict[str, Any]:
                 "fp": o.score.fp,
                 "fn": o.score.fn,
                 "inconclusive": o.score.inconclusive,
+                "expected": expected_by_case_id[o.case_id],
                 "expect_inconclusive": o.inconclusive_expected,
                 "inconclusive_delivered": o.inconclusive_delivered,
                 "errors": o.errors,

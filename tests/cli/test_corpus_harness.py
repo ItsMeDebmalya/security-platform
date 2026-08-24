@@ -64,7 +64,7 @@ def test_the_harness_writes_its_results_for_ci_to_compare():
     assert result.exit_code == 0
     from cli.corpus import LATEST
 
-    assert json.loads(LATEST.read_text())[0]["scanner"] == "example"
+    assert "example" in {r["scanner"] for r in json.loads(LATEST.read_text())}
 
 
 # --- regression detection ---------------------------------------------------
@@ -112,3 +112,44 @@ def test_an_unchanged_run_is_not_a_regression():
     problems = _regressions([_report()], [_report()])
 
     assert problems == []
+
+
+# --- the email scanner ------------------------------------------------------
+
+
+def test_the_email_scanner_passes_its_gate():
+    report = run_scanner_corpus("email")
+
+    assert report["passed"], report["reason"]
+
+
+def test_the_email_gate_is_the_one_the_roadmap_sets():
+    report = run_scanner_corpus("email")
+
+    assert report["gate"]["precision"] == 0.99
+    assert report["gate"]["recall"] == 0.95
+
+
+def test_every_email_check_has_a_positive_corpus_case():
+    """docs/10-measurement.md: a detection without a positive case is unproven."""
+    from scanners.email.checks import CHECKS
+
+    report = run_scanner_corpus("email")
+    covered = {
+        expected["check_id"] for case in report["cases"] for expected in case.get("expected", [])
+    }
+    # Two checks can never appear in an expected set, and it is worth being
+    # explicit about why rather than letting the list quietly grow:
+    #   dkim-missing   - inconclusive by construction; selectors are not enumerable
+    #   dmarc-alignment - informational; relaxed alignment is the RFC default and
+    #                     not a vulnerability claim, so the gate excludes it
+    # Both are covered by unit tests in tests/scanners/email instead.
+    never_a_claim = {"dkim-missing", "dmarc-alignment"}
+
+    assert set(CHECKS) - never_a_claim - covered == set()
+
+
+def test_no_finding_at_all_on_a_known_good_email_target():
+    report = run_scanner_corpus("email")
+
+    assert report["false_positives_on_known_good"] == 0

@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "sp-wildcard-probe-85d5bd60.corpus-bare.example",
+  "rcode": "NXDOMAIN",
+  "records": [],
+  "resolver": null,
+  "rrtype": "TXT",
+  "ttl": null
+}

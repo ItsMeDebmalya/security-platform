@@ -191,7 +191,7 @@ class SpfLookup:
         }
 
 
-def fetch_spf(domain: str, client: Any) -> SpfLookup:
+def fetch_spf(domain: str, client: Any, resolver: str | None = None) -> SpfLookup:
     """Fetch and parse the SPF record at `domain`.
 
     Two things this is careful about:
@@ -203,7 +203,7 @@ def fetch_spf(domain: str, client: Any) -> SpfLookup:
       parse failure: RFC 7208 4.5 makes the evaluation permerror. We report
       it rather than silently taking the first.
     """
-    answer = client.query(domain, "TXT")
+    answer = client.query(domain, "TXT", resolver=resolver)
     candidates = [r for r in answer.records if r.strip().lower().startswith(VERSION)]
     record = parse_spf(candidates[0]) if candidates else None
     return SpfLookup(
@@ -246,12 +246,16 @@ class SpfChain:
         }
 
 
-def resolve_spf_chain(domain: str, client: Any) -> SpfChain:
+def resolve_spf_chain(domain: str, client: Any, resolver: str | None = None) -> SpfChain:
     """Walk the include/redirect graph, counting DNS-querying terms.
 
     The count is what RFC 7208 4.6.4 caps at ten. A chain we could not finish
     walking - a SERVFAIL partway down - produces `definite=False`, because a
     count that stopped early is not a count and must not become a finding.
+
+    `resolver` directs every lookup at one upstream, which is what makes
+    re-walking the chain through a second resolver a genuine independent
+    re-test rather than a cache hit.
     """
     chain = SpfChain(root=domain)
     seen: set[str] = set()
@@ -265,7 +269,7 @@ def resolve_spf_chain(domain: str, client: Any) -> SpfChain:
             continue
         seen.add(key)
 
-        lookup = fetch_spf(current, client)
+        lookup = fetch_spf(current, client, resolver)
         chain.steps.append(lookup)
 
         if not lookup.definite:

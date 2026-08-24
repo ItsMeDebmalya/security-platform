@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "corpus-nomail.example",
+  "rcode": "NOERROR",
+  "records": [
+    "0 ."
+  ],
+  "resolver": null,
+  "rrtype": "MX",
+  "ttl": 300
+}

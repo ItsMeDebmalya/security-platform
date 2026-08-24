@@ -1,0 +1,132 @@
+# Ground-truth corpus for the Email Security Scanner.
+#
+# Every case is a synthetic zone recorded by corpus/generators/email.py.
+# Re-generate with: uv run python -m corpus.generators.email
+#
+# Gate from docs/03-roadmap.md and docs/05-phase-1-first-tools.md.
+
+gate:
+  precision: 0.99
+  recall: 0.95
+  inconclusive_max: 0.15
+  recall_definition: absolute  # the check set is finite and RFC-defined per domain
+
+cases:
+  # --- known-good: anything reported here is a false positive --------------
+
+  - id: known-good
+    tier: known_good
+    source: frozen
+    mode: standard
+    target: { type: domain, value: corpus-good.example }
+    fixtures: corpus/fixtures/email/known-good
+
+  - id: null-mx
+    tier: known_good
+    source: frozen
+    mode: standard
+    target: { type: domain, value: corpus-nomail.example }
+    fixtures: corpus/fixtures/email/null-mx
+
+  - id: dmarc-relaxed-alignment
+    tier: known_good
+    source: frozen
+    mode: standard
+    target: { type: domain, value: corpus-relaxed.example }
+    fixtures: corpus/fixtures/email/dmarc-relaxed-alignment
+
+  # --- known-vulnerable ----------------------------------------------------
+
+  - id: nothing-configured
+    tier: vulnerable
+    source: frozen
+    mode: standard
+    target: { type: domain, value: corpus-bare.example }
+    fixtures: corpus/fixtures/email/nothing-configured
+
+  - id: dmarc-monitoring-only
+    tier: vulnerable
+    source: frozen
+    mode: standard
+    target: { type: domain, value: corpus-pnone.example }
+    fixtures: corpus/fixtures/email/dmarc-monitoring-only
+
+  - id: dmarc-partial-rollout
+    tier: vulnerable
+    source: frozen
+    mode: standard
+    target: { type: domain, value: corpus-pct.example }
+    fixtures: corpus/fixtures/email/dmarc-partial-rollout
+
+  - id: dmarc-no-reporting
+    tier: vulnerable
+    source: frozen
+    mode: standard
+    target: { type: domain, value: corpus-norua.example }
+    fixtures: corpus/fixtures/email/dmarc-no-reporting
+
+  - id: dmarc-malformed
+    tier: vulnerable
+    source: frozen
+    mode: standard
+    target: { type: domain, value: corpus-baddmarc.example }
+    fixtures: corpus/fixtures/email/dmarc-malformed
+
+  - id: spf-invalid
+    tier: vulnerable
+    source: frozen
+    mode: standard
+    target: { type: domain, value: corpus-badspf.example }
+    fixtures: corpus/fixtures/email/spf-invalid
+
+  - id: spf-duplicate
+    tier: vulnerable
+    source: frozen
+    mode: standard
+    target: { type: domain, value: corpus-dupspf.example }
+    fixtures: corpus/fixtures/email/spf-duplicate
+
+  - id: spf-permissive
+    tier: vulnerable
+    source: frozen
+    mode: standard
+    target: { type: domain, value: corpus-plusall.example }
+    fixtures: corpus/fixtures/email/spf-permissive
+
+  - id: spf-lookup-limit
+    tier: vulnerable
+    source: frozen
+    mode: standard
+    target: { type: domain, value: corpus-chain.example }
+    fixtures: corpus/fixtures/email/spf-lookup-limit
+
+  - id: dkim-weak-key
+    tier: vulnerable
+    source: frozen
+    mode: standard
+    target: { type: domain, value: corpus-weakdkim.example }
+    fixtures: corpus/fixtures/email/dkim-weak-key
+
+  - id: no-transport-security
+    tier: vulnerable
+    source: frozen
+    mode: standard
+    target: { type: domain, value: corpus-notls.example }
+    fixtures: corpus/fixtures/email/no-transport-security
+
+  # --- cases where the correct answer is "we cannot tell" ------------------
+
+  - id: dkim-not-discoverable
+    tier: vulnerable
+    source: frozen
+    mode: standard
+    target: { type: domain, value: corpus-nodkim.example }
+    fixtures: corpus/fixtures/email/dkim-not-discoverable
+
+  - id: servfail
+    tier: vulnerable
+    source: frozen
+    mode: standard
+    expect_inconclusive: true
+    target: { type: domain, value: corpus-broken.example }
+    fixtures: corpus/fixtures/email/servfail

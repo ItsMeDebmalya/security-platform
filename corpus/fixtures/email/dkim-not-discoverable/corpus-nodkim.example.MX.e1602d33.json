@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "corpus-nodkim.example",
+  "rcode": "NOERROR",
+  "records": [
+    "10 mx1.mailhost.example."
+  ],
+  "resolver": null,
+  "rrtype": "MX",
+  "ttl": 300
+}

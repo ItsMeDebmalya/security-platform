@@ -465,3 +465,46 @@ def test_a_check_that_could_not_run_is_not_claimed_to_have_run(run_scan):
     ran = {c.check_id for c in result.telemetry.checks_run}
     assert "dmarc-missing" in ran
     assert "dmarc-pct-partial" not in ran
+
+
+# --- severity reflects how bad it would be, in context ----------------------
+
+
+def test_a_domain_with_no_mx_and_no_no_mail_posture_is_a_medium_finding(findings_for):
+    """Mail addressed here is simply undeliverable."""
+    answers = zone(
+        "bad.example", mx=(), spf="v=spf1 include:_spf.x.example ~all", dmarc="v=DMARC1; p=none"
+    )
+
+    found = findings_for("bad.example", answers, "mx-missing")
+
+    assert found[0].severity == "medium"
+
+
+def test_a_domain_that_clearly_sends_no_mail_gets_a_low_severity_nudge(findings_for):
+    """SPF -all plus an enforcing DMARC policy is a domain saying it sends no
+    mail. The only thing missing is saying so to receivers, with a null MX."""
+    answers = zone(
+        "nomail.example",
+        mx=(),
+        spf="v=spf1 -all",
+        dmarc="v=DMARC1; p=reject; rua=mailto:d@nomail.example",
+    )
+
+    found = findings_for("nomail.example", answers, "mx-missing")
+
+    assert found[0].severity == "low"
+    assert "null MX" in found[0].remediation
+
+
+def test_the_low_severity_variant_says_what_it_inferred(findings_for):
+    answers = zone(
+        "nomail.example",
+        mx=(),
+        spf="v=spf1 -all",
+        dmarc="v=DMARC1; p=reject; rua=mailto:d@nomail.example",
+    )
+
+    found = findings_for("nomail.example", answers, "mx-missing")
+
+    assert "-all" in found[0].description
