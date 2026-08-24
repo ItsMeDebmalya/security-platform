@@ -43,6 +43,8 @@ The product is accuracy. These are the rules that produce it.
 
 **The contract is frozen.** Changing `contracts/*.schema.json` after Phase 1 is a migration: versioned, reviewed, with a written migration path for stored findings. Not a casual edit. ([ADR-002](02-decisions.md#adr-002--freeze-the-scanner-contract-before-writing-tool-1))
 
+**A permissive TLS context observes; it never fetches.** A TLS analyser has to be *less* strict than a browser — a client that refuses to complete a handshake with an obsolete server cannot report on it, and those servers are the point. That client therefore accepts expired certificates, forged certificates and dead protocols. It must only ever read what the server presents. If it is reused to fetch content, HTTPS has been silently disabled for that request. `core/tls.py` keeps the observing context and the verifying context separately named so the two cannot be confused in review.
+
 **Scanners never construct their own clients.** HTTP, DNS, OOB and rate limiting all come from `ScanContext`. This is how safety guarantees stay guaranteed rather than remembered. If you need a client behaviour that `core/` does not offer, extend `core/`.
 
 **Scanners never import from each other.** Shared logic moves to `core/`. A cross-scanner import is a refactor signal, not a shortcut.
