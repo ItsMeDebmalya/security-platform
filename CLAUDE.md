@@ -10,7 +10,7 @@ Scanners: `example` (reference), `email` (Tool 1 — 17 checks, precision 1.000 
 
 Commands: `make install`, `make test`, `make lint`, `make typecheck`, `make licence-check`, `make corpus`, and `scan run <tool> --target <t>`. Python 3.12+, dependencies via `uv`.
 
-To add a scanner, read `docs/how-to-add-a-scanner.md`.
+To operate the CLI, read `docs/12-cli-runbook.md`. To add a scanner, read `docs/how-to-add-a-scanner.md`.
 
 ## Documents
 
@@ -22,6 +22,7 @@ To add a scanner, read `docs/how-to-add-a-scanner.md`.
 - `docs/04-phase-0-foundations.md`, `docs/05-phase-1-first-tools.md` — task-level plans
 - `docs/06-guidelines.md` — rules for all code
 - `docs/07-open-questions.md` — what is undecided
+- `docs/12-cli-runbook.md` — **operator guide for the `scan` CLI**: every command, real output, exit codes, troubleshooting
 - `docs/how-to-add-a-scanner.md` — the practical guide, written by building the reference scanner
 - `docs/08-changelog.md` — v2→v3, v3→v3.1, and the v3.2 additive contract changes made during Phase 0, with revert notes
 - `docs/09-ownership-verification.md` — the legal gate on active scans; methods per target type, audit record, interim allowlist schema
