@@ -156,6 +156,43 @@ def _mint_sha1_via_openssl(
     return Minted(cert_path, key_path, certificate)
 
 
+def mint_chain(
+    directory: Path, stem: str, *, common_name: str, sans: list[str] | None = None, **leaf_kwargs
+) -> tuple[Minted, Minted, Path]:
+    """A self-signed CA and a leaf it issued, plus a combined chain file.
+
+    Serving the combined file makes the server send its own root, which is what
+    an untrusted-root configuration looks like on the wire: the chain is
+    complete and terminates somewhere the client has never heard of. That is a
+    different problem from a self-signed leaf and gets a different finding.
+    """
+    from cryptography.hazmat.primitives.asymmetric import rsa as _rsa
+
+    ca_key = _rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    ca = mint(directory, f"{stem}-ca", common_name=f"{common_name} Test Root", key_bits=2048)
+
+    leaf = mint(
+        directory,
+        f"{stem}-leaf",
+        common_name=common_name,
+        sans=sans,
+        issuer_cn=ca.certificate.subject.rfc4514_string().split("CN=")[-1],
+        issuer_key=_load_key(ca.key_path),
+        **leaf_kwargs,
+    )
+
+    chain_path = directory / f"{stem}-chain.pem"
+    chain_path.write_bytes(leaf.cert_path.read_bytes() + ca.cert_path.read_bytes())
+    del ca_key
+    return ca, leaf, chain_path
+
+
+def _load_key(path: Path) -> object:
+    from cryptography.hazmat.primitives.serialization import load_pem_private_key
+
+    return load_pem_private_key(path.read_bytes(), password=None)
+
+
 class LabServer:
     """A TLS server on loopback, serving one certificate."""
 
@@ -166,6 +203,7 @@ class LabServer:
         max_version: ssl.TLSVersion | None = None,
         min_version: ssl.TLSVersion | None = None,
         ciphers: str = "ALL:@SECLEVEL=0",
+        chain_file: Path | None = None,
     ) -> None:
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         context.set_ciphers(ciphers)
@@ -173,7 +211,7 @@ class LabServer:
             context.minimum_version = min_version
         if max_version is not None:
             context.maximum_version = max_version
-        context.load_cert_chain(minted.cert_path, minted.key_path)
+        context.load_cert_chain(chain_file or minted.cert_path, minted.key_path)
 
         self._context = context
         self._socket = socket.socket()

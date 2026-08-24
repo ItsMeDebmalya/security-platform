@@ -28,10 +28,11 @@ from core.dns import (
     ReplayResolver,
     SystemResolver,
 )
-from core.http import HttpClient
+from core.http import HttpClient, OutOfScopeError
 from core.models import Asset, AssetType, Mode, ScanResult
 from core.ratelimit import RateLimiter
 from core.registry import discover
+from core.tls import RecordingTlsBackend, ReplayTlsBackend, SystemTlsBackend, TlsClient
 
 app = typer.Typer(add_completion=False, help="Run a scanner against a target.")
 
@@ -97,6 +98,9 @@ def run(
     except AuthorisationDeniedError as exc:
         typer.echo(f"authorisation denied: {exc}")
         raise typer.Exit(1) from None
+    except OutOfScopeError as exc:
+        typer.echo(f"out of scope: {exc}")
+        raise typer.Exit(1) from None
     except MissingFixtureError as exc:
         typer.echo(str(exc))
         raise typer.Exit(1) from None
@@ -132,12 +136,16 @@ def _execute(
     authz_ref = scope.require(target, mode=_as_mode(mode))
 
     resolver: Any
+    tls_backend: Any
     if replay is not None:
         resolver = ReplayResolver(replay)
+        tls_backend = ReplayTlsBackend(replay)
     elif record is not None:
         resolver = RecordingResolver(SystemResolver(DEFAULT_RESOLVERS), record)
+        tls_backend = RecordingTlsBackend(record)
     else:
         resolver = SystemResolver(DEFAULT_RESOLVERS)
+        tls_backend = SystemTlsBackend()
 
     # Two limiters, because they protect different things: the target host
     # is someone else's infrastructure, a public resolver is not.
@@ -148,6 +156,7 @@ def _execute(
         authz_ref=authz_ref,
         dns=DnsClient(resolver=resolver, resolvers=DEFAULT_RESOLVERS, ratelimit=resolver_limit),
         http=HttpClient(scope=Scope.for_target(target), ratelimit=target_limit),
+        tls=TlsClient(scope=Scope.for_target(target), backend=tls_backend, ratelimit=target_limit),
         scope=Scope.for_target(target),
         ratelimit=target_limit,
         progress=_progress,

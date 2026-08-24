@@ -194,3 +194,23 @@ def test_a_lookalike_host_is_not_in_scope():
 
 def test_a_url_target_scopes_to_its_host():
     assert Scope.for_target(_target("https://example.com/app", "url")).permits("example.com")
+
+
+def test_scope_reads_the_scheme_rather_than_the_declared_target_type():
+    """The CLI defaults --target-type to `domain`, so a pasted URL arrives as a
+    domain whose value is a URL. Found live: the scope then contained the
+    literal string "https://www.google.com" and refused the connection to
+    www.google.com as out of scope."""
+    scope = Scope.for_target(_target("https://www.google.com", "domain"))
+
+    assert scope.permits("www.google.com")
+
+
+def test_scope_still_handles_a_bare_domain():
+    assert Scope.for_target(_target("example.com")).permits("example.com")
+
+
+def test_scope_ignores_a_port_when_deriving_the_host():
+    scope = Scope.for_target(_target("https://example.com:8443", "domain"))
+
+    assert scope.permits("example.com")

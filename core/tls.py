@@ -43,6 +43,7 @@ import json
 import re
 import socket
 import ssl
+import tempfile
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -169,6 +170,7 @@ class TlsObservation:
     trusted: bool = False
     verify_code: int | None = None
     verify_message: str | None = None
+    openssl_hostname_match: bool | None = None
     elapsed_ms: int = 0
 
     @property
@@ -200,6 +202,7 @@ class TlsObservation:
             "verify_code": self.verify_code,
             "verify_message": self.verify_message,
             "hostname_matches": self.hostname_matches,
+            "openssl_hostname_match": self.openssl_hostname_match,
             "certificate": self.certificate.to_dict() if self.certificate else None,
         }
 
@@ -218,6 +221,7 @@ class RawHandshake:
     trusted: bool = False
     verify_code: int | None = None
     verify_message: str | None = None
+    openssl_hostname_match: bool | None = None
     elapsed_ms: int = 0
 
     def to_dict(self) -> dict[str, Any]:
@@ -232,6 +236,7 @@ class RawHandshake:
             "trusted": self.trusted,
             "verify_code": self.verify_code,
             "verify_message": self.verify_message,
+            "openssl_hostname_match": self.openssl_hostname_match,
         }
 
     @classmethod
@@ -248,6 +253,7 @@ class RawHandshake:
             trusted=data.get("trusted", False),
             verify_code=data.get("verify_code"),
             verify_message=data.get("verify_message"),
+            openssl_hostname_match=data.get("openssl_hostname_match"),
         )
 
 
@@ -348,6 +354,7 @@ class SystemTlsBackend:
             )
 
         trusted, code, message = self._verify(host, port, servername, trust_anchor, timeout_s)
+        hostname_match = self._verify_hostname(host, port, servername, der, timeout_s)
         return RawHandshake(
             reachable=True,
             observed_at=observed_at,
@@ -358,8 +365,60 @@ class SystemTlsBackend:
             trusted=trusted,
             verify_code=code,
             verify_message=message,
+            openssl_hostname_match=hostname_match,
             elapsed_ms=int((time.monotonic() - started) * 1000),
         )
+
+    @staticmethod
+    def _verify_hostname(
+        host: str, port: int, servername: str | None, der: bytes | None, timeout_s: float
+    ) -> bool | None:
+        """Ask OpenSSL whether the certificate covers the name, independently.
+
+        The trick is to trust the system store *and* the server's own leaf.
+        Trust is then satisfied either way - through the real chain for a
+        publicly issued certificate, or through the leaf itself for a
+        self-signed one - so the only thing OpenSSL can still object to is the
+        hostname. Anchoring on the leaf alone was not enough: a real chain
+        needs its issuer, so wrong.host.badssl.com produced no verdict at all
+        until the system store was included.
+
+        That verdict is a genuinely independent implementation of RFC 6125
+        against our own, so a hostname finding rests on two readings rather
+        than one, and a bug in our wildcard handling shows up as a
+        disagreement rather than a silent wrong answer.
+        """
+        if der is None or servername is None:
+            return None
+
+        pem = ssl.DER_cert_to_PEM_cert(der)
+        try:
+            with tempfile.NamedTemporaryFile("w", suffix=".pem", delete=False) as handle:
+                handle.write(pem)
+                anchor = handle.name
+        except OSError:  # pragma: no cover - defensive
+            return None
+
+        try:
+            context = ssl.create_default_context()
+            context.load_verify_locations(cafile=anchor)
+            context.check_hostname = True
+            context.verify_mode = ssl.CERT_REQUIRED
+            with (
+                socket.create_connection((host, port), timeout=timeout_s) as raw,
+                context.wrap_socket(raw, server_hostname=servername),
+            ):
+                return True
+        except ssl.SSLCertVerificationError as exc:
+            message = (exc.verify_message or str(exc)).lower()
+            if "hostname mismatch" in message or "doesn't match" in message:
+                return False
+            # Some other objection got in first; no independent verdict here.
+            return None
+        except (ssl.SSLError, OSError):
+            return None
+        finally:
+            Path(anchor).unlink(missing_ok=True)
 
     @staticmethod
     def _verify(
@@ -517,6 +576,7 @@ class TlsClient:
             trusted=raw.trusted,
             verify_code=raw.verify_code,
             verify_message=raw.verify_message,
+            openssl_hostname_match=raw.openssl_hostname_match,
             elapsed_ms=raw.elapsed_ms,
         )
 

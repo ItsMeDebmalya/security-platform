@@ -162,9 +162,20 @@ class Scope:
 
     @classmethod
     def for_target(cls, target: Asset) -> Scope:
+        """The host this scan may talk to.
+
+        The scheme decides, not the declared target type: a URL pasted into a
+        `--target-type domain` field is the common case, not an edge one, and
+        trusting the declaration put the literal string "https://example.com"
+        into the scope and then refused the connection to example.com.
+        """
         value = target.value
-        if target.type == "url":
+        if "://" in value:
             value = urlsplit(value).hostname or value
+        elif ":" in value and not value.startswith("["):
+            host, _, port = value.rpartition(":")
+            if port.isdigit():
+                value = host
         return cls(frozenset({value.lower().rstrip(".")}))
 
     def permits(self, host: str) -> bool:

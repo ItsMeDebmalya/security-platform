@@ -21,6 +21,7 @@ from core.dns import DnsClient
 from core.http import HttpClient
 from core.killswitch import KillSwitch
 from core.ratelimit import ConcurrencyCap, RateLimiter
+from core.tls import TlsClient
 
 ProgressReporter = Callable[[str, float], None]
 
@@ -82,6 +83,7 @@ class ScanContext:
         default_factory=lambda: UnconfiguredClient("http")
     )
     dns: DnsClient | UnconfiguredClient = field(default_factory=lambda: UnconfiguredClient("dns"))
+    tls: TlsClient | UnconfiguredClient = field(default_factory=lambda: UnconfiguredClient("tls"))
     scope: Scope | None = None
     ratelimit: RateLimiter = field(default_factory=RateLimiter)
     concurrency: ConcurrencyCap = field(default_factory=ConcurrencyCap)
@@ -97,18 +99,29 @@ class ScanContext:
         silently opt out of accounting and cancellation. Rather than trusting
         every caller to pass them, the context fills in what is missing - it
         never overwrites something the caller set deliberately.
+
+        The clients differ in whether they hold these privately or as public
+        dataclass fields, so both spellings are tried. That is a small ugliness
+        bought deliberately: the alternative is every client growing a wiring
+        method, which is more code and one more thing to forget.
         """
-        for client in (self.http, self.dns):
+        for client in (self.http, self.dns, self.tls):
             if isinstance(client, UnconfiguredClient):
                 continue
-            if getattr(client, "_cost", None) is None:
-                client._cost = self.cost
-            if getattr(client, "_killswitch", None) is None:
-                client._killswitch = self.killswitch
-            if getattr(client, "_scan_id", None) in (None, "local"):
-                client._scan_id = self.scan_id
-            if getattr(client, "_org_id", None) in (None, "org_internal"):
-                client._org_id = self.org_id
+            self._adopt(client, "cost", self.cost)
+            self._adopt(client, "killswitch", self.killswitch)
+            self._adopt(client, "scan_id", self.scan_id, placeholder="local")
+            self._adopt(client, "org_id", self.org_id, placeholder="org_internal")
+
+    @staticmethod
+    def _adopt(client: object, name: str, value: object, placeholder: object = None) -> None:
+        for attribute in (f"_{name}", name):
+            if not hasattr(client, attribute):
+                continue
+            current = getattr(client, attribute)
+            if current is None or (placeholder is not None and current == placeholder):
+                setattr(client, attribute, value)
+            return
 
     def check_alive(self) -> None:
         """Raise `ScanKilledError` if this scan must stop. Call between every request."""
