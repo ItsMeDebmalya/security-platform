@@ -1,0 +1,11 @@
+# Proof of control for former-client.example
+# Method: dns_txt  ·  Nonce: sp-verify=5b8e2f01a3c94d77
+# Observed at: 2026-08-02T08:00:00Z by operator:satwik
+
+$ dig +noall +answer TXT _scanverify.former-client.example @1.1.1.1
+
+_scanverify.former-client.example. 300 IN TXT "sp-verify=5b8e2f01a3c94d77"
+
+# Revoked 2026-08-10 at the customer's request. Revocation is immediate and
+# cancels running scans via the kill switch. The proof is retained; only the
+# permission to scan was withdrawn.

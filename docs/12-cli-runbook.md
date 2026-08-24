@@ -242,7 +242,15 @@ That is the correct outcome. **Do not add an allowlist entry for a domain you do
 ### Authorising a target you do own
 
 1. Prove control. For a domain, publish a TXT record containing a nonce at `_scanverify.<domain>` and save the DNS answer as a file.
-2. Add a row to `config/authorised_scope.yaml` **with its proof file committed alongside**. A row whose `evidence_file` is missing will not even load — `core/authz.py` refuses it.
+2. Add a row to `config/authorised_scope.yaml` **with its proof file committed alongside**. `core/authz.py` refuses to load a row that does not name an `evidence_file` at all. It does **not** currently check that the file exists on disk — that is enforced by review, and by the test on the worked example.
+
+A fully annotated, runnable example of all four row shapes — verified, self-owned, expired, revoked — is committed at `config/authorised_scope.example.yaml`. Try it without touching the live file:
+
+```bash
+uv run scan run email --target corpus-pnone.example --mode standard \
+  --replay corpus/fixtures/email/dmarc-monitoring-only \
+  --scope-file config/authorised_scope.example.yaml
+```
 
 ```yaml
 - authz_id: authz_2026-08-24-001

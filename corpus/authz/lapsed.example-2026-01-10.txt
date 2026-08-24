@@ -1,0 +1,12 @@
+# Proof of control for lapsed.example
+# Method: dns_txt  ·  Nonce: sp-verify=1c9d04ab77e6f210
+# Observed at: 2026-01-10T11:20:00Z by operator:satwik
+
+$ dig +noall +answer TXT _scanverify.lapsed.example @1.1.1.1
+
+_scanverify.lapsed.example. 300 IN TXT "sp-verify=1c9d04ab77e6f210"
+
+# This proof was valid when taken. The authorisation built on it expired on
+# 2026-04-10 and has not been renewed, so Standard mode is denied against this
+# target. The file is kept regardless: authorisation records are append-only
+# and retained for 7 years.

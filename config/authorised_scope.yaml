@@ -4,15 +4,43 @@
 # expired entry, or a revoked entry means the scan does not run. Light mode is
 # passive and ignores this file entirely.
 #
-# Rules (docs/09-ownership-verification.md):
+# ---------------------------------------------------------------------------
+# HOW TO FILL THIS OUT
+# ---------------------------------------------------------------------------
+#
+# A fully worked, runnable example lives in:
+#
+#     config/authorised_scope.example.yaml
+#
+# It covers all four shapes a row can take - verified, self-owned, expired and
+# revoked - with every field annotated. Copy the one you need into this file.
+#
+# The verification itself, for a domain:
+#
+#   1. Generate a nonce and publish it in the zone you control:
+#        _scanverify.<domain>.  IN  TXT  "sp-verify=<nonce>"
+#   2. Confirm it from two independent resolvers, and save that output to
+#        corpus/authz/<domain>-<YYYY-MM-DD>.txt
+#   3. Add the row below, citing that file in proof.evidence_file.
+#   4. Commit the row and the proof together, in one reviewed commit.
+#
+# Then check your work - Standard mode should now be permitted:
+#
+#     uv run scan run email --target <domain> --mode standard
+#
+# ---------------------------------------------------------------------------
+# RULES (docs/09-ownership-verification.md)
+# ---------------------------------------------------------------------------
+#
 #   - Every edit is a reviewed commit. The git history is the audit log.
 #   - The evidence file proving the nonce is committed alongside the row.
-#     A row asserting verification without its proof is not verification, and
-#     core/authz.py refuses to load one.
+#     A row asserting verification without its proof is not verification.
 #   - Records expire after 90 days. Domains change hands; a two-year-old TXT
 #     check is not evidence about today.
 #   - Targets we personally own are marked method: self_owned - still an
 #     explicit row, never an implicit exemption.
+#   - Never add a row for an asset you do not control. This file is the
+#     artefact produced if anyone ever asks by what right we touched a system.
 #
 # Schema per row:
 #   authz_id, org_id, target{type,value,wildcard}, method, proof{observed,

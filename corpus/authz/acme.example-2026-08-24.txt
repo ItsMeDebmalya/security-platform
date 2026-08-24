@@ -1,0 +1,21 @@
+# Proof of control for acme.example
+# Method: dns_txt (docs/09-ownership-verification.md)
+#
+# Nonce issued : sp-verify=7f3a91c4e0b25d8a
+# Issued at    : 2026-08-24T09:02:11Z  (valid 7 days)
+# Checked by   : operator:satwik
+#
+# This file IS the evidence. It is committed alongside the row in
+# config/authorised_scope.yaml that cites it. A row without this file is an
+# assertion, not a verification.
+
+$ dig +noall +answer TXT _scanverify.acme.example @1.1.1.1
+
+_scanverify.acme.example. 300 IN TXT "sp-verify=7f3a91c4e0b25d8a"
+
+$ dig +noall +answer TXT _scanverify.acme.example @8.8.8.8
+
+_scanverify.acme.example. 287 IN TXT "sp-verify=7f3a91c4e0b25d8a"
+
+# Observed from two independent resolvers at 2026-08-24T09:14:00Z.
+# The nonce matches the one issued. Control of the zone is established.
