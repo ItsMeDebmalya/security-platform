@@ -59,3 +59,10 @@ ignore_errors = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+filterwarnings = [
+    "error",
+    # We name obsolete protocol versions on purpose - detecting a server that
+    # still offers TLS 1.0/1.1 is the job, so their deprecation is expected.
+    "ignore:ssl.TLSVersion.TLSv1.*is deprecated:DeprecationWarning",
+    "ignore:ssl.PROTOCOL_TLS.*is deprecated:DeprecationWarning",
+]

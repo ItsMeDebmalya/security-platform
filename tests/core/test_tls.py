@@ -1,0 +1,408 @@
+"""The one TLS client.
+
+Tested against real handshakes with the local lab rather than mocks: the
+things that go wrong in TLS are library and protocol behaviours, and a mock
+would only assert that we understood them correctly, which is the very thing
+in doubt.
+"""
+
+from __future__ import annotations
+
+import ssl
+
+import pytest
+
+from core.authz import Scope
+from core.cost import CostMeter
+from core.killswitch import KillSwitch, ScanKilledError
+from core.models import Asset
+from core.ratelimit import RateLimiter
+from core.tls import MissingHandshakeError, RecordingTlsBackend, ReplayTlsBackend, TlsClient
+from corpus.generators.tls_lab import lab_server
+
+LOOPBACK = Scope(frozenset({"127.0.0.1"}))
+
+
+def client(**kwargs) -> TlsClient:
+    kwargs.setdefault("scope", LOOPBACK)
+    return TlsClient(**kwargs)
+
+
+def inspect(server, host="localhost", **kwargs):
+    return client(**kwargs).inspect("127.0.0.1", server.port, servername=host)
+
+
+# --- reading the certificate ------------------------------------------------
+
+
+def test_a_healthy_server_is_reachable_and_reports_its_protocol():
+    with lab_server(common_name="localhost") as srv:
+        obs = inspect(srv)
+
+    assert obs.reachable
+    assert obs.protocol == "TLSv1.3"
+    assert obs.cipher
+
+
+def test_the_certificate_subject_and_issuer_are_read():
+    with lab_server(common_name="localhost") as srv:
+        obs = inspect(srv)
+
+    assert obs.certificate is not None
+    assert obs.certificate.subject_cn == "localhost"
+    assert obs.certificate.issuer_cn == "localhost"
+
+
+def test_the_subject_alternative_names_are_read():
+    with lab_server(common_name="localhost", sans=["localhost", "alt.test"]) as srv:
+        obs = inspect(srv)
+
+    assert set(obs.certificate.sans) == {"localhost", "alt.test"}
+
+
+def test_the_key_size_and_signature_algorithm_are_measured():
+    with lab_server(common_name="localhost", key_bits=1024) as srv:
+        obs = inspect(srv)
+
+    assert obs.certificate.key_bits == 1024
+    assert obs.certificate.key_type == "rsa"
+    assert obs.certificate.signature_algorithm == "sha256"
+
+
+def test_a_deprecated_signature_algorithm_is_read():
+    with lab_server(common_name="localhost", digest="sha1") as srv:
+        obs = inspect(srv)
+
+    assert obs.certificate.signature_algorithm == "sha1"
+
+
+def test_a_self_signed_certificate_is_recognised():
+    with lab_server(common_name="localhost") as srv:
+        obs = inspect(srv)
+
+    assert obs.certificate.self_signed is True
+
+
+def test_the_certificate_fingerprint_is_stable():
+    with lab_server(common_name="localhost") as srv:
+        first = inspect(srv).certificate.fingerprint_sha256
+        second = inspect(srv).certificate.fingerprint_sha256
+
+    assert first == second and len(first) == 64
+
+
+# --- expiry -----------------------------------------------------------------
+
+
+def test_an_expired_certificate_reports_negative_days_remaining():
+    with lab_server(common_name="localhost", not_before_days=-800, not_after_days=-400) as srv:
+        obs = inspect(srv)
+
+    assert obs.certificate.is_expired()
+    assert obs.certificate.days_until_expiry() < 0
+
+
+def test_a_certificate_expiring_soon_reports_the_days_left():
+    with lab_server(common_name="localhost", not_after_days=5) as srv:
+        obs = inspect(srv)
+
+    assert 0 <= obs.certificate.days_until_expiry() <= 6
+    assert not obs.certificate.is_expired()
+
+
+def test_a_certificate_not_yet_valid_is_recognised():
+    with lab_server(common_name="localhost", not_before_days=30, not_after_days=400) as srv:
+        obs = inspect(srv)
+
+    assert obs.certificate.not_yet_valid()
+
+
+# --- hostname matching ------------------------------------------------------
+
+
+def test_a_certificate_covering_the_name_matches():
+    with lab_server(common_name="localhost", sans=["localhost"]) as srv:
+        obs = inspect(srv)
+
+    assert obs.hostname_matches is True
+
+
+def test_a_certificate_for_another_name_does_not_match():
+    with lab_server(common_name="other.test", sans=["other.test"]) as srv:
+        obs = inspect(srv, host="localhost")
+
+    assert obs.hostname_matches is False
+
+
+def test_a_wildcard_certificate_covers_one_label():
+    with lab_server(common_name="*.example.test", sans=["*.example.test"]) as srv:
+        obs = inspect(srv, host="api.example.test")
+
+    assert obs.hostname_matches is True
+
+
+def test_a_wildcard_certificate_does_not_cover_two_labels():
+    """`*.example.test` matches api.example.test, not a.b.example.test."""
+    with lab_server(common_name="*.example.test", sans=["*.example.test"]) as srv:
+        obs = inspect(srv, host="a.b.example.test")
+
+    assert obs.hostname_matches is False
+
+
+def test_a_wildcard_certificate_does_not_cover_the_bare_domain():
+    with lab_server(common_name="*.example.test", sans=["*.example.test"]) as srv:
+        obs = inspect(srv, host="example.test")
+
+    assert obs.hostname_matches is False
+
+
+# --- the trust verdict ------------------------------------------------------
+
+
+def test_an_untrusted_certificate_is_reported_with_the_reason_openssl_gave():
+    with lab_server(common_name="localhost") as srv:
+        obs = inspect(srv)
+
+    assert obs.trusted is False
+    assert obs.verify_code is not None
+    assert "self" in obs.verify_message.lower() or "issuer" in obs.verify_message.lower()
+
+
+def test_openssl_reports_only_its_first_objection():
+    """An expired *and* self-signed certificate comes back as "self-signed".
+
+    OpenSSL stops at the first problem it finds, so `verify_message` is not a
+    list of everything wrong. Expiry is therefore read from the certificate we
+    parsed, never inferred from the absence of an expiry message.
+    """
+    with lab_server(common_name="localhost", not_before_days=-800, not_after_days=-400) as srv:
+        obs = inspect(srv)
+
+    assert obs.trusted is False
+    assert "self-signed" in obs.verify_message.lower()
+    assert obs.certificate.is_expired()  # and we know this independently
+
+
+def test_expiry_surfaces_in_the_verdict_once_trust_is_not_the_objection():
+    """With the certificate supplied as its own anchor, the only thing left to
+    object to is the dates - which proves we really do surface OpenSSL's reason
+    rather than always reporting the same one."""
+    import tempfile
+    from pathlib import Path as _Path
+
+    from corpus.generators.tls_lab import LabServer, mint
+
+    with tempfile.TemporaryDirectory() as tmp:
+        minted = mint(
+            _Path(tmp),
+            "old",
+            common_name="localhost",
+            sans=["localhost"],
+            not_before_days=-800,
+            not_after_days=-400,
+        )
+        server = LabServer(minted)
+        try:
+            obs = client(trust_anchor=str(minted.cert_path)).inspect(
+                "127.0.0.1", server.port, servername="localhost"
+            )
+        finally:
+            server.close()
+
+    assert obs.trusted is False
+    assert "expired" in obs.verify_message.lower()
+
+
+def test_a_certificate_trusted_by_a_supplied_anchor_verifies():
+    """Proves the verifying probe really does verify, rather than always failing."""
+    import tempfile
+    from pathlib import Path
+
+    from corpus.generators.tls_lab import LabServer, mint
+
+    with tempfile.TemporaryDirectory() as tmp:
+        minted = mint(Path(tmp), "anchor", common_name="localhost", sans=["localhost"])
+        server = LabServer(minted)
+        try:
+            obs = client(trust_anchor=str(minted.cert_path)).inspect(
+                "127.0.0.1", server.port, servername="localhost"
+            )
+        finally:
+            server.close()
+
+    assert obs.trusted is True
+    assert obs.verify_message is None
+
+
+# --- the finding that shaped the design -------------------------------------
+
+
+def test_an_obsolete_server_is_observed_rather_than_refused():
+    """A client with the normal safety floor refuses TLS 1.0 outright, which
+    would make the scanner blind to exactly the servers worth reporting. The
+    observing context must get in and read what is there."""
+    with lab_server(common_name="localhost", max_version=ssl.TLSVersion.TLSv1) as srv:
+        obs = inspect(srv)
+
+    assert obs.reachable
+    assert obs.protocol == "TLSv1"
+    assert obs.certificate is not None
+
+
+def test_a_default_python_client_would_have_refused_that_server():
+    """The other half of the pair above, asserted so the reason the observing
+    context exists cannot be optimised away by someone tidying up."""
+    import socket
+
+    with lab_server(common_name="localhost", max_version=ssl.TLSVersion.TLSv1) as srv:
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        with (
+            pytest.raises(ssl.SSLError),
+            socket.create_connection(("127.0.0.1", srv.port), timeout=5) as raw,
+        ):
+            ctx.wrap_socket(raw, server_hostname="localhost").close()
+
+
+# --- protocol enumeration ---------------------------------------------------
+
+
+def test_a_modern_server_does_not_offer_tls_one_zero():
+    with lab_server(common_name="localhost", min_version=ssl.TLSVersion.TLSv1_2) as srv:
+        supported = client().supported_protocols("127.0.0.1", srv.port, servername="localhost")
+
+    assert supported["TLSv1"] is False
+    assert supported["TLSv1.2"] is True
+
+
+def test_an_obsolete_server_is_seen_offering_tls_one_zero():
+    with lab_server(common_name="localhost", max_version=ssl.TLSVersion.TLSv1) as srv:
+        supported = client().supported_protocols("127.0.0.1", srv.port, servername="localhost")
+
+    assert supported["TLSv1"] is True
+    assert supported["TLSv1.3"] is False
+
+
+# --- when we cannot tell ----------------------------------------------------
+
+
+def test_a_closed_port_is_unreachable_and_not_a_definite_answer():
+    obs = client().inspect("127.0.0.1", 1, servername="localhost")
+
+    assert obs.reachable is False
+    assert obs.is_definite() is False
+    assert obs.error
+
+
+def test_a_reachable_server_is_a_definite_answer():
+    with lab_server(common_name="localhost") as srv:
+        assert inspect(srv).is_definite() is True
+
+
+# --- safety -----------------------------------------------------------------
+
+
+def test_a_host_outside_scope_is_refused_before_connecting():
+    from core.http import OutOfScopeError
+
+    with pytest.raises(OutOfScopeError):
+        client(scope=Scope.for_target(Asset(type="domain", value="example.com"))).inspect(
+            "127.0.0.1", 443, servername="localhost"
+        )
+
+
+def test_the_kill_switch_is_checked_before_connecting():
+    switch = KillSwitch()
+    tls = client(killswitch=switch, scan_id="s1", org_id="org_a")
+
+    switch.kill(scan_id="s1", reason="operator")
+
+    with pytest.raises(ScanKilledError):
+        tls.inspect("127.0.0.1", 443, servername="localhost")
+
+
+def test_a_handshake_counts_towards_the_scan_cost():
+    meter = CostMeter()
+    with lab_server(common_name="localhost") as srv:
+        inspect(srv, cost=meter)
+
+    assert meter.snapshot().requests >= 1
+
+
+def test_the_target_rate_limiter_is_consulted():
+    seen: list[str] = []
+
+    class SpyLimiter(RateLimiter):
+        def acquire(self, host: str, tokens: float = 1.0) -> None:
+            seen.append(host)
+
+    with lab_server(common_name="localhost") as srv:
+        inspect(srv, ratelimit=SpyLimiter())
+
+    assert seen and seen[0] == "127.0.0.1"
+
+
+# --- record and replay ------------------------------------------------------
+
+
+def test_a_recorded_handshake_replays_identically(tmp_path):
+    with lab_server(common_name="localhost", not_after_days=5) as srv:
+        live = client(backend=RecordingTlsBackend(directory=tmp_path)).inspect(
+            "127.0.0.1", srv.port, servername="localhost"
+        )
+
+    replayed = client(backend=ReplayTlsBackend(tmp_path)).inspect(
+        "127.0.0.1", srv.port, servername="localhost"
+    )
+
+    assert replayed.certificate.fingerprint_sha256 == live.certificate.fingerprint_sha256
+    assert replayed.protocol == live.protocol
+    assert replayed.trusted == live.trusted
+
+
+def test_replay_preserves_an_unreachable_target(tmp_path):
+    client(backend=RecordingTlsBackend(directory=tmp_path)).inspect(
+        "127.0.0.1", 1, servername="localhost"
+    )
+
+    replayed = client(backend=ReplayTlsBackend(tmp_path)).inspect(
+        "127.0.0.1", 1, servername="localhost"
+    )
+
+    assert replayed.reachable is False
+
+
+def test_replaying_an_unrecorded_handshake_fails_loudly(tmp_path):
+    with pytest.raises(MissingHandshakeError, match="never-seen"):
+        client(backend=ReplayTlsBackend(tmp_path)).inspect(
+            "127.0.0.1", 4443, servername="never-seen.test"
+        )
+
+
+def test_replay_does_not_expire_a_recorded_certificate(tmp_path):
+    """Days-remaining must be computed against the recording, not the replay.
+
+    Otherwise every frozen fixture silently becomes an expiry finding as it
+    ages, and the corpus rots without anyone touching it.
+    """
+    with lab_server(common_name="localhost", not_after_days=5) as srv:
+        client(backend=RecordingTlsBackend(directory=tmp_path)).inspect(
+            "127.0.0.1", srv.port, servername="localhost"
+        )
+
+    replayed = client(backend=ReplayTlsBackend(tmp_path)).inspect(
+        "127.0.0.1", srv.port, servername="localhost"
+    )
+
+    assert replayed.observed_at is not None
+    assert 0 <= replayed.certificate.days_until_expiry(now=replayed.observed_at) <= 6
+
+
+def test_an_observation_can_be_serialised_for_evidence():
+    with lab_server(common_name="localhost") as srv:
+        payload = inspect(srv).to_dict()
+
+    assert payload["protocol"] == "TLSv1.3"
+    assert payload["certificate"]["subject_cn"] == "localhost"
+    assert payload["trusted"] is False
