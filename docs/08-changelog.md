@@ -248,3 +248,41 @@ Every change above is additive or a correction to v3, and v3 itself is recoverab
 | v2 | — | Added historical URL mining, OSINT harvesting, Request Replay, canary tokens, payload library; added deliberate exclusions; added Part E tooling decisions |
 | **v3** | 2026-08-21 | Restructured from a proposal into a build plan. Tool-first strategy, Scanner Contract, accuracy gates, ADRs, phase plans, guidelines, open questions. Split into `docs/`. |
 | **v3.1** | 2026-08-22 | Validation pass. Contract fixed before freezing; licence errors corrected; Phase 0 and 2 re-estimated; three differentiator claims cut; ownership-verification, measurement and operations docs added. |
+
+---
+
+## v3.2 — implementation additions to the frozen contract (Phase 0)
+
+*Recorded here because [ADR-002](02-decisions.md#adr-002--freeze-the-scanner-contract-before-writing-tool-1) makes a contract change a migration rather than an edit. All three are **additive** — no existing field changed meaning, no stored finding needs rewriting — but they are changes to a document that says it is frozen, and burying them in a commit message would defeat the point of freezing it.*
+
+### 1. `no_verdict_reason` on the Finding
+
+**What:** a nullable enum on the finding — `timeout`, `servfail`, `waf_block`, `blocked_prerequisite`, `oob_unavailable`, `ambiguous_response`, `rate_limited`.
+
+**Why:** the first row of the state-derivation truth table in [01-architecture.md](01-architecture.md) is *"check ran but reached no verdict → `inconclusive`"*, and nothing in the schema carried that signal. The row was not computable. Its presence is now what makes a state `inconclusive`.
+
+**Revert:** delete the field and the first row of the truth table. `inconclusive` then becomes unreachable, which is the state the contract was in before.
+
+### 2. `telemetry.checks_run` on the ScanResult
+
+**What:** a list of `{check_id, location, outcome}`, where outcome is `reported` / `clear` / `inconclusive` / `suppressed` / `error`.
+
+**Why:** two things needed it. [10-measurement.md](10-measurement.md) defines `inconclusive_rate = inconclusive / (all checks that ran)` and that denominator existed nowhere. And design check 5 — *a check that ran is never silently omitted* — was unenforceable without a record of what ran. `core/models.py` now rejects a ScanResult whose check claims `reported` or `inconclusive` with no matching finding.
+
+**A correction made during implementation:** the first version was a plain list of `check_id`s, and the validator demanded a finding or a suppression record for each. That wrongly rejected the ordinary case — a check that ran, found nothing wrong, and correctly said nothing. `clear` is the honest name for that outcome.
+
+**Revert:** drop the field; `inconclusive_rate` becomes uncomputable and silent omission becomes undetectable.
+
+### 3. `analysis` on `dns_answer` evidence
+
+**What:** an optional object beside the raw DNS answer, holding our reading of it — a parse tree, a resolved SPF `include:` chain with its lookup count.
+
+**Why:** [05-phase-1-first-tools.md](05-phase-1-first-tools.md) specifies exactly this as the Email scanner's evidence: *"the raw TXT record string, the parse tree, the resolved `include:` chain with its lookup count."* It is kept separate from the raw answer on purpose — the answer is the observation, the analysis is our interpretation, and a user checking our working needs to see which is which.
+
+**Revert:** drop the field; evidence for SPF findings loses the working behind the conclusion.
+
+### Also decided during implementation, and not in the documents
+
+- **On a known-good corpus target, a `suspected` finding counts as a false positive.** [10-measurement.md](10-measurement.md) excludes `suspected` from precision, and separately says anything reported on a known-good target is a false positive by definition. Those two rules collide, and the collision was found by deliberately breaking the reference scanner: the injected false positive came back `suspected` and passed the gate. On an asset we know is correctly configured there is nothing to be uncertain about, so the hedge is a false positive wearing a hedge.
+- **A corpus case may declare `expect_inconclusive`.** [10-measurement.md](10-measurement.md) measures the inconclusive rate *"where a definite answer is expected"*. A SERVFAIL fixture is not that. Such cases are excluded from the rate and asserted separately: the scanner must return `inconclusive`, and must not error.
+- **A check whose subject does not exist is not recorded in `checks_run` at all.** `dmarc-pct-partial` on a domain with no DMARC record did not run. Recording it `clear` would claim we checked and found nothing wrong; recording it `inconclusive` would bury the one finding that matters under five restatements of it.

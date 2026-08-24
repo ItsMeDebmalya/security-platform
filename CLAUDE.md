@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository state
 
-**Phase 0 is implemented.** The Scanner Contract is frozen, `core/` services exist, the CLI runs, and the corpus harness gates on real numbers.
+**Phase 0 is implemented, and Tool 1 (Email Security) passes its gate.** The Scanner Contract is frozen, `core/` services exist, the CLI runs, and the corpus harness gates on real numbers.
+
+Scanners: `example` (reference), `email` (Tool 1 — 17 checks, precision 1.000 / recall 1.000 / 0.8% inconclusive on a 16-case corpus).
 
 Commands: `make install`, `make test`, `make lint`, `make typecheck`, `make licence-check`, `make corpus`, and `scan run <tool> --target <t>`. Python 3.12+, dependencies via `uv`.
 
@@ -21,7 +23,7 @@ To add a scanner, read `docs/how-to-add-a-scanner.md`.
 - `docs/06-guidelines.md` — rules for all code
 - `docs/07-open-questions.md` — what is undecided
 - `docs/how-to-add-a-scanner.md` — the practical guide, written by building the reference scanner
-- `docs/08-changelog.md` — v2→v3 and v3→v3.1 changes, and revert instructions
+- `docs/08-changelog.md` — v2→v3, v3→v3.1, and the v3.2 additive contract changes made during Phase 0, with revert notes
 - `docs/09-ownership-verification.md` — the legal gate on active scans; methods per target type, audit record, interim allowlist schema
 - `docs/10-measurement.md` — **how precision/recall/inconclusive-rate are computed**; read before touching the corpus harness
 - `docs/11-operations.md` — incident response, observability, secrets, data retention
