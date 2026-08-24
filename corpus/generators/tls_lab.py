@@ -1,0 +1,223 @@
+"""A local TLS laboratory: mint certificates with known defects, serve them.
+
+This is the ground truth for Tool 2. badssl.com does the same job and does it
+well, but it needs a clone, a hosts file and a trust anchor; this needs
+nothing, runs in-process, and lets us author a defect that badssl does not
+happen to cover.
+
+Every server binds to 127.0.0.1 on an ephemeral port. Nothing here listens
+beyond loopback and nothing survives the process that started it.
+
+Two OpenSSL behaviours to know, both discovered the hard way:
+
+- OpenSSL 3.0 refuses to *serve* a 1024-bit key at its default security level
+  (`EE_KEY_TOO_SMALL`), so the lab's server contexts run at `@SECLEVEL=0`.
+  Without that we cannot even stand up the weak-key case we need to detect.
+- The same applies to the client. A scanner that refuses to complete a
+  handshake with a weak server cannot report on it, which is why
+  `core/tls.py` probes permissively and judges afterwards.
+"""
+
+from __future__ import annotations
+
+import datetime as dt
+import socket
+import ssl
+import subprocess
+import tempfile
+import threading
+from collections.abc import Iterator
+from contextlib import contextmanager, suppress
+from dataclasses import dataclass
+from pathlib import Path
+
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import ec, rsa
+from cryptography.x509.oid import NameOID
+
+DAY = dt.timedelta(days=1)
+
+
+@dataclass(frozen=True)
+class Minted:
+    cert_path: Path
+    key_path: Path
+    certificate: x509.Certificate
+
+
+def mint(
+    directory: Path,
+    stem: str,
+    *,
+    common_name: str,
+    sans: list[str] | None = None,
+    not_before_days: int = -30,
+    not_after_days: int = 365,
+    key_bits: int = 2048,
+    key_type: str = "rsa",
+    digest: str = "sha256",
+    issuer_cn: str | None = None,
+    issuer_key: object | None = None,
+) -> Minted:
+    """Create a certificate with exactly the defect you ask for.
+
+    `not_after_days` in the past gives an expired certificate; a small positive
+    number gives one expiring soon. `key_bits=1024` gives a weak key.
+    `digest="sha1"` gives a deprecated signature.
+    """
+    if key_type == "ec":
+        key: object = ec.generate_private_key(ec.SECP256R1())
+    else:
+        key = rsa.generate_private_key(public_exponent=65537, key_size=key_bits)
+
+    now = dt.datetime.now(dt.UTC)
+    subject = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, common_name)])
+    issuer = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, issuer_cn or common_name)])
+
+    builder = (
+        x509.CertificateBuilder()
+        .subject_name(subject)
+        .issuer_name(issuer)
+        .public_key(key.public_key())  # type: ignore[union-attr]
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(now + not_before_days * DAY)
+        .not_valid_after(now + not_after_days * DAY)
+        .add_extension(
+            x509.SubjectAlternativeName(
+                [x509.DNSName(name) for name in (sans if sans is not None else [common_name])]
+            ),
+            critical=False,
+        )
+    )
+
+    if digest == "sha1":
+        # `cryptography` 50 removed SHA-1 signing entirely, which is the right
+        # default and unhelpful when the whole point is to produce a
+        # deprecated signature to detect. The openssl CLI still obliges.
+        return _mint_sha1_via_openssl(
+            directory, stem, common_name=common_name, sans=sans, days=max(not_after_days, 1)
+        )
+
+    algorithm = hashes.SHA256()
+    signing_key = issuer_key or key
+    certificate = builder.sign(signing_key, algorithm)  # type: ignore[arg-type]
+
+    directory.mkdir(parents=True, exist_ok=True)
+    cert_path = directory / f"{stem}.pem"
+    key_path = directory / f"{stem}.key"
+    cert_path.write_bytes(certificate.public_bytes(serialization.Encoding.PEM))
+    key_path.write_bytes(
+        key.private_bytes(  # type: ignore[union-attr]
+            serialization.Encoding.PEM,
+            serialization.PrivateFormat.TraditionalOpenSSL,
+            serialization.NoEncryption(),
+        )
+    )
+    return Minted(cert_path, key_path, certificate)
+
+
+def _mint_sha1_via_openssl(
+    directory: Path, stem: str, *, common_name: str, sans: list[str] | None, days: int
+) -> Minted:
+    """A SHA-1 signed certificate, via the openssl binary.
+
+    Dev-time fixture generation only - openssl is not a runtime dependency of
+    any scanner, and nothing here ships.
+    """
+    directory.mkdir(parents=True, exist_ok=True)
+    cert_path = directory / f"{stem}.pem"
+    key_path = directory / f"{stem}.key"
+    names = ",".join(f"DNS:{n}" for n in (sans if sans is not None else [common_name]))
+    subprocess.run(
+        [
+            "openssl",
+            "req",
+            "-x509",
+            "-newkey",
+            "rsa:2048",
+            "-keyout",
+            str(key_path),
+            "-out",
+            str(cert_path),
+            "-days",
+            str(days),
+            "-nodes",
+            "-sha1",
+            "-subj",
+            f"/CN={common_name}",
+            "-addext",
+            f"subjectAltName={names}",
+        ],
+        check=True,
+        capture_output=True,
+    )
+    certificate = x509.load_pem_x509_certificate(cert_path.read_bytes())
+    return Minted(cert_path, key_path, certificate)
+
+
+class LabServer:
+    """A TLS server on loopback, serving one certificate."""
+
+    def __init__(
+        self,
+        minted: Minted,
+        *,
+        max_version: ssl.TLSVersion | None = None,
+        min_version: ssl.TLSVersion | None = None,
+        ciphers: str = "ALL:@SECLEVEL=0",
+    ) -> None:
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        context.set_ciphers(ciphers)
+        if min_version is not None:
+            context.minimum_version = min_version
+        if max_version is not None:
+            context.maximum_version = max_version
+        context.load_cert_chain(minted.cert_path, minted.key_path)
+
+        self._context = context
+        self._socket = socket.socket()
+        self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self._socket.bind(("127.0.0.1", 0))
+        self._socket.listen(8)
+        self.port: int = self._socket.getsockname()[1]
+        self._stop = threading.Event()
+        self._thread = threading.Thread(target=self._serve, daemon=True)
+        self._thread.start()
+
+    def _serve(self) -> None:
+        while not self._stop.is_set():
+            try:
+                raw, _ = self._socket.accept()
+            except OSError:
+                return
+            try:
+                self._context.wrap_socket(raw, server_side=True).close()
+            except (ssl.SSLError, OSError):
+                with suppress(OSError):
+                    raw.close()
+
+    def close(self) -> None:
+        self._stop.set()
+        with suppress(OSError):
+            self._socket.close()
+
+
+@contextmanager
+def lab_server(**mint_kwargs: object) -> Iterator[LabServer]:
+    """Mint a certificate and serve it, cleaning up afterwards.
+
+    Server-only keyword arguments (`max_version`, `min_version`, `ciphers`) are
+    passed through to LabServer; everything else describes the certificate.
+    """
+    server_keys = {"max_version", "min_version", "ciphers"}
+    server_kwargs = {k: v for k, v in mint_kwargs.items() if k in server_keys}
+    cert_kwargs = {k: v for k, v in mint_kwargs.items() if k not in server_keys}
+
+    with tempfile.TemporaryDirectory() as tmp:
+        minted = mint(Path(tmp), "lab", **cert_kwargs)  # type: ignore[arg-type]
+        server = LabServer(minted, **server_kwargs)  # type: ignore[arg-type]
+        try:
+            yield server
+        finally:
+            server.close()

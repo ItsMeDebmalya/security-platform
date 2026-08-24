@@ -87,6 +87,16 @@
   signed_off_by: satwik
   signed_off_at: 2026-08-22
 
+- name: cryptography
+  version: "50.0.0"
+  licence: Apache-2.0 OR BSD-3-Clause
+  spdx: Apache-2.0
+  source: https://github.com/pyca/cryptography
+  purpose: X.509 parsing for the TLS analyser, and minting the local corpus certificates
+  isolation: library
+  signed_off_by: satwik
+  signed_off_at: 2026-08-24
+
 # --- Development dependencies ----------------------------------------------
 
 - name: pytest
