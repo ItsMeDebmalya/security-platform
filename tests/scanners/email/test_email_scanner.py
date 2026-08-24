@@ -508,3 +508,74 @@ def test_the_low_severity_variant_says_what_it_inferred(findings_for):
     found = findings_for("nomail.example", answers, "mx-missing")
 
     assert "-all" in found[0].description
+
+
+# --- a finding must never quote a record the domain did not publish ---------
+
+
+def test_the_no_mail_description_quotes_the_real_spf_record(findings_for):
+    """Found live against jpmorganchase.com: the description asserted
+    "Its SPF record is 'v=spf1 -all'" for a domain whose SPF actually lists
+    nine sending ranges. Putting words in a target's mouth is worse than
+    reporting nothing."""
+    spf = "v=spf1 a:spf.example.net ip4:192.0.2.0/24 -all"
+    answers = zone(
+        "sender.example",
+        mx=(),
+        spf=spf,
+        dmarc="v=DMARC1; p=reject; rua=mailto:d@sender.example",
+    )
+
+    found = findings_for("sender.example", answers, "mx-missing")
+
+    assert "v=spf1 -all" not in found[0].description
+    assert spf in found[0].description
+
+
+def test_a_domain_that_authorises_senders_is_not_called_a_no_mail_domain(findings_for):
+    """`-all` at the end does not mean 'sends nothing'. It means 'nothing
+    except what I just listed'."""
+    answers = zone(
+        "sender.example",
+        mx=(),
+        spf="v=spf1 ip4:192.0.2.0/24 -all",
+        dmarc="v=DMARC1; p=reject; rua=mailto:d@sender.example",
+    )
+
+    found = findings_for("sender.example", answers, "mx-missing")
+
+    assert "sends no mail" not in found[0].description
+
+
+def test_a_genuinely_silent_domain_is_still_recognised(findings_for):
+    """A bare `v=spf1 -all` authorises nobody. That one really does send nothing."""
+    answers = zone(
+        "silent.example",
+        mx=(),
+        spf="v=spf1 -all",
+        dmarc="v=DMARC1; p=reject; rua=mailto:d@silent.example",
+    )
+
+    found = findings_for("silent.example", answers, "mx-missing")
+
+    assert found[0].severity == "low"
+    assert "null MX" in found[0].remediation
+
+
+def test_a_configured_domain_missing_only_its_mx_is_a_low_finding(findings_for):
+    """An enforcing DMARC policy is evidence someone thought about email here.
+    The missing MX is then an omission, not a broken setup."""
+    answers = zone(
+        "sender.example",
+        mx=(),
+        spf="v=spf1 ip4:192.0.2.0/24 -all",
+        dmarc="v=DMARC1; p=reject; rua=mailto:d@sender.example",
+    )
+
+    assert findings_for("sender.example", answers, "mx-missing")[0].severity == "low"
+
+
+def test_an_unconfigured_domain_missing_its_mx_is_a_medium_finding(findings_for):
+    answers = zone("broken.example", mx=(), spf=None, dmarc=None)
+
+    assert findings_for("broken.example", answers, "mx-missing")[0].severity == "medium"

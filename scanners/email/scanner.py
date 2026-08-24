@@ -465,35 +465,57 @@ class _Scan:
         else:
             self._clear("mx-missing")
 
-    def _sends_no_mail(self) -> bool:
-        """Whether the domain has already said, in its own records, that it sends no mail.
+    def _authorises_no_senders(self) -> bool:
+        """Whether the SPF record permits nobody at all to send as this domain.
 
-        `v=spf1 -all` with an enforcing DMARC policy is an explicit no-mail
-        posture. It is a correct configuration missing only its final step, and
-        treating it the same as a broken mail setup would be the kind of noise
-        that teaches people to ignore a scanner.
+        Only a bare `v=spf1 -all` means that. A trailing `-all` on its own does
+        NOT: `v=spf1 ip4:192.0.2.0/24 -all` reads "nobody except the range I
+        just listed", which is a domain that very much does send mail.
+
+        Getting this wrong produced a live false statement about a bank whose
+        SPF authorises nine ranges, so the test is now every sender-authorising
+        mechanism rather than a guess at the common ones.
+        """
+        record = self.spf.record
+        if record is None or record.all_qualifier != "-" or record.redirect:
+            return False
+        return all(term.mechanism == "all" for term in record.terms)
+
+    def _email_is_deliberately_configured(self) -> bool:
+        """Whether someone has evidently thought about email for this domain.
+
+        An enforcing DMARC policy is the signal. If it is there, a missing MX
+        is an omission in an otherwise considered setup; if it is not, the
+        domain is more likely to be unconfigured than deliberately silent.
         """
         return (
-            self.spf.record is not None
-            and self.spf.record.all_qualifier == "-"
-            and not self.spf.record.include_targets()
-            and self.dmarc is not None
+            self.dmarc is not None
             and self.dmarc.valid
             and self.dmarc.policy in ("quarantine", "reject")
         )
 
     def _report_missing_mx(self) -> None:
-        if self._sends_no_mail():
+        if self._email_is_deliberately_configured():
+            spf_text = self.spf.record.raw if self.spf.record else "no SPF record"
+            policy = self.dmarc.policy if self.dmarc else ""
+            posture = (
+                "Its SPF record authorises no senders at all, and its DMARC policy is "
+                f"p={policy}, which together say this domain neither sends nor receives "
+                "mail - so the absence of MX records looks deliberate rather than broken."
+                if self._authorises_no_senders()
+                else (
+                    f"Its DMARC policy is p={policy}, so email is clearly configured here "
+                    "deliberately; the domain appears to send mail without accepting any."
+                )
+            )
             self._report(
                 "mx-missing",
                 self.mx_answer,
                 severity="low",
                 title="No MX records, and no explicit statement that the domain takes no mail",
                 description=(
-                    f"{self.domain} publishes no MX records. Its SPF record is 'v=spf1 -all' "
-                    f"and its DMARC policy is p={self.dmarc.policy if self.dmarc else ''}, "
-                    "which together say this domain sends no mail - so the absence of MX "
-                    "records looks deliberate rather than broken."
+                    f"{self.domain} publishes no MX records. Its published SPF record is "
+                    f"'{spf_text}'. {posture}"
                 ),
                 impact=(
                     "A sending server has to wait for the lookup to fail and then fall back to "
