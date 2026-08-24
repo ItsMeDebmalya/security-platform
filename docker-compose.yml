@@ -1,0 +1,69 @@
+# Deliberately vulnerable targets, run locally.
+#
+# These are the "vulnerable" corpus tier from docs/10-measurement.md. We run
+# them ourselves, which is what makes scanning them honest: the authorisation
+# rows in config/authorised_scope.yaml say method: self_owned, and this file
+# is the proof they cite.
+#
+#   make targets-up      bring them up
+#   make targets-status   see what is listening
+#   make targets-down     tear them down
+#
+# EVERY PORT IS BOUND TO 127.0.0.1 ON PURPOSE.
+#
+# These applications are vulnerable by design. DVWA's own README says: "Do not
+# upload it to your hosting provider's public html folder or any Internet
+# facing servers, as they will be compromised." Binding to 0.0.0.0 would put a
+# known-exploitable app on every interface this machine has. Do not change the
+# left-hand side of any ports mapping below.
+
+services:
+
+  juice-shop:
+    # OWASP Juice Shop - modern web app, OWASP Top 10. MIT licensed.
+    # https://github.com/juice-shop/juice-shop
+    image: bkimminich/juice-shop:v19.0.0
+    container_name: sp-juice-shop
+    ports:
+      - "127.0.0.1:3000:3000"
+    restart: "no"   # vulnerable by design: never resurrect these unasked
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:3000/rest/admin/application-version"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  dvwa:
+    # Damn Vulnerable Web Application - classic PHP vulnerabilities.
+    # GPL-3.0. Run as its own container, never imported. See ADR-003.
+    # https://github.com/digininja/DVWA
+    image: ghcr.io/digininja/dvwa:latest
+    container_name: sp-dvwa
+    ports:
+      - "127.0.0.1:4280:80"
+    restart: "no"   # vulnerable by design: never resurrect these unasked
+
+  vampi:
+    # VAmPI - deliberately vulnerable REST API, OWASP API Top 10. MIT.
+    # vulnerable=1 turns the flaws on; set to 0 for the negative corpus tier,
+    # which is what makes it usable for measuring false positives.
+    # https://github.com/erev0s/VAmPI
+    image: erev0s/vampi:latest
+    container_name: sp-vampi
+    environment:
+      - vulnerable=1
+    ports:
+      - "127.0.0.1:5000:5000"
+    restart: "no"   # vulnerable by design: never resurrect these unasked
+
+  vampi-safe:
+    # The same API with the vulnerabilities switched off. Anything reported
+    # against this is a false positive by definition - it is the known-good
+    # tier for API scanning.
+    image: erev0s/vampi:latest
+    container_name: sp-vampi-safe
+    environment:
+      - vulnerable=0
+    ports:
+      - "127.0.0.1:5001:5000"
+    restart: "no"   # vulnerable by design: never resurrect these unasked

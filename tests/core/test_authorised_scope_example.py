@@ -38,9 +38,17 @@ def test_the_example_file_loads():
     AuthorisedScope.load(EXAMPLE)
 
 
-def test_the_live_file_still_authorises_nothing():
-    """The example must never leak into the file core/authz.py actually reads."""
-    assert yaml.safe_load(LIVE.read_text()) == []
+def test_the_examples_demo_domains_never_leak_into_the_live_file():
+    """The example exists to be copied and edited, not pasted.
+
+    Its rows are illustrations on reserved domains. If one turns up verbatim in
+    the file core/authz.py actually reads, someone copied without reading -
+    and `acme.example` authorises nothing real, so the mistake would be silent.
+    """
+    example_ids = {row["authz_id"] for row in yaml.safe_load(EXAMPLE.read_text())}
+    live_ids = {row["authz_id"] for row in yaml.safe_load(LIVE.read_text()) or []}
+
+    assert example_ids & live_ids == set()
 
 
 # --- the four shapes a row can take -----------------------------------------

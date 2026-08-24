@@ -148,3 +148,50 @@
   isolation: library
   signed_off_by: satwik
   signed_off_at: 2026-08-22
+
+# --- Corpus targets ---------------------------------------------------------
+#
+# Deliberately vulnerable applications we run as containers to scan against.
+# They are never imported, never linked, and ship in nothing we distribute -
+# they are the ground truth the scanners are measured on. Registered anyway,
+# because a legal review will ask what is in the tree and under what terms.
+
+- name: juice-shop
+  version: "v19.0.0"
+  licence: MIT
+  spdx: MIT
+  source: https://github.com/juice-shop/juice-shop
+  purpose: vulnerable corpus tier for the Phase 2 web scanner
+  isolation: service
+  signed_off_by: satwik
+  signed_off_at: 2026-08-24
+
+- name: dvwa
+  version: "latest"
+  licence: GPL-3.0-or-later
+  spdx: GPL-3.0-or-later
+  source: https://github.com/digininja/DVWA
+  purpose: vulnerable corpus tier - classic PHP injection and access control
+  isolation: service   # GPL: its own container, talked to over HTTP. Never imported.
+  signed_off_by: satwik
+  signed_off_at: 2026-08-24
+
+- name: vampi
+  version: "latest"
+  licence: MIT
+  spdx: MIT
+  source: https://github.com/erev0s/VAmPI
+  purpose: vulnerable AND known-good corpus tiers for API scanning (vulnerable=1/0)
+  isolation: service
+  signed_off_by: satwik
+  signed_off_at: 2026-08-24
+
+- name: badssl.com
+  version: "master"
+  licence: Apache-2.0
+  spdx: Apache-2.0
+  source: https://github.com/chromium/badssl.com
+  purpose: TLS ground-truth corpus for Tool 2, self-hosted on badssl.test
+  isolation: service
+  signed_off_by: satwik
+  signed_off_at: 2026-08-24

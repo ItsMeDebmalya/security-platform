@@ -47,5 +47,105 @@
 #   observed_at, evidence_file}, verified_at, expires_at, verified_by,
 #   attestation_ref, revoked_at, revocation_reason
 #
-# Empty on purpose: no active scan is authorised from this checkout yet.
-[]
+# ---------------------------------------------------------------------------
+# WHAT IS IN HERE
+# ---------------------------------------------------------------------------
+#
+# Only deliberately-vulnerable applications we run ourselves, from the
+# docker-compose.yml in the root of this repo, bound to 127.0.0.1. Every row
+# is method: self_owned because we started the process on our own machine.
+#
+# Nothing hosted by anyone else is listed, and nothing hosted by anyone else
+# should be added. Public test sites - scanme.nmap.org, vulnweb.com, the
+# hosted Juice Shop demo - belong to other people. Some of them publish an
+# invitation to scan; that is not the same as us having verified anything, and
+# an automated corpus run is not what those invitations contemplate. Scan them
+# in Light mode, which is passive and needs no authorisation at all.
+#
+# tests/core/test_live_authorised_scope.py enforces this: a row here must be
+# either loopback / an RFC 2606 reserved name, or a public name carrying real
+# dns_txt proof. Adding a third-party domain fails the build.
+#
+# Bring the targets up first, or these rows authorise scans of nothing:
+#
+#     make targets-up
+#
+
+# --- OWASP Juice Shop --------------------------------------------------------
+
+- authz_id: authz_2026-08-24-101
+  org_id: org_internal
+  target: { type: url, value: "http://127.0.0.1:3000", wildcard: false }
+  method: self_owned
+  proof:
+    observed: 'container sp-juice-shop from docker-compose.yml, bound to 127.0.0.1:3000'
+    observed_at: 2026-08-24T00:00:00Z
+    evidence_file: corpus/authz/localhost-juice-shop-2026-08-24.txt
+  verified_at: 2026-08-24
+  expires_at: 2026-11-22
+  verified_by: operator:satwik
+  attestation_ref: null
+
+# --- DVWA --------------------------------------------------------------------
+
+- authz_id: authz_2026-08-24-102
+  org_id: org_internal
+  target: { type: url, value: "http://127.0.0.1:4280", wildcard: false }
+  method: self_owned
+  proof:
+    observed: 'container sp-dvwa from docker-compose.yml, bound to 127.0.0.1:4280'
+    observed_at: 2026-08-24T00:00:00Z
+    evidence_file: corpus/authz/localhost-dvwa-2026-08-24.txt
+  verified_at: 2026-08-24
+  expires_at: 2026-11-22
+  verified_by: operator:satwik
+  attestation_ref: null
+
+# --- VAmPI, flaws ON (the vulnerable tier) -----------------------------------
+
+- authz_id: authz_2026-08-24-103
+  org_id: org_internal
+  target: { type: url, value: "http://127.0.0.1:5000", wildcard: false }
+  method: self_owned
+  proof:
+    observed: 'container sp-vampi from docker-compose.yml, vulnerable=1, bound to 127.0.0.1:5000'
+    observed_at: 2026-08-24T00:00:00Z
+    evidence_file: corpus/authz/localhost-vampi-2026-08-24.txt
+  verified_at: 2026-08-24
+  expires_at: 2026-11-22
+  verified_by: operator:satwik
+  attestation_ref: null
+
+# --- VAmPI, flaws OFF (the known-good tier) ----------------------------------
+#     Anything reported against this is a false positive by definition.
+
+- authz_id: authz_2026-08-24-104
+  org_id: org_internal
+  target: { type: url, value: "http://127.0.0.1:5001", wildcard: false }
+  method: self_owned
+  proof:
+    observed: 'container sp-vampi-safe from docker-compose.yml, vulnerable=0, bound to 127.0.0.1:5001'
+    observed_at: 2026-08-24T00:00:00Z
+    evidence_file: corpus/authz/localhost-vampi-safe-2026-08-24.txt
+  verified_at: 2026-08-24
+  expires_at: 2026-11-22
+  verified_by: operator:satwik
+  attestation_ref: null
+
+# --- badssl, run locally (the TLS corpus for Tool 2) -------------------------
+#     wildcard: true covers expired.badssl.test, self-signed.badssl.test,
+#     wrong.host.badssl.test, rc4.badssl.test and the rest.
+#     NOT the public badssl.com, which belongs to other people.
+
+- authz_id: authz_2026-08-24-105
+  org_id: org_internal
+  target: { type: domain, value: badssl.test, wildcard: true }
+  method: self_owned
+  proof:
+    observed: 'local badssl.com container; .test is RFC 2606 reserved and resolves via /etc/hosts to loopback'
+    observed_at: 2026-08-24T00:00:00Z
+    evidence_file: corpus/authz/badssl.test-2026-08-24.txt
+  verified_at: 2026-08-24
+  expires_at: 2026-11-22
+  verified_by: operator:satwik
+  attestation_ref: null

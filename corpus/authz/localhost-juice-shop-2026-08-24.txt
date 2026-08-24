@@ -1,0 +1,45 @@
+# Proof of control for http://127.0.0.1:3000 (OWASP Juice Shop)
+# Method: self_owned (docs/09-ownership-verification.md)
+# Recorded: 2026-08-24 by operator:satwik
+#
+# OWASP Juice Shop - a modern single-page application carrying the OWASP Top 10. The vulnerable tier for the Phase 2 web scanner.
+#
+# ---------------------------------------------------------------------------
+# WHY THIS IS SELF-OWNED, AND WHY THE PROOF IS A FILE RATHER THAN AN OBSERVATION
+# ---------------------------------------------------------------------------
+#
+# Ownership verification normally means observing a nonce we asked someone to
+# publish. There is nothing to observe here, and nobody to ask.
+#
+# This target is a container the operator starts on their own machine, from
+# docker-compose.yml in the root of this repository, published to 127.0.0.1
+# only. The scanner runs on that same machine. Scanning it reaches nothing but
+# the operator's own loopback interface. There is no third party with an
+# interest in it and no DNS zone to prove control of.
+#
+# So the proof is the service definition itself: this authorisation is valid
+# wherever this repository is checked out, for the person who ran
+# `make targets-up` on that host. It is not a claim about any particular
+# machine, and no timestamped observation from somewhere else would make it
+# one.
+#
+# ---------------------------------------------------------------------------
+# UPSTREAM
+# ---------------------------------------------------------------------------
+#
+# Project : https://github.com/juice-shop/juice-shop
+# Licence : MIT
+# Image   : bkimminich/juice-shop:v19.0.0
+# Binds   : 127.0.0.1:3000
+#
+# ---------------------------------------------------------------------------
+# OPERATOR CHECK, BEFORE SCANNING
+# ---------------------------------------------------------------------------
+#
+#   $ make targets-status          # the container is up
+#   $ ss -ltn | grep 3000            # and bound to 127.0.0.1, not 0.0.0.0
+#
+# If the second command shows 0.0.0.0 or ::, STOP. A known-exploitable
+# application is listening on every interface this machine has. Fix the ports
+# mapping in docker-compose.yml before going further.
+#
