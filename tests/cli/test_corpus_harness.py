@@ -153,3 +153,37 @@ def test_no_finding_at_all_on_a_known_good_email_target():
     report = run_scanner_corpus("email")
 
     assert report["false_positives_on_known_good"] == 0
+
+
+# --- fixtures that no longer cover the scanner ------------------------------
+
+
+def test_a_case_whose_fixtures_are_incomplete_fails_that_case_not_the_whole_run(tmp_path):
+    """A scanner change that adds a DNS query outruns its frozen fixtures.
+
+    That is an ordinary thing to happen mid-change, and it must read as 'this
+    case needs re-recording', not as a stack trace from inside the resolver.
+    """
+    import yaml
+
+    from cli.corpus import TARGETS_DIR, run_scanner_corpus
+
+    targets = yaml.safe_load((TARGETS_DIR / "email.yaml").read_text())
+    targets["cases"] = [
+        {
+            "id": "empty-fixtures",
+            "tier": "vulnerable",
+            "source": "frozen",
+            "mode": "light",
+            "target": {"type": "domain", "value": "corpus-good.example"},
+            "fixtures": str(tmp_path.relative_to(tmp_path.anchor)),
+        }
+    ]
+    scratch = tmp_path / "targets"
+    scratch.mkdir()
+    (scratch / "email.yaml").write_text(yaml.safe_dump(targets))
+
+    report = run_scanner_corpus("email", targets_dir=scratch)
+
+    assert not report["passed"]
+    assert "re-record" in report["reason"]

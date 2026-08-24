@@ -28,7 +28,7 @@ import typer
 import yaml
 
 from core.context import ScanContext
-from core.dns import DnsClient, ReplayResolver
+from core.dns import DnsClient, MissingFixtureError, ReplayResolver
 from core.measurement import (
     CaseScore,
     Expected,
@@ -93,15 +93,33 @@ def _score(result: ScanResult, expected: list[dict[str, str]]) -> CaseScore:
     )
 
 
-def run_scanner_corpus(scanner_name: str) -> dict[str, Any]:
-    definition = _load(TARGETS_DIR / f"{scanner_name}.yaml")
-    expected_by_case = _load(EXPECTED_DIR / f"{scanner_name}.yaml") or {}
+def run_scanner_corpus(
+    scanner_name: str, targets_dir: Path | None = None, expected_dir: Path | None = None
+) -> dict[str, Any]:
+    definition = _load((targets_dir or TARGETS_DIR) / f"{scanner_name}.yaml")
+    expected_by_case = _load((expected_dir or EXPECTED_DIR) / f"{scanner_name}.yaml") or {}
     gate = Gate(**definition["gate"])
 
     outcomes: list[CaseOutcome] = []
     expected_by_case_id: dict[str, list[dict[str, str]]] = {}
     for case in definition["cases"]:
-        result = _run_case(scanner_name, case)
+        try:
+            result = _run_case(scanner_name, case)
+        except MissingFixtureError as exc:
+            # The scanner now asks a question the frozen fixtures cannot
+            # answer. That is a normal thing to happen while changing a
+            # scanner, and it means "re-record", not "the scanner is broken".
+            outcomes.append(
+                CaseOutcome(
+                    case_id=case["id"],
+                    tier=case["tier"],
+                    score=CaseScore(),
+                    inconclusive_expected=False,
+                    inconclusive_delivered=False,
+                    errors=[f"fixtures do not cover this scanner version: {exc}"],
+                )
+            )
+            continue
         expects_inconclusive = bool(case.get("expect_inconclusive"))
         expected_by_case_id[case["id"]] = expected_by_case.get(case["id"], []) or []
         score = _score(result, expected_by_case_id[case["id"]])
@@ -165,7 +183,7 @@ def run_scanner_corpus(scanner_name: str) -> dict[str, Any]:
                 "fp": o.score.fp,
                 "fn": o.score.fn,
                 "inconclusive": o.score.inconclusive,
-                "expected": expected_by_case_id[o.case_id],
+                "expected": expected_by_case_id.get(o.case_id, []),
                 "expect_inconclusive": o.inconclusive_expected,
                 "inconclusive_delivered": o.inconclusive_delivered,
                 "errors": o.errors,
@@ -188,7 +206,11 @@ def _reason(gate_reason: str, unmet: list[str], errored: list[str], known_good_f
     if unmet:
         parts.append(f"cases that must be inconclusive were not: {', '.join(unmet)}")
     if errored:
-        parts.append(f"cases that errored: {', '.join(errored)}")
+        parts.append(
+            f"cases that errored: {', '.join(errored)}. If the fixtures do not cover a "
+            "query the scanner now makes, re-record them "
+            "(uv run python -m corpus.generators.<scanner>)."
+        )
     return "; ".join(parts) or "pass"
 
 
@@ -206,9 +228,12 @@ def _print_report(reports: list[dict[str, Any]]) -> None:
             f"{overall['fp']:>4} {overall['fn']:>4} "
             f"{_fmt(overall['precision']):>10} {_fmt(overall['recall']):>8} "
             f"{overall['suspected_rate']:>6.1%} {overall['inconclusive_rate']:>7.1%}  "
-            f"{'PASS' if report['passed'] else 'FAIL (' + report['reason'] + ')'}"
+            f"{'PASS' if report['passed'] else 'FAIL'}"
         )
         print(f"{'':<10} recall is {report['gate']['recall_label']}")
+        if not report["passed"]:
+            for line in report["reason"].split("; "):
+                print(f"{'':<10} why: {line}")
 
 
 def _fmt(value: float | None) -> str:
