@@ -156,7 +156,7 @@ The cost of that is a footgun: a permissive context accepts forged and expired c
 
 ### Open
 
-- Whether the A+–F grade ships with Tool 2. [05-phase-1-first-tools.md](05-phase-1-first-tools.md) requires the full rubric be visible if it does — "grade is our opinion, not a fact". Deferring it is defensible; a grade is the part most likely to draw an argument.
+- ~~Whether the A+–F grade ships with Tool 2.~~ **Deferred** — see D9.
 
 ---
 
@@ -173,6 +173,8 @@ Single source of truth for what is owed. Move an item out only when it lands.
 | **D5** | `lookalike-domain` | Needs RDAP over HTTP plus a permutation engine; larger than the rest of Tool 1 combined | Nothing |
 | **D6** | ~50 real domains recorded as a frozen corpus tier | The 16 committed cases are synthetic zones we wrote. Precision 1.000 against them proves the checks do what was intended, not that the intent matches the world | Confidence in the published number |
 | **D7** | **CoreDNS container serving a local authoritative zone** | Standard-mode testing needs a zone we control. A local authoritative server on a reserved name (`sptest.test`) would make `self_owned` honest, exercise the real dnspython path instead of a fake resolver, and let us author any scenario — 11-lookup chains, weak DKIM keys, malformed DMARC — against real DNS. ~1 hour. Not built because Light-mode sweeps proved higher value first | Standard-mode live testing; a better Tool 1 corpus |
+| **D9** | The A+–F TLS grade | Deferred 2026-08-24 by decision. A grade is an opinion, and opinions get argued with; facts ("expires in 5 days", "accepts TLS 1.0") do not. Easy to add later, hard to change once customers have built expectations on a score. If it ships, [05-phase-1-first-tools.md](05-phase-1-first-tools.md) requires the full rubric be visible | Nothing |
+| **D10** | HSTS checks in Tool 2 | [05-phase-1-first-tools.md](05-phase-1-first-tools.md) lists HSTS under TLS Standard, but it is an HTTP response header, so it needs an HTTPS GET and therefore HTTP record/replay (**D2**) before its corpus cases can be frozen | Nothing; Tool 2 gates without it |
 | **D8** | `evidence_file` existence check in `core/authz.py` | The loader checks the field is present, not that the file exists, so a scope file stays loadable outside the repo. Enforced on the committed file by test instead | Nothing; it is a belt-and-braces item |
 
 ---

@@ -196,15 +196,34 @@ class DnsAnswerEvidence(EvidenceBase):
         return self.control is not None
 
 
+class TlsHandshakeEvidence(EvidenceBase):
+    """What a server presented, beside what a strict client made of it.
+
+    `test` is the observation, taken with a deliberately permissive client so
+    that an obsolete server can be observed at all. `control` is normally the
+    verifying client's verdict; for protocol enumeration it is a second
+    observation of the same server negotiating a current protocol.
+    """
+
+    kind: Literal["tls_handshake"]
+    test: dict[str, Any]
+    control: dict[str, Any] | None = None
+    control_rationale: str = Field(min_length=1)
+    observed_at: datetime
+
+    def has_control(self) -> bool:
+        return self.control is not None
+
+
 class ReservedEvidence(EvidenceBase):
-    """tls_handshake, screenshot and file_excerpt.
+    """screenshot and file_excerpt.
 
     Their shapes are specified when the first scanner needs them. Until then
     they carry the base fields and a stated rationale for their control, so
     nobody ships one without answering the control question.
     """
 
-    kind: Literal["tls_handshake", "screenshot", "file_excerpt"]
+    kind: Literal["screenshot", "file_excerpt"]
     control_rationale: str = Field(min_length=1)
     data: dict[str, Any] = Field(default_factory=dict)
 
@@ -213,7 +232,12 @@ class ReservedEvidence(EvidenceBase):
 
 
 EvidenceItem = Annotated[
-    HttpPairEvidence | OobCallbackEvidence | TimingEvidence | DnsAnswerEvidence | ReservedEvidence,
+    HttpPairEvidence
+    | OobCallbackEvidence
+    | TimingEvidence
+    | DnsAnswerEvidence
+    | TlsHandshakeEvidence
+    | ReservedEvidence,
     Field(discriminator="kind"),
 ]
 

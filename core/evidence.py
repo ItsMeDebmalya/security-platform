@@ -24,6 +24,7 @@ from core.models import (
     HttpPairEvidence,
     HttpRequest,
     HttpResponse,
+    TlsHandshakeEvidence,
 )
 
 REDACTED = "[redacted]"
@@ -208,5 +209,58 @@ def dns_evidence(
         control=_exchange(control) if control is not None else None,
         control_rationale=control_rationale,
         analysis=analysis,
+        captured_at=datetime.now(UTC),
+    )
+
+
+def tls_evidence(
+    *,
+    label: str,
+    observation: Any,
+    compared_with: Any | None = None,
+    control_rationale: str | None = None,
+) -> TlsHandshakeEvidence:
+    """Pair a TLS observation with its control.
+
+    By default the control is the verifying client's verdict on the same
+    server, which is what `core/tls.py` collects alongside every observation.
+    Pass `compared_with` to use a second observation instead - protocol
+    enumeration needs observation-vs-observation, because "this server still
+    speaks TLS 1.0" is only meaningful beside "and it speaks TLS 1.3 too".
+    """
+    test = observation.to_dict()
+
+    if compared_with is not None:
+        control: dict[str, Any] | None = compared_with.to_dict()
+        rationale = control_rationale or (
+            "the same server negotiating a current protocol, for comparison"
+        )
+    elif observation.trusted is not None:
+        control = {
+            "trusted": observation.trusted,
+            "verify_code": observation.verify_code,
+            "verify_message": observation.verify_message,
+        }
+        rationale = control_rationale or (
+            "the verdict of a strictly-configured client against the same server; the "
+            "observation was taken permissively so the handshake could complete at all"
+        )
+    else:
+        control = None
+        rationale = control_rationale or ""
+
+    if not rationale.strip():
+        raise ValueError(
+            "tls evidence needs a control_rationale explaining what the control is, "
+            "or why none is possible"
+        )
+
+    return TlsHandshakeEvidence(
+        kind="tls_handshake",
+        label=label,
+        test=test,
+        control=control,
+        control_rationale=rationale,
+        observed_at=observation.observed_at,
         captured_at=datetime.now(UTC),
     )

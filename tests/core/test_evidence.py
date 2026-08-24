@@ -182,3 +182,103 @@ def test_dns_evidence_records_the_resolver_that_answered():
     )
 
     assert evidence.test.query.resolver == "1.1.1.1"
+
+
+# --- tls evidence -----------------------------------------------------------
+
+
+def _observation(**overrides):
+    import datetime as _dt
+
+    from core.tls import CertificateInfo, TlsObservation
+
+    cert = CertificateInfo(
+        subject="CN=example.com",
+        subject_cn="example.com",
+        issuer="CN=Example CA",
+        issuer_cn="Example CA",
+        serial="01",
+        not_before=_dt.datetime(2026, 1, 1, tzinfo=_dt.UTC),
+        not_after=_dt.datetime(2026, 9, 1, tzinfo=_dt.UTC),
+        sans=["example.com"],
+        key_type="rsa",
+        key_bits=2048,
+        signature_algorithm="sha256",
+        self_signed=False,
+        has_sct=True,
+        fingerprint_sha256="ab" * 32,
+    )
+    base = dict(
+        host="example.com",
+        port=443,
+        servername="example.com",
+        reachable=True,
+        observed_at=_dt.datetime(2026, 8, 24, tzinfo=_dt.UTC),
+        protocol="TLSv1.3",
+        cipher="TLS_AES_256_GCM_SHA384",
+        cipher_bits=256,
+        certificate=cert,
+        trusted=True,
+    )
+    base.update(overrides)
+    return TlsObservation(**base)
+
+
+def test_tls_evidence_pairs_what_was_served_with_the_strict_verdict():
+    from core.evidence import tls_evidence
+
+    evidence = tls_evidence(
+        label="TLS handshake with example.com:443",
+        observation=_observation(
+            trusted=False, verify_code=18, verify_message="self-signed certificate"
+        ),
+    )
+
+    assert evidence.kind == "tls_handshake"
+    assert evidence.has_control()
+    assert evidence.control["trusted"] is False
+    assert evidence.control["verify_message"] == "self-signed certificate"
+
+
+def test_tls_evidence_records_what_the_server_actually_presented():
+    from core.evidence import tls_evidence
+
+    evidence = tls_evidence(label="handshake", observation=_observation())
+
+    assert evidence.test["protocol"] == "TLSv1.3"
+    assert evidence.test["certificate"]["key_bits"] == 2048
+    assert evidence.test["certificate"]["fingerprint_sha256"] == "ab" * 32
+
+
+def test_tls_evidence_can_compare_two_observations():
+    """Protocol enumeration needs observation-vs-observation, not verdict."""
+    from core.evidence import tls_evidence
+
+    evidence = tls_evidence(
+        label="TLS 1.0 is still offered",
+        observation=_observation(protocol="TLSv1"),
+        compared_with=_observation(protocol="TLSv1.3"),
+        control_rationale="the same server negotiating a current protocol, for comparison",
+    )
+
+    assert evidence.control["protocol"] == "TLSv1.3"
+    assert evidence.test["protocol"] == "TLSv1"
+
+
+def test_tls_evidence_carries_when_it_was_observed():
+    from core.evidence import tls_evidence
+
+    evidence = tls_evidence(label="handshake", observation=_observation())
+
+    assert evidence.observed_at.year == 2026
+
+
+def test_tls_evidence_needs_a_rationale_when_nothing_was_compared():
+    from core.evidence import tls_evidence
+
+    with pytest.raises(ValueError, match="rationale"):
+        tls_evidence(
+            label="handshake",
+            observation=_observation(trusted=None),
+            control_rationale="",
+        )
