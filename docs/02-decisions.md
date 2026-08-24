@@ -335,3 +335,26 @@ Both are isolated services behind interfaces, so this is a contained cost, not a
 **What it does not buy.** Verification proves control of a zone or web root — strong evidence of authority, not proof of legal ownership. A subtenant or a compromised account can pass. Reasonable effort is a defence, not immunity; the ToS must place the warranty of authority on the customer.
 
 **Reversal cost.** Not reversible. It is the legal basis for the whole product.
+
+---
+
+## ADR-016 — Build our own TLS engine; keep testssl.sh as a cross-check
+
+**Decision.** Tool 2 implements its own TLS inspection against Python's `ssl` and `socket`. `testssl.sh` is not wrapped at runtime. It is retained as an **independent cross-check in the corpus**: both run against the same targets, and a disagreement is a finding about us.
+
+**This reverses the plan.** [05-phase-1-first-tools.md](05-phase-1-first-tools.md) says to start by shelling out to testssl.sh and parsing its JSON, replacing it when its runtime becomes the bottleneck. That was written before Phase 0 existed. Building Phase 0 changed two of its premises.
+
+**Reasoning.**
+
+- **Evidence is a by-product of observing, and a reconstruction of anything else.** Every finding owes a control-vs-test pair ([01-architecture.md](01-architecture.md)). When we make the handshake ourselves, the evidence *is* what we saw. Wrapping testssl.sh means parsing its verdicts and then working backwards to manufacture evidence for a conclusion someone else reached. That inverts the product thesis.
+- **The hard part does not transfer.** testssl.sh's deepest value is its named-vulnerability probes, and most of those send deliberately malformed input. [ADR-004](#adr-004--no-exploitation-ever) already commits us to detecting those by version and configuration inference instead. We were never going to use them, which removes most of the "years of accumulated edge cases" advantage.
+- **Cost per host shapes coverage.** 1–3 minutes per host sets a hard ceiling on how many hosts a scan can reach. Our own handshakes are seconds.
+- **The integration is not free either.** GPLv2 means separate-process-only forever, enforced by the CI licence check. Its JSON schema broke between 3.0 and 3.2, so the version pin is load-bearing and every upgrade is a re-verification.
+
+**What we keep from it.** testssl.sh becomes a second opinion rather than a dependency — the same role the second DNS resolver plays in the email scanner. Running both against the corpus and comparing is a real accuracy signal, and it is free of every constraint above because it runs at corpus time, not scan time, and never ships.
+
+**Costs we accept.** Slower to a first working tool. We will rediscover edge cases testssl.sh already knows — SNI behaviour, chain construction, servers that hang rather than refuse. The cross-check harness is the mitigation: it tells us which ones we got wrong.
+
+**Trigger to revisit.** If the cross-check shows us materially behind testssl.sh on the corpus after Tool 2 ships, and closing the gap looks longer than wrapping it would have been, wrap it for the checks we are losing and keep our own for the rest. That is a per-check decision, not an all-or-nothing one.
+
+**Reversal cost.** Low. The Scanner Contract means a scanner can be replaced by a third-party wrapper without touching anything else, which is exactly the property ADR-002 was bought for.

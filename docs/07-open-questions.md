@@ -134,7 +134,7 @@ ADR-005 puts scanners in Python and the OOB server in Go. If a scanner turns out
 
 ## Product
 
-### Q12b 🔴 — testssl.sh or our own TLS engine — **new, blocks Tool 2**
+### Q12b ✅ — testssl.sh or our own TLS engine — **answered 2026-08-24, see [ADR-016](02-decisions.md#adr-016--build-our-own-tls-engine-keep-testsslsh-as-a-cross-check)**
 
 [05-phase-1-first-tools.md](05-phase-1-first-tools.md) says start by shelling out to `testssl.sh` and parsing its JSON, replacing it later when its runtime becomes the bottleneck. That was written before Phase 0 existed. Two things have changed since, and both point the other way.
 
@@ -146,7 +146,7 @@ ADR-005 puts scanners in Python and the OOB server in Go. If a scanner turns out
 
 **Options.** (a) Wrap testssl.sh as planned, replace later. (b) Build our own from the start. (c) Build our own, and keep a testssl.sh comparison harness in the corpus as an independent cross-check — the same role a second resolver plays in the email scanner.
 
-**Needed by:** before Tool 2 starts. **Decide:** developer.
+**Answered:** option (c) — build our own, keep testssl.sh as a corpus cross-check. Recorded as [ADR-016](02-decisions.md#adr-016--build-our-own-tls-engine-keep-testsslsh-as-a-cross-check).
 
 ### Q13 🟡 — Does the free Light Scan need no signup at all?
 
