@@ -169,3 +169,43 @@ def test_organisations_do_not_share_a_cap():
 
     with cap.slot("org_a"), cap.slot("org_b"):
         assert cap.in_flight("org_a") == 1
+
+
+# --- who the limit is actually protecting -----------------------------------
+
+
+def test_a_target_host_gets_the_conservative_limit():
+    """We are a guest on someone's infrastructure. Be quiet."""
+    limiter = RateLimiter.for_target()
+
+    assert limiter.rate_per_s <= 5
+
+
+def test_a_public_resolver_gets_a_higher_limit_than_a_target():
+    """A public recursive resolver is not the system being scanned.
+
+    It is built for billions of queries a day, and its cache is what shields
+    the target's own nameservers from us. Throttling DNS at the target rate
+    protects nobody and makes a real-world sweep take forty minutes.
+    """
+    assert RateLimiter.for_resolver().rate_per_s > RateLimiter.for_target().rate_per_s
+
+
+def test_a_scanners_worth_of_dns_queries_does_not_crawl(clock):
+    """One email scan is ~25 lookups. That must not take twelve seconds."""
+    limiter = RateLimiter.for_resolver(clock=clock.time, sleeper=clock.sleep)
+
+    for _ in range(25):
+        limiter.acquire("1.1.1.1")
+
+    assert clock.slept < 1.0
+
+
+def test_the_resolver_limit_still_backs_off_when_the_resolver_complains():
+    """Higher is not unlimited. A resolver that rate-limits us is still obeyed."""
+    limiter = RateLimiter.for_resolver()
+    before = limiter.rate_for("1.1.1.1")
+
+    limiter.observe("1.1.1.1", status=429)
+
+    assert limiter.rate_for("1.1.1.1") < before

@@ -139,14 +139,17 @@ def _execute(
     else:
         resolver = SystemResolver(DEFAULT_RESOLVERS)
 
-    ratelimit = RateLimiter()
+    # Two limiters, because they protect different things: the target host
+    # is someone else's infrastructure, a public resolver is not.
+    resolver_limit = RateLimiter.for_resolver()
+    target_limit = RateLimiter.for_target()
     ctx = ScanContext(
         org_id="org_internal",
         authz_ref=authz_ref,
-        dns=DnsClient(resolver=resolver, resolvers=DEFAULT_RESOLVERS, ratelimit=ratelimit),
-        http=HttpClient(scope=Scope.for_target(target), ratelimit=ratelimit),
+        dns=DnsClient(resolver=resolver, resolvers=DEFAULT_RESOLVERS, ratelimit=resolver_limit),
+        http=HttpClient(scope=Scope.for_target(target), ratelimit=target_limit),
         scope=Scope.for_target(target),
-        ratelimit=ratelimit,
+        ratelimit=target_limit,
         progress=_progress,
     )
     return scanner.run(target, _as_mode(mode), ctx)

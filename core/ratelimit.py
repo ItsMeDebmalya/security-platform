@@ -17,6 +17,7 @@ from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from statistics import median
+from typing import Any
 
 BACKOFF_FACTOR = 0.5
 """How hard a 429/503 shrinks the bucket. Halving is conventional and cheap to reason about."""
@@ -31,6 +32,27 @@ RECOVERY_FACTOR = 1.02
 LATENCY_WINDOW = 8
 MIN_LATENCY_SAMPLES = 4
 
+TARGET_RPS = 2.0
+TARGET_BURST = 5
+"""What we send at a system we are scanning.
+
+Deliberately timid: we are a guest on someone else's infrastructure, and
+being wrong here means an outage, an abuse complaint, or a blocked IP
+range."""
+
+RESOLVER_RPS = 25.0
+RESOLVER_BURST = 50
+"""What we send at a public recursive resolver.
+
+A resolver is not the system being scanned. It is built for billions of
+queries a day, and its cache is precisely what keeps our lookups away from
+the target's own nameservers. Applying the target rate here protects
+nobody: one email scan is roughly 25 lookups, so 2/s turns a fifty-domain
+sweep into forty minutes of waiting on Cloudflare's behalf.
+
+Still a limit, not a licence - the adaptive backoff below applies
+unchanged, so a resolver that answers 429 is still obeyed."""
+
 
 @dataclass
 class _Bucket:
@@ -41,11 +63,21 @@ class _Bucket:
 
 
 class RateLimiter:
+    @classmethod
+    def for_target(cls, **kwargs: Any) -> RateLimiter:
+        """A limiter for a host we are scanning."""
+        return cls(rate_per_s=TARGET_RPS, burst=TARGET_BURST, **kwargs)
+
+    @classmethod
+    def for_resolver(cls, **kwargs: Any) -> RateLimiter:
+        """A limiter for the public recursive resolvers we ask questions of."""
+        return cls(rate_per_s=RESOLVER_RPS, burst=RESOLVER_BURST, **kwargs)
+
     def __init__(
         self,
         *,
-        rate_per_s: float = 2.0,
-        burst: int = 5,
+        rate_per_s: float = TARGET_RPS,
+        burst: int = TARGET_BURST,
         min_rate_per_s: float = 0.2,
         clock: Callable[[], float] = time.monotonic,
         sleeper: Callable[[float], None] = time.sleep,
