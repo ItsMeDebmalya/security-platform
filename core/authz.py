@@ -35,6 +35,25 @@ from core.models import Asset, Mode
 ACTIVE_MODES = frozenset({"standard", "deep"})
 
 
+def host_of(target: Asset) -> str:
+    """The host an authorisation is really about.
+
+    A target arrives in whatever form someone typed - a bare domain, a URL, a
+    host:port. All three name the same asset, and an authorisation record is
+    about the asset. Comparing raw strings meant authorising `example.com` and
+    then being denied a scan of `https://example.com`, which nobody would guess
+    they had to authorise separately.
+    """
+    value = target.value.strip()
+    if "://" in value:
+        value = urlsplit(value).hostname or value
+    elif ":" in value and not value.startswith("["):
+        head, _, port = value.rpartition(":")
+        if port.isdigit():
+            value = head
+    return value.lower().rstrip(".")
+
+
 class AuthorisationDeniedError(PermissionError):
     """Raised when an active scan has no valid authorisation for its target."""
 
@@ -60,10 +79,10 @@ class AuthorisationRecord:
     revocation_reason: str | None = None
 
     def covers(self, target: Asset) -> bool:
-        if target.type != self.target_type:
-            return False
-        value = target.value.lower().rstrip(".")
-        own = self.target_value.lower().rstrip(".")
+        # A url target and a domain record can name the same host, so the host
+        # is compared rather than the declared type.
+        value = host_of(target)
+        own = host_of(Asset(type="domain", value=self.target_value))
         if value == own:
             return True
         return self.wildcard and value.endswith("." + own)
@@ -130,7 +149,7 @@ class AuthorisedScope:
         matches = [r for r in self._records if r.covers(target)]
         if not matches:
             return AuthzDecision(
-                False, None, f"no authorisation record for {target.value} in {self.source}"
+                False, None, f"no authorisation record for {host_of(target)} in {self.source}"
             )
         for record in matches:
             if record.revoked_at is not None:
@@ -169,14 +188,7 @@ class Scope:
         trusting the declaration put the literal string "https://example.com"
         into the scope and then refused the connection to example.com.
         """
-        value = target.value
-        if "://" in value:
-            value = urlsplit(value).hostname or value
-        elif ":" in value and not value.startswith("["):
-            host, _, port = value.rpartition(":")
-            if port.isdigit():
-                value = host
-        return cls(frozenset({value.lower().rstrip(".")}))
+        return cls(frozenset({host_of(target)}))
 
     def permits(self, host: str) -> bool:
         host = host.lower().rstrip(".")

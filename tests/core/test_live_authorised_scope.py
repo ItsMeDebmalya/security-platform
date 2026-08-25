@@ -59,30 +59,43 @@ def test_the_live_file_loads():
 
 
 @pytest.mark.parametrize("row", rows(), ids=lambda r: r["authz_id"])
-def test_a_self_owned_row_targets_only_loopback_or_a_reserved_name(row):
-    """`self_owned` means we started the process. That is credible for our own
-    loopback and for an RFC 2606 name that resolves nowhere else; it is not
-    credible for a public domain, which needs real proof instead."""
-    if row["method"] != "self_owned":
+def test_a_self_owned_row_on_a_public_target_carries_a_written_attestation(row):
+    """`self_owned` on loopback or a reserved name speaks for itself - we
+    started the process and nobody else can reach it.
+
+    On a publicly resolvable target it is an *attestation*: a named person
+    saying they control the asset. docs/09 permits that, and requires it to be
+    an explicit row with a note rather than an implicit exemption. The note is
+    the whole control, so its absence is a build failure.
+    """
+    if row["method"] != "self_owned" or _is_local_or_reserved(_host(row)):
         return
 
-    host = _host(row)
-    assert _is_local_or_reserved(host), (
-        f"{row['authz_id']} claims self_owned for {host!r}, which is a publicly "
-        "resolvable name. Prove control with a dns_txt nonce, or remove the row."
+    proof = ROOT / row["proof"]["evidence_file"]
+    assert proof.exists(), f"{row['authz_id']} cites a proof file that is missing"
+    assert "attestation" in proof.read_text().lower(), (
+        f"{row['authz_id']} claims self_owned for the public target {_host(row)!r} "
+        "with no written attestation. Use scripts/authorise-domain.sh with "
+        "--self-owned '<why you control it>', or verify it properly with a nonce."
     )
+    assert row["proof"].get("observed"), f"{row['authz_id']} has an empty proof.observed"
 
 
 @pytest.mark.parametrize("row", rows(), ids=lambda r: r["authz_id"])
-def test_a_publicly_resolvable_row_carries_real_proof(row):
-    """A row for a name other people can reach needs verification, not an assertion."""
+def test_a_publicly_resolvable_row_uses_a_recognised_method(row):
+    """A row for a name other people can reach needs a stated method.
+
+    `self_owned` is on this list because docs/09 allows it, but only in the
+    attested form the test above enforces. Anything not on the list is someone
+    inventing a justification.
+    """
     host = _host(row)
     if _is_local_or_reserved(host):
         return
 
-    assert row["method"] in ("dns_txt", "http_file", "attestation"), (
+    assert row["method"] in ("dns_txt", "http_file", "attestation", "self_owned"), (
         f"{row['authz_id']} targets the public name {host!r} with method "
-        f"{row['method']!r}. Public targets require a verification method."
+        f"{row['method']!r}, which is not a recognised verification method."
     )
     assert row.get("attestation_ref") or row["proof"].get("evidence_file")
 

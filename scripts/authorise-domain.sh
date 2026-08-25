@@ -2,8 +2,17 @@
 #
 # Authorise a domain you control for Standard/Deep mode scanning.
 #
-#   scripts/authorise-domain.sh codez.in
-#   scripts/authorise-domain.sh codez.in --dry-run     # show, write nothing
+#   scripts/authorise-domain.sh example.com
+#   scripts/authorise-domain.sh example.com --dry-run     # show, write nothing
+#   scripts/authorise-domain.sh example.com --check '<nonce>'
+#
+#   scripts/authorise-domain.sh 203.0.113.7 --self-owned "our Hetzner box, invoice 12345"
+#
+# The --self-owned form is for an asset you control but cannot prove control of
+# by publishing DNS - a bare IP, or a domain whose zone someone else edits. It
+# is an ATTESTATION, not a verification: docs/09 permits it, and requires it to
+# be an explicit row with a note rather than an implicit exemption. The note is
+# mandatory and is written into the proof file with your name on it.
 #
 # What it does, in order:
 #   1. generates a single-use nonce and tells you exactly what to publish
@@ -38,21 +47,25 @@ DOMAIN="${1:-}"
 DRY_RUN=0
 CHECK_ONLY=0
 CHECK_NONCE=""
+SELF_OWNED=0
+ATTESTATION=""
 case "${2:-}" in
-  --dry-run) DRY_RUN=1 ;;
-  --check)   CHECK_ONLY=1; CHECK_NONCE="${3:-}" ;;
-  "")        ;;
-  *)         die "unknown option ${2}" ;;
+  --dry-run)    DRY_RUN=1 ;;
+  --check)      CHECK_ONLY=1; CHECK_NONCE="${3:-}" ;;
+  --self-owned) SELF_OWNED=1; ATTESTATION="${3:-}" ;;
+  "")           ;;
+  *)            die "unknown option ${2}" ;;
 esac
 
-[ -n "$DOMAIN" ] || die "usage: $0 <domain> [--dry-run | --check [nonce]]"
+[ -n "$DOMAIN" ] || die "usage: $0 <target> [--dry-run | --check <nonce> | --self-owned <note>]"
 
-case "$DOMAIN" in
-  *.example|*.test|*.invalid|*.localhost)
-    die "$DOMAIN is an RFC 2606 reserved name; it cannot be verified by DNS.
-       Reserved and loopback targets use method: self_owned instead - see
-       the rows already in config/authorised_scope.yaml." ;;
-esac
+if [ "$SELF_OWNED" = "0" ]; then
+  case "$DOMAIN" in
+    *.example|*.test|*.invalid|*.localhost)
+      die "$DOMAIN is an RFC 2606 reserved name; it cannot be verified by DNS.
+       Use --self-owned \"<why you control it>\" instead." ;;
+  esac
+fi
 
 # --- preflight --------------------------------------------------------------
 
@@ -77,6 +90,13 @@ NONCE="sp-verify=$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n')"
 RECORD_NAME="_scanverify.${DOMAIN}"
 PROOF_FILE="corpus/authz/${DOMAIN}-${TODAY}.txt"
 AUTHZ_ID="authz_${TODAY}-$(printf '%03d' $(( ( RANDOM % 899 ) + 100 )))"
+
+# A bare address is an `ip` target; anything else is a domain.
+if printf '%s' "$DOMAIN" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$|^[0-9a-fA-F:]+:[0-9a-fA-F:]+$'; then
+  TARGET_TYPE="ip"
+else
+  TARGET_TYPE="domain"
+fi
 
 # --- how we look things up --------------------------------------------------
 
@@ -119,6 +139,86 @@ if [ "$CHECK_ONLY" = "1" ]; then
   echo
   [ -n "$ns_hit" ] || die "the zone does not publish that value. Nothing to wait for."
   say "Present in the zone. Re-run without --check to complete the authorisation."
+  exit 0
+fi
+
+# --- --self-owned: an attestation, recorded as one --------------------------
+
+if [ "$SELF_OWNED" = "1" ]; then
+  [ -n "$ATTESTATION" ] || die "--self-owned needs a note saying why you control ${DOMAIN}.
+       It goes into the proof file with your name on it, and it is the whole
+       difference between a record and an assertion.
+       e.g. $0 ${DOMAIN} --self-owned 'our Hetzner box, invoice 12345'"
+
+  OPERATOR="operator:$(git config user.name 2>/dev/null || whoami)"
+
+  cat > "$PROOF_FILE" <<EOF
+# Attestation of control for ${DOMAIN}
+# Method: self_owned (docs/09-ownership-verification.md)
+# Attested: ${TODAY} by ${OPERATOR}
+#
+# ${ATTESTATION}
+#
+# ---------------------------------------------------------------------------
+# WHAT THIS IS, AND WHAT IT IS NOT
+# ---------------------------------------------------------------------------
+#
+# This is an ATTESTATION, not a verification. Nothing was checked. A named
+# person stated that they control this asset and accepted responsibility for
+# that statement, and docs/09 permits exactly that - as an explicit row with a
+# note, never as an implicit exemption.
+#
+# It is the right method when control is real but not provable by publishing
+# DNS: a bare IP address, a host inside a network we run, a domain whose zone
+# is edited by someone else in the same organisation.
+#
+# It is the WRONG method for anything belonging to a customer, a prospect, or
+# a third party who merely publishes an invitation to scan. Those need the
+# dns_txt flow, and if that is not possible then the scan does not happen.
+#
+# Prefer verification where it is available:
+#     $0 ${DOMAIN}
+EOF
+
+  cat >> "$SCOPE" <<EOF
+
+# --- ${DOMAIN} ---------------------------------------------------------------
+#     Attested ${TODAY}: ${ATTESTATION}
+
+- authz_id: ${AUTHZ_ID}
+  org_id: org_internal
+  target: { type: ${TARGET_TYPE}, value: ${DOMAIN}, wildcard: false }
+  method: self_owned
+  proof:
+    observed: 'operator attestation: ${ATTESTATION}'
+    observed_at: ${TODAY}T00:00:00Z
+    evidence_file: ${PROOF_FILE}
+  verified_at: ${TODAY}
+  expires_at: ${EXPIRES}
+  verified_by: ${OPERATOR}
+  attestation_ref: null
+EOF
+
+  python3 -c "import yaml; yaml.safe_load(open('$SCOPE'))" \
+    || die "the updated $SCOPE is not valid YAML. Fix it before committing."
+
+  cat <<EOF
+
+  Attested and written:
+    ${PROOF_FILE}
+    ${SCOPE}   (authorisation ${AUTHZ_ID}, expires ${EXPIRES})
+
+  This asserts you control ${DOMAIN}. Nothing was verified. If that is not
+  true, remove the row now.
+
+  Next:
+    uv run pytest tests/core/test_live_authorised_scope.py -q
+    uv run scan run tls --target ${DOMAIN} --mode standard
+
+    git add ${SCOPE} ${PROOF_FILE}
+    git commit -m "Authorise ${DOMAIN} (self-owned attestation)"
+
+EOF
   exit 0
 fi
 

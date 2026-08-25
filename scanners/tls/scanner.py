@@ -62,6 +62,7 @@ NO_VERDICT_FOR_ERROR = {
 }
 
 _REFERENCES = {
+    "tls-no-handshake": [],
     "tls-cert-expired": ["https://www.rfc-editor.org/rfc/rfc5280"],
     "tls-cert-expiring-soon": ["https://www.rfc-editor.org/rfc/rfc5280"],
     "tls-cert-not-yet-valid": ["https://www.rfc-editor.org/rfc/rfc5280"],
@@ -136,7 +137,7 @@ class _Scan:
         self.observation = self.tls.inspect(self.host, self.port, servername=self.host)
 
         if not self.observation.is_definite():
-            self._all_inconclusive()
+            self._no_handshake()
             return self._result()
 
         self.now = self.observation.observed_at
@@ -144,6 +145,7 @@ class _Scan:
         assert self.cert is not None
 
         self.ctx.progress("checking the certificate", 0.5)
+        self._clear("tls-no-handshake")
         self._check_validity_dates()
         self._check_identity()
         self._check_trust_path()
@@ -176,36 +178,53 @@ class _Scan:
             finished_at=datetime.now(UTC),
         )
 
-    def _all_inconclusive(self) -> None:
-        """The server did not complete a handshake. That is not a TLS finding."""
+    def _no_handshake(self) -> None:
+        """No TLS connection, so there is nothing to examine.
+
+        One finding, not one per check. Every certificate check would be
+        individually honest about not knowing, and thirteen rows of
+        "critical ... inconclusive" for a host that simply does not speak TLS
+        is a wall of noise that buries the one fact that matters. The other
+        checks are not recorded as having run either - a certificate check on a
+        host with no certificate did not run, and putting them in the
+        inconclusive rate would let one closed port swamp the measure.
+
+        Not a scan error: the scanner executed fine, and "this host does not
+        answer TLS on this port" is a real, reportable observation. It is only
+        a scan error when the scanner itself could not work.
+        """
+        error = self.observation.error or "no response"
         reason = "blocked_prerequisite"
         for prefix, mapped in NO_VERDICT_FOR_ERROR.items():
-            if (self.observation.error or "").startswith(prefix):
+            if error.startswith(prefix):
                 reason = mapped
                 break
 
-        for check_id, check in CHECKS.items():
-            if check.mode == "standard" and self.mode == "light":
-                continue
-            self._emit(
-                check,
-                no_verdict_reason=reason,
-                description=(
-                    f"No TLS handshake could be completed with {self.host}:{self.port} "
-                    f"({self.observation.error}). Nothing can be concluded about this "
-                    "server's TLS configuration, and we do not report an unreachable "
-                    "service as a well-configured one."
-                ),
-                impact="Unknown until a handshake succeeds.",
-                remediation=(
-                    f"Confirm that {self.host} is listening on port {self.port} and that a "
-                    "firewall is not refusing the connection, then re-run the scan."
-                ),
-                signals=[self._signal(check, CERTIFICATE, 1.0)],
-            )
-            self.checks.append(
-                CheckRun(check_id=check_id, location=self._location(), outcome="inconclusive")
-            )
+        self._emit(
+            CHECKS["tls-no-handshake"],
+            no_verdict_reason=reason,
+            description=(
+                f"No TLS handshake could be completed with {self.host}:{self.port} "
+                f"({error}). Nothing can be concluded about this server's TLS "
+                "configuration - not that it is well configured, and not that it is "
+                "badly configured."
+            ),
+            impact=(
+                "Unknown. If this host is meant to serve HTTPS then it is not doing so, "
+                "which is itself worth looking at; if it was never meant to, there is "
+                "nothing here to fix."
+            ),
+            remediation=(
+                f"Confirm that {self.host} is meant to serve TLS on port {self.port}. If it "
+                "is, check that the service is running and that a firewall is not refusing "
+                f"the connection. If it is not, scan the port that does - `--target "
+                f"https://{self.host}:<port>`."
+            ),
+            signals=[self._signal(CHECKS["tls-no-handshake"], NEGOTIATION, ratio=1.0)],
+        )
+        self.checks.append(
+            CheckRun(check_id="tls-no-handshake", location=self._location(), outcome="inconclusive")
+        )
 
     # --- checks -------------------------------------------------------------
 

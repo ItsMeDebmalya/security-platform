@@ -2,7 +2,7 @@
   "cipher": null,
   "cipher_bits": null,
   "error": "tls_error:TLSV1_ALERT_PROTOCOL_VERSION",
-  "observed_at": "2026-08-25T05:18:37.721578+00:00",
+  "observed_at": "2026-08-25T07:01:58.396638+00:00",
   "openssl_hostname_match": null,
   "peer_der_b64": null,
   "protocol": null,

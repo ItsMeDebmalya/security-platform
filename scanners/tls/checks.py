@@ -50,6 +50,16 @@ CHECKS: dict[str, Check] = {
     for c in [
         # --- Light ---------------------------------------------------------
         Check(
+            check_id="tls-no-handshake",
+            title="No TLS connection could be established",
+            severity="medium",
+            likelihood_ratio=1.0,
+            justification=(
+                "nothing was observed, so nothing moves the prior; this exists to say so "
+                "out loud rather than to claim anything"
+            ),
+        ),
+        Check(
             check_id="tls-cert-expired",
             title="Certificate has expired",
             severity="critical",

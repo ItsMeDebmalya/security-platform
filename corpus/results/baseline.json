@@ -701,14 +701,14 @@
     },
     "overall": {
       "cases": 14,
-      "checks_run": 121,
+      "checks_run": 134,
       "false_positives_on_known_good": 0,
       "fn": 0,
       "fp": 0,
       "inconclusive_rate": 0.0,
       "precision": 1.0,
       "recall": 1.0,
-      "suspected_rate": 0.06611570247933884,
+      "suspected_rate": 0.05970149253731343,
       "tier": "all",
       "tp": 5
     },
@@ -718,7 +718,7 @@
     "tiers": {
       "known_good": {
         "cases": 1,
-        "checks_run": 13,
+        "checks_run": 14,
         "false_positives_on_known_good": 0,
         "fn": 0,
         "fp": 0,
@@ -731,14 +731,14 @@
       },
       "vulnerable": {
         "cases": 13,
-        "checks_run": 108,
+        "checks_run": 120,
         "false_positives_on_known_good": 0,
         "fn": 0,
         "fp": 0,
         "inconclusive_rate": 0.0,
         "precision": 1.0,
         "recall": 1.0,
-        "suspected_rate": 0.07407407407407407,
+        "suspected_rate": 0.06666666666666667,
         "tier": "vulnerable",
         "tp": 5
       }

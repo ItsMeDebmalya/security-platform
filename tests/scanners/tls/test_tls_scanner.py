@@ -408,3 +408,44 @@ def test_a_hostname_mismatch_is_corroborated_by_openssl():
         "trust_path",
     }
     assert found[0].state == "highly_likely"
+
+
+# --- when there is no TLS service at all ------------------------------------
+
+
+class _Closed:
+    port = 1
+
+
+def test_a_target_with_no_tls_service_produces_one_finding_not_thirteen():
+    """Found live against httpforever.com, an HTTP-only host: seven rows of
+    "critical ... inconclusive tls-cert-expired" for a server whose only
+    problem is that it does not speak TLS. Each row was individually honest
+    and the wall of them was not."""
+    result = scan(_Closed())
+
+    assert len(result.findings) == 1
+    assert result.findings[0].check_id == "tls-no-handshake"
+    assert result.findings[0].state == "inconclusive"
+
+
+def test_the_no_handshake_finding_says_what_actually_happened():
+    finding = scan(_Closed()).findings[0]
+
+    assert "handshake" in finding.description.lower()
+    assert finding.evidence[0].test["error"]
+
+
+def test_checks_that_could_not_run_are_not_claimed_to_have_run():
+    """A certificate check on a host with no certificate did not run. Recording
+    it would put twelve rows into the inconclusive rate for one closed port."""
+    ran = {c.check_id for c in scan(_Closed()).telemetry.checks_run}
+
+    assert ran == {"tls-no-handshake"}
+
+
+def test_a_refused_handshake_is_still_not_a_scan_error():
+    result = scan(_Closed())
+
+    assert result.errors == []
+    assert result.outcome == "succeeded"

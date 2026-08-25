@@ -11,6 +11,7 @@ from datetime import date
 import pytest
 
 from core.authz import AuthorisationDeniedError, AuthorisedScope, Scope
+from core.models import Asset
 
 TODAY = date(2026, 8, 22)
 
@@ -214,3 +215,68 @@ def test_scope_ignores_a_port_when_deriving_the_host():
     scope = Scope.for_target(_target("https://example.com:8443", "domain"))
 
     assert scope.permits("example.com")
+
+
+# --- a target is a host, however it was typed --------------------------------
+
+
+def _record(value, wildcard=False):
+    from core.authz import AuthorisationRecord
+
+    return AuthorisationRecord(
+        authz_id="authz_t",
+        org_id="org_internal",
+        target_type="domain",
+        target_value=value,
+        wildcard=wildcard,
+        method="dns_txt",
+        expires_at=date(2027, 1, 1),
+        evidence_file="corpus/authz/x.txt",
+    )
+
+
+@pytest.mark.parametrize(
+    ("asset_type", "value"),
+    [
+        ("domain", "example.com"),
+        ("domain", "https://example.com"),
+        ("domain", "example.com:8443"),
+        ("url", "https://example.com/some/path"),
+        ("url", "https://example.com:8443/"),
+    ],
+)
+def test_authorising_a_domain_covers_it_however_the_target_is_typed(asset_type, value):
+    """Found live: authorising expired.badssl.com still denied a scan of
+    https://expired.badssl.com, because the record was compared against the raw
+    target string. Nobody would guess they had to authorise the URL form too."""
+    scope = AuthorisedScope([_record("example.com")])
+
+    decision = scope.authorise(Asset(type=asset_type, value=value), mode="standard", today=TODAY)
+
+    assert decision.allowed, decision.reason
+
+
+def test_a_different_host_is_still_denied_however_it_is_typed():
+    scope = AuthorisedScope([_record("example.com")])
+
+    assert not scope.authorise(
+        Asset(type="url", value="https://evil.example/"), mode="standard", today=TODAY
+    ).allowed
+
+
+def test_a_wildcard_record_still_covers_subdomains_via_a_url():
+    scope = AuthorisedScope([_record("example.com", wildcard=True)])
+
+    assert scope.authorise(
+        Asset(type="url", value="https://api.example.com/"), mode="standard", today=TODAY
+    ).allowed
+
+
+def test_the_denial_message_names_the_host_not_the_raw_string():
+    scope = AuthorisedScope([])
+
+    reason = scope.authorise(
+        Asset(type="url", value="https://example.com/path"), mode="standard", today=TODAY
+    ).reason
+
+    assert "example.com" in reason and "https://" not in reason

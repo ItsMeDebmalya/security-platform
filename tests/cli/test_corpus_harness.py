@@ -231,6 +231,9 @@ def test_every_tls_check_has_a_corpus_case():
     #     cannot serve one at any security level. Verified, not assumed. D11.
     #   tls-no-certificate-transparency - informational, and docs/10-measurement
     #     excludes informational findings from the gate entirely.
-    uncovered = {"tls-weak-cipher", "tls-no-certificate-transparency"}
+    #   tls-no-handshake - inconclusive by construction. It exists to say "there
+    #     was no TLS here" and can never be a claim, so it has no expected entry;
+    #     the `unreachable` case asserts it via expect_inconclusive instead.
+    uncovered = {"tls-weak-cipher", "tls-no-certificate-transparency", "tls-no-handshake"}
 
     assert set(CHECKS) - uncovered - covered == set()
