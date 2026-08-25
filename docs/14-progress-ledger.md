@@ -197,11 +197,24 @@ Live testing of both scanners against the operator's own infrastructure and a sp
 
 That is the exact blind spot `core/tls.py` exists to avoid — a client with a safety floor cannot observe the servers worth reporting — and I walked into it while checking `core/tls.py`. **A verification tool with the same blind spot as the thing it is verifying confirms nothing.**
 
+**A finding whose claim was not in its own evidence.** `tls-protocol-obsolete` reported "completed a handshake using TLSv1, TLSv1.1" — correct, and verified independently. Its evidence showed a TLS 1.3 handshake as the test *and* the same TLS 1.3 handshake as the control, byte-identical. `supported_protocols()` returned only booleans, so the obsolete handshake it had performed was discarded before the finding was built.
+
+For a product whose thesis is evidence rather than verdicts, that is the one defect that cannot ship: the reader is asked to take the central claim on trust while being shown something else. `probe_protocols()` now returns the observations, the test is the obsolete negotiation itself, and the control is the same server speaking something current:
+
+```
+TEST    ->  protocol TLSv1   | cipher ECDHE-ECDSA-AES128-SHA
+CONTROL ->  protocol TLSv1.2 | cipher ECDHE-ECDSA-CHACHA20-POLY1305
+same certificate on both: True
+```
+
+*Found by the operator reading the JSON and asking whether the finding was correct. It was; the evidence for it was not.*
+
 ### True positives on the operator's own infrastructure
 
 - `erp.codez.in` serves a Let's Encrypt certificate that expired **2026-05-10** — confirmed by hand.
 - Both ERP hosts still accept **TLS 1.0**.
 - `kinetrix.in` publishes `p=none`, so mail can be forged as it today.
+- `kinetrix.co.in` accepts **TLS 1.0 and 1.1** as well as 1.2 and 1.3 — confirmed with `openssl s_client -tls1 -cipher ALL:@SECLEVEL=0`.
 
 ### Deferred
 

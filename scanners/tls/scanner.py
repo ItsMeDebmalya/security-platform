@@ -153,9 +153,12 @@ class _Scan:
         if self.mode != "light":
             self.ctx.progress("enumerating protocols", 0.75)
             self.ctx.check_alive()
-            self.protocols = self.tls.supported_protocols(
+            self.protocol_observations = self.tls.probe_protocols(
                 self.host, self.port, servername=self.host
             )
+            self.protocols = {
+                label: obs.reachable for label, obs in self.protocol_observations.items()
+            }
             self._check_protocols()
             self._check_certificate_strength()
             self._check_negotiated_suite()
@@ -453,9 +456,16 @@ class _Scan:
             self._clear("tls-protocol-obsolete")
             return
 
+        # The evidence must contain the handshake the finding is about, so the
+        # test is the obsolete negotiation itself and the control is the same
+        # server speaking something current.
+        test = self.protocol_observations.get(offered[0], self.observation)
         control: TlsObservation | None = None
-        if current:
-            control = self.observation
+        for label in current:
+            candidate = self.protocol_observations.get(label)
+            if candidate is not None and candidate.reachable:
+                control = candidate
+                break
 
         self._report(
             "tls-protocol-obsolete",
@@ -476,6 +486,7 @@ class _Scan:
             ),
             signals=[self._signal(CHECKS["tls-protocol-obsolete"], NEGOTIATION)],
             compared_with=control,
+            observed=test,
         )
 
     def _check_certificate_strength(self) -> None:
@@ -618,6 +629,7 @@ class _Scan:
         signals: list[Signal],
         severity: str | None = None,
         compared_with: TlsObservation | None = None,
+        observed: TlsObservation | None = None,
     ) -> None:
         check = CHECKS[check_id]
         self._emit(
@@ -628,6 +640,7 @@ class _Scan:
             signals=signals,
             severity=severity,
             compared_with=compared_with,
+            observed=observed,
         )
         outcome: CheckOutcome = "reported"
         self.checks.append(CheckRun(check_id=check_id, location=self._location(), outcome=outcome))
@@ -642,6 +655,7 @@ class _Scan:
         signals: list[Signal],
         severity: str | None = None,
         compared_with: TlsObservation | None = None,
+        observed: TlsObservation | None = None,
         no_verdict_reason: str | None = None,
     ) -> None:
         result = self.engine.combine(signals)
@@ -650,7 +664,7 @@ class _Scan:
         evidence = [
             tls_evidence(
                 label=f"TLS handshake with {self._location()}",
-                observation=self.observation,
+                observation=observed or self.observation,
                 compared_with=compared_with,
             )
         ]

@@ -519,20 +519,37 @@ class TlsClient:
         raw = self._handshake(host, port, servername)
         return self._interpret(host, port, servername, raw)
 
+    def probe_protocols(
+        self, host: str, port: int = DEFAULT_PORT, *, servername: str | None = None
+    ) -> dict[str, TlsObservation]:
+        """One handshake per protocol version, each pinned to exactly that version.
+
+        Returns the observations rather than booleans, because a finding about
+        an obsolete protocol needs the obsolete handshake as its evidence. The
+        earlier version returned only `True`/`False`, so the finding said "this
+        server completed a handshake using TLS 1.0" while its evidence showed a
+        TLS 1.3 handshake - a claim absent from its own evidence.
+        """
+        observations: dict[str, TlsObservation] = {}
+        for label, version in PROTOCOLS.items():
+            raw = self._handshake(host, port, servername, min_version=version, max_version=version)
+            observations[label] = self._interpret(host, port, servername, raw)
+        return observations
+
     def supported_protocols(
         self, host: str, port: int = DEFAULT_PORT, *, servername: str | None = None
     ) -> dict[str, bool]:
         """Which protocol versions the server will actually negotiate.
 
-        One handshake per version, pinned to exactly that version. Anything the
-        server refuses is a `False`, which is the honest answer even when the
-        refusal is the server protecting itself.
+        Anything the server refuses is a `False`, which is the honest answer
+        even when the refusal is the server protecting itself.
         """
-        results: dict[str, bool] = {}
-        for label, version in PROTOCOLS.items():
-            raw = self._handshake(host, port, servername, min_version=version, max_version=version)
-            results[label] = raw.reachable
-        return results
+        return {
+            label: observation.reachable
+            for label, observation in self.probe_protocols(
+                host, port, servername=servername
+            ).items()
+        }
 
     def _handshake(
         self,

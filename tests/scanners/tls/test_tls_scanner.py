@@ -449,3 +449,38 @@ def test_a_refused_handshake_is_still_not_a_scan_error():
 
     assert result.errors == []
     assert result.outcome == "succeeded"
+
+
+# --- the evidence must contain the thing the finding claims -----------------
+
+
+def _obsolete_finding():
+    """A server offering TLS 1.0 *and* a current version - the realistic case."""
+    with lab_server(common_name="localhost", sans=["localhost"]) as srv:
+        return findings(srv, "tls-protocol-obsolete", mode="standard")
+
+
+def test_the_obsolete_protocol_evidence_shows_the_obsolete_handshake():
+    """Found live: the finding said "completed a handshake using TLSv1" while its
+    evidence showed a TLS 1.3 handshake twice - test and control byte-identical.
+    A claim that is not in its own evidence is the one thing this product
+    cannot ship."""
+    found = _obsolete_finding()
+
+    assert found, "lab server should offer TLS 1.0"
+    assert found[0].evidence[0].test["protocol"] in ("TLSv1", "TLSv1.1")
+
+
+def test_the_control_shows_the_server_speaking_something_current():
+    found = _obsolete_finding()
+
+    control = found[0].evidence[0].control
+    assert control is not None
+    assert control["protocol"] in ("TLSv1.2", "TLSv1.3")
+
+
+def test_the_test_and_control_are_not_the_same_observation():
+    found = _obsolete_finding()
+    evidence = found[0].evidence[0]
+
+    assert evidence.test["protocol"] != evidence.control["protocol"]
