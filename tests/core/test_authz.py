@@ -280,3 +280,60 @@ def test_the_denial_message_names_the_host_not_the_raw_string():
     ).reason
 
     assert "example.com" in reason and "https://" not in reason
+
+
+# --- a port names a service --------------------------------------------------
+
+
+def _port_record(value, type_="url"):
+    from core.authz import AuthorisationRecord
+
+    return AuthorisationRecord(
+        authz_id="authz_p",
+        org_id="org_internal",
+        target_type=type_,
+        target_value=value,
+        wildcard=False,
+        method="self_owned",
+        expires_at=date(2027, 1, 1),
+        evidence_file="corpus/authz/x.txt",
+    )
+
+
+def test_a_row_for_one_port_does_not_authorise_another():
+    """Juice Shop on :3000 and VAmPI on :5000 are different services that happen
+    to share a host. A row naming one must not authorise the other."""
+    scope = AuthorisedScope([_port_record("http://127.0.0.1:3000")])
+
+    decision = scope.authorise(
+        _target("http://127.0.0.1:5000", "url"), mode="standard", today=TODAY
+    )
+
+    assert not decision.allowed
+
+
+def test_a_row_for_a_port_authorises_that_port():
+    scope = AuthorisedScope([_port_record("http://127.0.0.1:3000")])
+
+    assert scope.authorise(
+        _target("http://127.0.0.1:3000", "url"), mode="standard", today=TODAY
+    ).allowed
+
+
+def test_a_row_naming_a_port_does_not_authorise_the_bare_host():
+    scope = AuthorisedScope([_port_record("http://127.0.0.1:3000")])
+
+    assert not scope.authorise(_target("127.0.0.1", "ip"), mode="standard", today=TODAY).allowed
+
+
+def test_a_row_without_a_port_still_covers_the_whole_host():
+    """Authorising a domain is about the host. Requiring a port there would mean
+    naming every service separately, which nobody would do correctly."""
+    scope = AuthorisedScope([_port_record("example.com", "domain")])
+
+    for value, kind in [
+        ("example.com", "domain"),
+        ("https://example.com", "url"),
+        ("https://example.com:8443/admin", "url"),
+    ]:
+        assert scope.authorise(_target(value, kind), mode="standard", today=TODAY).allowed, value

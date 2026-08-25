@@ -54,6 +54,24 @@ def host_of(target: Asset) -> str:
     return value.lower().rstrip(".")
 
 
+def port_of(target: Asset) -> int | None:
+    """The port a target names explicitly, or None if it names the whole host.
+
+    A record naming a port names a *service*: Juice Shop on :3000 and VAmPI on
+    :5000 share a host and are not the same asset. A record with no port is
+    about the host, and covers whatever runs on it - which is the right reading
+    for a domain you own, and the only one anybody would maintain correctly.
+    """
+    value = target.value.strip()
+    if "://" in value:
+        return urlsplit(value).port
+    if ":" in value and not value.startswith("["):
+        _, _, port = value.rpartition(":")
+        if port.isdigit():
+            return int(port)
+    return None
+
+
 class AuthorisationDeniedError(PermissionError):
     """Raised when an active scan has no valid authorisation for its target."""
 
@@ -81,8 +99,14 @@ class AuthorisationRecord:
     def covers(self, target: Asset) -> bool:
         # A url target and a domain record can name the same host, so the host
         # is compared rather than the declared type.
+        own_asset = Asset(type="domain", value=self.target_value)
+        own_port = port_of(own_asset)
+        if own_port is not None and port_of(target) != own_port:
+            # This record is about one service, not the whole host.
+            return False
+
         value = host_of(target)
-        own = host_of(Asset(type="domain", value=self.target_value))
+        own = host_of(own_asset)
         if value == own:
             return True
         return self.wildcard and value.endswith("." + own)

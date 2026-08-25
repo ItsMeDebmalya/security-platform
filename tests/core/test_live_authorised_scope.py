@@ -127,6 +127,27 @@ def test_every_row_names_who_verified_it(row):
     assert row.get("verified_by"), f"{row['authz_id']} has no verified_by"
 
 
+def test_no_asset_is_authorised_twice():
+    """Two rows for one asset is what a careless merge of an append-only file
+    produces. The first match wins, so the second row is invisible - including
+    its expiry and its revocation. A revoked row that is silently shadowed by
+    an older one is the worst version of this."""
+    from core.authz import host_of, port_of
+    from core.models import Asset
+
+    def key(row):
+        asset = Asset(type="domain", value=row["target"]["value"])
+        return f"{host_of(asset)}:{port_of(asset) or '*'}"
+
+    keys = [key(row) for row in rows()]
+    duplicates = sorted({k for k in keys if keys.count(k) > 1})
+
+    assert duplicates == [], (
+        f"more than one authorisation row for: {duplicates}. Keep one - the first "
+        "match wins, so a duplicate can silently shadow a revocation."
+    )
+
+
 def test_authz_ids_are_unique():
     ids = [row["authz_id"] for row in rows()]
 
