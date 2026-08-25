@@ -4,11 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository state
 
-**Phase 0 is implemented, and Tool 1 (Email Security) passes its gate.** The Scanner Contract is frozen, `core/` services exist, the CLI runs, and the corpus harness gates on real numbers.
+**Phase 0 is implemented; Tools 1 (Email) and 2 (TLS) pass their gates.** The Scanner Contract is frozen, `core/` services exist, the CLI runs, and the corpus harness gates on real numbers.
 
-Scanners: `example` (reference), `email` (Tool 1 — 17 checks, precision 1.000 / recall 1.000 / 0.8% inconclusive on a 16-case corpus).
+Scanners: `example` (reference), `email` (Tool 1 — 17 checks, 1.000/1.000, 16-case corpus), `tls` (Tool 2 — 13 checks, 1.000/1.000, 14-case corpus, cross-checked against testssl.sh).
 
-Commands: `make install`, `make test`, `make lint`, `make typecheck`, `make licence-check`, `make corpus`, and `scan run <tool> --target <t>`. Python 3.12+, dependencies via `uv`.
+Commands: `make install`, `make test`, `make lint`, `make typecheck`, `make licence-check`, `make corpus`, `make crosscheck`, `make targets-up`, and `scan run <tool> --target <t>`. Python 3.12+, dependencies via `uv`.
 
 Read `docs/14-progress-ledger.md` for where things stand. To operate the CLI, read `docs/12-cli-runbook.md`. For the vulnerable test targets, `docs/13-test-targets.md` (`make targets-up`). To add a scanner, read `docs/how-to-add-a-scanner.md`.
 

@@ -123,40 +123,56 @@ Not on the plan, built because the work needed it.
 
 ---
 
-## 2026-08-24 · Tool 2 — SSL/TLS Analyzer *(in progress)*
+## 2026-08-24 · Tool 2 — SSL/TLS Analyzer
 
-**Plan:** [05-phase-1-first-tools.md](05-phase-1-first-tools.md) · **Gate: precision ≥ 0.98, recall ≥ 0.95** · **Status: foundation only — no scanner yet**
+**Plan:** [05-phase-1-first-tools.md](05-phase-1-first-tools.md) · **Gate: precision ≥ 0.98, recall ≥ 0.95, inconclusive ≤ 15%** · **Status: passing**
+
+```
+scanner   checks   TP   FP   FN  precision   recall   susp%  inconc%  gate
+tls          121    5    0    0      1.000    1.000    6.6%     0.0%  PASS
+```
+
+Plus **67 facts cross-checked against testssl.sh across 6 servers, no disagreements**, and live verification against six `badssl.com` subdomains.
 
 ### Built
 
-- **[ADR-016](02-decisions.md#adr-016--build-our-own-tls-engine-keep-testsslsh-as-a-cross-check)** — build our own TLS engine rather than wrapping `testssl.sh`, which reverses what the phase plan says. testssl.sh is retained as a corpus cross-check. Answers [Q12b](07-open-questions.md).
-- `corpus/generators/tls_lab.py` — mints certificates with any named defect and serves them over real TLS on loopback. Verified across seven cases: healthy, expired, expiring-soon, 1024-bit key, SHA-1 signature, TLS 1.0 ceiling, wrong hostname.
-- `cryptography` added as a dependency (Apache-2.0), registered.
+- **[ADR-016](02-decisions.md#adr-016--build-our-own-tls-engine-keep-testsslsh-as-a-cross-check)** — build our own TLS engine rather than wrapping `testssl.sh`. Reverses the phase plan, so it got an ADR. Answers Q12b.
+- `core/tls.py` — **two contexts that do opposite jobs**. `_observing_context()` is deliberately permissive so obsolete servers can be observed at all; `_verifying_context()` uses the real trust store and reports OpenSSL's own reason. Running both against one server *is* the control-vs-test pair the contract requires, so the evidence falls out of the design rather than being reconstructed.
+- `corpus/generators/tls_lab.py` — mints certificates with any named defect and serves them over real TLS on loopback, including three-level chains.
+- **13 checks** — 7 Light, 6 Standard. 14-case frozen corpus.
+- `tls_handshake` evidence gained a real shape (contract addition, [08-changelog.md](08-changelog.md)).
+- `corpus/crosscheck/testssl.py` + `tools/fetch-testssl.sh` — the independent second opinion, pinned by SHA-256.
 
-### Found
+### Found & fixed
 
-Nothing broken yet — the scanner does not exist. These are constraints discovered by spiking before writing it, which is why they are recorded now rather than after they have caused a bug.
+**A correctly configured TLS client is blind to the servers we are paid to find.** Python's default client refuses to handshake with a server running TLS 1.0 — the exact misconfiguration worth reporting. A scanner inheriting that safety floor reports "connection failed" for every insecure server and looks like it is working. **The corpus would not have caught it**, because the cases would have been built on the same assumption. Found by spiking before writing the scanner; the pair of tests asserting both halves is in `tests/core/test_tls.py`.
 
-**A correctly configured TLS client is blind to the servers we are paid to find.** Python's default client refuses to complete a handshake with a server running TLS 1.0 — obsolete, and exactly the misconfiguration worth reporting. Against the same lab server:
+**`untrusted-root.badssl.com` was reported as a self-signed certificate.** Its subject is `CN=*.badssl.com` and its issuer `CN=BadSSL Untrusted Root CA` — plainly different. OpenSSL code 19 is `SELF_SIGNED_CERT_IN_CHAIN`, which says a root in the chain signs for itself, and **every root does**. Code 18 is the one that means the *leaf* does. Split into `tls-untrusted-root`, a different problem with different remediation.
 
-```
-normal client      REFUSED    (TLSV1_ALERT_PROTOCOL_VERSION)
-scanner client     connected  (TLSv1, ECDHE-RSA-AES256-SHA)
-```
+**The same conflation, made twice.** The first draft of the testssl cross-check read `cert_chain_of_trust` — "failed (self signed CA in chain)" — as "the leaf is self-signed", and generated five false disagreements. Two files, one afternoon, one misunderstanding. Both now carry a test named after it.
 
-A scanner that inherits the safety floor reports "connection failed" for every insecure server and looks like it is working. **The corpus would not have caught it**, because the test cases would have been built on the same broken assumption. `core/tls.py` therefore probes permissively and judges afterwards.
+**A hostname mismatch had no second opinion.** Only our own RFC 6125 matcher had a view, so it sat at `suspected`. Added an independent probe: trust the system store *and* the server's own leaf, with hostname checking on — trust is then satisfied either way, so the only thing OpenSSL can still object to is the name. Two implementations of one rule, and when they disagree the finding stays at one signal, which is the right response to not knowing which is wrong.
 
-The cost of that is a footgun: a permissive context accepts forged and expired certificates. It must only ever read what a server presents, never fetch content, or HTTPS is silently disabled for that request. Written into [06-guidelines.md](06-guidelines.md) as an engineering rule, and the two contexts will be separately named so they cannot be confused in review.
+**Anchoring on the leaf alone was not enough**, and the lab hid it. That works for a self-signed certificate but a real chain needs its issuer, so the lab passed while `wrong.host.badssl.com` produced no verdict at all. Later the same probe was found ignoring the *configured* anchor, so private certificates got no second opinion either.
 
-**Python 3.12's `ssl` exposes no certificate chain.** `get_unverified_chain()` arrived in 3.13. Chain completeness — a server that forgets to send its intermediates, which works in some browsers and fails in others — will be detected behaviourally instead, by whether a verifying context can build a path to a trusted root. That measures what a user actually experiences rather than inspecting bytes, so it is the better check regardless of the library limitation.
+**The scheme, not the declared type, decides how a target is parsed.** `--target-type` defaults to `domain`, so a pasted URL made the host the literal string `https://www.google.com`: every check inconclusive on a site with nothing wrong, and the scope refusing its own target as third-party. Same root cause in `_endpoint()` and `Scope.for_target()`.
 
-**`cryptography` 50 removed SHA-1 signing.** The right default, and unhelpful when a deprecated signature is the fixture you need. That one case shells out to the `openssl` binary. Fixture generation only; nothing ships, and openssl is not a runtime dependency of any scanner.
+**Three faults in the ground truth, not the scanner.** The lab CA had no `basicConstraints: CA:TRUE`, so OpenSSL would not use it to sign and path building failed at the first step — every case was silently an untrusted-chain case. Lab servers ran at `@SECLEVEL=0` (needed to serve weak keys at all) and therefore also accepted TLS 1.0, making every case an obsolete-protocol case. And a two-level chain cannot express an incomplete chain: if the signer *is* the trusted root, no intermediate is needed and the path builds fine. **Ground truth that is wrong produces a green gate and a scanner nobody should trust.**
 
-**OpenSSL 3.0 will not *serve* a 1024-bit key** at its default security level (`EE_KEY_TOO_SMALL`), so lab servers run at `@SECLEVEL=0`. Without it the weak-key case cannot be stood up at all.
+**`--severity LOW` made the cross-check nearly useless.** It drops findings rated OK — precisely the facts we agree on. Removing it took the comparison from 6 facts to 67.
 
-### Open
+### Decided
 
-- ~~Whether the A+–F grade ships with Tool 2.~~ **Deferred** — see D9.
+- **The permissive context observes; it never fetches.** Recorded as an engineering rule in [06-guidelines.md](06-guidelines.md). It accepts forged and expired certificates by design, so reusing it to retrieve content silently disables HTTPS for that request.
+- **Expiry is read from the certificate, not from the verify verdict.** OpenSSL reports only its *first* objection — an expired and self-signed certificate comes back as "self-signed" alone.
+- **Chain completeness is detected behaviourally.** Python 3.12 exposes no certificate chain (`get_unverified_chain()` is 3.13), so we ask whether a verifying context can build a path. That measures what a visitor experiences rather than what the bytes contain, and is the better check regardless of the library limitation.
+- **Replay computes days-until-expiry against `observed_at`.** Otherwise every frozen fixture silently becomes an expiry finding as it ages and the corpus rots untouched.
+- **The cross-check compares observations, not verdicts**, and is not part of any gate — GPLv2, slow, and a gate depending on a third-party tool being installed breaks on someone else's machine.
+
+### Honest limits
+
+- **Precision 1.000 rests on 5 claims, not 121 checks.** The other findings surface as `suspected` because they rest on a single independence class: `expiring-soon` is arithmetic on one certificate field, and `untrusted-root` and `chain-incomplete` are only knowable from path building. [10-measurement.md](10-measurement.md) excuses hedged findings from both true positives and false negatives, so this does not distort the numbers — but the numbers are thinner than they look.
+- **`tls-weak-cipher` has no positive case and will not get one here.** RC4 and 3DES are compiled out of OpenSSL 3 — verified by trying to serve them, not assumed. → D11
 
 ---
 
@@ -175,17 +191,15 @@ Single source of truth for what is owed. Move an item out only when it lands.
 | **D7** | **CoreDNS container serving a local authoritative zone** | Standard-mode testing needs a zone we control. A local authoritative server on a reserved name (`sptest.test`) would make `self_owned` honest, exercise the real dnspython path instead of a fake resolver, and let us author any scenario — 11-lookup chains, weak DKIM keys, malformed DMARC — against real DNS. ~1 hour. Not built because Light-mode sweeps proved higher value first | Standard-mode live testing; a better Tool 1 corpus |
 | **D9** | The A+–F TLS grade | Deferred 2026-08-24 by decision. A grade is an opinion, and opinions get argued with; facts ("expires in 5 days", "accepts TLS 1.0") do not. Easy to add later, hard to change once customers have built expectations on a score. If it ships, [05-phase-1-first-tools.md](05-phase-1-first-tools.md) requires the full rubric be visible | Nothing |
 | **D10** | HSTS checks in Tool 2 | [05-phase-1-first-tools.md](05-phase-1-first-tools.md) lists HSTS under TLS Standard, but it is an HTTP response header, so it needs an HTTPS GET and therefore HTTP record/replay (**D2**) before its corpus cases can be frozen | Nothing; Tool 2 gates without it |
+| **D11** | A positive corpus case for `tls-weak-cipher` | RC4 and 3DES are compiled out of OpenSSL 3, so the lab cannot serve one at any security level — verified by trying. Needs either a different TLS implementation for the lab, or a recorded handshake from a real server still offering one | Nothing; Tool 2 gates without it |
 | **D8** | `evidence_file` existence check in `core/authz.py` | The loader checks the field is present, not that the file exists, so a scope file stays loadable outside the repo. Enforced on the committed file by test instead | Nothing; it is a belt-and-braces item |
 
 ---
 
 ## Next
 
-**Tool 2 — SSL/TLS Analyzer**, continuing. The engine question is settled ([ADR-016](02-decisions.md#adr-016--build-our-own-tls-engine-keep-testsslsh-as-a-cross-check)) and the ground-truth lab exists. Remaining:
+**Tool 3 — DNS & Subdomain Enumeration (Light).** Gate: precision ≥ 0.95, **recall ≥ 0.80 corpus-relative**.
 
-1. `core/tls.py` — the one TLS client. Two probes: a permissive one that retrieves the certificate even when verification would fail, and a verifying one that reports exactly why it did not trust it. That pair *is* the control-vs-test evidence the contract requires. Plus record/replay, so corpus runs stay offline.
-2. A real shape for `tls_handshake` evidence — currently a reserved placeholder in `contracts/evidence.schema.json`. A contract addition, like `analysis` was.
-3. The scanner — Light: validity, expiry, issuer, hostname match, chain completeness, self-signed/untrusted. Standard: protocol versions, ciphers, PFS, HSTS, CT, key strength, signature algorithm.
-4. Corpus, gate, and the testssl.sh cross-check harness per ADR-016.
+The recall figure is the thing to get right before writing any of it. "All subdomains that exist" is not a knowable set, so recall here is measured against the corpus's known set only, and [10-measurement.md](10-measurement.md) requires every published number to say which kind it is. Reporting corpus-relative recall as though it were absolute is the specific dishonesty this product exists to avoid.
 
-`badssl.test` is already authorised in `config/authorised_scope.yaml` and remains the independent second corpus — the role the second resolver plays for email. Recall is true recall here, as with email: the protocol, cipher and certificate surface is finite.
+This tool also matters disproportionately because **it produces the asset list every other tool scans** — its output is Tool 2's input.
