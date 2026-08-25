@@ -31,6 +31,14 @@
     wildcard: true                   # true also covers api.acme.example and any
                                      # other subdomain. false covers the exact
                                      # name only - the safer default.
+                                     #
+                                     # PORTS: a value naming a port authorises
+                                     # that SERVICE and nothing else, so
+                                     # http://10.0.0.5:3000 does not cover
+                                     # :5000 on the same host. A value with no
+                                     # port is about the host and covers every
+                                     # service on it. Name the port when the
+                                     # host runs things you do not control.
 
   method: dns_txt                    # how control was proven. See docs/09 for the
                                      # method required per target type; IP ranges

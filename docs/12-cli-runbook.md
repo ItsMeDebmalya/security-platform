@@ -320,6 +320,12 @@ Note 17 checks rather than 9 — but the *same* two findings. **Modes are additi
 
 Authorisation is refused for an entry that is expired, revoked, or absent. `wildcard: false` means the record covers `your-domain.example` and **not** `api.your-domain.example`.
 
+**An authorisation is about an asset, so the form you type does not matter** — a bare domain, a URL and a `host:port` all match the same row, and authorising `example.com` covers `https://example.com/path`.
+
+**A port names a service.** A row for `http://10.0.0.5:3000` authorises that service and nothing else — not `:5000` on the same host. A row with no port is about the host and covers everything on it. Name the port when a host runs services you do not control; leave it off for a domain you own.
+
+**No asset may be authorised twice.** The first matching row wins, so a duplicate silently shadows the later one — including its expiry and its revocation. A test fails the build on duplicates, because an append-only file merged carelessly is exactly how you get one.
+
 ---
 
 ## 6. Record and replay
