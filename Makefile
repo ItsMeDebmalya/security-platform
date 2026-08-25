@@ -1,6 +1,6 @@
 UV := uv
 
-.PHONY: install test lint format typecheck licence-check targets-up targets-down targets-status corpus scan check
+.PHONY: install test lint format typecheck licence-check targets-up targets-down targets-status crosscheck corpus scan check
 
 install:
 	$(UV) sync
@@ -33,6 +33,10 @@ targets-down:
 
 targets-status:
 	@docker compose ps --format 'table {{.Name}}\t{{.Status}}\t{{.Ports}}'
+
+crosscheck:
+	@test -x tools/bin/testssl.sh-3.2.4/testssl.sh || tools/fetch-testssl.sh
+	$(UV) run python -m corpus.crosscheck.testssl
 
 corpus:
 	$(UV) run python -m cli.corpus
