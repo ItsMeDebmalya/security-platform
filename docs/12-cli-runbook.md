@@ -30,9 +30,10 @@ $ uv run scan list
 name         version    modes                    target types
 email        1.0.0      light,standard           domain
 example      1.0.0      light,standard           domain
+tls          1.0.0      light,standard           domain,ip,url
 ```
 
-`example` is the reference scanner — a deliberately trivial "does this domain have an A record" check that exists to exercise the plumbing. `email` is Tool 1.
+`example` is the reference scanner — a deliberately trivial "does this domain have an A record" check that exists to exercise the plumbing. `email` is Tool 1 and `tls` is Tool 2; both pass their accuracy gates.
 
 > Every command below is written as `uv run scan …`. If you have activated the venv (`source .venv/bin/activate`) you can drop the `uv run` prefix.
 
@@ -49,6 +50,8 @@ example      1.0.0      light,standard           domain
 | `make licence-check` | Fail if a dependency's licence breaks [ADR-003](02-decisions.md#adr-003--permissive-open-source-or-we-build-it-ourselves) |
 | `make corpus` | Score every scanner against its ground-truth corpus |
 | `uv run python -m cli.corpus --check-baseline` | The CI gate: fail on any regression |
+| `make targets-up` / `make targets-down` | The vulnerable applications, on loopback ([13-test-targets.md](13-test-targets.md)) |
+| `make crosscheck` | Compare our TLS observations against testssl.sh. Optional, slow, not a gate. |
 
 ### `scan run` options
 
@@ -210,6 +213,40 @@ Three things to notice, because they are the product:
 2. **`validation.outcome: passed`** is what earned `confirmed`. A high confidence score alone never earns it — the finding was re-read through a second, independent resolver, and both agreed. If they had disagreed, the finding would be downgraded to `suspected` with confidence capped at 0.5, **not** deleted.
 3. **`confidence_provisional: true`** and it will stay true for a long time. Confidence comes from hand-assigned priors until calibration in Phase 4, and for low-volume checks it may be permanent. Do not present these numbers as calibrated probabilities.
 
+### The same idea in TLS
+
+The TLS analyser gets its control-vs-test pair from the design rather than from extra work. It makes **two** connections: one with a deliberately permissive client that will talk to anything, and one with a strict client that behaves like a browser.
+
+```bash
+$ uv run scan run tls --target https://expired.badssl.com --mode light
+
+tls 1.0.0 light https://expired.badssl.com -> succeeded
+
+severity  conf   state          check                            location
+critical  1.00   highly_likely  tls-cert-expired                 expired.badssl.com:443
+
+7 check(s) ran, 0% inconclusive, 1 request(s)
+```
+
+```jsonc
+"evidence": [{
+  "kind": "tls_handshake",
+  "test":    { "protocol": "TLSv1.2",
+               "certificate": { "not_after": "2015-04-12T23:59:59+00:00", … } },
+  "control": { "trusted": false, "verify_code": 10,
+               "verify_message": "certificate has expired" },
+  "control_rationale": "the verdict of a strictly-configured client against the same
+                        server; the observation was taken permissively so the
+                        handshake could complete at all"
+}]
+```
+
+**The permissive client is not carelessness — it is the point.** A client carrying the normal safety floor *refuses to complete a handshake* with a server running TLS 1.0, and those servers are exactly what this scanner exists to find. A scanner that inherits the floor reports "connection failed" for every insecure server and looks like it is working.
+
+That client accepts forged and expired certificates by design, so it **observes and never fetches** ([06-guidelines.md](06-guidelines.md)). Reusing it to retrieve content would silently disable HTTPS for that request.
+
+The state is `highly_likely` from two independence classes: we read the date out of the certificate, and path building independently refused it.
+
 ### Piping
 
 ```bash
@@ -357,7 +394,11 @@ email          240   21    0    0      1.000    1.000   0.0%    0.8%  PASS
            recall is absolute (the true set is knowable for this scanner)
 example          3    2    0    0      1.000    1.000   0.0%    0.0%  PASS
            recall is absolute (the true set is knowable for this scanner)
+tls            121    5    0    0      1.000    1.000   6.6%    0.0%  PASS
+           recall is absolute (the true set is knowable for this scanner)
 ```
+
+**Read the suspected column, not just precision.** The TLS row's 1.000 rests on **5 claims, not 121 checks** — most TLS findings sit on a single independence class and surface as `suspected`, which the gate excuses from both true positives and false negatives. The numbers are honest; they are also thinner than they look, and `susp%` is where that shows.
 
 - **precision** = of what we claimed, how much was real
 - **recall** = of what was really there, how much we caught
@@ -397,6 +438,27 @@ example          3    2    0    0      1.000    1.000  33.3%    0.0%  FAIL
 ```
 
 Note that precision still reads 1.000. The false positive surfaced as `suspected` (the independent re-query disagreed with it), and `suspected` is excluded from precision by design. **On a known-good target it still counts as a false positive** — there is nothing to be uncertain about on an asset we know is correct, so a hedge there is a false positive wearing a hedge. That rule exists because this exact scenario slipped through the first version of the check.
+
+### The second opinion
+
+The TLS analyser is our own engine, not a wrapper around `testssl.sh` ([ADR-016](02-decisions.md#adr-016--build-our-own-tls-engine-keep-testsslsh-as-a-cross-check)) — but testssl.sh is kept as an independent cross-check. It compares **observations, not verdicts**: whether a 1024-bit key is "high" or "critical" is an opinion we are entitled to hold; whether the key *is* 1024 bits is a fact, and two implementations disagreeing about a fact means one has a bug.
+
+```
+$ make crosscheck
+  healthy              11/11 facts agreed  (55 testssl findings)
+  expired              11/11 facts agreed
+  expiring-soon        11/11 facts agreed
+  weak-key             11/11 facts agreed
+  self-signed          12/12 facts agreed
+  obsolete-protocol    11/11 facts agreed
+
+67 facts compared across 6 cases
+no disagreements
+```
+
+The comparison that carries the others is the **certificate fingerprint**: if both tools report the same SHA-256, they are demonstrably looking at the same certificate.
+
+Not part of any gate — testssl.sh is GPLv2, runs as a separate process, is slow, and a gate depending on a third-party tool being installed breaks on someone else's machine.
 
 ### Updating the baseline
 
@@ -505,7 +567,10 @@ Stated plainly so nobody plans around a capability that is not there.
 | `lookalike-domain` | Needs RDAP over HTTP plus a permutation engine; larger than the rest of Tool 1 combined |
 | BIMI checks | Its absence is a branding gap, not a security finding |
 | HTTP record/replay | DNS only so far. The HTTP client captures redacted, size-capped pairs but has no replay backend. |
-| Any scanner other than `email` | TLS is Tool 2 |
+| DNS enumeration, web scanning | Tools 3 and 4. Two of four in Phase 1 are done. |
+| The A+ to F TLS grade | Deferred by decision — a grade is an opinion and opinions get argued with; "expires in 5 days" does not. Easier to add later than to change once people have built expectations on a score. |
+| HSTS checks | An HTTP response header, so it needs HTTP record/replay first |
+| A `tls-weak-cipher` corpus case | RC4 and 3DES are compiled out of OpenSSL 3, so the lab cannot serve one at any security level — verified by trying, not assumed |
 | Calibrated confidence | Phase 4. Everything is `confidence_provisional: true`. |
 | The OOB callback server | Phase 2a. The client is a stub that raises, and a scanner meeting it must return `inconclusive`. |
 
