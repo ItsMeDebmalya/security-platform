@@ -7,6 +7,12 @@
 #   scripts/authorise-domain.sh example.com --check '<nonce>'
 #
 #   scripts/authorise-domain.sh 203.0.113.7 --self-owned "our Hetzner box, invoice 12345"
+#   scripts/authorise-domain.sh example.com  --self-owned "ours" --wildcard
+#   scripts/authorise-domain.sh --self-owned "all ours" a.example b.example 1.2.3.4
+#
+# --wildcard also covers every subdomain. Convenient, and worth a moment's
+# thought: it authorises active scanning of anything anyone ever puts under
+# that name.
 #
 # The --self-owned form is for an asset you control but cannot prove control of
 # by publishing DNS - a bare IP, or a domain whose zone someone else edits. It
@@ -41,6 +47,29 @@ VALID_DAYS=90
 die() { printf '\n\033[31merror:\033[0m %s\n' "$*" >&2; exit 1; }
 say() { printf '\033[36m%s\033[0m\n' "$*"; }
 
+# --- batch form: one note, several targets ----------------------------------
+#
+#   scripts/authorise-domain.sh --self-owned "<note>" a.example b.example 1.2.3.4
+#
+# Re-invokes itself once per target so every row goes through exactly the same
+# path as a single attestation, including the guards.
+
+if [ "${1:-}" = "--self-owned" ]; then
+  BATCH_NOTE="${2:-}"
+  shift 2 || true
+  [ -n "$BATCH_NOTE" ] || die "usage: $0 --self-owned \"<why you control them>\" <target>..."
+  [ $# -gt 0 ] || die "no targets given.
+       usage: $0 --self-owned \"<why you control them>\" <target>..."
+
+  batch_status=0
+  for one in "$@"; do
+    echo
+    echo "--- ${one} ---"
+    "$0" "${one}" --self-owned "${BATCH_NOTE}" || batch_status=1
+  done
+  exit "${batch_status}"
+fi
+
 # --- arguments --------------------------------------------------------------
 
 DOMAIN="${1:-}"
@@ -49,10 +78,11 @@ CHECK_ONLY=0
 CHECK_NONCE=""
 SELF_OWNED=0
 ATTESTATION=""
+WILDCARD=false
 case "${2:-}" in
   --dry-run)    DRY_RUN=1 ;;
   --check)      CHECK_ONLY=1; CHECK_NONCE="${3:-}" ;;
-  --self-owned) SELF_OWNED=1; ATTESTATION="${3:-}" ;;
+  --self-owned) SELF_OWNED=1; ATTESTATION="${3:-}"; [ "${4:-}" = "--wildcard" ] && WILDCARD=true ;;
   "")           ;;
   *)            die "unknown option ${2}" ;;
 esac
@@ -187,7 +217,7 @@ EOF
 
 - authz_id: ${AUTHZ_ID}
   org_id: org_internal
-  target: { type: ${TARGET_TYPE}, value: ${DOMAIN}, wildcard: false }
+  target: { type: ${TARGET_TYPE}, value: ${DOMAIN}, wildcard: ${WILDCARD} }
   method: self_owned
   proof:
     observed: 'operator attestation: ${ATTESTATION}'

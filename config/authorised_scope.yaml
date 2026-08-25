@@ -149,3 +149,99 @@
   expires_at: 2026-11-22
   verified_by: operator:satwik
   attestation_ref: null
+
+# --- codez.in ---------------------------------------------------------------
+#     Attested 2026-08-25: owned and operated by us; DNS is managed outside our direct control, so attested rather than nonce-verified
+
+- authz_id: authz_2026-08-25-715
+  org_id: org_internal
+  target: { type: domain, value: codez.in, wildcard: false }
+  method: self_owned
+  proof:
+    observed: 'operator attestation: owned and operated by us; DNS is managed outside our direct control, so attested rather than nonce-verified'
+    observed_at: 2026-08-25T00:00:00Z
+    evidence_file: corpus/authz/codez.in-2026-08-25.txt
+  verified_at: 2026-08-25
+  expires_at: 2026-11-23
+  verified_by: operator:satwik
+  attestation_ref: null
+
+# --- erp.codez.in ---------------------------------------------------------------
+#     Attested 2026-08-25: owned and operated by us; DNS is managed outside our direct control, so attested rather than nonce-verified
+
+- authz_id: authz_2026-08-25-983
+  org_id: org_internal
+  target: { type: domain, value: erp.codez.in, wildcard: false }
+  method: self_owned
+  proof:
+    observed: 'operator attestation: owned and operated by us; DNS is managed outside our direct control, so attested rather than nonce-verified'
+    observed_at: 2026-08-25T00:00:00Z
+    evidence_file: corpus/authz/erp.codez.in-2026-08-25.txt
+  verified_at: 2026-08-25
+  expires_at: 2026-11-23
+  verified_by: operator:satwik
+  attestation_ref: null
+
+# --- kinetrix.in ---------------------------------------------------------------
+#     Attested 2026-08-25: owned and operated by us; DNS is managed outside our direct control, so attested rather than nonce-verified
+
+- authz_id: authz_2026-08-25-957
+  org_id: org_internal
+  target: { type: domain, value: kinetrix.in, wildcard: false }
+  method: self_owned
+  proof:
+    observed: 'operator attestation: owned and operated by us; DNS is managed outside our direct control, so attested rather than nonce-verified'
+    observed_at: 2026-08-25T00:00:00Z
+    evidence_file: corpus/authz/kinetrix.in-2026-08-25.txt
+  verified_at: 2026-08-25
+  expires_at: 2026-11-23
+  verified_by: operator:satwik
+  attestation_ref: null
+
+# --- kinetrix.co.in ---------------------------------------------------------------
+#     Attested 2026-08-25: owned and operated by us; DNS is managed outside our direct control, so attested rather than nonce-verified
+
+- authz_id: authz_2026-08-25-722
+  org_id: org_internal
+  target: { type: domain, value: kinetrix.co.in, wildcard: false }
+  method: self_owned
+  proof:
+    observed: 'operator attestation: owned and operated by us; DNS is managed outside our direct control, so attested rather than nonce-verified'
+    observed_at: 2026-08-25T00:00:00Z
+    evidence_file: corpus/authz/kinetrix.co.in-2026-08-25.txt
+  verified_at: 2026-08-25
+  expires_at: 2026-11-23
+  verified_by: operator:satwik
+  attestation_ref: null
+
+# --- 144.76.19.84 ---------------------------------------------------------------
+#     Attested 2026-08-25: our Hetzner server (rDNS static.84.19.76.144.clients.your-server.de); attested by the operator
+
+- authz_id: authz_2026-08-25-572
+  org_id: org_internal
+  target: { type: ip, value: 144.76.19.84, wildcard: false }
+  method: self_owned
+  proof:
+    observed: 'operator attestation: our Hetzner server (rDNS static.84.19.76.144.clients.your-server.de); attested by the operator'
+    observed_at: 2026-08-25T00:00:00Z
+    evidence_file: corpus/authz/144.76.19.84-2026-08-25.txt
+  verified_at: 2026-08-25
+  expires_at: 2026-11-23
+  verified_by: operator:satwik
+  attestation_ref: null
+
+# --- erp.kinetrix.co.in ---------------------------------------------------------------
+#     Attested 2026-08-25: our ERP host; same domain family as kinetrix.co.in, attested by the operator
+
+- authz_id: authz_2026-08-25-520
+  org_id: org_internal
+  target: { type: domain, value: erp.kinetrix.co.in, wildcard: false }
+  method: self_owned
+  proof:
+    observed: 'operator attestation: our ERP host; same domain family as kinetrix.co.in, attested by the operator'
+    observed_at: 2026-08-25T00:00:00Z
+    evidence_file: corpus/authz/erp.kinetrix.co.in-2026-08-25.txt
+  verified_at: 2026-08-25
+  expires_at: 2026-11-23
+  verified_by: operator:satwik
+  attestation_ref: null

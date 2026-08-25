@@ -88,7 +88,7 @@ class AuthorisationRecord:
         return self.wildcard and value.endswith("." + own)
 
     def authz_ref(self, target: Asset) -> str:
-        return f"allowlist:{self.authz_id}#{target.value}"
+        return f"allowlist:{self.authz_id}#{host_of(target)}"
 
 
 def _record_from_row(row: dict[str, Any], source: Path) -> AuthorisationRecord:

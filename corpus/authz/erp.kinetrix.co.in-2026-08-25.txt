@@ -1,0 +1,25 @@
+# Attestation of control for erp.kinetrix.co.in
+# Method: self_owned (docs/09-ownership-verification.md)
+# Attested: 2026-08-25 by operator:satwik
+#
+# our ERP host; same domain family as kinetrix.co.in, attested by the operator
+#
+# ---------------------------------------------------------------------------
+# WHAT THIS IS, AND WHAT IT IS NOT
+# ---------------------------------------------------------------------------
+#
+# This is an ATTESTATION, not a verification. Nothing was checked. A named
+# person stated that they control this asset and accepted responsibility for
+# that statement, and docs/09 permits exactly that - as an explicit row with a
+# note, never as an implicit exemption.
+#
+# It is the right method when control is real but not provable by publishing
+# DNS: a bare IP address, a host inside a network we run, a domain whose zone
+# is edited by someone else in the same organisation.
+#
+# It is the WRONG method for anything belonging to a customer, a prospect, or
+# a third party who merely publishes an invitation to scan. Those need the
+# dns_txt flow, and if that is not possible then the scan does not happen.
+#
+# Prefer verification where it is available:
+#     ./scripts/authorise-domain.sh erp.kinetrix.co.in
