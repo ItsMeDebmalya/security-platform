@@ -187,3 +187,50 @@ def test_a_case_whose_fixtures_are_incomplete_fails_that_case_not_the_whole_run(
 
     assert not report["passed"]
     assert "re-record" in report["reason"]
+
+
+# --- the tls scanner --------------------------------------------------------
+
+
+def test_the_tls_scanner_passes_its_gate():
+    report = run_scanner_corpus("tls")
+
+    assert report["passed"], report["reason"]
+
+
+def test_the_tls_gate_is_the_one_the_roadmap_sets():
+    report = run_scanner_corpus("tls")
+
+    assert report["gate"]["precision"] == 0.98
+    assert report["gate"]["recall"] == 0.95
+
+
+def test_no_finding_at_all_on_a_healthy_tls_server():
+    report = run_scanner_corpus("tls")
+
+    assert report["false_positives_on_known_good"] == 0
+
+
+def test_an_unreachable_tls_target_returns_inconclusive_rather_than_erroring():
+    report = run_scanner_corpus("tls")
+    case = next(c for c in report["cases"] if c["id"] == "unreachable")
+
+    assert case["inconclusive_delivered"] is True
+    assert case["errors"] == []
+
+
+def test_every_tls_check_has_a_corpus_case():
+    from scanners.tls.checks import CHECKS
+
+    report = run_scanner_corpus("tls")
+    covered = {
+        expected["check_id"] for case in report["cases"] for expected in case.get("expected", [])
+    }
+    # Two checks have no positive case, and the reasons differ:
+    #   tls-weak-cipher - RC4 and 3DES are compiled out of OpenSSL 3, so the lab
+    #     cannot serve one at any security level. Verified, not assumed. D11.
+    #   tls-no-certificate-transparency - informational, and docs/10-measurement
+    #     excludes informational findings from the gate entirely.
+    uncovered = {"tls-weak-cipher", "tls-no-certificate-transparency"}
+
+    assert set(CHECKS) - uncovered - covered == set()

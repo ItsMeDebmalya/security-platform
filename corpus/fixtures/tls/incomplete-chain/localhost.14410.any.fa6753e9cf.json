@@ -1,0 +1,13 @@
+{
+  "cipher": "TLS_AES_256_GCM_SHA384",
+  "cipher_bits": 256,
+  "error": null,
+  "observed_at": "2026-08-25T05:18:38.492766+00:00",
+  "openssl_hostname_match": null,
+  "peer_der_b64": "MIIC4DCCAcigAwIBAgIUT31uNDUdETtzrd96Y1WN7knH0y0wDQYJKoZIhvcNAQELBQAwJjEkMCIGA1UEAwwbbG9jYWxob3N0IFRlc3QgSW50ZXJtZWRpYXRlMB4XDTI2MDcyNjA1MTgzOFoXDTI3MDgyNTA1MTgzOFowFDESMBAGA1UEAwwJbG9jYWxob3N0MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAiMSSwKEVZ7ft4ZqCLg96NNPuGqKrJf1T/vc4LSsfhEIp8h5WLsSg3R8EzcWePLxSEkttxE/M0sLQvBLBiBxVKTUNAtEtoAuvqCcq+a5SS+xbicA9AryxCCPs9JlDCM994kD628F919jmX48JCFuwvMoxDB71GIqSDYi10ILXUr7jnyZ064hdrm5+tiOf7IOusWL9OGJvA0DxBTtN9pb0FUAqL6CI94OLjzzIGD/okOSGlEnFMVYAmQKnBQOb1eI/sv/5LIGZGddLbzF+leqShe3m2kSLFAU/AVDU8Z+8ze1qou+YsQ/BL2pwOx4aWJEXDGQZGm5cMnL6PC4KksBnuwIDAQABoxgwFjAUBgNVHREEDTALgglsb2NhbGhvc3QwDQYJKoZIhvcNAQELBQADggEBAODKdq71lRH8GlCjh2XkTlXzWZDxNhh4i+vMpRMakbDJu9CapKvoaKaG2RmP8Ye4oXMjk+eoR5eg0blgbNO/WdL7WbdGBKyBDWJ4sYr7LDmd85frgdyzHNKAiSnIQhorADWJjJQuL7wZrIsgTEYH/jPgPzhSjvSSVrHZhBGrLtunl0qf9To+X6S2l/f9A0IXfApnYEYViYvQiZsUGgdi1ZNXFgqy+cWSLsS8/ySsLonv2b5lvHh6UB9+FlMnxY1ET1ptqtDZ6QTZ2TYz0wyMIP4kU5TRWngqT6wzbsbDnjYB1Faow2+PscL625k4M8N7aAq4YLBj9cPtweJ5Kr79GZU=",
+  "protocol": "TLSv1.3",
+  "reachable": true,
+  "trusted": false,
+  "verify_code": 20,
+  "verify_message": "unable to get local issuer certificate"
+}

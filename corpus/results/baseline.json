@@ -455,5 +455,293 @@
         "tp": 2
       }
     }
+  },
+  {
+    "cases": [
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [],
+        "fn": 0,
+        "fp": 0,
+        "id": "healthy",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "tier": "known_good",
+        "tp": 0
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [
+          {
+            "check_id": "tls-cert-expired",
+            "location": "localhost:14401"
+          }
+        ],
+        "fn": 0,
+        "fp": 0,
+        "id": "expired",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "tier": "vulnerable",
+        "tp": 1
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [
+          {
+            "check_id": "tls-cert-expiring-soon",
+            "location": "localhost:14402"
+          }
+        ],
+        "fn": 0,
+        "fp": 0,
+        "id": "expiring-soon",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "tier": "vulnerable",
+        "tp": 0
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [
+          {
+            "check_id": "tls-cert-expiring-soon",
+            "location": "localhost:14403"
+          }
+        ],
+        "fn": 0,
+        "fp": 0,
+        "id": "expiring-urgent",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "tier": "vulnerable",
+        "tp": 0
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [
+          {
+            "check_id": "tls-cert-not-yet-valid",
+            "location": "localhost:14404"
+          }
+        ],
+        "fn": 0,
+        "fp": 0,
+        "id": "not-yet-valid",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "tier": "vulnerable",
+        "tp": 1
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [
+          {
+            "check_id": "tls-hostname-mismatch",
+            "location": "localhost:14405"
+          }
+        ],
+        "fn": 0,
+        "fp": 0,
+        "id": "wrong-hostname",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "tier": "vulnerable",
+        "tp": 1
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [
+          {
+            "check_id": "tls-cert-self-signed",
+            "location": "localhost:14406"
+          }
+        ],
+        "fn": 0,
+        "fp": 0,
+        "id": "self-signed",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "tier": "vulnerable",
+        "tp": 1
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [
+          {
+            "check_id": "tls-untrusted-root",
+            "location": "localhost:14407"
+          }
+        ],
+        "fn": 0,
+        "fp": 0,
+        "id": "untrusted-root",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "tier": "vulnerable",
+        "tp": 0
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [
+          {
+            "check_id": "tls-weak-key",
+            "location": "localhost:14408"
+          }
+        ],
+        "fn": 0,
+        "fp": 0,
+        "id": "weak-key",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "tier": "vulnerable",
+        "tp": 0
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [
+          {
+            "check_id": "tls-cert-self-signed",
+            "location": "localhost:14409"
+          },
+          {
+            "check_id": "tls-weak-signature",
+            "location": "localhost:14409"
+          }
+        ],
+        "fn": 0,
+        "fp": 0,
+        "id": "sha1-signature",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "tier": "vulnerable",
+        "tp": 1
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [
+          {
+            "check_id": "tls-chain-incomplete",
+            "location": "localhost:14410"
+          }
+        ],
+        "fn": 0,
+        "fp": 0,
+        "id": "incomplete-chain",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "tier": "vulnerable",
+        "tp": 0
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [
+          {
+            "check_id": "tls-no-forward-secrecy",
+            "location": "localhost:14411"
+          }
+        ],
+        "fn": 0,
+        "fp": 0,
+        "id": "no-forward-secrecy",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "tier": "vulnerable",
+        "tp": 0
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [
+          {
+            "check_id": "tls-protocol-obsolete",
+            "location": "localhost:14412"
+          }
+        ],
+        "fn": 0,
+        "fp": 0,
+        "id": "obsolete-protocol",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "tier": "vulnerable",
+        "tp": 0
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": true,
+        "expected": [],
+        "fn": 0,
+        "fp": 0,
+        "id": "unreachable",
+        "inconclusive": 0,
+        "inconclusive_delivered": true,
+        "tier": "vulnerable",
+        "tp": 0
+      }
+    ],
+    "false_positives_on_known_good": 0,
+    "gate": {
+      "inconclusive_max": 0.15,
+      "precision": 0.98,
+      "recall": 0.95,
+      "recall_definition": "absolute",
+      "recall_label": "absolute (the true set is knowable for this scanner)"
+    },
+    "overall": {
+      "cases": 14,
+      "checks_run": 121,
+      "false_positives_on_known_good": 0,
+      "fn": 0,
+      "fp": 0,
+      "inconclusive_rate": 0.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "suspected_rate": 0.06611570247933884,
+      "tier": "all",
+      "tp": 5
+    },
+    "passed": true,
+    "reason": "pass",
+    "scanner": "tls",
+    "tiers": {
+      "known_good": {
+        "cases": 1,
+        "checks_run": 13,
+        "false_positives_on_known_good": 0,
+        "fn": 0,
+        "fp": 0,
+        "inconclusive_rate": 0.0,
+        "precision": null,
+        "recall": null,
+        "suspected_rate": 0.0,
+        "tier": "known_good",
+        "tp": 0
+      },
+      "vulnerable": {
+        "cases": 13,
+        "checks_run": 108,
+        "false_positives_on_known_good": 0,
+        "fn": 0,
+        "fp": 0,
+        "inconclusive_rate": 0.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "suspected_rate": 0.07407407407407407,
+        "tier": "vulnerable",
+        "tp": 5
+      }
+    }
   }
 ]

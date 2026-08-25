@@ -27,6 +27,7 @@ from typing import Any
 import typer
 import yaml
 
+from core.authz import Scope
 from core.context import ScanContext
 from core.dns import DnsClient, MissingFixtureError, ReplayResolver
 from core.measurement import (
@@ -39,6 +40,7 @@ from core.measurement import (
 )
 from core.models import Asset, ScanResult
 from core.registry import discover
+from core.tls import MissingHandshakeError, ReplayTlsBackend, TlsClient
 
 ROOT = Path(__file__).resolve().parents[1]
 TARGETS_DIR = ROOT / "corpus" / "targets"
@@ -67,11 +69,10 @@ def _load(path: Path) -> Any:
 def _run_case(scanner_name: str, case: dict[str, Any]) -> ScanResult:
     scanner = discover().get(scanner_name)()
     target = Asset(**case["target"])
+    fixtures = ROOT / case["fixtures"]
     ctx = ScanContext(
-        dns=DnsClient(
-            resolver=ReplayResolver(ROOT / case["fixtures"]),
-            resolvers=["1.1.1.1", "8.8.8.8"],
-        ),
+        dns=DnsClient(resolver=ReplayResolver(fixtures), resolvers=["1.1.1.1", "8.8.8.8"]),
+        tls=TlsClient(scope=Scope.for_target(target), backend=ReplayTlsBackend(fixtures)),
         progress=lambda message, fraction: None,
     )
     return scanner.run(target, case.get("mode", "light"), ctx)
@@ -105,7 +106,7 @@ def run_scanner_corpus(
     for case in definition["cases"]:
         try:
             result = _run_case(scanner_name, case)
-        except MissingFixtureError as exc:
+        except (MissingFixtureError, MissingHandshakeError) as exc:
             # The scanner now asks a question the frozen fixtures cannot
             # answer. That is a normal thing to happen while changing a
             # scanner, and it means "re-record", not "the scanner is broken".

@@ -354,7 +354,7 @@ class SystemTlsBackend:
             )
 
         trusted, code, message = self._verify(host, port, servername, trust_anchor, timeout_s)
-        hostname_match = self._verify_hostname(host, port, servername, der, timeout_s)
+        hostname_match = self._verify_hostname(host, port, servername, der, trust_anchor, timeout_s)
         return RawHandshake(
             reachable=True,
             observed_at=observed_at,
@@ -371,7 +371,12 @@ class SystemTlsBackend:
 
     @staticmethod
     def _verify_hostname(
-        host: str, port: int, servername: str | None, der: bytes | None, timeout_s: float
+        host: str,
+        port: int,
+        servername: str | None,
+        der: bytes | None,
+        trust_anchor: str | None,
+        timeout_s: float,
     ) -> bool | None:
         """Ask OpenSSL whether the certificate covers the name, independently.
 
@@ -402,6 +407,10 @@ class SystemTlsBackend:
         try:
             context = ssl.create_default_context()
             context.load_verify_locations(cafile=anchor)
+            if trust_anchor:
+                # A privately issued certificate needs its own CA here too, or
+                # trust fails first and OpenSSL never reaches the hostname.
+                context.load_verify_locations(cafile=trust_anchor)
             context.check_hostname = True
             context.verify_mode = ssl.CERT_REQUIRED
             with (

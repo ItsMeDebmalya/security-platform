@@ -1,0 +1,13 @@
+{
+  "cipher": "ECDHE-RSA-AES256-GCM-SHA384",
+  "cipher_bits": 256,
+  "error": null,
+  "observed_at": "2026-08-25T05:18:37.722324+00:00",
+  "openssl_hostname_match": null,
+  "peer_der_b64": "MIICVDCCATygAwIBAgIUIiaJBb32uXeO94G3wHErxhccySowDQYJKoZIhvcNAQELBQAwHjEcMBoGA1UEAwwTbG9jYWxob3N0IFRlc3QgUm9vdDAeFw0yNjA3MjYwNTE4MzdaFw0yNzA4MjUwNTE4MzdaMBQxEjAQBgNVBAMMCWxvY2FsaG9zdDCBnzANBgkqhkiG9w0BAQEFAAOBjQAwgYkCgYEA0BtSxL4gPko2m7eZkA3W18utAGVGXgLlX4YgJsO7d0UGTtIvWgdP5dEWm0I8Qc9VlSuQ4l7OmavmfBABiW1ppjm7YkUAatoYa5DNvDW/F88LEBmIDKUqONXCi/CQBshLOFJlPrVsnVmRcvOV7I5pTqJBr/z5jf21ub7aNYcJsBUCAwEAAaMYMBYwFAYDVR0RBA0wC4IJbG9jYWxob3N0MA0GCSqGSIb3DQEBCwUAA4IBAQBCppYl+MuDJ2SVNUmI56zOzOyTbEG3Kp2hg94mSMgntg14EtTdgEyW5t1AaHQDT9PJENDHFy3Bh/xRhjg4uPQxTzg3k9IxnuOsRgp+Xdq3emeq2xhBgxMayWVI1NO68OwSy2O8atF0qflig+5yuCY/0+maxqRtkLr+7ueQY46GlIFZif/TtiTa+WeTK0NOPKCmEA+THebg6qkJXFW1OlTanxHoDE1ugvZ9ioMHw4xzG2pjSLJe7Q7ZPFJy8j9gEoF90a8HHL8zCAPp/7EbJ0pD8GEzU6Is6uhHSL4PeNurSUnCxqn1wk9gtcoT/DCMQrNZaDggXPU9KSPUS5RqYfx2",
+  "protocol": "TLSv1.2",
+  "reachable": true,
+  "trusted": false,
+  "verify_code": 66,
+  "verify_message": "EE certificate key too weak"
+}

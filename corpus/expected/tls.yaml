@@ -1,0 +1,38 @@
+# The known-correct answers per case: check_id + location pairs.
+#
+# Several of these surface as `suspected` rather than a claim, because they
+# rest on a single independence class. `expiring-soon` is arithmetic on one
+# certificate field and nothing else can corroborate it; `untrusted-root` and
+# `chain-incomplete` are only knowable from path building. They are listed
+# anyway: docs/10-measurement.md excuses a hedged finding from both true
+# positives and false negatives, so listing records what is true without
+# distorting the gate, and each entry starts counting the day a second
+# independent signal exists.
+
+healthy: []
+expired:
+  - { check_id: tls-cert-expired, location: "localhost:14401" }
+expiring-soon:
+  - { check_id: tls-cert-expiring-soon, location: "localhost:14402" }
+expiring-urgent:
+  - { check_id: tls-cert-expiring-soon, location: "localhost:14403" }
+not-yet-valid:
+  - { check_id: tls-cert-not-yet-valid, location: "localhost:14404" }
+wrong-hostname:
+  - { check_id: tls-hostname-mismatch, location: "localhost:14405" }
+self-signed:
+  - { check_id: tls-cert-self-signed, location: "localhost:14406" }
+untrusted-root:
+  - { check_id: tls-untrusted-root, location: "localhost:14407" }
+weak-key:
+  - { check_id: tls-weak-key, location: "localhost:14408" }
+sha1-signature:
+  - { check_id: tls-cert-self-signed, location: "localhost:14409" }
+  - { check_id: tls-weak-signature, location: "localhost:14409" }
+incomplete-chain:
+  - { check_id: tls-chain-incomplete, location: "localhost:14410" }
+no-forward-secrecy:
+  - { check_id: tls-no-forward-secrecy, location: "localhost:14411" }
+obsolete-protocol:
+  - { check_id: tls-protocol-obsolete, location: "localhost:14412" }
+unreachable: []

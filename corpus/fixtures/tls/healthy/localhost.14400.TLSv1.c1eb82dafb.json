@@ -1,0 +1,13 @@
+{
+  "cipher": null,
+  "cipher_bits": null,
+  "error": "tls_error:TLSV1_ALERT_PROTOCOL_VERSION",
+  "observed_at": "2026-08-25T05:18:36.053020+00:00",
+  "openssl_hostname_match": null,
+  "peer_der_b64": null,
+  "protocol": null,
+  "reachable": false,
+  "trusted": false,
+  "verify_code": null,
+  "verify_message": null
+}

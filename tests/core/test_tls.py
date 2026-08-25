@@ -406,3 +406,31 @@ def test_an_observation_can_be_serialised_for_evidence():
     assert payload["protocol"] == "TLSv1.3"
     assert payload["certificate"]["subject_cn"] == "localhost"
     assert payload["trusted"] is False
+
+
+def test_the_hostname_probe_uses_the_configured_trust_anchor():
+    """A privately issued certificate needs its CA for the hostname probe too.
+
+    Without it, trust fails first and OpenSSL never reaches the name - so a
+    mismatch on an internal certificate got no independent verdict, while the
+    same mismatch on a publicly issued one did.
+    """
+    import tempfile
+    from pathlib import Path
+
+    from corpus.generators.tls_lab import LabServer, mint_chain
+
+    with tempfile.TemporaryDirectory() as tmp:
+        ca, leaf, chain = mint_chain(
+            Path(tmp), "mismatch", common_name="other.test", sans=["other.test"]
+        )
+        server = LabServer(leaf, chain_file=chain)
+        try:
+            obs = client(trust_anchor=str(ca.cert_path)).inspect(
+                "127.0.0.1", server.port, servername="localhost"
+            )
+        finally:
+            server.close()
+
+    assert obs.hostname_matches is False
+    assert obs.openssl_hostname_match is False

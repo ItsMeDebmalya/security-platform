@@ -59,6 +59,7 @@ def mint(
     digest: str = "sha256",
     issuer_cn: str | None = None,
     issuer_key: object | None = None,
+    is_ca: bool = False,
 ) -> Minted:
     """Create a certificate with exactly the defect you ask for.
 
@@ -90,6 +91,28 @@ def mint(
             critical=False,
         )
     )
+
+    if is_ca:
+        # Without basicConstraints CA:TRUE, OpenSSL will not use this
+        # certificate to sign anything, and path building fails with "unable to
+        # get local issuer" rather than reaching the leaf. That silently turned
+        # every corpus case into an untrusted-chain case.
+        builder = builder.add_extension(
+            x509.BasicConstraints(ca=True, path_length=None), critical=True
+        ).add_extension(
+            x509.KeyUsage(
+                digital_signature=True,
+                content_commitment=False,
+                key_encipherment=False,
+                data_encipherment=False,
+                key_agreement=False,
+                key_cert_sign=True,
+                crl_sign=True,
+                encipher_only=False,
+                decipher_only=False,
+            ),
+            critical=True,
+        )
 
     if digest == "sha1":
         # `cryptography` 50 removed SHA-1 signing entirely, which is the right
@@ -169,7 +192,9 @@ def mint_chain(
     from cryptography.hazmat.primitives.asymmetric import rsa as _rsa
 
     ca_key = _rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    ca = mint(directory, f"{stem}-ca", common_name=f"{common_name} Test Root", key_bits=2048)
+    ca = mint(
+        directory, f"{stem}-ca", common_name=f"{common_name} Test Root", key_bits=2048, is_ca=True
+    )
 
     leaf = mint(
         directory,
@@ -185,6 +210,39 @@ def mint_chain(
     chain_path.write_bytes(leaf.cert_path.read_bytes() + ca.cert_path.read_bytes())
     del ca_key
     return ca, leaf, chain_path
+
+
+def mint_three_level(
+    directory: Path, stem: str, *, common_name: str, sans: list[str] | None = None
+) -> tuple[Minted, Minted, Minted, Path]:
+    """A trusted root, an intermediate it signed, and a leaf under that.
+
+    Serving the leaf alone while trusting only the root is what an incomplete
+    chain actually is: the verifier holds the root, the server never sent the
+    intermediate, and the gap in the middle cannot be bridged. A two-level
+    chain cannot express this - if the signer is the trusted root, no
+    intermediate is needed and the path builds fine.
+    """
+    root = mint(directory, f"{stem}-root", common_name=f"{common_name} Test Root", is_ca=True)
+    intermediate = mint(
+        directory,
+        f"{stem}-int",
+        common_name=f"{common_name} Test Intermediate",
+        is_ca=True,
+        issuer_cn=f"{common_name} Test Root",
+        issuer_key=_load_key(root.key_path),
+    )
+    leaf = mint(
+        directory,
+        f"{stem}-leaf",
+        common_name=common_name,
+        sans=sans,
+        issuer_cn=f"{common_name} Test Intermediate",
+        issuer_key=_load_key(intermediate.key_path),
+    )
+    full = directory / f"{stem}-full.pem"
+    full.write_bytes(leaf.cert_path.read_bytes() + intermediate.cert_path.read_bytes())
+    return root, intermediate, leaf, full
 
 
 def _load_key(path: Path) -> object:
@@ -204,6 +262,7 @@ class LabServer:
         min_version: ssl.TLSVersion | None = None,
         ciphers: str = "ALL:@SECLEVEL=0",
         chain_file: Path | None = None,
+        port: int = 0,
     ) -> None:
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         context.set_ciphers(ciphers)
@@ -216,7 +275,11 @@ class LabServer:
         self._context = context
         self._socket = socket.socket()
         self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self._socket.bind(("127.0.0.1", 0))
+        # Port 0 gives an ephemeral port, which is right for tests. The corpus
+        # generator pins one instead: a recorded handshake is keyed on host,
+        # port and servername, so an ephemeral port would make every fixture
+        # unreplayable the moment it was regenerated.
+        self._socket.bind(("127.0.0.1", port))
         self._socket.listen(8)
         self.port: int = self._socket.getsockname()[1]
         self._stop = threading.Event()

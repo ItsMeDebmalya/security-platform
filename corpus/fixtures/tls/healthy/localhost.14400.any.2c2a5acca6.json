@@ -1,0 +1,13 @@
+{
+  "cipher": "TLS_AES_256_GCM_SHA384",
+  "cipher_bits": 256,
+  "error": null,
+  "observed_at": "2026-08-25T05:18:36.004452+00:00",
+  "openssl_hostname_match": true,
+  "peer_der_b64": "MIIC2DCCAcCgAwIBAgIUQvOnDTn5Z9SgXhi9CyV5Fvstw9AwDQYJKoZIhvcNAQELBQAwHjEcMBoGA1UEAwwTbG9jYWxob3N0IFRlc3QgUm9vdDAeFw0yNjA3MjYwNTE4MzZaFw0yNzA4MjUwNTE4MzZaMBQxEjAQBgNVBAMMCWxvY2FsaG9zdDCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBALLoIGqxcK00slOer+SVjr0i5d6SItp40i+s0P1RD7zk2jdjMtVALfwgZvhvJk89bRVaG7eAWORROA9id3SLLIr7pRAB4U/0eQveoaz50Th5ktXu5zJ9K2v/mjYAteI86bKKc7HpS+fPb/VJxjbT9Hl7vK8IyyaBvc4lyI0istHWlxH8NUygqww+9BYHFzuXErVGgiwRfkLo5/iRvEQB3YK1bSBKmuBDg0jCuOOH4jJ6h/YkTP3nzNlBIJemodCMXMPFHG636ChQL0+v54r4/syNEbqjcdxNJ8wrBtXtKzZg1EGyVZMBgZTQtijdLlV8etDPxnHDC4/ojsn+jTztTMkCAwEAAaMYMBYwFAYDVR0RBA0wC4IJbG9jYWxob3N0MA0GCSqGSIb3DQEBCwUAA4IBAQB0CpT40G970l+vwZv2y8dIuRpfEkjLoEyDfhw9caF3nKH7ZQMPYhu4jQwjxmD5iGnvlJz+zWoda3rnHwVaOIMV9Cw8Zslp/P1etf9fMq9HuqyoHvbY6P6dbG9lO+LJYOMhHGA1bgcngqB2xMdpJNdTcvda4+Lq5uZ8MPurNPeGoF3su5QVtq2PLt1s92vzOTiQK9KaEzzu0Vs4f2XPSDlz5IbAEUMoNoaLCBsEu3EPV/pw7gnoOgkAdoqFvOvG/S0huGpGxMERZD0Mer9EgZFooNhEEfGHFcGBpjuB2xMF8yR38cwcziUm+feTCcsfkHGBKkP4BvahSV1gDcVQ9z8j",
+  "protocol": "TLSv1.3",
+  "reachable": true,
+  "trusted": true,
+  "verify_code": null,
+  "verify_message": null
+}

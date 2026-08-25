@@ -1,0 +1,123 @@
+# Ground-truth corpus for the SSL/TLS Analyzer.
+#
+# Every case is a local TLS server carrying one deliberate defect, recorded by
+# corpus/generators/tls.py. Re-generate with:
+#
+#     uv run python -m corpus.generators.tls
+#
+# Ports are pinned because a recorded handshake is keyed on host, port and
+# servername; an ephemeral port would make every fixture unreplayable the
+# moment it was regenerated. Changing the order of the cases changes the ports
+# and therefore the fixtures, so append rather than insert.
+#
+# Most defects are issued by a lab certificate authority trusted at record
+# time, so each case produces only its own defect. Minting them self-signed
+# instead would bury every case under a self-signed finding.
+#
+# Gate from docs/03-roadmap.md.
+
+gate:
+  precision: 0.98
+  recall: 0.95
+  inconclusive_max: 0.15
+  recall_definition: absolute  # the certificate and protocol surface is finite
+
+cases:
+  - id: healthy
+    tier: known_good
+    source: frozen
+    mode: standard
+    target: { type: url, value: "https://localhost:14400" }
+    fixtures: corpus/fixtures/tls/healthy
+
+  - id: expired
+    tier: vulnerable
+    source: frozen
+    mode: light
+    target: { type: url, value: "https://localhost:14401" }
+    fixtures: corpus/fixtures/tls/expired
+
+  - id: expiring-soon
+    tier: vulnerable
+    source: frozen
+    mode: light
+    target: { type: url, value: "https://localhost:14402" }
+    fixtures: corpus/fixtures/tls/expiring-soon
+
+  - id: expiring-urgent
+    tier: vulnerable
+    source: frozen
+    mode: light
+    target: { type: url, value: "https://localhost:14403" }
+    fixtures: corpus/fixtures/tls/expiring-urgent
+
+  - id: not-yet-valid
+    tier: vulnerable
+    source: frozen
+    mode: light
+    target: { type: url, value: "https://localhost:14404" }
+    fixtures: corpus/fixtures/tls/not-yet-valid
+
+  - id: wrong-hostname
+    tier: vulnerable
+    source: frozen
+    mode: light
+    target: { type: url, value: "https://localhost:14405" }
+    fixtures: corpus/fixtures/tls/wrong-hostname
+
+  - id: self-signed
+    tier: vulnerable
+    source: frozen
+    mode: light
+    target: { type: url, value: "https://localhost:14406" }
+    fixtures: corpus/fixtures/tls/self-signed
+
+  - id: untrusted-root
+    tier: vulnerable
+    source: frozen
+    mode: light
+    target: { type: url, value: "https://localhost:14407" }
+    fixtures: corpus/fixtures/tls/untrusted-root
+
+  - id: weak-key
+    tier: vulnerable
+    source: frozen
+    mode: standard
+    target: { type: url, value: "https://localhost:14408" }
+    fixtures: corpus/fixtures/tls/weak-key
+
+  - id: sha1-signature
+    tier: vulnerable
+    source: frozen
+    mode: standard
+    target: { type: url, value: "https://localhost:14409" }
+    fixtures: corpus/fixtures/tls/sha1-signature
+
+  - id: incomplete-chain
+    tier: vulnerable
+    source: frozen
+    mode: light
+    target: { type: url, value: "https://localhost:14410" }
+    fixtures: corpus/fixtures/tls/incomplete-chain
+
+  - id: no-forward-secrecy
+    tier: vulnerable
+    source: frozen
+    mode: standard
+    target: { type: url, value: "https://localhost:14411" }
+    fixtures: corpus/fixtures/tls/no-forward-secrecy
+
+  - id: obsolete-protocol
+    tier: vulnerable
+    source: frozen
+    mode: standard
+    target: { type: url, value: "https://localhost:14412" }
+    fixtures: corpus/fixtures/tls/obsolete-protocol
+
+  - id: unreachable
+    tier: vulnerable
+    source: frozen
+    mode: light
+    expect_inconclusive: true
+    target: { type: url, value: "https://localhost:14413" }
+    fixtures: corpus/fixtures/tls/unreachable
