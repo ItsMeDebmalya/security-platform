@@ -27,6 +27,10 @@ The product is accuracy. These are the rules that produce it.
 
 **Version strings lie.** Distributions backport security patches without bumping versions. Any finding derived from a version string alone is capped at `state: suspected`, `confidence ≤ 0.6`, until a behavioural check or a distribution security tracker confirms it. This single rule prevents the largest category of false positives in the industry.
 
+**A corpus written by the scanner's author encodes the scanner's assumptions.** It proves today's change did not break yesterday's behaviour, which is regression testing and is necessary. It does not discover new failure modes, because every case passes by agreeing with the code. Run each tool against real targets and hand-verify the findings before calling it done ([ADR-017](02-decisions.md#adr-017--live-verification-is-part-of-a-tools-definition-of-done)). Six real defects in Tools 1 and 2 survived a corpus at precision 1.000.
+
+**Verify with an independent method, not a second copy of your own assumption.** A checking tool that shares the blind spot of the thing it checks confirms nothing — a strict TLS client cannot confirm a finding about servers that strict clients refuse to talk to.
+
 **Precision beats recall.** When trading off, choose precision. A scanner that misses things is disappointing; a scanner that cries wolf is worthless.
 
 **A new detection means a new corpus case.** Both a positive and a negative. No exceptions — a detection with no negative case has no measurable precision. It also declares an `independence_class` and a hand-assigned prior with a written justification.

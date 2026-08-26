@@ -358,3 +358,36 @@ Both are isolated services behind interfaces, so this is a contained cost, not a
 **Trigger to revisit.** If the cross-check shows us materially behind testssl.sh on the corpus after Tool 2 ships, and closing the gap looks longer than wrapping it would have been, wrap it for the checks we are losing and keep our own for the rest. That is a per-check decision, not an all-or-nothing one.
 
 **Reversal cost.** Low. The Scanner Contract means a scanner can be replaced by a third-party wrapper without touching anything else, which is exactly the property ADR-002 was bought for.
+
+---
+
+## ADR-017 — Live verification is part of a tool's definition of done
+
+**Decision.** A scanner is not done when it passes its corpus gate. It is done when it has **also** been run against real targets and every finding hand-verified. The live run is a gate condition, not a nicety, and its result is recorded in [14-progress-ledger.md](14-progress-ledger.md).
+
+**Context.** Tools 1 and 2 both reached precision 1.000 on their corpora. Six real defects survived that:
+
+| Defect | Why the corpus missed it |
+|---|---|
+| A fabricated SPF record quoted in a finding | The synthetic zone happened to match the hardcoded string |
+| Rate limiter throttling the resolver, not the target | Replayed fixtures never wait |
+| Thirteen findings for one host with no TLS service | No corpus case had a closed port *and* the full check set |
+| Authorisation comparing raw strings, not assets | Every corpus target was typed one way |
+| A row for one port authorising every port on the host | All four loopback rows were ours, so over-permission was invisible |
+| A finding whose evidence did not contain its own claim | The case asserted the finding appeared, not what its evidence held |
+
+**The pattern is not that the corpus was bad.** It is that a corpus written by the same person as the scanner encodes the same assumptions. Every case above passed because the test and the code agreed with each other. Real targets do not agree with anything — they are the only source of inputs nobody designed.
+
+**Reasoning.**
+- Precision measured against cases we authored is a measure of internal consistency. It is necessary and it is not sufficient.
+- The corpus's job is **regression** — proving today's change did not break yesterday's behaviour. Discovering *new* failure modes is a different job and needs a different input.
+- Live verification is cheap: a fifty-domain email sweep takes 33 seconds, and a handful of TLS targets take under a minute.
+
+**Consequences.**
+- Each tool's ledger entry records the live result — how many targets, how many findings, how many hand-verified.
+- A live finding that turns out to be wrong becomes a corpus case, so the corpus grows in the direction reality points.
+- **Verify with an independent method, not a second copy of your own assumption.** A near-miss: `openssl s_client -tls1` reported a handshake refused, which looked like a false positive in our TLS scanner. The refusal came from openssl's own security level, not the server. A verification tool carrying the same blind spot as the thing it verifies confirms nothing.
+
+**Costs we accept.** Live runs are non-deterministic and cannot gate CI. They stay a human step recorded in the ledger, not an automated one — which means they can be skipped under pressure, and the ledger is the only thing that would show it.
+
+**Reversal cost.** Low, and inadvisable. Nothing depends on it structurally; dropping it just means the next six defects reach a user instead.

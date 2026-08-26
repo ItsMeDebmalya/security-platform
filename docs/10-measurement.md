@@ -55,6 +55,20 @@ A rising inconclusive rate on frozen fixtures is a regression and fails CI, exac
 
 ---
 
+## What a gate number actually rests on
+
+A row in the table above compresses three things that should be read separately. Both shipped scanners look identical at `precision 1.000` and rest on very different amounts of evidence.
+
+**Precision is computed over claims, not over checks.** Only `confirmed` and `highly_likely` count. A scanner running 134 checks and making 5 claims has a precision denominator of 5. TLS is exactly that: most of its findings rest on a single `independence_class` and land as `suspected`, which is honest and which the gate excuses from both sides. **`1.000` over five claims and `1.000` over five hundred are the same number and not the same evidence.** Read the `susp%` column beside it, and state the claim count when publishing.
+
+**A corpus authored alongside the scanner measures internal consistency.** Email's 1.000 is against 16 synthetic zones we wrote. That proves the checks do what was intended; it cannot prove the intent matches the world, because the same person decided both. See [ADR-017](02-decisions.md#adr-017--live-verification-is-part-of-a-tools-definition-of-done) — six real defects survived corpora at 1.000, and live runs found all six.
+
+**A tier label is not a difficulty rating.** A case is only as hard as the fixture makes it. Three faults in the TLS lab (a CA without `basicConstraints`, servers accepting TLS 1.0, a two-level chain standing in for an incomplete one) each made every case *easier* than intended while the gate stayed green. **Ground truth that is wrong produces a passing gate and a scanner nobody should trust**, and nothing in the harness can detect it — only reading the fixtures can.
+
+**When publishing a number, publish what it rests on:** the claim count, whether the corpus is synthetic or captured, and whether it has been checked against live targets.
+
+---
+
 ## Recall is not always definable — say so per scanner
 
 Recall requires knowing the complete true set. That is knowable for some scanners and not others.

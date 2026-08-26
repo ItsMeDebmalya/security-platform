@@ -14,6 +14,7 @@
 - [ ] Runs offline from recorded fixtures (`--replay`), so tests are deterministic
 - [ ] `remediation` text is specific enough to act on without a web search
 - [ ] Every check declares an `independence_class` and a hand-assigned prior with a one-line justification
+- [ ] **Run against real targets and hand-verify every finding** ([ADR-017](02-decisions.md#adr-017--live-verification-is-part-of-a-tools-definition-of-done)) — the corpus proves internal consistency, not correctness. Record the result in [14-progress-ledger.md](14-progress-ledger.md): how many targets, how many findings, how many verified.
 - [ ] Any Standard-mode check has an authorisation path: it refuses to run against a target absent from `config/authorised_scope.yaml` ([09-ownership-verification.md](09-ownership-verification.md))
 
 ---

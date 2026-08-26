@@ -37,6 +37,10 @@ Tiers (Free / Pro / Business / Enterprise) and the daily-credit model are sketch
 
 ## Legal
 
+> **Status note, 2026-08-25.** The three 🔴 legal questions below (Q4, Q4a, Q5) were raised before any code existed. Two scanners have since shipped and all three remain unanswered. They do not resolve by building, and Q4a blocks Phase 3 — which is two tools away. Tracked in [14-progress-ledger.md](14-progress-ledger.md) under standing observations.
+
+
+
 ### Q4a 🔴 — GDPR and third-party data — **new, blocks Phase 3**
 
 The plan has two features that process data about people and organisations who are not our customers and never consented:

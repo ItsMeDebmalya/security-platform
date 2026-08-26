@@ -10,14 +10,14 @@ Scanners: `example` (reference), `email` (Tool 1 — 17 checks, 1.000/1.000, 16-
 
 Commands: `make install`, `make test`, `make lint`, `make typecheck`, `make licence-check`, `make corpus`, `make crosscheck`, `make targets-up`, and `scan run <tool> --target <t>`. Python 3.12+, dependencies via `uv`.
 
-Read `docs/14-progress-ledger.md` for where things stand. To operate the CLI, read `docs/12-cli-runbook.md`. For the vulnerable test targets, `docs/13-test-targets.md` (`make targets-up`). To add a scanner, read `docs/how-to-add-a-scanner.md`.
+Read `docs/14-progress-ledger.md` for where things stand — including **standing observations**, which apply to every tool, not just the last one. To operate the CLI, read `docs/12-cli-runbook.md`. For the vulnerable test targets, `docs/13-test-targets.md` (`make targets-up`). To add a scanner, read `docs/how-to-add-a-scanner.md`.
 
 ## Documents
 
 - `tools-and-features-list.md` — entry point and index
 - `docs/00-context.md` — product, strategy, standards
 - `docs/01-architecture.md` — **the Scanner Contract, finding/evidence model, confidence engine**
-- `docs/02-decisions.md` — ADRs 001–015
+- `docs/02-decisions.md` — ADRs 001–017
 - `docs/03-roadmap.md` — phases 0–7 with accuracy gates
 - `docs/04-phase-0-foundations.md`, `docs/05-phase-1-first-tools.md` — task-level plans
 - `docs/06-guidelines.md` — rules for all code
@@ -61,6 +61,8 @@ The contract was audited in v3.1 before freezing and gained: a `ScanRun` entity,
 - **Every finding needs a control-vs-test evidence pair.** "The server errored" is not evidence.
 - **Version strings lie** (distros backport patches). Version-only findings cap at `suspected`, confidence ≤ 0.6.
 - **Precision over recall.** A new detection requires both a positive and a negative corpus case, an `independence_class`, and a justified prior.
+- **The corpus proves regression, not correctness.** A corpus written by the scanner's author encodes the scanner's assumptions. Run each tool against real targets and hand-verify before calling it done (ADR-017). Six real defects survived corpora at precision 1.000.
+- **A gate number is read with its claim count.** Precision counts only `confirmed`/`highly_likely`, so 1.000 over 5 claims and over 500 are the same number and not the same evidence.
 - **`state` is computed by `core/state.py`, never hand-set** by a scanner. `confirmed` requires validation to have run and passed.
 - **Gates are three numbers:** precision, recall, and inconclusive rate (≤15%) — see `docs/10-measurement.md`. Recall is corpus-relative for DNS enum and Web Light; never publish it as absolute.
 - Confidence is **provisional** until calibration in Phase 4, and calibrates per (scanner × detection_method), never per `check_id`.

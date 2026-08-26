@@ -228,9 +228,45 @@ same certificate on both: True
 
 ---
 
+## Standing observations
+
+*Not tied to one tool. Re-read before starting the next one.*
+
+### The corpus has never found a bug
+
+Six real defects in Tools 1 and 2, all found by live runs, none by a corpus at `precision 1.000`. The corpus's job is regression — proving today's change did not break yesterday's behaviour — and it does that well. It cannot discover new failure modes, because **a corpus written by the scanner's author encodes the scanner's assumptions**: every case passes by agreeing with the code. Now [ADR-017](02-decisions.md#adr-017--live-verification-is-part-of-a-tools-definition-of-done).
+
+### What our gate numbers rest on
+
+Both scanners read `1.000`. They are not equally evidenced.
+
+| | Claims the number rests on | Corpus | Live |
+|---|---|---|---|
+| email | 21 of 240 checks | 16 synthetic zones we wrote | 50 real domains, 8 findings, all verified |
+| tls | **5** of 134 checks | 14 lab servers we configured | 6 badssl subdomains + operator infrastructure |
+
+TLS's precision rests on five claims because most TLS findings sit on a single independence class and land as `suspected`. That is honest, and it means the figure is thinner than it reads. Recorded in [10-measurement.md](10-measurement.md) as a standing caveat.
+
+### Ground truth is code too, and it had the most bugs
+
+Three of the TLS lab's faults made every corpus case *easier* than intended while the gate stayed green — a CA without `basicConstraints`, servers accepting TLS 1.0 because `@SECLEVEL=0` was needed for weak keys, and a two-level chain that cannot express an incomplete chain. **Nothing in the harness can detect this.** Only reading the fixtures can.
+
+### The blocking questions are non-technical, and building does not move them
+
+[Q4](07-open-questions.md) (legal review of the tool list), [Q5](07-open-questions.md) (ToS and the authorisation agreement) and [Q4a](07-open-questions.md) (GDPR, blocks Phase 3) are all 🔴 and all unanswered. Two tools have shipped since they were raised. They will not resolve by writing more scanners, and Q4a blocks a phase we are two tools away from.
+
+---
+
 ## D. Deferred register
 
 Single source of truth for what is owed. Move an item out only when it lands.
+
+They cluster, which matters more than the individual entries:
+
+- **Blocked on HTTP record/replay (D2)** — D10 (HSTS) and Tool 4 in its entirety. This is the largest single unblock available.
+- **Corpus realism** — D6 (real domains), D3 (benchmark tier), D11 (a weak-cipher case). Each one narrows the gap between a gate number and a claim about the world.
+- **Capability gaps a user would notice** — D12 (revocation: `revoked.badssl.com` reads as a pass), D4 (SMTP checks), D5 (lookalike domains).
+- **Infrastructure** — D1 (CI has never run) and D7 (a local authoritative DNS zone).
 
 | # | Item | Why deferred | Blocks |
 |---|---|---|---|

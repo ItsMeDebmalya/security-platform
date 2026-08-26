@@ -286,3 +286,13 @@ Every change above is additive or a correction to v3, and v3 itself is recoverab
 - **On a known-good corpus target, a `suspected` finding counts as a false positive.** [10-measurement.md](10-measurement.md) excludes `suspected` from precision, and separately says anything reported on a known-good target is a false positive by definition. Those two rules collide, and the collision was found by deliberately breaking the reference scanner: the injected false positive came back `suspected` and passed the gate. On an asset we know is correctly configured there is nothing to be uncertain about, so the hedge is a false positive wearing a hedge.
 - **A corpus case may declare `expect_inconclusive`.** [10-measurement.md](10-measurement.md) measures the inconclusive rate *"where a definite answer is expected"*. A SERVFAIL fixture is not that. Such cases are excluded from the rate and asserted separately: the scanner must return `inconclusive`, and must not error.
 - **A check whose subject does not exist is not recorded in `checks_run` at all.** `dmarc-pct-partial` on a domain with no DMARC record did not run. Recording it `clear` would claim we checked and found nothing wrong; recording it `inconclusive` would bury the one finding that matters under five restatements of it.
+
+---
+
+## v3.3 — live verification added to the Phase 1 definition of done (2026-08-25)
+
+**What changed.** [05-phase-1-first-tools.md](05-phase-1-first-tools.md) gains a definition-of-done item: run the tool against real targets and hand-verify every finding. Recorded as [ADR-017](02-decisions.md#adr-017--live-verification-is-part-of-a-tools-definition-of-done); the accuracy rules in [06-guidelines.md](06-guidelines.md) and the caveats in [10-measurement.md](10-measurement.md) were updated to match.
+
+**Why.** Tools 1 and 2 both passed their gates at `precision 1.000` with six real defects still in them, every one found by a live run and none by the corpus. A corpus written by the scanner's author encodes the scanner's assumptions.
+
+**Revert.** Remove the ADR, the DoD item and the two doc sections. Nothing depends on it structurally — the cost of reverting is that the next defects of that kind reach a user rather than the ledger.
