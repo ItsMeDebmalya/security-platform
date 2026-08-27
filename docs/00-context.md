@@ -101,6 +101,17 @@ Every scanner exposes the same three modes. This is a product-wide contract, not
 3. **Confidence separate from severity** — "Critical, 96% confidence, confirmed by independent re-test." Triage sorts by *Risk × Confidence*. Honest here means *calibrated*, with real limits on what can be calibrated at our data volume — see [ADR-007](02-decisions.md#adr-007--confidence-is-separate-from-severity-and-calibrated).
 4. **Close the loop** — after a fix, re-run the exact test that proved the problem and close it with evidence. Always free. Most tools only open problems.
 
+### Added in v3.4 — what the calendar gives us
+
+*[ADR-020](02-decisions.md#adr-020--amends-adr-014-what-we-claim-now-that-the-ground-has-moved) amends ADR-014. The three cut claims stay cut; these four were not checkable when it was written.*
+
+5. **The deprecation clock** — we report what breaks **on a date**, not only what is broken today. *"Three of your certificates stop being reissuable on 15 March 2027."* Competitors report the present tense. This is a calendar applied to observations we already make, so it is cheap for us and legible to someone who does not read scanner output.
+6. **Post-quantum exposure** — whether traffic sent today can be recorded now and decrypted once quantum hardware exists. Roughly half of domains are exposed and almost nothing tells them.
+7. **Certificate lifetime readiness** — whether a renewal process survives 47-day certificates. Renewals go from about one a year to about eight by 2029; this affects everyone and nobody is warning them.
+8. **AI and agent exposure** — exposed MCP servers, agent admin panels and unauthenticated model endpoints. A new surface, passively detectable, and not yet productised by anyone.
+
+**These are worth little on their own.** A date nobody believes is just another alert. What makes them defensible is 1–4 above: the evidence, the honest `inconclusive`, the confidence that is separate from severity. The calendar is the pitch; the proof is why anyone should act on it.
+
 ### What we cut, and why
 
 | Dropped claim | Why |

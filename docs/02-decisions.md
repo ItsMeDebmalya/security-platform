@@ -391,3 +391,102 @@ Both are isolated services behind interfaces, so this is a contained cost, not a
 **Costs we accept.** Live runs are non-deterministic and cannot gate CI. They stay a human step recorded in the ledger, not an automated one — which means they can be skipped under pressure, and the ledger is the only thing that would show it.
 
 **Reversal cost.** Low, and inadvisable. Nothing depends on it structurally; dropping it just means the next six defects reach a user instead.
+
+---
+
+## ADR-018 — Findings carry a date, and say whether they were detected or derived
+
+**Decision.** The Finding model gains two orthogonal additions. This reopens the frozen Scanner Contract deliberately, at two scanners rather than ten.
+
+### 1. `materialises_at` — when a finding becomes true
+
+```jsonc
+"materialises_at": null,                  // true now. Every finding today.
+"materialises_at": "2027-03-15",          // true from that date
+"materialises_reason": "CA/Browser Forum SC-081v3 reduces the maximum certificate
+                        lifetime to 100 days"
+```
+
+**Why a new axis rather than a new state.** The five states and their truth table are the most load-bearing thing we own; adding a sixth would touch every scanner and every corpus number. A dated finding is not a *different kind of belief* — we are just as certain a certificate is 200 days long as we are that it is expired. It is a belief about a different *time*. So `state` keeps its meaning, and `severity` becomes **how bad it will be when it lands**, which is coherent and needs no redefinition.
+
+**It counts in the gate.** "Your certificate is 200 days and that stops being issuable in March 2027" is a claim that can be wrong, so it is measured like any other. Triage sorts by date alongside `severity × confidence`.
+
+### 2. `derivation` — detected or derived
+
+| | `detected` | `derived` |
+|---|---|---|
+| What it is | An observation of the target | A calculation from an observation plus a rule |
+| Example | "This certificate expired on 2026-05-10" | "This 200-day certificate is not reissuable after 2027-03-15" |
+| Confidence comes from | The confidence engine — priors and likelihood ratios | **Inherited from the finding it derives from** |
+| Evidence is | The control-vs-test pair | The premise, plus the rule applied, plus the arithmetic shown |
+
+**Why this matters more than it looks.** The confidence engine combines likelihood ratios — evidence that shifts a probability. A calendar date is not evidence, it is arithmetic, and forcing one through the other would mean inventing a fake likelihood ratio to clear the reporting threshold. That corrupts the one thing the engine exists to do.
+
+**A derived finding is never more confident than its premise.** If we are 0.97 sure we read the certificate correctly, we are exactly 0.97 sure of everything we compute from it. `derived_from` names the premise so the chain is visible, and confidence is inherited rather than recalculated. That rule is what stops a "certainty" claim laundering an uncertain observation.
+
+**Consequences.**
+- `contracts/finding.schema.json` gains `materialises_at`, `materialises_reason`, `derivation`, `derived_from`. Additive; existing findings default to `null` / `detected`.
+- `core/state.py` is unchanged. The truth table does not move.
+- `core/confidence.py` gains an inheritance path for derived findings, distinct from `combine()`.
+- [10-measurement.md](10-measurement.md) must report **detected vs derived claim counts separately**. Precision 1.000 across derived findings is a weaker statement than the same number across detected ones, because it partly measures arithmetic we wrote.
+- The rules a derivation applies (deadlines, thresholds) are **curated data with a lifecycle**, not constants in code. See ADR-020.
+
+**Reversal cost.** Moderate and falling. Two scanners and ~120 stored findings today. At ten scanners this becomes a real migration, which is exactly why it is being done now.
+
+---
+
+## ADR-019 — Scanners exchange assets through the run, never through each other
+
+**Decision.** A `ScanRun` carries a shared **asset graph**. Scanners contribute discovered assets to it and read assets from it, through `ScanContext`. Scanners still never import one another.
+
+**The problem.** "DNS enumeration produces the asset list every other tool scans" has been in the roadmap since v3 with no mechanism behind it. `related_assets` is one field on a finding, and the plan itself calls it "a cheap hedge, not a design". You cannot scan for exposed agent infrastructure without first discovering hosts, and Tool 3's entire value is being that input.
+
+**The shape.**
+
+```
+ScanRun
+  └── AssetGraph          discovered assets + how each was found
+        ▲            ▼
+   dns_enum      tls, web, ai_exposure      (contribute / consume, via ScanContext)
+```
+
+- **Provenance is mandatory.** Every asset records which scanner found it and from what evidence. An asset that appeared without provenance is a bug, not a discovery — and scanning something we cannot explain finding is exactly the authorisation problem the project exists to avoid.
+- **Authorisation applies to discovered assets too, and is re-checked per asset.** Discovering `api.example.com` under an authorised wildcard does not authorise scanning something the enumeration merely *guessed*. `core/authz.py` remains the gate and is not bypassed by discovery.
+- **Consuming is optional.** A scanner handed no graph scans its own target and behaves exactly as today. Nothing becomes order-dependent by accident.
+
+**Why not let scanners call each other.** The no-import rule is what keeps a scanner replaceable, testable in isolation, and honest about its own inputs. Passing *data* through the run preserves all three; passing *control* would destroy them.
+
+**Consequences.** `ScanRun` gains the graph. `ScanContext` gains read and contribute methods. The corpus harness needs a way to seed a graph for replay, so a consuming scanner is testable without running its producer.
+
+**Reversal cost.** Low. A scanner that ignores the graph is unaffected.
+
+---
+
+## ADR-020 — Amends ADR-014: what we claim, now that the ground has moved
+
+**Decision.** ADR-014 cut three differentiators as unownable at two people. That judgement stands for those three. This ADR adds four that did not exist or were not checkable when it was written, and names the discipline that keeps them honest.
+
+**What ADR-014 cut, and still cuts:** attack-path/chokepoint analysis (Wiz, XM Cyber), reachability (Endor Labs), and the "almost nobody does BOLA" novelty claim. **Nothing in the 2026 research changes any of that.** Do not reopen them.
+
+**What is added.**
+
+| Claim | Why it is ownable |
+|---|---|
+| **Deprecation clock** — what breaks on a date, not just what is broken | It is a calendar applied to observations we already make, not a new engine. Competitors report the present. |
+| **Post-quantum exposure** — is today's traffic harvestable and readable later | A concrete, checkable property of a handshake. Roughly half of domains fail it and almost no scanner reports it. |
+| **Certificate lifetime readiness** — will renewal survive 47-day certificates | Dated, operational, and affects everyone. Reads a field we already parse. |
+| **AI and agent exposure** — exposed MCP servers, agent panels, LLM endpoints | A genuinely new surface, passively detectable, and nobody has productised it. Fits ADR-004 without exception. |
+
+**Why these pass the test ADR-014 set.** Each is *observation plus rule*, not a new research capability. None requires a graph we do not have or a corpus we cannot build. Each can be demonstrated in a single command against a real target — which is the honest test of whether a claim is real.
+
+**The discipline that keeps them honest.**
+- Every number quoted externally is verified against a primary source first. The v3.1 review found ~25 defects doing exactly that, and vendor blogs are not sources.
+- A deprecation claim states its authority and its date. "We think this is bad" is not a clock.
+- The clock's data is curated, versioned and reviewed ([ADR-018](#adr-018--findings-carry-a-date-and-say-whether-they-were-detected-or-derived) derivation rules). **A rotted clock asserts wrong dates in our name, which is worse than not shipping one.**
+- ADR-011 still holds: "compliance readiness", never "compliant".
+
+**What has not changed.** The tool bundle is still not novel. Evidence, `inconclusive` and calibrated confidence remain the proof layer, and the four claims above are worth little without them — a date nobody believes is just another alert.
+
+**Costs we accept.** Two of the four need foundation work before they can ship: post-quantum needs a toolchain we do not have, and AI exposure needs HTTP record/replay and the asset graph. Neither is a research problem; both are build cost, and both are recorded rather than assumed away.
+
+**Reversal cost.** Low. These are scope and framing decisions, as ADR-014's were.

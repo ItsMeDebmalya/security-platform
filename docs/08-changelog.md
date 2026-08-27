@@ -296,3 +296,17 @@ Every change above is additive or a correction to v3, and v3 itself is recoverab
 **Why.** Tools 1 and 2 both passed their gates at `precision 1.000` with six real defects still in them, every one found by a live run and none by the corpus. A corpus written by the scanner's author encodes the scanner's assumptions.
 
 **Revert.** Remove the ADR, the DoD item and the two doc sections. Nothing depends on it structurally — the cost of reverting is that the next defects of that kind reach a user rather than the ledger.
+
+---
+
+## v3.4 — the calendar, and the foundation it needs (2026-08-25)
+
+The client asked for differentiation that holds up in 2026 rather than 2022. Research surfaced three dated, checkable facts that were not true or not checkable when v3.1 was written: certificate lifetimes are collapsing on a published schedule (200 days from March 2026, 47 by 2029), roughly half of domains have no post-quantum protection against harvest-now-decrypt-later, and thousands of AI agent servers are exposed on the public internet.
+
+**Strategy.** [ADR-020](02-decisions.md#adr-020--amends-adr-014-what-we-claim-now-that-the-ground-has-moved) amends ADR-014 with four claims — the deprecation clock, post-quantum exposure, certificate lifetime readiness, AI and agent exposure. **The three claims ADR-014 cut stay cut**; nothing in the research changes the judgement on attack paths or reachability.
+
+**Contract.** [ADR-018](02-decisions.md#adr-018--findings-carry-a-date-and-say-whether-they-were-detected-or-derived) reopens the frozen Scanner Contract, deliberately and at two scanners rather than ten. Findings gain `materialises_at` (when a finding becomes true) and `derivation` (detected by observation, or derived by calculation, with confidence inherited from the premise). The five states and the truth table are untouched.
+
+**Architecture.** [ADR-019](02-decisions.md#adr-019--scanners-exchange-assets-through-the-run-never-through-each-other) gives a run a shared asset graph so discovery can feed the tools that consume it, without scanners importing each other.
+
+**Revert.** Drop the three ADRs, the four schema fields, and the graph from `ScanRun`. Existing findings default to `materialises_at: null` and `derivation: detected`, so nothing stored needs rewriting in either direction — which is the property that made doing this now cheap and doing it later expensive.

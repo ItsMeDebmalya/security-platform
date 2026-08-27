@@ -43,6 +43,24 @@ Phases 0–5 are terminal-only. **Nothing has a user interface until Phase 6.** 
 
 ---
 
+## Phase 0b — Foundation for the calendar *(new in v3.4)*
+
+**Goal:** make the foundation carry the four claims in [ADR-020](02-decisions.md#adr-020--amends-adr-014-what-we-claim-now-that-the-ground-has-moved) before more scanners are built on top of it. Two scanners exist today; ten would make every item here a migration instead of an edit.
+
+| # | Work | Why it is here and not later |
+|---|---|---|
+| 0b.1 | **Dated and derived findings** — `materialises_at`, `derivation`, `derived_from` ([ADR-018](02-decisions.md#adr-018--findings-carry-a-date-and-say-whether-they-were-detected-or-derived)) | The deprecation clock has nowhere to live without it. Today's finding schema has no notion of a future date, and `severity` means "how bad if true" — a 200-day certificate is not bad *yet*, so it would have to be filed as `info`, which the gate excludes entirely. The flagship feature would not count toward any accuracy number. |
+| 0b.2 | **The asset graph** ([ADR-019](02-decisions.md#adr-019--scanners-exchange-assets-through-the-run-never-through-each-other)) | "DNS enumeration feeds every other tool" has been in the roadmap since v3 with no mechanism. Tool 3 is next and *is* the pipeline; deciding its output shape after writing it is the expensive order. |
+| 0b.3 | **Generic record/replay in `core/`** | Written twice already — `core/dns.py` and `core/tls.py` each hand-rolled fixture naming, backends and a missing-fixture error, sharing no code. HTTP, MCP and any device protocol are next. Three times is a pattern; five is a liability. |
+| 0b.4 | **HTTP record/replay** (was D2) | No longer a Tool 4 detail. It blocks HSTS, all AI-exposure work, and most device surfaces. The largest single unblock in the deferred register. |
+| 0b.5 | **Toolchain upgrade** — Python 3.13+, OpenSSL 3.5+, crypto build pinned | Verified blocking: `ssl.SSLContext.set_groups` does not exist on 3.12, so post-quantum key exchange **cannot be tested at all** today. `get_unverified_chain` is also 3.13+. Results depend on the OpenSSL build, so it must be pinned or corpus numbers are not reproducible across machines. |
+| 0b.6 | **Passivity declared per check, not per mode** | Hit twice already: every email Standard check is passive but sits behind the ownership gate anyway. For AI exposure the line is one HTTP request wide — finding a server is passive, reading its admin panel is not. The gate should enforce a declaration, not trust the author's filing. |
+| 0b.7 | **The deprecation calendar as curated data** | Deadlines are versioned, sourced, reviewed data with a lifecycle — not constants in code. A rotted clock asserts wrong dates in our name, which is worse than not shipping one. |
+
+**Exit criterion:** a scanner can emit a dated, derived finding whose confidence is inherited from its premise; a scanner can read assets another scanner discovered; and one `core/` recording layer serves DNS, TLS and HTTP.
+
+---
+
 ## Phase 1 — The cheap, accurate tools
 
 **Goal:** four real scanners. Prove the contract survives contact with reality, and that we can hit accuracy gates.
@@ -55,6 +73,8 @@ Phases 0–5 are terminal-only. **Nothing has a user interface until Phase 6.** 
 | 4 | **Website Scanner (Light)** | Passive only: headers, cookies, tech fingerprint, directory listing, info disclosure. No payloads sent. | precision ≥ 0.95, recall ≥ 0.85 |
 
 Recall for **DNS enumeration and Web Light is corpus-relative, not absolute** — "all subdomains" and "all header misconfigurations on a site we don't fully understand" are not knowable sets. Any published number must state which kind it is; see [10-measurement.md](10-measurement.md). Email and TLS have genuinely finite check surfaces, so their recall is true recall.
+
+**Changed in v3.4.** Tool 2 gains a **v1.1**: certificate lifetime readiness and post-quantum exposure — the first two dated findings, on a scanner that already passes its gate. Tool 4's scope widens from "passive website checks", which every competitor has, to include **AI and agent exposure** — the same crawling machinery pointed at a surface nobody has productised. Tool 3 keeps its position: it is the asset discovery that makes Tool 4's new half possible at all.
 
 **Also in this phase:** payload library v1 structure (even though Light modes send no payloads, the format and versioning are established now), and the technology fingerprint database v1.
 

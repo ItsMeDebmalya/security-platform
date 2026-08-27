@@ -65,7 +65,9 @@ A row in the table above compresses three things that should be read separately.
 
 **A tier label is not a difficulty rating.** A case is only as hard as the fixture makes it. Three faults in the TLS lab (a CA without `basicConstraints`, servers accepting TLS 1.0, a two-level chain standing in for an incomplete one) each made every case *easier* than intended while the gate stayed green. **Ground truth that is wrong produces a passing gate and a scanner nobody should trust**, and nothing in the harness can detect it — only reading the fixtures can.
 
-**When publishing a number, publish what it rests on:** the claim count, whether the corpus is synthetic or captured, and whether it has been checked against live targets.
+**Detected and derived claims are counted separately.** A `derived` finding ([ADR-018](02-decisions.md#adr-018--findings-carry-a-date-and-say-whether-they-were-detected-or-derived)) is arithmetic applied to an observation — a deadline, a threshold. Its correctness partly measures a rule *we wrote*, not the world, so precision `1.000` across derived claims is a weaker statement than the same figure across detected ones. Report the split; never merge them into one number.
+
+**When publishing a number, publish what it rests on:** the claim count, the detected/derived split, whether the corpus is synthetic or captured, and whether it has been checked against live targets.
 
 ---
 

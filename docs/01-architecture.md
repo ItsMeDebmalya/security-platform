@@ -117,6 +117,25 @@ A finding is a *thing we believe about a target*. A scan run is *one execution*.
 
 `ScanResult` is what a single scanner returns *within* a run: `findings[]`, `errors[]`, `telemetry`. The run aggregates results from every scanner it invoked.
 
+### The asset graph
+
+*Added v3.4 — [ADR-019](02-decisions.md#adr-019--scanners-exchange-assets-through-the-run-never-through-each-other).*
+
+A run carries a shared **asset graph**. Scanners contribute what they discover and read what others found, through `ScanContext`. **Scanners still never import one another** — the run passes *data*, never control, which is what keeps each one replaceable and testable alone.
+
+```
+ScanRun
+  └── AssetGraph            discovered assets + how each was found
+        ▲            ▼
+   dns_enum      tls · web · ai_exposure
+```
+
+Three rules make it safe:
+
+- **Provenance is mandatory.** Every asset records the scanner that found it and the evidence. An asset with no provenance is a bug, not a discovery — scanning something we cannot explain finding is the exact failure the authorisation gate exists to prevent.
+- **Authorisation is re-checked per asset.** Discovery does not confer permission. `core/authz.py` is not bypassed by the graph.
+- **Consuming is optional.** A scanner handed no graph scans its own target and behaves as it does today, so nothing becomes order-dependent by accident.
+
 **Findings reference runs, not the other way round:** `first_seen_scan_id` and `last_seen_scan_id`. That is what makes "what changed since last scan" a cheap query and what gives every status transition a provenance.
 
 ---
@@ -173,6 +192,26 @@ This is the centre of the product. Get it right once.
   "cost": { "requests": 3, "wall_ms": 412, "ai_tokens": 0 }
 }
 ```
+
+### When a finding becomes true, and where it came from
+
+*Added v3.4 — [ADR-018](02-decisions.md#adr-018--findings-carry-a-date-and-say-whether-they-were-detected-or-derived).*
+
+```jsonc
+"materialises_at": null,            // true now. The default, and almost everything.
+"materialises_reason": null,
+"derivation": "detected",           // detected | derived
+"derived_from": null                // the finding this was computed from
+```
+
+**`materialises_at` is a fourth axis, not a sixth state.** A certificate that is 200 days long is a fact we are certain of today; what changes in March 2027 is not our confidence but the world's rules. `severity` therefore means *how bad it will be when it lands*, and the five states keep their existing meanings. The truth table does not move.
+
+**`derivation` separates observing from calculating.**
+
+- **`detected`** — we looked at the target. Confidence comes from the engine below: priors, likelihood ratios, independence classes. Evidence is a control-vs-test pair.
+- **`derived`** — we applied a rule to something already detected. Confidence is **inherited from `derived_from`, never recalculated.** Evidence is the premise, the rule, and the arithmetic shown.
+
+The inheritance rule is the important half. A calendar date is not evidence; forcing it through a likelihood ratio would mean inventing a number to clear the reporting threshold. And a conclusion cannot be surer than its premise: if we are 0.97 confident we read the certificate, we are 0.97 confident of everything computed from it. That is what stops a certain-sounding claim laundering an uncertain observation.
 
 ### Severity vs confidence vs state — three separate axes
 

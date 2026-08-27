@@ -110,6 +110,74 @@ Replace it with our own implementation when its runtime becomes the bottleneck. 
 
 ---
 
+## Tool 2.1 — The deprecation clock on TLS *(new in v3.4)*
+
+**Gate: unchanged from Tool 2 — precision ≥ 0.98, recall ≥ 0.95.** Reported with its detected/derived split, per [10-measurement.md](10-measurement.md).
+
+The first dated findings, on a scanner that already passes. Small, and it makes the pitch demonstrable in one command.
+
+### Checks
+
+| check_id | What | Derivation |
+|---|---|---|
+| `tls-cert-lifetime-excessive` | The certificate is longer than the maximum issuable from a published date | `derived` — from the certificate we already parse |
+| `tls-renewal-cadence-at-risk` | Lifetime implies a renewal frequency the current process is unlikely to survive | `derived` |
+| `tls-no-post-quantum-key-exchange` | The server does not offer hybrid PQ key exchange, so today's traffic is harvestable | `detected` — a real handshake |
+| `tls-post-quantum-cdn-only` | The edge offers PQ but the origin does not | `detected`, needs the asset graph |
+
+### The calendar this rests on
+
+CA/Browser Forum ballot **SC-081v3**, passed April 2025 (29–0): maximum certificate validity **200 days from 15 March 2026**, **100 days from 15 March 2027**, **47 days from 15 March 2029**.
+
+**Verify this against the ballot text before it reaches a customer or a slide.** The figures here came from secondary sources during research. The v3.1 review found ~25 defects by checking claims against primary sources, and a deprecation clock that cites a wrong date is worse than no clock.
+
+### Prerequisites
+
+Post-quantum checks **cannot run on the current toolchain** — verified, not assumed: `ssl.SSLContext.set_groups` does not exist on Python 3.12, and ML-KEM needs OpenSSL 3.5+. Task 0b.5. The lifetime checks have no such blocker and could ship first.
+
+### Gotchas
+
+- **A long certificate is not a vulnerability today.** It is an operational risk with a date. Severity is what it will cost *when it lands*; the date does the prioritising. Getting this framing wrong turns the flagship feature into a false positive with a countdown.
+- **Absence of PQ support is not always the customer's fault or fix** — it is frequently the CDN's, or their origin's. Say which.
+- **The `47 days` figure is the headline and 2029 is far away.** The one that bites first is 200 days, already in force.
+
+---
+
+## Tool 4 — Website & AI Exposure (Light) *(scope widened in v3.4)*
+
+**Gate: precision ≥ 0.95, recall ≥ 0.85 — corpus-relative, never absolute.**
+
+The original scope — headers, cookies, technology fingerprint, directory listing, information disclosure — is commodity; every competitor ships it. It stays, because it is the price of entry. What is added is the half nobody has productised.
+
+### The AI and agent exposure half
+
+Passive detection of AI infrastructure that was never meant to face the internet:
+
+- exposed **MCP servers** — the plumbing that connects an AI assistant to tools and data
+- agent **admin panels and debug endpoints**, frequently bound to every interface by default
+- unauthenticated **model endpoints**
+- **plaintext HTTP** on any of the above, which exposes OAuth tokens and API keys in transit
+
+**Why this fits us rather than being a stretch.** It is fingerprinting — a port, a path, a response shape. No exploitation, so [ADR-004](02-decisions.md#adr-004--no-exploitation-ever) holds without an exception. It is the same observe-and-evidence shape as everything already built, and it is new enough that we are not fighting a funded incumbent.
+
+### The line we do not cross
+
+**Finding an exposed server is passive. Reading what is on it is not.** One HTTP request separates them, and the difference is the whole of ADR-004. Light mode reports *that* an endpoint is exposed and unauthenticated. It does not enumerate the tools an agent can call, and it never reads a conversation history — even though both would be trivially possible, and precisely because they would.
+
+This is why passivity becomes a per-check declaration in task 0b.6 rather than a mode assignment someone remembers to file correctly.
+
+### Prerequisites
+
+HTTP record/replay (0b.4) and the asset graph (0b.2). Neither is optional: without replay there is no deterministic corpus, and without discovery there is nothing to scan.
+
+### Gotchas
+
+- **This surface is young and moving.** Fingerprints will rot faster than DNS or TLS ones. The corpus needs re-recording on a schedule, and a stale fingerprint that stops matching is a silent recall loss, not a visible failure.
+- **A default-configured local tool is not a finding.** Something bound to `127.0.0.1` on a developer's laptop is not exposed. Reachability from outside is the check, not the presence of software.
+- **Recall is corpus-relative here**, same as DNS enumeration, and for the same reason: nobody knows the true set.
+
+---
+
 ## Tool 3 — DNS & Subdomain Enumeration (Light)
 
 **Gate: precision ≥ 0.95, recall ≥ 0.80 against the corpus's known set.**
