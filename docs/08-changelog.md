@@ -310,3 +310,17 @@ The client asked for differentiation that holds up in 2026 rather than 2022. Res
 **Architecture.** [ADR-019](02-decisions.md#adr-019--scanners-exchange-assets-through-the-run-never-through-each-other) gives a run a shared asset graph so discovery can feed the tools that consume it, without scanners importing each other.
 
 **Revert.** Drop the three ADRs, the four schema fields, and the graph from `ScanRun`. Existing findings default to `materialises_at: null` and `derivation: detected`, so nothing stored needs rewriting in either direction — which is the property that made doing this now cheap and doing it later expensive.
+
+---
+
+## v3.4a — the IoT & Device Security Scanner (2026-08-25)
+
+**What changed.** IoT becomes a distinct tool with its own gate, corpus and plan ([15-iot-scanner.md](15-iot-scanner.md)), in a new Phase 3a, rather than checks bolted onto the Network Scanner. [ADR-021](02-decisions.md#adr-021--the-iot--device-security-scanner-is-its-own-tool-not-a-check-family).
+
+**Why a tool and not a check family.** It takes a *network* rather than a domain, its primary output is an asset inventory, it is the only tool that runs inside the perimeter, and its accuracy problem is inference rather than observation. Also: a differentiator has to be nameable, and "our network scanner also does some IoT checks" is not a pitch.
+
+**The compliance angle was researched and dropped.** India — the first market — has no mandatory IoT security regime: MTCTE is pre-market certification of manufacturers, and DoT's consumer-IoT guidance is advisory. There is no dated cliff to sell against, so the tool is positioned on capability rather than a calendar.
+
+**A hard safety rule was added** to [06-guidelines.md](06-guidelines.md): device-class rate ceilings are floors rather than defaults, one connection per device, never repeat an unanswered probe, read-only verbs only. Scanning a device network is the most dangerous thing this product does.
+
+**Revert.** Drop ADR-021, `15-iot-scanner.md` and Phase 3a. The safety rules should stay regardless — they apply to anything that talks to constrained hardware.

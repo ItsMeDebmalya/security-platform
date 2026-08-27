@@ -110,6 +110,8 @@ Every scanner exposes the same three modes. This is a product-wide contract, not
 7. **Certificate lifetime readiness** — whether a renewal process survives 47-day certificates. Renewals go from about one a year to about eight by 2029; this affects everyone and nobody is warning them.
 8. **AI and agent exposure** — exposed MCP servers, agent admin panels and unauthenticated model endpoints. A new surface, passively detectable, and not yet productised by anyone.
 
+9. **A device scanner that is safe to run** — the IoT & Device Security Scanner ([ADR-021](02-decisions.md#adr-021--the-iot--device-security-scanner-is-its-own-tool-not-a-check-family)). Not "we scan IoT", which many claim. The claim is *safely*: no credential testing, no writes, no state change — and honest confidence in the noisiest corner of security scanning, where the industry norm is to print forty criticals from a banner match. Our no-exploitation rule stops being a constraint and becomes the product.
+
 **These are worth little on their own.** A date nobody believes is just another alert. What makes them defensible is 1–4 above: the evidence, the honest `inconclusive`, the confidence that is separate from severity. The calendar is the pitch; the proof is why anyone should act on it.
 
 ### What we cut, and why

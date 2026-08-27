@@ -65,6 +65,14 @@ The product is accuracy. These are the rules that produce it.
 
 ## Rate limiting and target safety
 
+**Devices are not servers, and this is a stop-the-line rule.** A request rate a web server ignores can knock over a sensor, a camera or a PLC — and the thing you break may be doing something physical. Scanning a device network is the most dangerous thing this product does.
+
+- **Device-class rate ceilings are floors, not defaults.** They are not tuned away for speed. If a scan is too slow, it covers fewer devices; it does not go faster.
+- **One connection at a time per device.** Concurrency is across devices, never within one.
+- **Never repeat a probe a device did not answer.** A non-response from a constrained device is frequently the device struggling, not a dropped packet. Retrying is how a scan becomes an outage.
+- **Any protocol that can write, is not spoken.** Read-only verbs only — no MQTT PUBLISH, no CoAP PUT/POST/DELETE, no SNMP SET, no UPnP control actions.
+- **Authorisation for a device network means someone who understands what happens if a device falls over.** A domain owner clicking accept is not that.
+
 Our scanners talk to systems other people depend on. Being wrong here means outages, abuse complaints, and blocked IP ranges.
 
 - **Token bucket per target host**, conservative by default.

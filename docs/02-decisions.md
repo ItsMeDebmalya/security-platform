@@ -490,3 +490,33 @@ ScanRun
 **Costs we accept.** Two of the four need foundation work before they can ship: post-quantum needs a toolchain we do not have, and AI exposure needs HTTP record/replay and the asset graph. Neither is a research problem; both are build cost, and both are recorded rather than assumed away.
 
 **Reversal cost.** Low. These are scope and framing decisions, as ADR-014's were.
+
+---
+
+## ADR-021 — The IoT & Device Security Scanner is its own tool, not a check family
+
+**Decision.** IoT gets a **distinct tool with its own gate, its own corpus and its own plan document** ([15-iot-scanner.md](15-iot-scanner.md)), reusing `core/` like every other scanner. It is positioned as a headline capability rather than an extension of the network scanner.
+
+**Why a separate tool rather than checks bolted onto Network.**
+
+- **It scans a different kind of thing.** Every tool so far takes a domain or a URL. This takes a *network* — a CIDR, a VLAN, an address range — and its primary output is an **asset inventory**, not a finding list. That is a different deliverable for a different buyer.
+- **It is the only tool that runs inside the perimeter.** Different authorisation story, different risk profile, different rate limits.
+- **Its accuracy problem is genuinely different.** Everything else measures something we can observe directly. IoT CVE matching is inference from an unreliable identifier, and it needs its own measurement discipline (below).
+- **A differentiator has to be nameable.** "Our network scanner also does some IoT checks" is not a pitch. A tool with a name, a gate and a demo is.
+
+**The claim.** Not "we scan IoT" — plenty of tools say that. The claim is:
+
+> **The scanner you can safely point at fragile devices, that tells you which vulnerabilities it actually confirmed and says "I do not know" when it cannot tell.**
+
+Two seams that exist because of how the market is built:
+
+1. **Existing tools are either passive or aggressive.** Passive OT monitoring needs a network tap and enterprise money. Active scanners are built for servers and knock devices over. A *deliberately gentle active* scanner is an unoccupied position, and our no-exploitation rule ([ADR-004](#adr-004--no-exploitation-ever)) becomes a feature rather than a limitation — we can honestly say we will not brute-force a credential or change device state.
+2. **IoT CVE matching is the noisiest output in security scanning.** Vendor strings are inconsistent, NVD's CPE coverage for consumer devices is poor, firmware versions are often absent from the dictionary, and the same model ships different regional builds. The industry norm is to print forty criticals from a banner match. **Our existing rules — version-only caps at `suspected`, `inconclusive` when we cannot tell, independence classes before `confirmed` — are already the right answer, and they are worth most exactly where the noise is worst.**
+
+**A refinement to the version-strings-lie rule, with its reasoning.** [06-guidelines.md](06-guidelines.md) caps version-only findings at `suspected`, confidence ≤ 0.6, because distributions backport security patches without bumping versions. **IoT firmware rarely works that way** — vendors ship a new build or nothing. So a firmware version is a *stronger* signal than a distro package version, and the cap for `firmware_version` may justifiably be higher. This is a documented exception with a stated cause, not a loophole; the corpus must demonstrate it before the cap moves.
+
+**The hard constraint.** Devices are fragile in a way servers are not. A request rate a web server ignores can knock over a sensor or a PLC. **This is the most dangerous scanning we will ever do**, and the gentleness is not a default to be tuned away — see [06-guidelines.md](06-guidelines.md).
+
+**Dependencies, stated rather than assumed.** Protocol clients in `core/`, the generic record/replay layer (0b.3), and — for the vulnerability half — port discovery from the Network Scanner. The **exposure half needs none of the latter**: with an authorised range it can probe the dozen known device ports directly, which is why it is split in two.
+
+**Reversal cost.** Low. It is a scanner like any other; the Scanner Contract means it can be dropped without touching anything else.

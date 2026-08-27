@@ -144,6 +144,25 @@ Recall for **DNS enumeration and Web Light is corpus-relative, not absolute** �
 
 ---
 
+## Phase 3a — The IoT & Device Security Scanner *(new in v3.4)*
+
+**Goal:** the headline differentiator. A distinct tool, not a check family — see [ADR-021](02-decisions.md#adr-021--the-iot--device-security-scanner-is-its-own-tool-not-a-check-family) and the full plan in [15-iot-scanner.md](15-iot-scanner.md).
+
+| Tool | Gate | Depends on |
+|---|---|---|
+| **5a — Device Exposure** | precision ≥ 0.95, recall corpus-relative | Protocol clients in `core/`, record/replay (0b.3). **Not** port discovery — it probes the dozen known device ports directly on an authorised range. |
+| **5b — Device Vulnerability** | precision ≥ 0.90, recall corpus-relative | 5a, plus identification and a CVE source |
+
+**The claim:** *the scanner you can safely point at fragile devices, that tells you which vulnerabilities it actually confirmed and says "I do not know" when it cannot tell.* Existing tools are either passive and expensive or aggressive and dangerous; **our no-exploitation rule becomes a feature here** rather than a limitation.
+
+**Why 5b's gate is lower than every other tool's.** It infers from a firmware string rather than observing. An unreachable target would push an author to under-report; the honest instrument is a lower gate plus a mandatory detected/derived split.
+
+**5a could be pulled forward.** Its only hard dependencies are Phase 0b items. Placing it before the Network Scanner trades roadmap tidiness for having the differentiator sooner — a live decision, not a settled one.
+
+**Safety is stop-the-line here.** Devices break in ways servers do not, and what breaks may be doing something physical. The rate ceilings in [06-guidelines.md](06-guidelines.md) are floors, not defaults.
+
+---
+
 ## Phase 4 — Intelligence
 
 **Goal:** turn a list of findings into an answer to "what do I fix first?"

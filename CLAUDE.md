@@ -17,11 +17,12 @@ Read `docs/14-progress-ledger.md` for where things stand — including **standin
 - `tools-and-features-list.md` — entry point and index
 - `docs/00-context.md` — product, strategy, standards
 - `docs/01-architecture.md` — **the Scanner Contract, finding/evidence model, confidence engine**
-- `docs/02-decisions.md` — ADRs 001–020
+- `docs/02-decisions.md` — ADRs 001–021
 - `docs/03-roadmap.md` — phases 0, **0b (foundation for the calendar)**, 1–7 with accuracy gates
 - `docs/04-phase-0-foundations.md`, `docs/05-phase-1-first-tools.md` — task-level plans
 - `docs/06-guidelines.md` — rules for all code
 - `docs/07-open-questions.md` — what is undecided
+- `docs/15-iot-scanner.md` — **the IoT & Device Security Scanner**: a distinct tool, its checks, and the safety rules that are stop-the-line
 - `docs/14-progress-ledger.md` — **what has been built, what broke, what is owed**; append after each phase or tool
 - `docs/13-test-targets.md` — the vulnerable corpus targets, how to run them, and what we deliberately do not scan
 - `docs/12-cli-runbook.md` — **operator guide for the `scan` CLI**: every command, real output, exit codes, troubleshooting
@@ -79,7 +80,7 @@ The contract was audited in v3.1 before freezing and gained: a `ScanRun` entity,
 ## What we claim (ADR-020, amends ADR-014)
 
 Four claims added in v3.4, all *observation plus rule* rather than new research capability:
-**the deprecation clock** (what breaks on a date, not just what is broken), **post-quantum exposure**, **certificate lifetime readiness**, **AI and agent exposure** (MCP servers, agent panels, model endpoints — passive detection only).
+**the deprecation clock** (what breaks on a date, not just what is broken), **post-quantum exposure**, **certificate lifetime readiness**, **AI and agent exposure** (MCP servers, agent panels, model endpoints — passive detection only), and **the IoT & Device Security Scanner** (ADR-021) — a distinct tool whose claim is that it is *safe* to point at fragile devices.
 
 They are worth little without the proof layer: evidence, `inconclusive`, calibrated confidence. A date nobody believes is just another alert.
 
