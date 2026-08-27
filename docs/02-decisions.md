@@ -520,3 +520,56 @@ Two seams that exist because of how the market is built:
 **Dependencies, stated rather than assumed.** Protocol clients in `core/`, the generic record/replay layer (0b.3), and — for the vulnerability half — port discovery from the Network Scanner. The **exposure half needs none of the latter**: with an authorised range it can probe the dozen known device ports directly, which is why it is split in two.
 
 **Reversal cost.** Low. It is a scanner like any other; the Scanner Contract means it can be dropped without touching anything else.
+
+---
+
+## ADR-022 — Prove, connect, close: aggressive proof, never touching the target
+
+**Decision.** The product's differentiator on the mitigation side is a three-part loop — **prove** a finding, **connect** related findings into one story, **close** a finding with a re-test — built entirely within [ADR-004](#adr-004--no-exploitation-ever). Nothing here runs code on a target, changes state, or reads real data. It makes the *target* demonstrate the problem instead of us claiming it.
+
+**Why this and not exploitation.** "Offensive capability" for a scanner usually means running exploits. That crosses ADR-004, which is not reversible — it is the product's legal identity. The ownable move is not to *break in* but to make the proof undeniable without breaking in. That is a sharper differentiator anyway: anyone can print a critical; making the customer's own infrastructure prove the critical is what a severity score cannot do.
+
+### 1. Prove — the validation engine, promoted to flagship
+
+Already in the architecture as a component. It is the flagship, and the docs should say so.
+
+- A detection produces a candidate.
+- Validation re-tests with an **independent method** — a different payload family, a different observable channel.
+- Blind and asynchronous bugs prove via **out-of-band callback**: the target is made to request a unique URL only we control. If our server is hit, the bug is proven with certainty and nothing was touched.
+- Only a passed validation can lift a finding to `confirmed`.
+
+The pitch sentence: *"We didn't guess. We made your server phone us."* No competitor's confidence number says that.
+
+### 2. Connect — same-run correlation, not the attack-path moat
+
+[ADR-014](#adr-014--descope-the-differentiation-claims-to-what-two-people-can-actually-own) cut attack-path analysis, and that stays cut — it is Wiz's product and needs a graph we will not have. **This is the nearer, ownable slice:** within one run, over the asset graph ([ADR-019](#adr-019--scanners-exchange-assets-through-the-run-never-through-each-other)), group findings that compose into a single attack.
+
+An exposed MQTT broker + a device with a known RCE + a flat network is not three medium findings. It is **one critical story**, and reported as one. The correlation is a set of hand-written **composition rules** ("exposure + weak-auth on the same asset raises the severity of both"), not a machine-learned graph. Rules are auditable, which the moat version is not, and a two-person team can own a rule set.
+
+**A correlation is itself a `derived` finding** ([ADR-018](#adr-018--findings-carry-a-date-and-say-whether-they-were-detected-or-derived)): its confidence is inherited from the weakest finding it chains, never invented. A story is only as believable as its least certain link, and saying so is the honest version of "critical".
+
+### 3. Close — fix verification as a first-class capability
+
+Named as a differentiator since v2, **never designed**. This ADR makes it real.
+
+- Every finding records the **exact test that proved it** — the same replayable evidence the finding already carries.
+- Re-running that test is a first-class operation: `scan verify <finding-id>`. It re-executes only that check against the same target and compares.
+- The result transitions the finding's `status`: `open → closed` with fresh evidence, or `open` still, with the failed re-test recorded.
+- **Always free**, forever. Opening problems is what everyone does; closing them with proof is the retention hook.
+
+This needs a **finding lifecycle** the contract half-has: `status`, `status_history` and `first_seen`/`last_seen_scan_id` already exist; what is missing is the operation that drives them and a store that persists a finding between scans. Both are Phase 0b foundation work (0b.8).
+
+### 4. Prioritise — the by-product that makes a report actionable
+
+Once findings connect, "fix these first" falls out. A finding that is a link in three attack stories outranks an isolated one of the same severity. **`severity × confidence` orders a list; composition orders a plan.** This is not new engineering — it is a sort over the correlation output — and it is the single thing that turns a 200-item report into a Monday morning.
+
+**Consequences.**
+- The validation engine and OOB server (Phase 2a) are reframed as the flagship, not a component.
+- `core/` gains a **correlation pass** that runs after all scanners in a run, reads the asset graph and findings, and emits `derived` correlation findings. It imports no scanner.
+- A **finding store** and a `scan verify` operation (0b.8).
+- Composition rules are **curated data with a lifecycle**, like the deprecation calendar — versioned, sourced, reviewed.
+- [10-measurement.md](10-measurement.md): a correlation finding is scored as `derived`, and its precision is reported separately.
+
+**Costs we accept.** Correlation can over-tell a story — three findings that *look* like a chain but are not. The mitigation is the same as everywhere: a composition rule states its premise, the confidence inherits from the weakest link, and a chain that cannot be justified is not drawn. Under-telling (missing a real chain) is preferred to over-telling, consistent with precision-over-recall.
+
+**Reversal cost.** Low for connect and prioritise (scope/framing). Moderate for close — the finding store is real infrastructure, which is why it is foundation work done before the tools that will lean on it.

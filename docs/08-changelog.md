@@ -324,3 +324,15 @@ The client asked for differentiation that holds up in 2026 rather than 2022. Res
 **A hard safety rule was added** to [06-guidelines.md](06-guidelines.md): device-class rate ceilings are floors rather than defaults, one connection per device, never repeat an unanswered probe, read-only verbs only. Scanning a device network is the most dangerous thing this product does.
 
 **Revert.** Drop ADR-021, `15-iot-scanner.md` and Phase 3a. The safety rules should stay regardless — they apply to anything that talks to constrained hardware.
+
+---
+
+## v3.4b — prove, connect, close (2026-08-25)
+
+**What changed.** The mitigation side of the product — long a set of slogans — gets a real design in [ADR-022](02-decisions.md#adr-022--prove-connect-close-aggressive-proof-never-touching-the-target): the validation engine promoted to flagship (prove), a same-run correlation pass over the asset graph (connect), and a finding store plus `scan verify` (close). Prioritisation falls out of correlation. Two Phase 0b tasks added: 0b.8 finding store, 0b.9 correlation pass.
+
+**Why.** The client asked for aggressive, mitigation-focused capability. "Offensive" read literally would break [ADR-004](02-decisions.md#adr-004--no-exploitation-ever), which is not reversible. The ownable version is aggressive *proof* — making the target demonstrate the bug — not intervention. Confirmed with the client that this was the intent.
+
+**The gap this closes honestly.** "We verify your fix" has been a differentiator since v2 with no design behind it. It is now specified, and its dependency (findings that persist between scans) is named as foundation work rather than assumed.
+
+**Revert.** Drop ADR-022, tasks 0b.8/0b.9, and the two architecture sections. The finding store is the only real infrastructure; correlation and prioritise are framing over data already produced.

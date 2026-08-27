@@ -389,6 +389,26 @@ Enforced in `core/`, not per-scanner, because per-scanner means eventually forgo
 
 ---
 
+## The correlation pass
+
+*Added v3.4 — [ADR-022](02-decisions.md#adr-022--prove-connect-close-aggressive-proof-never-touching-the-target).*
+
+After every scanner in a run has finished, a **correlation pass** reads the findings and the asset graph and emits `derived` findings that connect them into attack stories. It runs in `core/`, imports no scanner, and is driven by curated **composition rules**.
+
+```
+   scanners/*  ──▶  findings + asset graph  ──▶  correlation pass  ──▶  derived "story" findings
+                                                       │
+                                                 composition rules (curated data)
+```
+
+- A story's confidence is **inherited from the weakest finding it chains** — a chain is as believable as its least certain link.
+- A story orders the fix plan: a finding that links three stories outranks an isolated one of equal severity.
+- A rule that cannot justify a chain does not draw it. Under-telling beats over-telling.
+
+## Fix verification and the finding store
+
+`scan verify <finding-id>` re-runs the single test that proved a finding and transitions its `status`. This needs findings to **persist between scans** — a finding store, which the CLI backs with a local file today and Phase 6 backs with a database, same interface. The contract already carries `status`, `status_history`, `first_seen_scan_id` and `last_seen_scan_id`; the store and the verify operation are what make them move.
+
 ## How this becomes a platform
 
 Nothing below exists yet. It is drawn so Phase 0 does not paint us into a corner.

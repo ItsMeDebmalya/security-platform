@@ -17,7 +17,7 @@ Read `docs/14-progress-ledger.md` for where things stand — including **standin
 - `tools-and-features-list.md` — entry point and index
 - `docs/00-context.md` — product, strategy, standards
 - `docs/01-architecture.md` — **the Scanner Contract, finding/evidence model, confidence engine**
-- `docs/02-decisions.md` — ADRs 001–021
+- `docs/02-decisions.md` — ADRs 001–022
 - `docs/03-roadmap.md` — phases 0, **0b (foundation for the calendar)**, 1–7 with accuracy gates
 - `docs/04-phase-0-foundations.md`, `docs/05-phase-1-first-tools.md` — task-level plans
 - `docs/06-guidelines.md` — rules for all code
@@ -83,6 +83,8 @@ Four claims added in v3.4, all *observation plus rule* rather than new research 
 **the deprecation clock** (what breaks on a date, not just what is broken), **post-quantum exposure**, **certificate lifetime readiness**, **AI and agent exposure** (MCP servers, agent panels, model endpoints — passive detection only), and **the IoT & Device Security Scanner** (ADR-021) — a distinct tool whose claim is that it is *safe* to point at fragile devices.
 
 They are worth little without the proof layer: evidence, `inconclusive`, calibrated confidence. A date nobody believes is just another alert.
+
+**Prove, connect, close (ADR-022)** is the aggressive-but-safe mitigation loop, entirely within ADR-004: make the target *prove* the bug via out-of-band callback (never exploit it), *connect* findings that compose into one attack story, *close* a finding by re-running the exact test that proved it. Aggressive proof, never intervention — do not let 'offensive' drift into touching a target.
 
 ## Descoped — do not reintroduce (ADR-014)
 
