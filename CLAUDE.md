@@ -26,6 +26,7 @@ Read `docs/14-progress-ledger.md` for where things stand — including **standin
 - `docs/14-progress-ledger.md` — **what has been built, what broke, what is owed**; append after each phase or tool
 - `docs/13-test-targets.md` — the vulnerable corpus targets, how to run them, and what we deliberately do not scan
 - `docs/12-cli-runbook.md` — **operator guide for the `scan` CLI**: every command, real output, exit codes, troubleshooting
+- `docs/16-learning-map.md` — **what the developer needs to learn**, dev and security, tiered by when it is needed
 - `docs/how-to-add-a-scanner.md` — the practical guide, written by building the reference scanner
 - `docs/08-changelog.md` — v2→v3, v3→v3.1, and the v3.2 additive contract changes made during Phase 0, with revert notes
 - `docs/09-ownership-verification.md` — the legal gate on active scans; methods per target type, audit record, interim allowlist schema
