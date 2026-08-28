@@ -236,7 +236,7 @@ same certificate on both: True
 
 Six real defects in Tools 1 and 2, all found by live runs, none by a corpus at `precision 1.000`. The corpus's job is regression — proving today's change did not break yesterday's behaviour — and it does that well. It cannot discover new failure modes, because **a corpus written by the scanner's author encodes the scanner's assumptions**: every case passes by agreeing with the code. Now [ADR-017](02-decisions.md#adr-017--live-verification-is-part-of-a-tools-definition-of-done).
 
-**Amended 2026-08-28.** 0b.1 added a third category: a defect found by *review*, caught by neither the corpus nor a live run. The corpus harness silently discarded the `derivation` field, and it could not have been found by running anything — the scanners emit no derived findings yet, so the wrong number and the right number were both empty. Some defects are only visible by reading the code that carries a value from one place to another.
+**Amended 2026-08-28.** 0b.1 added a third category: a defect found by *review*, caught by neither the corpus nor a live run. The corpus harness silently discarded the `derivation` field, and it could not have been found by running anything — the scanners emit no derived findings yet, so the wrong number and the right number were both empty. Some defects are only visible by reading the code that carries a value from one place to another. **Amended again 2026-08-28, after Phase 0b:** this is now the majority category, not a curiosity — four of the phase's defects were found this way and none by a green suite. See the Phase 0b entry for the table; the recurring shape is a plausible default standing in for a value that never arrived.
 
 ### What our gate numbers rest on
 
@@ -555,6 +555,57 @@ make lint && make typecheck && make test && make corpus
 ```
 
 `ruff check`/`ruff format --check`: clean, 83 files already formatted. `mypy`: no issues, 36 source files. `pytest`: 735 passed (720 + 15 new). Corpus: email 1.000/1.000 (240 checks, 21 claims), tls 1.000/1.000 (134 checks, 5 claims), example 1.000/1.000 — gates unchanged.
+
+---
+
+## 2026-08-28 · Phase 0b — complete
+
+**Plan:** [03-roadmap.md](03-roadmap.md) Phase 0b · **Status: complete, with one clause flagged**
+
+Nine tasks, six commits, in a day. Built while two scanners existed rather than ten, which was the whole argument for doing it now — every item here would have been a migration instead of an edit.
+
+| Task | Landed as |
+|---|---|
+| 0b.1 | Dated and derived findings — `materialises_at`, `derivation`, `derived_from` |
+| 0b.2 | The asset graph, provenance structurally required |
+| 0b.3 | One record/replay layer in `core/` |
+| 0b.4 | HTTP record/replay — retired D2 |
+| 0b.5 | Toolchain pinned to Python 3.13.15 / OpenSSL 3.5.7 |
+| 0b.6 | Passivity declared per check, not per mode |
+| 0b.7 | The deprecation calendar as curated, sourced data |
+| 0b.8 | Finding store + `scan verify` |
+| 0b.9 | The correlation pass |
+
+### Exit criterion
+
+Four clauses met outright: a scanner can read assets another discovered; one `core/` recording layer serves DNS, TLS and HTTP; a finding can be re-verified and transitioned on fresh evidence; a run can connect findings into one story with inherited confidence.
+
+**The fifth is met in mechanism but not in wording.** It says *"a scanner can emit a dated, derived finding whose confidence is inherited from its premise"* — but [ADR-022](02-decisions.md#adr-022--prove-connect-close-aggressive-proof-never-touching-the-target) places deriving in the correlation pass, a `core/` component that runs after scanners, not inside any scanner. Nothing is missing; the sentence describes a design we deliberately changed. **Either the wording moves or the design does, and that is a decision rather than a cleanup.** Recorded rather than declared met.
+
+### Found & fixed — the same defect four times
+
+Every defect this phase was one shape: **a value that failed to travel from one place to another, invisible because something plausible stood in for it.**
+
+| Where | The stand-in |
+|---|---|
+| 0b.1 | The corpus harness never passed `derivation`; the field's `"detected"` default filled the gap, so the derived half of the split would have read `None` forever — indistinguishable from "no derived claims yet" |
+| 0b.3/0b.4 | A duplicated `body_cap` that agreed only when a caller set it twice; and TLS's `MissingHandshakeError` being a different class from DNS's, so the CLI's `except` clause had never caught it |
+| 0b.6 | Every TLS check classified active on the reasoning that it opens a connection — which would have removed Tool 2's Light mode entirely, while its roadmap gate is a Light gate |
+| 0b.9 | A runbook transcript with an edited `target` field, and a report claiming an absence of disclosure was a disclosure |
+
+**None of these were caught by tests or gates.** Every suite was green and every gate read 1.000 while each was present. They were caught by reading the code that carries a value across a boundary, and by asking what a stated consequence would actually mean for the product.
+
+The house pattern against this is already in the codebase and should be reached for first: `ScanContext` hands out a raising `UnconfiguredClient` rather than a working default, so forgetting to wire a client is loud. 0b.2's `DiscoveredAsset` follows it — provenance has no default, so an asset without it fails at construction. 0b.6's `passive: bool` follows it too: no default, so an undeclared check is a construction error rather than a silently permitted one.
+
+### Decided
+
+- **Passive means what an ordinary client does**, not "sends no packets". Connecting is not what makes a check active; deliberately abnormal input is. Finding a server is passive, reading its admin panel is not.
+- **A finding is closed only by a positive observation that the problem is gone**, never by the absence of an observation. Inconclusive, blocked, errored, never ran, denied — all leave it open.
+- **Curated data says who reviewed it, and says so honestly.** The calendar's entries read `pending-human-review` because an assistant checked the sources and no human has signed them off.
+
+### Deferred
+
+D16 (post-quantum blocked on Python 3.15 final) added. D2 retired. See §D.
 
 ---
 
