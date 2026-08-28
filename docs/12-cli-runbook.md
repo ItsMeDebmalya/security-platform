@@ -46,6 +46,7 @@ tls          1.0.0      light,standard           domain,ip,url
 | `scan list` | Registered scanners, versions, modes |
 | `scan run <scanner> --target <t>` | Run one scanner against one target |
 | `scan verify <finding-id> --store <db>` | Re-run the check that proved a stored finding; closes it only on positive evidence the problem is gone |
+| `scan correlate --result <r1.json> [--result <r2.json> ...]` | Run the correlation pass over one or more scan results, emitting `derived` "story" findings ([2b](#2b-the-correlation-pass-scan-correlate)) |
 | `make test` | Unit tests |
 | `make lint` / `make typecheck` | ruff / mypy --strict |
 | `make licence-check` | Fail if a dependency's licence breaks [ADR-003](02-decisions.md#adr-003--permissive-open-source-or-we-build-it-ourselves) |
@@ -117,6 +118,62 @@ $ echo $?
 ```
 
 The unit tests in `tests/cli/test_verify.py` drive a fake, test-only scanner through every failure mode this command must never mistake for a fix: still-reported, `inconclusive`, `suppressed` (the rate-limited/WAF-blocked case), `error`, the check not running at all (a missing prerequisite), a raised exception (a timeout), and an authorisation denial.
+
+---
+
+## 2b. The correlation pass — `scan correlate`
+
+"Connect" ([ADR-022](02-decisions.md#adr-022--prove-connect-close-aggressive-proof-never-touching-the-target), docs/03-roadmap.md 0b.9): after every scanner in a run has finished, the correlation pass reads the run's findings and its asset graph and emits `derived` "story" findings that chain related findings into one attack story. It is driven entirely by hand-written **composition rules** in `config/composition_rules.yaml` — reviewed, versioned data, in the same discipline as the deprecation calendar (0b.7). It runs in `core/correlation.py`, imports no scanner, and never traverses the asset graph to discover a chain on its own — every chain is one a rule names explicitly. This is deliberately *not* attack-path analysis ([ADR-014](02-decisions.md#adr-014--descope-the-differentiation-claims-to-what-two-people-can-actually-own) stays cut); a rule fires only when every one of its premises is present as an actual finding on the same asset, and a partly-satisfied rule emits nothing.
+
+`scan correlate` runs this pass over one or more saved `ScanResult` files (from `scan run --out`):
+
+```
+scan correlate --result email.json --result tls.json
+```
+
+| Option | Meaning |
+|---|---|
+| `--result`, `-r` | A `ScanResult` JSON file to correlate. Repeatable — pass one per scanner in the run. |
+| `--rules` | Composition rules file (default `config/composition_rules.yaml`) |
+| `--seed-assets` | JSON file of discovered assets to seed the asset graph — the ADR-019 replay seam, same shape `core.assetgraph.seed_asset_graph` expects |
+| `--format` | `table` (default) or `json` |
+
+Two rules ship today (full, reviewed text of each in `config/composition_rules.yaml`):
+
+- **`expiring-cert-blind-to-renewal`** — within TLS alone: an expiring certificate (`tls-cert-expiring-soon`) with no CT-log trail to confirm a renewal happened (`tls-no-certificate-transparency`). Demonstrated below with a real transcript.
+- **`spoofable-domain-weak-transport`** — cross-scanner: a spoofable mail domain (`email.spoofing-possible`) that also serves an obsolete TLS protocol (`tls.tls-protocol-obsolete`) on the same asset. Described in prose only, below — no transcript exists for it yet, and the reason is worth stating rather than papering over.
+
+**A real transcript — `expiring-cert-blind-to-renewal`, one genuine target, nothing edited.** A lab TLS server was minted with the same machinery `corpus/generators/tls.py` uses for the committed corpus (a leaf certificate issued by a lab CA, `not_after` 20 days out), and the real `TlsScanner` was run against it once, in `standard` mode, saved via `--out`. That single scan reports both premises on the one target:
+
+```
+$ scan run tls --target https://localhost:14499 --target-type url --mode standard \
+    --replay fixtures-scratch/expiring-soon-standard --out tls-expiring.json
+[  20%] connecting to localhost:14499
+[  50%] checking the certificate
+[  75%] enumerating protocols
+[ 100%] done
+```
+
+`fixtures-scratch/` is a scratch recording made for this transcript and is deliberately **not committed** — the certificate in it expires, so a frozen copy would rot into a different case within weeks (the same trap `CertificateInfo.days_until_expiry(now=...)` exists to avoid). Regenerate it by minting a leaf ~20 days from expiry with `corpus/generators/tls_lab.py` and re-running the command above with `--record`.
+
+`tls-expiring.json` carries `tls-cert-expiring-soon` (`suspected`, confidence 0.9836) and `tls-no-certificate-transparency` (`informational`, confidence 0.9677) on `https://localhost:14499`. Correlating that one result:
+
+```
+$ scan correlate --result tls-expiring.json
+
+correlated 2 finding(s) from 1 result(s) against 2 rule(s)
+
+severity  conf   state          check                            derived_from
+medium    0.97   suspected      expiring-cert-blind-to-renewal   sha256:20dcc0...,sha256:4e09ce...
+```
+
+The story's `confidence` (0.9677) is exactly `min()` of the two premises' confidences — `core.confidence.ConfidenceEngine.inherit()`, never recomputed. `derived_from` names both premise finding ids (comma-joined), `derivation: "derived"` end to end, and `--format json` shows the full story including the evidence's `data.premises` narrative and `data.rule_why`, so the chain is auditable rather than asserted.
+
+Note this exercises `informational` as a usable premise, not only `suspected`/`confirmed`/`highly_likely`: `tls-no-certificate-transparency` is always `severity: info` in the TLS scanner by design, so `informational` had to be treated as a resolved, evidenced fact rather than excluded — see `ELIGIBLE_PREMISE_STATES` in `core/correlation.py` for the reasoning (only `inconclusive`, "no verdict reached," is excluded).
+
+**`spoofable-domain-weak-transport` — no transcript, and why.** Its two premises come from different scanners (email, tls), and the committed corpus fixtures are per-scanner lab targets pinned to different hosts — `email`'s standard-mode `spoofing-possible` case targets a synthetic zone (`corpus-bare.example`), `tls`'s standard-mode `tls-protocol-obsolete` case targets a synthetic lab port (`localhost:14412`). No committed fixture has both problems on one real target, so there is no honest transcript to show yet without inventing one, and an earlier draft of this section did exactly that — edited a saved scan result's `target` field after the fact so two unrelated scans would appear to agree on an asset neither actually touched. That was wrong under a heading that says "a real transcript" and has been removed rather than kept with a disclaimer; see the ledger entry for 0b.9 for the full account. What would produce a genuine one: run both scanners' Standard mode against one real domain that is both spoofable and serves obsolete TLS — straightforward once Tool 3 (DNS enumeration) makes it easy to point both scanners at assets it discovers on the same domain, rather than hand-picking one today.
+
+Both rules compose checks already shipping at gate; neither adds a new detection capability.
 
 ---
 

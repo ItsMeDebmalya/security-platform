@@ -1,0 +1,106 @@
+# Composition rules — curated data for the correlation pass (core/correlation.py).
+#
+# docs/03-roadmap.md 0b.9 / ADR-022 "Connect": a rule is a hand-written,
+# auditable statement that two or more *specific* findings on the same asset
+# compose into one attack story. This file follows the discipline set by
+# config/deprecation_calendar.yaml (0b.7): reviewed, sourced-in-reasoning
+# data, not constants buried in code, loaded and validated strictly by
+# core/correlation.py — a malformed rule fails loudly at load time.
+#
+# What a rule is NOT: a graph traversal, a scored heuristic, or anything that
+# discovers a chain we did not write down. ADR-014 cut attack-path analysis
+# as unownable at two people; this file is the boundary. Every rule here
+# names its exact premises (scanner + check_id) and fires only when every
+# one of them is present as an actual finding on the same asset. A rule
+# whose premises are partly satisfied emits nothing — never a hedged story.
+#
+# Confidence is never assigned here. core/correlation.py inherits it from
+# the weakest premise finding via ConfidenceEngine.inherit(); this file only
+# says which findings compose and why the composition is worth reporting.
+
+- id: spoofable-domain-weak-transport
+  title: "Domain is spoofable and its transport is interceptable"
+  premises:
+    - scanner: email
+      check_id: spoofing-possible
+    - scanner: tls
+      check_id: tls-protocol-obsolete
+  conclusion:
+    title: "Spoofable mail domain also serves traffic over an obsolete TLS protocol"
+    severity: high
+    description: >-
+      This domain can be spoofed in outbound mail (no enforced SPF/DMARC
+      alignment), and separately serves TLS on an obsolete protocol version
+      that permits downgrade or interception. Neither finding alone proves
+      an attack chain, but together they describe one: a spoofed message
+      impersonating this domain can direct a victim to the domain's own
+      site, where the same weak transport that makes downgrade possible
+      also makes anything the victim submits there interceptable. The two
+      problems compound because they attack the same trust relationship —
+      "this is really example.com" — from two different angles at once.
+    impact: >-
+      A phishing message that already passes casual inspection (correct
+      sending domain, no DMARC failure to flag it) can route victims to
+      infrastructure where their session is also interceptable, turning a
+      spoofing weakness into a credential-theft chain rather than two
+      separate, lower-urgency findings.
+    remediation: >-
+      Fixing either premise breaks the chain: enforce DMARC with p=reject
+      (see the email scanner's spoofing-possible finding) or retire the
+      obsolete TLS protocol version (see the TLS scanner's
+      tls-protocol-obsolete finding). Fixing both removes the story
+      entirely, not just weakens it.
+    references:
+      - "https://www.rfc-editor.org/rfc/rfc7489"
+    taxonomy:
+      attack_stage: ["initial_access", "credential_access"]
+  why: >-
+    Both premises are checks we already ship at 1.000 precision gates
+    (email, tls). Composing them costs no new detection capability — it is
+    exactly the "observation plus rule" ADR-020 requires — and the story is
+    auditable in one sentence: spoofable identity plus interceptable
+    transport is worse than either alone, on the same asset, in the same
+    run. This is the cross-scanner case the asset graph exists for.
+  reviewed_by: satwik
+  reviewed_at: 2026-08-28
+
+- id: expiring-cert-blind-to-renewal
+  title: "Certificate expiring soon with no Certificate Transparency visibility"
+  premises:
+    - scanner: tls
+      check_id: tls-cert-expiring-soon
+    - scanner: tls
+      check_id: tls-no-certificate-transparency
+  conclusion:
+    title: "Imminent certificate expiry with no CT-log visibility on renewal"
+    severity: medium
+    description: >-
+      This certificate is close to expiry, and separately, the server is
+      not observed logging to Certificate Transparency. CT logging is one
+      of the few independent ways an operator (or us, on a future scan)
+      would notice a replacement certificate has actually been issued and
+      deployed before the old one lapses. Expiring-soon is routine on its
+      own; expiring-soon with no CT trail to confirm the renewal happened
+      is an outage risk that a severity score on either finding alone does
+      not capture.
+    impact: >-
+      If renewal is missed or misconfigured, there is no CT-log signal to
+      catch it before expiry — the first evidence of failure becomes the
+      outage itself, for every client relying on this certificate.
+    remediation: >-
+      Renew ahead of the expiry date and confirm the new certificate is
+      logged to Certificate Transparency (most CAs do this by default;
+      verify rather than assume). Treat the absence of a CT entry as a
+      signal to check the renewal, not just the certificate.
+    references:
+      - "https://certificate.transparency.dev/"
+    taxonomy:
+      attack_stage: ["availability"]
+  why: >-
+    Both premises come from the TLS scanner alone, showing the pass also
+    composes within one scanner, not only across two. The rule reads a
+    field we already parse (expiry date, CT presence) and adds no new
+    observation — same discipline as the deprecation clock (ADR-020): a
+    calendar fact plus a monitoring fact, not a new detection capability.
+  reviewed_by: satwik
+  reviewed_at: 2026-08-28

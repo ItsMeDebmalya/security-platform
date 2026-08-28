@@ -4,6 +4,9 @@
   comes from ScanContext, which is how rate limiting, scope enforcement and
   the kill switch stay guaranteed.
 - A scanner never imports from another scanner. Shared logic moves to core/.
+- `core/` never imports a scanner (docs/03-roadmap.md 0b.9): the correlation
+  pass reads findings and the asset graph, never a scanner module, which is
+  what lets it run after *any* scanner without knowing it exists.
 """
 
 from __future__ import annotations
@@ -15,6 +18,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 SCANNERS = ROOT / "scanners"
+CORE = ROOT / "core"
 
 FORBIDDEN_MODULES = {
     "httpx": "use ctx.http",
@@ -72,4 +76,36 @@ def test_a_scanner_does_not_import_another_scanner(path):
     assert cross == [], (
         f"{path.relative_to(ROOT)} imports {cross}; shared logic moves to core/, "
         "a cross-scanner import is a refactor signal"
+    )
+
+
+def _core_sources() -> list[Path]:
+    return sorted(CORE.rglob("*.py"))
+
+
+CORE_MAY_IMPORT_THE_SCANNERS_PACKAGE = {
+    # core/registry.py's discover() does `import scanners; pkgutil.iter_modules
+    # (scanners.__path__)` to eagerly register every scanner package - importing
+    # the namespace package itself for enumeration, never a specific scanner's
+    # code. This is the one sanctioned exception; nothing else in core/ needs it.
+    "core/registry.py",
+}
+
+
+@pytest.mark.parametrize("path", _core_sources(), ids=lambda p: str(p.relative_to(ROOT)))
+def test_core_does_not_import_a_scanner(path):
+    modules = _imported_modules(ast.parse(path.read_text()))
+    rel = str(path.relative_to(ROOT))
+
+    offenders = [
+        module
+        for module in modules
+        if module.startswith("scanners.")
+        or (module == "scanners" and rel not in CORE_MAY_IMPORT_THE_SCANNERS_PACKAGE)
+    ]
+
+    assert offenders == [], (
+        f"{path.relative_to(ROOT)} imports {offenders}; core/ must never import a scanner - "
+        "the correlation pass (core/correlation.py) reads findings and the asset graph, "
+        "never a scanner module (docs/03-roadmap.md 0b.9)"
     )

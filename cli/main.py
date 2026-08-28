@@ -21,8 +21,11 @@ from typing import Any, cast, get_args
 import typer
 from ulid import ULID
 
+from core.assetgraph import AssetGraph, seed_asset_graph
 from core.authz import AuthorisationDeniedError, AuthorisedScope, Scope
 from core.context import ScanContext
+from core.correlation import DEFAULT_PATH as RULES_DEFAULT_PATH
+from core.correlation import CorrelationRulesError, correlate, load_composition_rules
 from core.dns import (
     DnsClient,
     MissingFixtureError,
@@ -139,6 +142,79 @@ def run(
 
     if fail_on and _breaches(result, fail_on):
         raise typer.Exit(2)
+
+
+@app.command("correlate")
+def correlate_cmd(
+    results: list[Path] = typer.Option(
+        ...,
+        "--result",
+        "-r",
+        help="ScanResult JSON file(s) from earlier `scan run --out`, one run's worth",
+    ),
+    rules_file: Path = typer.Option(
+        RULES_DEFAULT_PATH, "--rules", help="Composition rules file (config/composition_rules.yaml)"
+    ),
+    seed_assets: Path | None = typer.Option(
+        None,
+        "--seed-assets",
+        help="JSON file of discovered assets to seed the asset graph (ADR-019 replay seam)",
+    ),
+    output_format: str = typer.Option("table", "--format", help="json or table"),
+) -> None:
+    """Run the correlation pass (ADR-022 'connect') over one or more scan
+    results, emitting derived 'story' findings that chain related findings
+    into one attack story. Runs after all scanners in a run have finished;
+    this command is that step made runnable on its own, over saved results.
+    """
+    try:
+        rules = load_composition_rules(rules_file)
+    except CorrelationRulesError as exc:
+        typer.echo(f"error: {exc}")
+        raise typer.Exit(1) from None
+
+    scan_results = [ScanResult.model_validate_json(p.read_text()) for p in results]
+    if not scan_results:
+        typer.echo("error: at least one --result is required")
+        raise typer.Exit(1)
+
+    all_findings = [finding for r in scan_results for finding in r.findings]
+    primary_target = scan_results[0].target
+    org_id = all_findings[0].org_id if all_findings else "org_internal"
+
+    asset_graph: AssetGraph
+    if seed_assets is not None:
+        asset_graph = seed_asset_graph(json.loads(seed_assets.read_text()))
+    else:
+        asset_graph = AssetGraph()
+
+    scan_id = str(ULID())
+    stories = correlate(
+        findings=all_findings,
+        asset_graph=asset_graph,
+        primary_target=primary_target,
+        org_id=org_id,
+        scan_id=scan_id,
+        rules=rules,
+    )
+
+    if output_format == "json":
+        typer.echo(json.dumps([s.model_dump(mode="json") for s in stories], indent=2))
+        return
+
+    typer.echo(
+        f"\ncorrelated {len(all_findings)} finding(s) from {len(scan_results)} result(s) "
+        f"against {len(rules)} rule(s)"
+    )
+    if not stories:
+        typer.echo("no story findings")
+    else:
+        typer.echo(f"\n{'severity':<9} {'conf':<6} {'state':<14} {'check':<32} derived_from")
+        for story in stories:
+            typer.echo(
+                f"{story.severity:<9} {story.confidence:<6.2f} {story.state:<14} "
+                f"{story.check_id:<32} {story.derived_from}"
+            )
 
 
 @app.command("verify")
