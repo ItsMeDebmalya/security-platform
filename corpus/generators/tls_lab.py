@@ -90,6 +90,16 @@ def mint(
             ),
             critical=False,
         )
+        .add_extension(
+            x509.SubjectKeyIdentifier.from_public_key(key.public_key()),  # type: ignore[union-attr]
+            critical=False,
+        )
+        .add_extension(
+            x509.AuthorityKeyIdentifier.from_issuer_public_key(
+                issuer_key.public_key() if issuer_key is not None else key.public_key()  # type: ignore[union-attr]
+            ),
+            critical=False,
+        )
     )
 
     if is_ca:
@@ -266,8 +276,16 @@ class LabServer:
     ) -> None:
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         context.set_ciphers(ciphers)
-        if min_version is not None:
-            context.minimum_version = min_version
+        # A fresh context's default minimum_version rose from
+        # MINIMUM_SUPPORTED to TLSv1.2 once this lab moved onto an OpenSSL
+        # build new enough to default there (see docs/14-progress-ledger.md,
+        # 2026-08-28). This lab exists to offer obsolete protocols on
+        # purpose, so it always lowers the floor back down unless the caller
+        # asks for something else - otherwise a server meant to offer TLS 1.0
+        # silently stops offering it, and "max_version=TLSv1" on top of the
+        # new default leaves an empty [min, max] range with nothing to
+        # negotiate at all.
+        context.minimum_version = min_version if min_version is not None else ssl.TLSVersion.TLSv1
         if max_version is not None:
             context.maximum_version = max_version
         context.load_cert_chain(chain_file or minted.cert_path, minted.key_path)

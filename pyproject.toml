@@ -2,7 +2,7 @@
 name = "security-platform"
 version = "0.1.0"
 description = "Evidence-first security scanning tools"
-requires-python = ">=3.12"
+requires-python = ">=3.13"
 dependencies = [
     "pydantic>=2.9",
     "jsonschema>=4.23",
@@ -36,7 +36,7 @@ packages = ["core", "scanners", "cli"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py312"
+target-version = "py313"
 # The document set is the spec. Never reformat it.
 extend-exclude = ["docs"]
 
@@ -48,7 +48,7 @@ select = ["E", "F", "I", "UP", "B", "SIM", "N", "RUF"]
 "cli/main.py" = ["B008"]
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.13"
 strict = true
 files = ["core", "cli", "scanners"]
 

@@ -133,7 +133,7 @@ CA/Browser Forum ballot **SC-081v3**, passed April 2025 (29–0): maximum certif
 
 ### Prerequisites
 
-Post-quantum checks **cannot run on the current toolchain** — verified, not assumed: `ssl.SSLContext.set_groups` does not exist on Python 3.12, and ML-KEM needs OpenSSL 3.5+. Task 0b.5. The lifetime checks have no such blocker and could ship first.
+Post-quantum checks **cannot run on the current toolchain** — verified, not assumed: `ssl.SSLContext.set_groups` (and `get_groups`, `SSLSocket.group()`) do not exist before Python **3.15**. Task 0b.5 (done 2026-08-28) took the toolchain to 3.13, which was the roadmap's original — and wrong — floor for this: 3.13 brings OpenSSL 3.5 but not `set_groups`, so this is still blocked, now on 3.15 final. See D16. The lifetime checks have no such blocker and could ship first.
 
 ### Gotchas
 

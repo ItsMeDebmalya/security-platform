@@ -10,7 +10,7 @@ Related: [how-to-add-a-scanner.md](how-to-add-a-scanner.md) for writing a new sc
 
 ## 1. Setup
 
-Requires **Python 3.12+** and [`uv`](https://docs.astral.sh/uv/).
+Requires **Python 3.13** ([`.python-version`](../.python-version) pins `3.13.15` exactly — TLS corpus numbers depend on the OpenSSL build the interpreter ships with, currently **OpenSSL 3.5.7**, so `uv` should resolve the pinned version rather than whatever Python happens to be on the machine) and [`uv`](https://docs.astral.sh/uv/).
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh    # if uv is not installed

@@ -489,6 +489,8 @@ ScanRun
 
 **Costs we accept.** Two of the four need foundation work before they can ship: post-quantum needs a toolchain we do not have, and AI exposure needs HTTP record/replay and the asset graph. Neither is a research problem; both are build cost, and both are recorded rather than assumed away.
 
+**Correction, 2026-08-28 (0b.5).** The toolchain post-quantum needs is Python **3.15** (`ssl.SSLContext.set_groups`/`get_groups`, `SSLSocket.group()`), not 3.13 as this ADR and the roadmap originally implied — verified directly by checking the `ssl` module across 3.12/3.13/3.14/3.15rc1. Python 3.13 was still taken (D16), but it does not unblock this claim. Same category as D13: a number that reached a decision document without being verified against the primary source, here CPython's own `ssl` module rather than a vendor blog.
+
 **Reversal cost.** Low. These are scope and framing decisions, as ADR-014's were.
 
 ---

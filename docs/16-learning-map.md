@@ -114,7 +114,7 @@ The whole product is Python. You need to be genuinely comfortable, not just able
 
 ### The 2026 crypto frontier ○
 - **The CA/Browser Forum and certificate-lifetime reduction (200→100→47 days)** — *Why: the deprecation clock's headline. Verify against the ballot, per D13.*
-- **Post-quantum cryptography: the quantum threat, "harvest now decrypt later", ML-KEM/Kyber, hybrid key exchange (X25519MLKEM768)** — *Why: the post-quantum-exposure differentiator. Needs a newer toolchain (0b.5).*
+- **Post-quantum cryptography: the quantum threat, "harvest now decrypt later", ML-KEM/Kyber, hybrid key exchange (X25519MLKEM768)** — *Why: the post-quantum-exposure differentiator. Needs Python 3.15 (`ssl.SSLContext.set_groups`), not just the 3.13 toolchain 0b.5 shipped — see D16.*
 
 ---
 
