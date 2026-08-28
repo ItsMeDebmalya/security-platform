@@ -589,6 +589,45 @@ They cluster, which matters more than the individual entries:
 
 ---
 
+## 2026-08-28 · Phase 0b.8 — a finding store, and `scan verify`
+
+**Plan:** [03-roadmap.md](03-roadmap.md) 0b.8 · **Status: complete**
+
+### Built
+
+- **`core/store.py`** — `FindingStore`, one SQLite file, one table, keyed on `(id, org_id)`. `ingest()` upserts a fresh scan's findings: a new id is inserted as-is, a repeat keeps the stored row's `first_seen`/`first_seen_scan_id` and `status`/`status_history` and takes everything else — confidence, evidence, `last_seen`/`last_seen_scan_id` — from the fresh finding. It never closes anything a scan didn't mention; see "Decided" below for why that boundary is drawn here rather than left to callers. `transition()` appends one `StatusChange` and bumps `last_seen`; a transition to the status a finding is already at is a no-op that appends nothing. SQLite over a JSON file: Phase 6 is Postgres (ADR-009), and SQLite's real primary key and `ON CONFLICT DO UPDATE` are what keep that migration a driver swap rather than a rewrite of the upsert logic — a JSON-per-org file would have hidden that discipline behind ad-hoc dict merging.
+- **`scan run --store <path>`** ingests the scan's findings into the store after it completes. **`scan verify <finding-id> --store <path>`** — the "close" half of ADR-022 — re-runs the scanner at its fullest supported mode, matches the fresh `telemetry.checks_run` entry against the stored finding's `check_id`/`location`, and acts *only* on that outcome: `clear` closes (or reopens, if the finding had been closed and the check now reports it present again); `reported` leaves it open and advances `last_seen`; `inconclusive`/`suppressed`/`error`, a missing `checks_run` entry, or any exception raised while running the scan all leave it open and say so in plain text, exiting 1. Verify obeys `core/authz.py` exactly as `scan run` does — an active check with no allowlist record is denied, not silently skipped.
+- Both commands now generate a real per-run `scan_id` (`python-ulid`) instead of `ScanContext`'s placeholder default, which the store needed to have any meaning: two scans of the same target must produce two distinct `first_seen_scan_id`/`last_seen_scan_id` values for the history to be honest.
+
+### Found & fixed
+
+**Nothing broke that wasn't caught by writing the test first.** The one design decision that took real thought — see "Decided" — was resolved before any code was written, which is why there's nothing to report here beyond the usual mypy churn (a method named `list` on the store shadowed the builtin `list[Finding]` in its own class body's annotations; renamed to `list_findings`).
+
+### Decided
+
+- **Where the "never close on absence" line is drawn.** `ingest()`, called from every `scan run --store`, never closes a finding that a fresh scan didn't reproduce — it only upserts what it *did* see. All the closing logic lives in `scan verify`, which asks the specific check for its outcome rather than inferring anything from what's missing. This means a plain `scan run --store` can never regress a finding to closed no matter what breaks, and the only path that can close one is the one built, tested and reviewed for exactly that failure mode.
+- **Matching a re-run check to a stored finding is by `(check_id, location)` from `telemetry.checks_run`, not by re-deriving the finding and comparing ids.** The deterministic id *does* still matter — it's what lets `still_present = any(f.id == finding.id for f in result.findings)` distinguish "this exact finding is still there" from "the check reported something else at this location" — but the close/stay-open decision is driven by the `CheckRun.outcome` enum, because that's the only place a scanner states whether it reached a verdict at all. A finding-shaped comparison alone can't distinguish "clear" from "inconclusive with no finding attached to show for it."
+- **Verify re-runs at the scanner's fullest supported mode**, not the mode the original scan happened to use (which isn't recorded on `Finding` at all — only `ScanRun` carries `mode`, and verify doesn't have the `ScanRun`, only the `Finding`). Running the fullest mode guarantees the check that produced the finding is included; it can only ever *add* checks a Light-only original run didn't have, never drop the one being verified. `core/authz.py`'s per-check passivity declaration (0b.6) means this doesn't spuriously demand authorisation for a still-passive check just because the mode label went up.
+- **Verify catches every exception during the re-scan, not a curated list, and treats all of them as "stays open."** `run`'s exception handling is a specific list (`KeyError`, `AuthorisationDeniedError`, `OutOfScopeError`, `MissingFixtureError`, `ValueError`) because a scan that fails outside that list is a bug worth a stack trace. Verify keeps that list for the same failures, but adds a catch-all beneath it: a real timeout, a dropped connection, anything unanticipated, must never have a code path that reads as "the check ran and found nothing" by accident. Silently swallowing exceptions is normally the wrong instinct; here the alternative (a crash) doesn't have the failure mode this command exists to prevent, but "stays open, and says why" is more useful to whoever ran the command than a traceback, and it is still auditable in the store's own reason string.
+
+### Verified
+
+```
+make lint && make typecheck && make test && make corpus
+```
+
+`ruff check`/`ruff format --check`: clean, 86 files already formatted. `mypy`: no issues, 37 source files. `pytest`: 754 passed (735 + 19 new: 8 in `tests/core/test_store.py`, 11 in `tests/cli/test_verify.py`). Corpus: email 1.000/1.000 (240 checks, 21 claims), tls 1.000/1.000 (134 checks, 5 claims), example 1.000/1.000 — all three gates unchanged.
+
+Two real transcripts (not corpus, not mocked — the actual `example` scanner against recorded DNS fixtures), captured in [12-cli-runbook.md](12-cli-runbook.md#2a-persistence-and-scan-verify): one where `scan verify` declines to close a finding because the re-check itself SERVFAILs, one where it closes because the domain now genuinely resolves.
+
+### Deferred
+
+- Verify always re-runs the scanner's *fullest* supported mode. If a scanner ever grows a Standard-only check that is meaningfully slower or costlier than its Light checks, always paying that cost to verify a Light-only finding is wasteful; not a problem yet because both shipped scanners' checks are cheap regardless of mode.
+- `FindingStore.list_findings()` exists and is tested but nothing in the CLI surfaces it yet (no `scan findings list`-style command). Out of scope for 0b.8, which asked for the store and the verify operation, not a full query surface.
+- The store's primary key is `(id, org_id)`, but `org_id` plays no part in the `finding_id` formula itself (`core/ids.py`) — two orgs scanning what happens to be the same target would compute the same id. Not a bug today (the CLI hardcodes `org_id="org_internal"`, so there is only ever one org), but worth remembering before multi-tenancy actually arrives.
+
+---
+
 ## Next
 
 **Tool 3 (DNS enumeration)**, whose recall definition is the thing to settle before writing any of it — "all subdomains that exist" is not a knowable set, and reporting corpus-relative recall as though it were absolute is the specific dishonesty this product exists to avoid.

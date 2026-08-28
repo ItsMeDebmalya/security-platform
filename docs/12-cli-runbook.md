@@ -45,6 +45,7 @@ tls          1.0.0      light,standard           domain,ip,url
 |---|---|
 | `scan list` | Registered scanners, versions, modes |
 | `scan run <scanner> --target <t>` | Run one scanner against one target |
+| `scan verify <finding-id> --store <db>` | Re-run the check that proved a stored finding; closes it only on positive evidence the problem is gone |
 | `make test` | Unit tests |
 | `make lint` / `make typecheck` | ruff / mypy --strict |
 | `make licence-check` | Fail if a dependency's licence breaks [ADR-003](02-decisions.md#adr-003--permissive-open-source-or-we-build-it-ourselves) |
@@ -66,6 +67,56 @@ tls          1.0.0      light,standard           domain,ip,url
 | `--replay <dir>` | Run offline from a frozen `<dir>`. Never touches the network. |
 | `--fail-on <severity>` | Exit 2 if a **reported** finding is at or above this severity |
 | `--scope-file` | Authorisation allowlist (default `config/authorised_scope.yaml`) |
+| `--store <path>` | Persist findings to a [finding store](#2a-persistence-and-scan-verify) after the scan, keyed on their deterministic id |
+
+---
+
+## 2a. Persistence and `scan verify`
+
+"We check your fix worked" ([ADR-022](02-decisions.md#adr-022--prove-connect-close-aggressive-proof-never-touching-the-target), docs/03-roadmap.md 0b.8) needs findings to survive between scans. Passing `--store <path>` to `scan run` writes every finding into a small SQLite file (`core/store.py`), keyed on the finding's deterministic `id`. A re-scan of an unchanged finding updates that one row rather than creating a duplicate — that determinism is exactly why `scanner_version` is excluded from the id formula (`core/ids.py`).
+
+```
+scan run example --target example.com --store findings.sqlite3
+```
+
+`scan verify <finding-id> --store findings.sqlite3` re-runs the exact scanner check that proved a stored finding and decides its `status` from the evidence:
+
+- **Closes** the finding only when the check ran to completion and reported `clear` — a positive observation that the problem is gone.
+- **Leaves it open** for everything else: the check still reports the problem, ran but reached no verdict (`inconclusive`, `suppressed`, `error`), didn't run at all against this target in this scan, or the scan itself failed to complete (timeout, exception, authorisation denial). Absence of a finding is never treated as proof of a fix — a broken or blocked scanner must never look like a clean bill of health.
+
+Verify obeys the same authorisation gate as `scan run` (`--scope-file`), and re-runs the scanner at its fullest supported mode so whichever mode the original check needed is included. It never touches the cost meter beyond what the scan itself counts — verification is free, per ADR-022.
+
+Two real transcripts, captured against the reference `example` scanner and a recorded DNS fixture for a domain that had no A record (`example-a-record-missing`, stored via `scan run ... --store`):
+
+**Declines to close — the re-check itself is inconclusive (SERVFAIL), not a fix:**
+
+```
+$ scan verify sha256:4a699a094cc066097544c466e8220603ecbb38c84644ea9ff5e275a88c3732c1 \
+    --store store.sqlite3 --replay fixtures/servfail --scope-file scope.yaml
+[  20%] checking for a wildcard in the zone
+[  60%] looking up the A record
+[ 100%] done
+example-a-record-missing: could_not_verify - the check ran but reached no verdict (outcome='inconclusive'); the finding stays open
+status: open
+$ echo $?
+1
+```
+
+**Closes — the re-check ran to completion and the domain now resolves:**
+
+```
+$ scan verify sha256:4a699a094cc066097544c466e8220603ecbb38c84644ea9ff5e275a88c3732c1 \
+    --store store.sqlite3 --replay fixtures/fixed --scope-file scope.yaml
+[  20%] checking for a wildcard in the zone
+[  60%] looking up the A record
+[ 100%] done
+example-a-record-missing: closed - the check ran to completion and observed the problem is gone
+status: closed
+$ echo $?
+0
+```
+
+The unit tests in `tests/cli/test_verify.py` drive a fake, test-only scanner through every failure mode this command must never mistake for a fix: still-reported, `inconclusive`, `suppressed` (the rate-limited/WAF-blocked case), `error`, the check not running at all (a missing prerequisite), a raised exception (a timeout), and an authorisation denial.
 
 ---
 

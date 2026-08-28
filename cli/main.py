@@ -14,10 +14,12 @@ from __future__ import annotations
 
 import json
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast, get_args
 
 import typer
+from ulid import ULID
 
 from core.authz import AuthorisationDeniedError, AuthorisedScope, Scope
 from core.context import ScanContext
@@ -32,7 +34,19 @@ from core.http import HttpClient, OutOfScopeError, RecordingHttpBackend, ReplayH
 from core.models import Asset, AssetType, Mode, ScanResult
 from core.ratelimit import RateLimiter
 from core.registry import discover
+from core.store import FindingStore, VerifyOutcome
 from core.tls import RecordingTlsBackend, ReplayTlsBackend, SystemTlsBackend, TlsClient
+
+VERIFY_BY = "scan verify"
+"""`StatusChange.by` for transitions this command makes."""
+
+NO_VERDICT_OUTCOMES = frozenset({"inconclusive", "suppressed", "error"})
+"""CheckRun outcomes that mean the check ran but reached no verdict.
+
+None of these may close a finding - only `outcome == "clear"` is a positive
+observation that the problem is gone. See docs/03-roadmap.md 0b.8 and
+ADR-022: absence of a verdict is not evidence of a fix.
+"""
 
 app = typer.Typer(add_completion=False, help="Run a scanner against a target.")
 
@@ -81,6 +95,9 @@ def run(
         None, "--fail-on", help="Exit 2 on a reported finding at or above this severity"
     ),
     scope_file: Path = typer.Option(SCOPE_PATH, "--scope-file"),
+    store: Path | None = typer.Option(
+        None, "--store", help="Persist findings here, keyed on their deterministic id"
+    ),
 ) -> None:
     """Run one scanner against one target."""
     try:
@@ -116,8 +133,195 @@ def run(
     else:
         _print_table(result)
 
+    if store is not None:
+        with FindingStore(store) as fstore:
+            fstore.ingest(result.findings)
+
     if fail_on and _breaches(result, fail_on):
         raise typer.Exit(2)
+
+
+@app.command("verify")
+def verify(
+    finding_id: str = typer.Argument(..., metavar="FINDING_ID"),
+    store: Path = typer.Option(..., "--store", help="Finding store the finding was persisted to"),
+    replay: Path | None = typer.Option(
+        None, "--replay", help="Replay from this directory, offline"
+    ),
+    scope_file: Path = typer.Option(SCOPE_PATH, "--scope-file"),
+    output_format: str = typer.Option("table", "--format", help="json or table"),
+) -> None:
+    """Re-run the exact check that proved a stored finding.
+
+    Closes the finding only on a positive, evidenced observation that the
+    problem is gone (the check ran to completion and reported `clear`).
+    Everything short of that - a timeout, a rate limit, a WAF block, an
+    error, an `inconclusive` verdict, a missing prerequisite, or the check
+    simply not running at all - leaves the finding open and says so.
+    Closing on the *absence* of a fresh finding would mean a broken or
+    blocked scanner reports every customer's problem as fixed; ADR-022 and
+    docs/03-roadmap.md 0b.8 are explicit that this is the failure this
+    command must never have.
+
+    Free: verification never touches the cost meter beyond what the
+    underlying scan itself already counts.
+    """
+    with FindingStore(store) as fstore:
+        finding = fstore.get(finding_id, "org_internal")
+        if finding is None:
+            typer.echo(f"no stored finding {finding_id!r} in {store}")
+            raise typer.Exit(1)
+
+        scan_id = str(ULID())
+        try:
+            mode = _verify_mode(finding.scanner)
+            result = _execute(
+                scanner_name=finding.scanner,
+                target=finding.target,
+                mode=mode,
+                record=None,
+                replay=replay,
+                scope_file=scope_file,
+                scan_id=scan_id,
+            )
+        except KeyError as exc:
+            typer.echo(str(exc).strip('"'))
+            raise typer.Exit(1) from None
+        except AuthorisationDeniedError as exc:
+            typer.echo(f"authorisation denied: {exc}")
+            raise typer.Exit(1) from None
+        except OutOfScopeError as exc:
+            typer.echo(f"out of scope: {exc}")
+            raise typer.Exit(1) from None
+        except MissingFixtureError as exc:
+            typer.echo(str(exc))
+            raise typer.Exit(1) from None
+        except Exception as exc:  # see the docstring: never close on this
+            outcome = _could_not_verify(
+                finding, reason=f"the check could not run ({type(exc).__name__}: {exc})"
+            )
+            _print_verify(outcome, output_format=output_format)
+            raise typer.Exit(1) from None
+
+        outcome = _verify_outcome(fstore, finding, result, scan_id=scan_id)
+
+    _print_verify(outcome, output_format=output_format)
+    if outcome.action == "could_not_verify":
+        raise typer.Exit(1)
+
+
+def _verify_mode(scanner_name: str) -> Mode:
+    """The mode a re-verify runs in: the scanner's fullest, so the check that
+    proved the finding is included whatever mode it needs to run under."""
+    scanner_cls = discover().get(scanner_name)
+    candidates: tuple[Mode, ...] = ("deep", "standard", "light")
+    for candidate in candidates:
+        if candidate in scanner_cls.supported_modes:
+            return candidate
+    raise ValueError(f"{scanner_name} declares no supported modes")
+
+
+def _resolve_check_run(result: ScanResult, finding: Any) -> Any | None:
+    for check in result.telemetry.checks_run:
+        if check.location == finding.location and finding.matches_stored_check_id(check.check_id):
+            return check
+    return None
+
+
+def _could_not_verify(finding: Any, *, reason: str) -> VerifyOutcome:
+    return VerifyOutcome(
+        finding_id=finding.id,
+        check_id=finding.check_id,
+        action="could_not_verify",
+        reason=reason,
+        finding=finding,
+    )
+
+
+def _verify_outcome(
+    fstore: FindingStore, finding: Any, result: ScanResult, *, scan_id: str
+) -> VerifyOutcome:
+    now = datetime.now(UTC)
+    check = _resolve_check_run(result, finding)
+
+    if check is None:
+        return _could_not_verify(
+            finding,
+            reason=(
+                f"check {finding.check_id!r} at {finding.location!r} did not run in this "
+                "scan; the finding stays open"
+            ),
+        )
+
+    if check.outcome in NO_VERDICT_OUTCOMES:
+        return _could_not_verify(
+            finding,
+            reason=(
+                f"the check ran but reached no verdict (outcome={check.outcome!r}); "
+                "the finding stays open"
+            ),
+        )
+
+    still_present = any(f.id == finding.id for f in result.findings)
+
+    if check.outcome == "reported" and still_present:
+        if finding.status == "closed":
+            updated = fstore.transition(
+                finding.id, finding.org_id, to="open", at=now, by=VERIFY_BY, scan_id=scan_id
+            )
+            return VerifyOutcome(
+                finding.id, finding.check_id, "reopened", "the problem is present again", updated
+            )
+        updated = fstore.touch_last_seen(finding.id, finding.org_id, at=now, scan_id=scan_id)
+        return VerifyOutcome(
+            finding.id, finding.check_id, "unchanged", "the problem is still present", updated
+        )
+
+    if check.outcome == "clear":
+        if finding.status != "open":
+            return VerifyOutcome(
+                finding.id,
+                finding.check_id,
+                "unchanged",
+                f"already {finding.status}; nothing to do",
+                finding,
+            )
+        updated = fstore.transition(
+            finding.id, finding.org_id, to="closed", at=now, by=VERIFY_BY, scan_id=scan_id
+        )
+        return VerifyOutcome(
+            finding.id,
+            finding.check_id,
+            "closed",
+            "the check ran to completion and observed the problem is gone",
+            updated,
+        )
+
+    # outcome == "reported" but this exact finding id is not among the fresh
+    # findings: the check produced *something* at this location, but not the
+    # finding we are verifying. That is not evidence either way.
+    return _could_not_verify(
+        finding,
+        reason="the check reported a different finding at this location; unverified",
+    )
+
+
+def _print_verify(outcome: VerifyOutcome, *, output_format: str = "table") -> None:
+    if output_format == "json":
+        typer.echo(
+            json.dumps(
+                {
+                    "finding_id": outcome.finding_id,
+                    "check_id": outcome.check_id,
+                    "action": outcome.action,
+                    "reason": outcome.reason,
+                    "status": outcome.finding.status,
+                }
+            )
+        )
+        return
+    typer.echo(f"{outcome.check_id}: {outcome.action} - {outcome.reason}")
+    typer.echo(f"status: {outcome.finding.status}")
 
 
 def _execute(
@@ -128,6 +332,7 @@ def _execute(
     record: Path | None,
     replay: Path | None,
     scope_file: Path,
+    scan_id: str | None = None,
 ) -> ScanResult:
     registry = discover()
     scanner = registry.get(scanner_name)()
@@ -161,6 +366,7 @@ def _execute(
     resolver_limit = RateLimiter.for_resolver()
     target_limit = RateLimiter.for_target()
     ctx = ScanContext(
+        scan_id=scan_id or str(ULID()),
         org_id="org_internal",
         authz_ref=authz_ref,
         dns=DnsClient(resolver=resolver, resolvers=DEFAULT_RESOLVERS, ratelimit=resolver_limit),
