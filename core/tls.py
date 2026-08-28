@@ -38,9 +38,6 @@ from __future__ import annotations
 
 import base64
 import datetime as dt
-import hashlib
-import json
-import re
 import socket
 import ssl
 import tempfile
@@ -57,6 +54,20 @@ from core.authz import Scope
 from core.cost import CostMeter
 from core.http import OutOfScopeError
 from core.killswitch import KillSwitch
+from core.replay import (
+    FixtureStore,
+    MissingFixtureError,
+    fixture_digest,
+    fixture_filename,
+    missing_fixture_message,
+    sanitize_filename_part,
+)
+
+MissingHandshakeError = MissingFixtureError
+"""Kept as its own name for readability at call sites and backward-compatible
+imports (`from core.tls import MissingHandshakeError`); it is the same
+exception type as every other protocol's missing-fixture error, on purpose,
+so a caller can catch one type regardless of which client raised it."""
 
 DEFAULT_PORT = 443
 DEFAULT_TIMEOUT_S = 10.0
@@ -72,11 +83,6 @@ is usually built without it, so "not supported" would report our own build
 rather than the target's, and a finding about ourselves is worse than none."""
 
 PERMISSIVE_CIPHERS = "ALL:@SECLEVEL=0"
-_SAFE = re.compile(r"[^a-z0-9._-]")
-
-
-class MissingHandshakeError(LookupError):
-    """A replay run asked for a handshake that was never recorded."""
 
 
 # --- what we learned --------------------------------------------------------
@@ -448,17 +454,15 @@ class SystemTlsBackend:
 
 def _fixture_name(host: str, port: int, servername: str | None, version: str) -> str:
     key = f"{host}|{port}|{servername or ''}|{version}"
-    digest = hashlib.sha256(key.encode()).hexdigest()[:10]
-    safe = _SAFE.sub("_", f"{servername or host}".lower())
-    return f"{safe}.{port}.{version}.{digest}.json"
+    stem = sanitize_filename_part(servername or host)
+    return fixture_filename(stem, str(port), version, digest=fixture_digest(key, length=10))
 
 
 class RecordingTlsBackend:
     """Wraps a backend and freezes every handshake for later replay."""
 
     def __init__(self, directory: str | Path, inner: TlsBackend | None = None) -> None:
-        self._dir = Path(directory)
-        self._dir.mkdir(parents=True, exist_ok=True)
+        self._store = FixtureStore(Path(directory))
         self._inner = inner or SystemTlsBackend()
 
     def handshake(
@@ -466,8 +470,7 @@ class RecordingTlsBackend:
     ) -> RawHandshake:
         result = self._inner.handshake(host, port, servername, **kwargs)
         version = _version_label(kwargs.get("min_version"), kwargs.get("max_version"))
-        path = self._dir / _fixture_name(host, port, servername, version)
-        path.write_text(json.dumps(result.to_dict(), indent=2, sort_keys=True) + "\n")
+        self._store.write(_fixture_name(host, port, servername, version), result.to_dict())
         return result
 
 
@@ -475,20 +478,22 @@ class ReplayTlsBackend:
     """Serves frozen handshakes and never opens a socket."""
 
     def __init__(self, directory: str | Path) -> None:
-        self._dir = Path(directory)
+        self._store = FixtureStore(Path(directory))
 
     def handshake(
         self, host: str, port: int, servername: str | None, **kwargs: Any
     ) -> RawHandshake:
         version = _version_label(kwargs.get("min_version"), kwargs.get("max_version"))
-        path = self._dir / _fixture_name(host, port, servername, version)
-        if not path.exists():
+        data = self._store.read(_fixture_name(host, port, servername, version))
+        if data is None:
             raise MissingHandshakeError(
-                f"no recorded handshake for {servername or host}:{port} ({version}) in "
-                f"{self._dir}. Record it with --record before replaying; a replay run never "
-                "falls back to the wire."
+                missing_fixture_message(
+                    kind="handshake",
+                    subject=f"{servername or host}:{port} ({version})",
+                    directory=self._store.directory,
+                )
             )
-        return RawHandshake.from_dict(json.loads(path.read_text()))
+        return RawHandshake.from_dict(data)
 
 
 def _version_label(min_version: ssl.TLSVersion | None, max_version: ssl.TLSVersion | None) -> str:

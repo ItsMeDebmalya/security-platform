@@ -28,7 +28,7 @@ from core.dns import (
     ReplayResolver,
     SystemResolver,
 )
-from core.http import HttpClient, OutOfScopeError
+from core.http import HttpClient, OutOfScopeError, RecordingHttpBackend, ReplayHttpBackend
 from core.models import Asset, AssetType, Mode, ScanResult
 from core.ratelimit import RateLimiter
 from core.registry import discover
@@ -137,15 +137,19 @@ def _execute(
 
     resolver: Any
     tls_backend: Any
+    http_backend: Any
     if replay is not None:
         resolver = ReplayResolver(replay)
         tls_backend = ReplayTlsBackend(replay)
+        http_backend = ReplayHttpBackend(replay)
     elif record is not None:
         resolver = RecordingResolver(SystemResolver(DEFAULT_RESOLVERS), record)
         tls_backend = RecordingTlsBackend(record)
+        http_backend = RecordingHttpBackend(record)
     else:
         resolver = SystemResolver(DEFAULT_RESOLVERS)
         tls_backend = SystemTlsBackend()
+        http_backend = None  # HttpClient's own default: a live SystemHttpBackend
 
     # Two limiters, because they protect different things: the target host
     # is someone else's infrastructure, a public resolver is not.
@@ -155,7 +159,9 @@ def _execute(
         org_id="org_internal",
         authz_ref=authz_ref,
         dns=DnsClient(resolver=resolver, resolvers=DEFAULT_RESOLVERS, ratelimit=resolver_limit),
-        http=HttpClient(scope=Scope.for_target(target), ratelimit=target_limit),
+        http=HttpClient(
+            scope=Scope.for_target(target), ratelimit=target_limit, backend=http_backend
+        ),
         tls=TlsClient(scope=Scope.for_target(target), backend=tls_backend, ratelimit=target_limit),
         scope=Scope.for_target(target),
         ratelimit=target_limit,

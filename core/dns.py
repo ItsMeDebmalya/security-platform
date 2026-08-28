@@ -22,8 +22,6 @@ name sends nothing to the target.
 
 from __future__ import annotations
 
-import hashlib
-import json
 import re
 import secrets
 import time
@@ -33,11 +31,20 @@ from typing import Any, Protocol
 
 from core.cost import CostMeter
 from core.killswitch import KillSwitch
+from core.replay import (
+    FixtureStore,
+    fixture_digest,
+    fixture_filename,
+    missing_fixture_message,
+    sanitize_filename_part,
+)
+from core.replay import (
+    MissingFixtureError as MissingFixtureError,
+)
 
 DEFINITE_RCODES = frozenset({"NOERROR", "NXDOMAIN", "NODATA"})
 """Answers we can reason from. Anything else means we did not find out."""
 
-_SAFE_NAME = re.compile(r"[^a-z0-9._-]")
 WILDCARD_PROBE_PREFIX = "sp-wildcard-probe-"
 _PROBE_LABEL = re.compile(r"^sp-wildcard-probe-[0-9a-f]+\.")
 
@@ -101,16 +108,14 @@ def join_txt_chunks(chunks: list[str]) -> str:
     return "".join(chunk.strip('"') for chunk in chunks)
 
 
-class MissingFixtureError(LookupError):
-    """A replay run asked for a query that was never recorded."""
-
-
 def _fixture_name(name: str, rrtype: str, resolver: str | None = None) -> str:
     """One file per (name, rrtype, resolver).
 
     The resolver is part of the key because an independent re-query through a
     second resolver is a real validation step, and a recording that collapsed
-    the two would make that validation a no-op on replay.
+    the two would make that validation a no-op on replay. This is a DNS fact,
+    not a general one, which is why the key is built here rather than in
+    `core/replay.py`.
 
     Wildcard probes use a random label on the wire - which is the point, since
     a fixed one would be cached and could be special-cased by a target - so
@@ -118,10 +123,10 @@ def _fixture_name(name: str, rrtype: str, resolver: str | None = None) -> str:
     could ever be replayed. The recorded answer keeps the real name it used.
     """
     canonical = _PROBE_LABEL.sub(f"{WILDCARD_PROBE_PREFIX}.", name.lower().rstrip("."))
-    safe = _SAFE_NAME.sub("_", canonical)
     key = f"{canonical}|{rrtype.upper()}|{resolver or ''}"
-    digest = hashlib.sha256(key.encode()).hexdigest()[:8]
-    return f"{safe}.{rrtype.upper()}.{digest}.json"
+    return fixture_filename(
+        sanitize_filename_part(canonical), rrtype.upper(), digest=fixture_digest(key, length=8)
+    )
 
 
 class FakeResolver:
@@ -145,13 +150,11 @@ class RecordingResolver:
 
     def __init__(self, inner: Resolver, directory: str | Path) -> None:
         self._inner = inner
-        self._dir = Path(directory)
-        self._dir.mkdir(parents=True, exist_ok=True)
+        self._store = FixtureStore(Path(directory))
 
     def resolve(self, name: str, rrtype: str, resolver: str | None = None) -> DnsResponse:
         response = self._inner.resolve(name, rrtype, resolver)
-        path = self._dir / _fixture_name(name, rrtype, resolver)
-        path.write_text(json.dumps(response.to_dict(), indent=2, sort_keys=True) + "\n")
+        self._store.write(_fixture_name(name, rrtype, resolver), response.to_dict())
         return response
 
 
@@ -159,18 +162,19 @@ class ReplayResolver:
     """Serves answers from recorded fixtures and never touches the network."""
 
     def __init__(self, directory: str | Path) -> None:
-        self._dir = Path(directory)
+        self._store = FixtureStore(Path(directory))
 
     def resolve(self, name: str, rrtype: str, resolver: str | None = None) -> DnsResponse:
-        path = self._dir / _fixture_name(name, rrtype, resolver)
-        if not path.exists():
+        data = self._store.read(_fixture_name(name, rrtype, resolver))
+        if data is None:
             raise MissingFixtureError(
-                f"no recorded answer for {name} {rrtype.upper()} "
-                f"(resolver {resolver or 'default'}) in {self._dir}. "
-                "Record it with --record before replaying; a replay run never "
-                "falls back to the wire."
+                missing_fixture_message(
+                    kind="answer",
+                    subject=f"{name} {rrtype.upper()} (resolver {resolver or 'default'})",
+                    directory=self._store.directory,
+                )
             )
-        return DnsResponse.from_dict(json.loads(path.read_text()))
+        return DnsResponse.from_dict(data)
 
 
 class SystemResolver:

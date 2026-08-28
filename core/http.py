@@ -13,13 +13,29 @@ What this client promises:
 - **no request to a host outside scope, and no redirect that leaves it** - an
   SSRF probe never targets a third party
 - bodies redacted and size-capped at capture, so evidence is ready to store
+
+**Record/replay is at the backend layer, like DNS and TLS** (`core/replay.py`).
+`HttpBackend.send()` is the one thing a recording or a replay stands in for;
+everything above it - the redirect loop, the scope check on each hop, the
+capture and redaction - is real code that runs identically whether the
+backend is a live socket or a fixture, so a replayed multi-hop redirect chain
+(including a hop declined for being out of scope) exercises the same logic a
+live run does.
+
+Unlike DNS and TLS, **the HTTP recording backend redacts before it writes**.
+A DNS answer or a TLS handshake cannot carry a customer's secret; an HTTP
+response can (a session cookie, an API key in a body). CLAUDE.md's rule is
+redact at capture time, not at display time, so the fixture on disk is the
+redacted, size-capped capture - never the raw response - and replaying it
+reproduces exactly that capture, truncation included.
 """
 
 from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from typing import Any
+from pathlib import Path
+from typing import Any, Protocol
 
 import httpx
 
@@ -27,6 +43,16 @@ from core.authz import Scope
 from core.cost import CostMeter
 from core.evidence import DEFAULT_BODY_CAP, redact_body, redact_headers, truncate_body
 from core.killswitch import KillSwitch
+from core.replay import (
+    FixtureStore,
+    fixture_digest,
+    fixture_filename,
+    missing_fixture_message,
+    sanitize_filename_part,
+)
+from core.replay import (
+    MissingFixtureError as MissingFixtureError,
+)
 
 DEFAULT_USER_AGENT = "SecurityPlatform-Scanner/0.1 (+https://example.invalid/scanner)"
 MAX_REDIRECTS = 5
@@ -47,12 +73,189 @@ class CapturedResponse:
     url: str
 
 
+# --- backends -----------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class RawHttpResponse:
+    """What a backend returns: the wire facts, before redirect-following,
+    scope checks or capture happen above it.
+
+    `redactions` is `None` for a live response - the facts are raw, and
+    `HttpClient` still has to redact and truncate them into a capture.
+    `ReplayHttpBackend` instead hands back the fixture's own already-redacted,
+    already-truncated capture verbatim, with `redactions` set to the list
+    that was recorded: redacting or truncating it a second time would corrupt
+    it (truncation inserts a marker, so truncating an already-truncated body
+    truncates *that*, nesting markers). `HttpClient` treats `redactions is
+    not None` as "this is already a capture, use it as-is."
+    """
+
+    status_code: int
+    headers: dict[str, str]
+    text: str
+    url: str
+    elapsed_ms: int
+    body_truncated: bool = False
+    redactions: list[str] | None = None
+
+
+class HttpBackend(Protocol):
+    def send(self, method: str, url: str, *, body_cap: int, **kwargs: Any) -> RawHttpResponse: ...
+
+
+class SystemHttpBackend:
+    """Real sockets, via httpx. Constructed by the CLI or the worker, never by
+    a scanner. `transport` exists for tests - `httpx.MockTransport` stands in
+    for the network without touching it."""
+
+    def __init__(
+        self,
+        *,
+        transport: httpx.BaseTransport | None = None,
+        user_agent: str = DEFAULT_USER_AGENT,
+        timeout_s: float = 15.0,
+    ) -> None:
+        self._client = httpx.Client(
+            transport=transport,
+            timeout=timeout_s,
+            follow_redirects=False,
+            headers={"User-Agent": user_agent},
+        )
+
+    def send(self, method: str, url: str, *, body_cap: int, **kwargs: Any) -> RawHttpResponse:
+        # `body_cap` is part of `HttpBackend` because `RecordingHttpBackend`
+        # needs it to write a correctly-capped fixture; a live wire response
+        # is never capped here (`HttpClient` applies the cap once, in its own
+        # capture step), so it is unused on this path.
+        del body_cap
+        started = time.monotonic()
+        response = self._client.request(method, url, **kwargs)
+        elapsed_ms = int((time.monotonic() - started) * 1000)
+        return RawHttpResponse(
+            status_code=response.status_code,
+            headers=dict(response.headers),
+            text=response.text,
+            url=str(response.url),
+            elapsed_ms=elapsed_ms,
+        )
+
+    def close(self) -> None:
+        self._client.close()
+
+
+def _capture_payload(
+    *, status_code: int, headers: dict[str, str], text: str, elapsed_ms: int, body_cap: int
+) -> dict[str, Any]:
+    """The redacted, size-capped shape stored as evidence - and, for HTTP,
+    also the shape stored as a fixture. Shared so recording never drifts from
+    the capture `HttpClient` computes for a live run."""
+    clean_headers, header_hits = redact_headers(dict(headers))
+    body, body_hits = redact_body(text)
+    body, truncated = truncate_body(body, body_cap)
+    return {
+        "status": status_code,
+        "headers": clean_headers,
+        "body": body,
+        "body_truncated": truncated,
+        "elapsed_ms": elapsed_ms,
+        "redactions": sorted(set(header_hits + body_hits)),
+    }
+
+
+def _fixture_name(method: str, url: str) -> str:
+    """One file per (method, url).
+
+    Sufficient today: every current and planned Light-mode check is an
+    idempotent GET, and a scanner never sends two different bodies to the
+    same URL in one run. A scanner that started doing that would collide on
+    replay - worth revisiting then, not worth a request-body hash now for a
+    case nothing exercises.
+    """
+    parsed = httpx.URL(url)
+    stem = sanitize_filename_part(f"{parsed.host}{parsed.path or '/'}")
+    key = f"{method.upper()}|{url}"
+    return fixture_filename(stem, method.upper(), digest=fixture_digest(key))
+
+
+class RecordingHttpBackend:
+    """Wraps a backend and writes a redacted, capped capture of every response
+    to disk for later replay.
+
+    Redaction happens here, at capture time - never later, and never as a
+    step the replay path could skip. What is returned to the caller is the
+    real, unredacted response, exactly as a live run without recording would
+    see it; only what lands on disk is redacted.
+    """
+
+    def __init__(self, directory: str | Path, inner: HttpBackend | None = None) -> None:
+        self._store = FixtureStore(Path(directory))
+        self._inner = inner or SystemHttpBackend()
+
+    def send(self, method: str, url: str, *, body_cap: int, **kwargs: Any) -> RawHttpResponse:
+        # `body_cap` comes from the caller on every call (`HttpClient` passes
+        # its own `body_cap` through) rather than being configured here too.
+        # A second place to set the same cap is exactly the shape of bug
+        # 0b.1 found: a value that can silently diverge from the one the
+        # live capture used, with a default quietly filling the gap.
+        raw = self._inner.send(method, url, body_cap=body_cap, **kwargs)
+        payload = _capture_payload(
+            status_code=raw.status_code,
+            headers=raw.headers,
+            text=raw.text,
+            elapsed_ms=raw.elapsed_ms,
+            body_cap=body_cap,
+        )
+        payload["url"] = raw.url
+        self._store.write(_fixture_name(method, url), payload)
+        return raw
+
+
+class ReplayHttpBackend:
+    """Serves recorded captures and never opens a socket.
+
+    What replays is the *capture*, not the original wire response: it is
+    already redacted and size-capped, and a replay must be indistinguishable
+    from what recording stored - truncation included - rather than
+    reconstructing something that was never written to disk.
+    """
+
+    def __init__(self, directory: str | Path) -> None:
+        self._store = FixtureStore(Path(directory))
+
+    def send(self, method: str, url: str, *, body_cap: int, **kwargs: Any) -> RawHttpResponse:
+        # `body_cap` is accepted only to satisfy `HttpBackend`'s shape; a
+        # replay always serves the fixture's own recorded truncation,
+        # regardless of the cap configured for this run - see the class
+        # docstring for why re-truncating it would corrupt it.
+        del body_cap
+        data = self._store.read(_fixture_name(method, url))
+        if data is None:
+            raise MissingFixtureError(
+                missing_fixture_message(
+                    kind="response",
+                    subject=f"{method.upper()} {url}",
+                    directory=self._store.directory,
+                )
+            )
+        return RawHttpResponse(
+            status_code=data["status"],
+            headers=dict(data["headers"]),
+            text=data["body"] or "",
+            url=data["url"],
+            elapsed_ms=data["elapsed_ms"],
+            body_truncated=data["body_truncated"],
+            redactions=list(data["redactions"]),
+        )
+
+
 class HttpClient:
     def __init__(
         self,
         *,
         scope: Scope,
         transport: httpx.BaseTransport | None = None,
+        backend: HttpBackend | None = None,
         user_agent: str = DEFAULT_USER_AGENT,
         timeout_s: float = 15.0,
         body_cap: int = DEFAULT_BODY_CAP,
@@ -69,11 +272,11 @@ class HttpClient:
         self._ratelimit = ratelimit
         self._scan_id = scan_id
         self._org_id = org_id
-        self._client = httpx.Client(
-            transport=transport,
-            timeout=timeout_s,
-            follow_redirects=False,
-            headers={"User-Agent": user_agent},
+        # `transport` (an `httpx.MockTransport` in tests) only makes sense for
+        # the default live backend; a caller supplying its own `backend`
+        # (Recording/Replay) owns its own transport concerns.
+        self._backend = backend or SystemHttpBackend(
+            transport=transport, user_agent=user_agent, timeout_s=timeout_s
         )
 
     def get(self, url: str, **kwargs: Any) -> CapturedResponse:
@@ -108,39 +311,47 @@ class HttpClient:
         if self._ratelimit is not None:
             self._ratelimit.acquire(host)
 
-        started = time.monotonic()
-        response = self._client.request(method, url, **kwargs)
-        elapsed_ms = int((time.monotonic() - started) * 1000)
+        raw = self._backend.send(method, url, body_cap=self._body_cap, **kwargs)
 
         if self._cost is not None:
             self._cost.record_request()
         if self._ratelimit is not None:
             self._ratelimit.observe(
                 host,
-                status=response.status_code,
-                latency_ms=elapsed_ms,
+                status=raw.status_code,
+                latency_ms=raw.elapsed_ms,
             )
 
         return CapturedResponse(
-            status_code=response.status_code,
-            text=response.text,
-            headers=dict(response.headers),
-            captured=self._capture(response, elapsed_ms),
-            url=str(response.url),
+            status_code=raw.status_code,
+            text=raw.text,
+            headers=dict(raw.headers),
+            captured=self._capture(raw),
+            url=raw.url,
         )
 
-    def _capture(self, response: httpx.Response, elapsed_ms: int) -> dict[str, Any]:
-        headers, header_hits = redact_headers(dict(response.headers))
-        body, body_hits = redact_body(response.text)
-        body, truncated = truncate_body(body, self._body_cap)
-        return {
-            "status": response.status_code,
-            "headers": headers,
-            "body": body,
-            "body_truncated": truncated,
-            "elapsed_ms": elapsed_ms,
-            "redactions": sorted(set(header_hits + body_hits)),
-        }
+    def _capture(self, raw: RawHttpResponse) -> dict[str, Any]:
+        if raw.redactions is not None:
+            # Already a capture - `ReplayHttpBackend` handed back exactly what
+            # recording wrote. Redacting or truncating it again would corrupt
+            # it (see `RawHttpResponse`'s docstring), so it is used as-is.
+            return {
+                "status": raw.status_code,
+                "headers": dict(raw.headers),
+                "body": raw.text,
+                "body_truncated": raw.body_truncated,
+                "elapsed_ms": raw.elapsed_ms,
+                "redactions": list(raw.redactions),
+            }
+        return _capture_payload(
+            status_code=raw.status_code,
+            headers=raw.headers,
+            text=raw.text,
+            elapsed_ms=raw.elapsed_ms,
+            body_cap=self._body_cap,
+        )
 
     def close(self) -> None:
-        self._client.close()
+        close = getattr(self._backend, "close", None)
+        if close is not None:
+            close()
