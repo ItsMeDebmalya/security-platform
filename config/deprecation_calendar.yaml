@@ -1,0 +1,63 @@
+# The deprecation calendar — curated data, not code.
+#
+# core/deprecation_calendar.py loads and validates this file. Every entry
+# is a dated deadline a scanner could one day turn into a `derived` finding
+# (ADR-018) — "this observation stops being fine on this date" — but this
+# file does not wire into any scanner yet. That is a later task
+# (docs/03-roadmap.md 0b.7's exit criterion is the mechanism, not the wiring).
+#
+# THE DISCIPLINE (docs/02-decisions.md ADR-020, docs/03-roadmap.md 0b.7):
+# an entry without a primary source is not admissible. A vendor blog, a
+# news article summarising a ballot, or "everyone knows this" is not a
+# source — D13 exists because v3.4's research numbers came from exactly
+# that and were never checked. `source_url` must point at the authority's
+# own text: the ballot itself, the RFC, the standard, the vendor's own
+# security-blog post announcing its own change. If you cannot find that,
+# do not add the entry — leave it out and say so.
+#
+#
+# ON `reviewed_by`: it names the human who read the primary source and
+# vouched for the entry. The three entries below were drafted and
+# source-checked by an assistant against the CA/Browser Forum ballot and
+# the Baseline Requirements redline, but no human has signed them off, so
+# they say `pending-human-review` rather than naming someone who did not
+# review them. Claiming a review that did not happen is the same defect as
+# quoting a record a domain never published — see the Tool 1 entry in
+# docs/14-progress-ledger.md. Replace with `operator:<name>` on sign-off.
+#
+# Every entry needs, at minimum: id, authority, change, date, source_url,
+# reviewed_at, reviewed_by. See core/deprecation_calendar.py for the
+# validation rules and the staleness rule.
+
+- id: cert-lifetime-200-days-2026-03-15
+  authority: CA/Browser Forum
+  change: >
+    Maximum validity period for publicly-trusted TLS server certificates
+    drops to 200 days (MUST NOT exceed 200 days; SHOULD NOT exceed 199)
+    for certificates issued on or after this date.
+  date: 2026-03-15
+  source_url: https://cabforum.org/2025/04/11/ballot-sc081v3-introduce-schedule-of-reducing-validity-and-data-reuse-periods/
+  reviewed_at: 2026-08-28
+  reviewed_by: pending-human-review
+
+- id: cert-lifetime-100-days-2027-03-15
+  authority: CA/Browser Forum
+  change: >
+    Maximum validity period for publicly-trusted TLS server certificates
+    drops to 100 days (MUST NOT exceed 100 days; SHOULD NOT exceed 99)
+    for certificates issued on or after this date.
+  date: 2027-03-15
+  source_url: https://cabforum.org/2025/04/11/ballot-sc081v3-introduce-schedule-of-reducing-validity-and-data-reuse-periods/
+  reviewed_at: 2026-08-28
+  reviewed_by: pending-human-review
+
+- id: cert-lifetime-47-days-2029-03-15
+  authority: CA/Browser Forum
+  change: >
+    Maximum validity period for publicly-trusted TLS server certificates
+    drops to 47 days (MUST NOT exceed 47 days; SHOULD NOT exceed 46)
+    for certificates issued on or after this date.
+  date: 2029-03-15
+  source_url: https://cabforum.org/2025/04/11/ballot-sc081v3-introduce-schedule-of-reducing-validity-and-data-reuse-periods/
+  reviewed_at: 2026-08-28
+  reviewed_by: pending-human-review

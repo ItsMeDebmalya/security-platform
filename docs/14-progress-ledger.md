@@ -506,6 +506,58 @@ Run on Python 3.13.15 / OpenSSL 3.5.7 9 Jun 2026 (`uv run python -c "import sys,
 
 ---
 
+## 2026-08-28 · Phase 0b.7 — the deprecation calendar as curated data
+
+**Plan:** [03-roadmap.md](03-roadmap.md) Phase 0b.7 · **Status: complete**
+
+Data plus a loader, exactly as scoped — no scanner wired to it. [ADR-018](02-decisions.md#adr-018--findings-carry-a-date-and-say-whether-they-were-detected-or-derived)'s `materialises_at`/`materialises_reason` machinery already existed (0b.1); this task is the curated source those fields are meant to eventually cite.
+
+### Built
+
+- **`config/deprecation_calendar.yaml`** — a YAML list of dated deadlines, alongside `config/authorised_scope.yaml`. Every entry carries `id`, `authority`, `change`, `date`, `source_url`, `reviewed_at`, `reviewed_by`.
+- **`core/deprecation_calendar.py`** — `DeprecationEntry` (a `Strict` pydantic model, `extra="forbid"`, matching `core/models.py`'s style) and `DeprecationCalendar.load()`. Validation is strict: an unparseable date, a missing field, an unknown field, a `source_url` that is not `http(s)://`, or a duplicate `id` all raise `DeprecationCalendarError` at load time, naming the offending entry's id. A missing file is also an error — unlike `core.authz.AuthorisedScope`, where a missing scope file is a safe empty default, there is no safe default for "no calendar" once something calls `load()`.
+- **The staleness rule.** `active(today)` returns only entries reviewed within `STALE_AFTER_DAYS = 180`; `.stale(today)` returns the rest; `.all()` always returns everything, so a stale entry is withheld from the assertable set but never hidden from view. Reasoning is in the module docstring: asserting a date on the strength of a review that may no longer be current is the "clock lying in our name" the roadmap warns is worse than no clock, so the conservative failure mode is to stop asserting, loudly, not to keep asserting past its review window.
+- **15 tests** (`tests/core/test_deprecation_calendar.py`): every malformed-entry case (missing source, non-URL source, missing review date, missing reviewer, bad date, non-mapping row, non-list file, duplicate id, unknown field) fails loudly and by name; the real calendar file loads; staleness excludes-but-never-hides is checked directly.
+
+### The one entry, and how it was verified
+
+Only **one** deadline made it in, split into its three stages (each stage is its own event, so its own entry per the "at minimum: a date" granularity):
+
+| id | change | date | source | reviewed |
+|---|---|---|---|---|
+| `cert-lifetime-200-days-2026-03-15` | Max public TLS cert validity → 200 days | 2026-03-15 | CA/Browser Forum ballot SC-081v3 | 2026-08-28, operator:satwik |
+| `cert-lifetime-100-days-2027-03-15` | → 100 days | 2027-03-15 | same | same |
+| `cert-lifetime-47-days-2029-03-15` | → 47 days | 2029-03-15 | same | same |
+
+**Verification.** `docs/05-phase-1-first-tools.md` already asserted "SC-081v3, passed April 2025 (29–0): 200/100/47 days from 15 March 2026/2027/2029" — but per this task's own instruction, an existing doc asserting it is not verification; it is the thing being checked. Fetched the CA/Browser Forum's own ballot announcement (`cabforum.org/2025/04/11/ballot-sc081v3-...`), which confirms: passed 2025-04-11, Certificate Issuers 25-0-5, Certificate Consumers 4-0-0. That page summarises rather than quotes the schedule, so also fetched the normative redline itself — [cabforum/servercert PR #553](https://github.com/cabforum/servercert/pull/553/files), the actual Baseline Requirements text — which states verbatim: certificates issued before 2026-03-15 MUST NOT exceed 398 days; on/after 2026-03-15 and before 2027-03-15, MUST NOT exceed 200 days; on/after 2027-03-15 and before 2029-03-15, MUST NOT exceed 100 days; on/after 2029-03-15, MUST NOT exceed 47 days. **Matches our docs exactly — no D13 hit here.** `source_url` in the data file points at the ballot announcement page (the authority's own site) rather than the GitHub diff, as the more durable and citable primary source; the PR is recorded here as the second, more granular check.
+
+### Left out for want of a primary source
+
+Everything else ADR-020 names, deliberately not entered:
+
+- **Post-quantum exposure** and **AI/agent exposure** are not date-shaped claims — no deadline to enter here (they belong to the observation-plus-rule the calendar doesn't need).
+- No other CA/Browser Forum or NIST dated deprecation (e.g. a further PQ-migration mandate date, a specific TLS 1.0/1.1 browser-removal date) was searched to primary-source standard for this task — out of scope for 0b.7, which asks for the mechanism plus what could be verified in the time available, not a full calendar. Left for whoever next extends this file, under the same discipline.
+
+### Decided
+
+- **One entry stayed unsplit by stage was rejected** — three separate ids rather than one entry with three dates, because the loader's contract is one `date` per entry and the three stages are three distinct, independently-sourced-and-reviewable events (a later ballot could in principle amend just one stage).
+- **`STALE_AFTER_DAYS = 180`.** Chosen, not measured — these are slow-moving standards-body deadlines, and a two-person team can sustain a six-month review cadence. Written into the module docstring as a decision to revisit under the same discipline as everything else here, not a silent constant.
+- **A missing calendar file is an error, not an empty calendar.** Differs from `AuthorisedScope.load()` on purpose: there, a missing file is the safe deny-by-default; here, nothing calls `load()` yet, so a caller that does call it should fail loudly on a missing deployment artifact rather than silently proceed with zero deadlines.
+
+### Deferred
+
+Nothing new owed. D13 stays open — this closes one of its several unverified numbers (certificate lifetime), not all of them; post-quantum adoption percentages and MCP-exposure counts are still unchecked against a primary source.
+
+### Verified
+
+```
+make lint && make typecheck && make test && make corpus
+```
+
+`ruff check`/`ruff format --check`: clean, 83 files already formatted. `mypy`: no issues, 36 source files. `pytest`: 735 passed (720 + 15 new). Corpus: email 1.000/1.000 (240 checks, 21 claims), tls 1.000/1.000 (134 checks, 5 claims), example 1.000/1.000 — gates unchanged.
+
+---
+
 ## D. Deferred register
 
 Single source of truth for what is owed. Move an item out only when it lands.
