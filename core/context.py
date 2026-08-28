@@ -15,6 +15,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Protocol
 
+from core.assetgraph import AssetGraph
 from core.authz import Scope
 from core.cost import CostMeter
 from core.dns import DnsClient
@@ -85,6 +86,12 @@ class ScanContext:
     dns: DnsClient | UnconfiguredClient = field(default_factory=lambda: UnconfiguredClient("dns"))
     tls: TlsClient | UnconfiguredClient = field(default_factory=lambda: UnconfiguredClient("tls"))
     scope: Scope | None = None
+    assets: AssetGraph = field(default_factory=AssetGraph)
+    """The run's shared asset graph (ADR-019). A scanner that never touches
+    this field behaves exactly as it did before the graph existed — the
+    default is an empty graph, not one that must be wired up to be safe.
+    Contributing to it or reading from it confers no authorisation; that is
+    still and only `core/authz.py`'s job."""
     ratelimit: RateLimiter = field(default_factory=RateLimiter)
     concurrency: ConcurrencyCap = field(default_factory=ConcurrencyCap)
     oob: OobClient = field(default_factory=StubOobClient)

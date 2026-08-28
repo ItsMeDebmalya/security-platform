@@ -1,0 +1,16 @@
+# Proof of control for https://localhost:14400-14413 (the TLS corpus lab)
+# Method: self_owned (docs/09-ownership-verification.md)
+# Recorded: 2026-08-28 by operator:satwik
+#
+# This is the local TLS lab corpus/generators/tls.py starts, bound to
+# 127.0.0.1 only. The scanner runs on the same machine. Scanning it reaches
+# nothing but the operator's own loopback interface, so there is no third
+# party to ask and no DNS zone to prove control of - the same reasoning as
+# the other localhost-* rows in this directory.
+#
+# Recorded specifically to demonstrate docs/03-roadmap.md 0b.6: TLS's
+# protocol/cipher-probing Standard checks force deliberately abnormal input
+# (obsolete protocols, weak/legacy cipher offers), so this row is required
+# for a Standard-mode scan even though the same target needs no row at all
+# in Light mode - see config/authorised_scope.example.yaml and
+# docs/12-cli-runbook.md section 5.

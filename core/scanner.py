@@ -42,6 +42,24 @@ class BaseScanner(ABC):
                 f"{self.name} supports {sorted(self.supported_modes)}, not {mode!r}"
             )
 
+    def requires_authorisation(self, mode: Mode) -> bool | None:
+        """Whether this scanner needs a valid authorisation record in `mode`.
+
+        `None` (the default) means "no per-check declaration; the caller
+        falls back to `core.authz`'s legacy mode-based rule" - light is
+        assumed passive, standard/deep assumed active. That is the pre-0b.6
+        behaviour, kept as the default so a scanner that has not migrated to
+        a `Check` catalogue with `passive` declarations (the reference
+        `example` scanner, today) is unaffected.
+
+        A scanner with such a catalogue overrides this to answer from its
+        own checks instead of trusting mode alone
+        (docs/03-roadmap.md 0b.6, `core.authz.checks_require_authorisation`).
+        Returning `None` here is not itself a declaration and must never be
+        read as "passive" - see `AuthorisedScope.authorise`'s docstring.
+        """
+        return None
+
     @abstractmethod
     def run(self, target: Asset, mode: Mode, ctx: ScanContext) -> ScanResult:
         """Do the work.

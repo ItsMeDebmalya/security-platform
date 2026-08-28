@@ -16,6 +16,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from core.authz import checks_require_authorisation
+from core.models import Mode
+
 DNS_CLASS = "dns"
 """Every check in this scanner observes the same channel: authoritative DNS.
 
@@ -33,12 +36,20 @@ class Check:
     severity: str
     likelihood_ratio: float
     justification: str
+    passive: bool
+    """docs/03-roadmap.md 0b.6: the ownership gate enforces this declaration
+    directly, regardless of `mode` - see `core.authz.checks_require_authorisation`.
+    No default, deliberately: a check with no opinion here fails to
+    construct rather than reading as passive by omission."""
     mode: str = "light"
 
 
 CHECKS: dict[str, Check] = {
     c.check_id: c
     for c in [
+        # Every check below reads only the authoritative DNS answers this
+        # scanner queried for itself - no SMTP connection, no HTTP request,
+        # nothing sent to the target's own infrastructure. All are passive.
         Check(
             check_id="spf-missing",
             title="No SPF record published",
@@ -48,6 +59,7 @@ CHECKS: dict[str, Check] = {
                 "a definite TXT answer containing no v=spf1 term is a direct observation; "
                 "the failure modes are a broken resolver and a masked record, and both are checked"
             ),
+            passive=True,
         ),
         Check(
             check_id="spf-invalid",
@@ -58,6 +70,7 @@ CHECKS: dict[str, Check] = {
                 "RFC 7208 syntax is unambiguous, but real-world records use extensions we may "
                 "not know, so the ratio is below that of a plain absence"
             ),
+            passive=True,
         ),
         Check(
             check_id="spf-multiple-records",
@@ -65,6 +78,7 @@ CHECKS: dict[str, Check] = {
             severity="medium",
             likelihood_ratio=40.0,
             justification="counting records at one name leaves no room for interpretation",
+            passive=True,
         ),
         Check(
             check_id="spf-too-permissive",
@@ -72,6 +86,7 @@ CHECKS: dict[str, Check] = {
             severity="high",
             likelihood_ratio=40.0,
             justification="the qualifier on the all mechanism is read directly from the record",
+            passive=True,
             mode="standard",
         ),
         Check(
@@ -83,6 +98,7 @@ CHECKS: dict[str, Check] = {
                 "the count is computed from records we fetched ourselves, but include chains "
                 "change often and a chain we could not finish walking returns inconclusive"
             ),
+            passive=True,
             mode="standard",
         ),
         Check(
@@ -93,6 +109,7 @@ CHECKS: dict[str, Check] = {
             justification=(
                 "a definite TXT answer at _dmarc with no v=DMARC1 term is a direct observation"
             ),
+            passive=True,
         ),
         Check(
             check_id="dmarc-invalid",
@@ -103,6 +120,7 @@ CHECKS: dict[str, Check] = {
                 "RFC 7489 ordering rules are explicit, though receiver implementations vary in "
                 "how strictly they enforce them"
             ),
+            passive=True,
         ),
         Check(
             check_id="dmarc-policy-none",
@@ -110,6 +128,7 @@ CHECKS: dict[str, Check] = {
             severity="medium",
             likelihood_ratio=40.0,
             justification="the p= tag is read directly from a record that parsed",
+            passive=True,
         ),
         Check(
             check_id="dmarc-pct-partial",
@@ -117,6 +136,7 @@ CHECKS: dict[str, Check] = {
             severity="medium",
             likelihood_ratio=40.0,
             justification="the pct= tag is read directly from a record that parsed",
+            passive=True,
             mode="standard",
         ),
         Check(
@@ -125,6 +145,7 @@ CHECKS: dict[str, Check] = {
             severity="low",
             likelihood_ratio=40.0,
             justification="the absence of a rua= tag in a parsed record is unambiguous",
+            passive=True,
             mode="standard",
         ),
         Check(
@@ -133,6 +154,7 @@ CHECKS: dict[str, Check] = {
             severity="info",
             likelihood_ratio=40.0,
             justification="the adkim= and aspf= tags are read directly, and default to relaxed",
+            passive=True,
             mode="standard",
         ),
         Check(
@@ -141,6 +163,7 @@ CHECKS: dict[str, Check] = {
             severity="medium",
             likelihood_ratio=40.0,
             justification="a definite empty MX answer is a direct observation",
+            passive=True,
         ),
         Check(
             check_id="dkim-missing",
@@ -151,6 +174,7 @@ CHECKS: dict[str, Check] = {
                 "selectors cannot be enumerated, so this check reaches a verdict only when a "
                 "key is found; a failed search is inconclusive by construction"
             ),
+            passive=True,
         ),
         Check(
             check_id="dkim-weak-key",
@@ -161,6 +185,7 @@ CHECKS: dict[str, Check] = {
                 "the modulus length is measured from the key itself, but a domain may publish "
                 "several selectors and we only see the ones we found"
             ),
+            passive=True,
             mode="standard",
         ),
         Check(
@@ -171,6 +196,7 @@ CHECKS: dict[str, Check] = {
             justification=(
                 "a definite TXT answer at _mta-sts with no v=STSv1 term is direct observation"
             ),
+            passive=True,
             mode="standard",
         ),
         Check(
@@ -181,6 +207,7 @@ CHECKS: dict[str, Check] = {
             justification=(
                 "a definite TXT answer at _smtp._tls with no v=TLSRPTv1 term is direct observation"
             ),
+            passive=True,
             mode="standard",
         ),
         Check(
@@ -192,9 +219,24 @@ CHECKS: dict[str, Check] = {
                 "this is a simulation of a receiver's decision from records we read, not an "
                 "observation of a receiver actually making it; the ratio is lower to say so"
             ),
+            passive=True,
         ),
     ]
 }
+
+
+def requires_authorisation(mode: Mode) -> bool:
+    """Whether this scanner's checks need a valid authorisation record in `mode`.
+
+    Every check above is declared `passive=True` - this scanner queries only
+    public authoritative DNS, never the target's own infrastructure - so
+    this always returns False today. It is not hand-set to False, though:
+    it is computed from the catalogue so that adding a genuinely active
+    email check (D4's `open-relay` needs an SMTP connection) flips this
+    automatically instead of requiring someone to remember a second place.
+    """
+    return checks_require_authorisation(CHECKS.values(), mode=mode)
+
 
 COMMON_SELECTORS = (
     "selector1",

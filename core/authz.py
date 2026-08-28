@@ -22,10 +22,11 @@ resolver it may talk to, not the names it may ask about.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 from urllib.parse import urlsplit
 
 import yaml
@@ -33,6 +34,44 @@ import yaml
 from core.models import Asset, Mode
 
 ACTIVE_MODES = frozenset({"standard", "deep"})
+
+
+class DeclaresPassivity(Protocol):
+    """What `checks_require_authorisation` needs from a check.
+
+    Matches the shape `scanners/*/checks.py`'s `Check` dataclass already
+    has, without this module importing any scanner (core never imports a
+    scanner - `docs/06-guidelines.md`). Declared as read-only properties
+    rather than plain attributes so a frozen dataclass with extra fields
+    (severity, likelihood_ratio, ...) satisfies this structurally under
+    mypy's strict Protocol variance rules.
+    """
+
+    @property
+    def passive(self) -> bool: ...
+
+    @property
+    def mode(self) -> str: ...
+
+
+def checks_require_authorisation(checks: Iterable[DeclaresPassivity], *, mode: Mode) -> bool:
+    """True if any check that would run in `mode` is declared active.
+
+    This is the mechanism docs/03-roadmap.md 0b.6 asks for: "the gate should
+    enforce a declaration, not trust the author's filing." `passive` has no
+    default on `Check` (see `scanners/email/checks.py`,
+    `scanners/tls/checks.py`), so every entry in a catalogue this is called
+    with states it explicitly - there is no undeclared check for this
+    function to read as passive. A scanner's `Check` catalogue is the single
+    place the declaration lives; this function only asks it a question.
+    """
+    for check in checks:
+        if mode == "light" and check.mode != "light":
+            continue  # would not run in this mode - see the `if self.mode !=
+            # "light"` gating in scanners/{email,tls}/scanner.py
+        if not check.passive:
+            return True
+    return False
 
 
 def host_of(target: Asset) -> str:
@@ -165,8 +204,39 @@ class AuthorisedScope:
         rows = yaml.safe_load(path.read_text()) or []
         return cls([_record_from_row(row, path) for row in rows], path)
 
-    def authorise(self, target: Asset, *, mode: Mode, today: date | None = None) -> AuthzDecision:
-        if mode not in ACTIVE_MODES:
+    def authorise(
+        self,
+        target: Asset,
+        *,
+        mode: Mode,
+        passive: bool | None = None,
+        today: date | None = None,
+    ) -> AuthzDecision:
+        """Decide whether this scan may proceed. Deny by default.
+
+        `passive` is the 0b.6 declaration - computed by
+        `checks_require_authorisation` from a scanner's own `Check`
+        catalogue and passed in as `not requires_authorisation`. It governs
+        regardless of `mode`, including `light`, which is what closes the
+        gap this task exists to close: a check makes one HTTP request to a
+        target's admin panel is active whatever mode label it runs under.
+
+        `passive=None` is the legacy path, kept only for a scanner (like the
+        reference `example` scanner) that has not migrated to per-check
+        declarations - it falls back to the old mode-based rule, unchanged.
+        `passive=None` must never be confused with `passive=False`: the
+        first means "this caller has no opinion, fall back"; the second
+        means "this caller looked at its checks and at least one is active",
+        which requires a record even in `light` mode. Neither value ever
+        widens what light mode was already allowed to do.
+        """
+        if passive is True:
+            return AuthzDecision(
+                True,
+                None,
+                "every check that would run is declared passive (docs/03-roadmap.md 0b.6)",
+            )
+        if passive is None and mode not in ACTIVE_MODES:
             return AuthzDecision(True, None, "light mode is passive and needs no authorisation")
 
         today = today or date.today()
@@ -189,9 +259,16 @@ class AuthorisedScope:
             return AuthzDecision(True, record.authz_ref(target), "verified")
         raise AssertionError("unreachable")
 
-    def require(self, target: Asset, *, mode: Mode, today: date | None = None) -> str | None:
+    def require(
+        self,
+        target: Asset,
+        *,
+        mode: Mode,
+        passive: bool | None = None,
+        today: date | None = None,
+    ) -> str | None:
         """Authorise or raise. Returns the `authz_ref` to record on the ScanRun."""
-        decision = self.authorise(target, mode=mode, today=today)
+        decision = self.authorise(target, mode=mode, passive=passive, today=today)
         if not decision.allowed:
             raise AuthorisationDeniedError(decision.reason)
         return decision.authz_ref

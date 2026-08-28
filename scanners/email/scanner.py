@@ -38,6 +38,7 @@ from core.models import Asset, CheckRun, Finding, Mode, ScanResult, Telemetry
 from core.registry import register
 from core.scanner import BaseScanner
 from scanners.email.checks import CHECKS, COMMON_SELECTORS, DNS_CLASS, Check
+from scanners.email.checks import requires_authorisation as _requires_authorisation
 from scanners.email.dkim import DkimKeyRecord, parse_dkim_key
 from scanners.email.dmarc import DmarcRecord, parse_dmarc
 from scanners.email.spf import (
@@ -63,6 +64,9 @@ class EmailScanner(BaseScanner):
     version = "1.0.0"
     supported_modes = frozenset({"light", "standard"})
     target_types = frozenset({"domain"})
+
+    def requires_authorisation(self, mode: Mode) -> bool:
+        return _requires_authorisation(mode)
 
     def run(self, target: Asset, mode: Mode, ctx: ScanContext) -> ScanResult:
         self.validate(target, mode)

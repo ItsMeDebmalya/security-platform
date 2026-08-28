@@ -1,6 +1,6 @@
 # 09 — Ownership Verification
 
-*The mechanism that stands between us and criminal liability. It gates every Standard and Deep scan, starting with the first one — which is well before the website exists.*
+*The mechanism that stands between us and criminal liability. It gates every check declared active, whatever mode it runs under, starting with the first one — which is well before the website exists.*
 
 > Written because the audit found this specified nowhere in operational detail, despite four documents referring to it as a hard gate.
 
@@ -83,7 +83,7 @@ Immutable, append-only. This is the artefact produced if anyone ever asks by wha
 }
 ```
 
-Every `ScanRun` carries `authz_ref` pointing at this record. **A run with no `authz_ref` cannot execute in Standard or Deep mode** — `core/authz.py` denies by default, and this is the check it performs.
+Every `ScanRun` carries `authz_ref` pointing at this record. **A run whose checks include even one declared-active check cannot execute without an `authz_ref`, in any mode** — `core/authz.py` denies by default, and this is the check it performs.
 
 Retain authorisation records for **7 years**. They are our defence, and they outlive the customer relationship.
 
@@ -111,8 +111,9 @@ Until self-serve verification exists, the same rules apply through an operator-m
 ```
 
 Rules for the interim file:
-- **Light mode ignores it** — Light is passive and needs no authorisation.
-- **Standard and Deep read it and deny by default.** No entry, expired entry, or revoked entry means the scan does not run.
+- **The gate is per check, not per mode** ([03-roadmap.md](03-roadmap.md) 0b.6). `core/authz.py`'s `authorise()` used to key entirely on `mode` — Light exempt, Standard/Deep gated — and that was wrong for email: every email Standard check only ever reads public DNS, yet it sat behind the gate anyway. A scanner with a `Check` catalogue (`scanners/*/checks.py`) now declares `passive: bool` on every check it owns, with no default, and `core/authz.checks_require_authorisation()` asks the catalogue rather than trusting the mode label. **What "passive" means:** what an ordinary client does — one normal connection, nothing the target would not serve to any visitor. **Active** is deliberately abnormal input — offering obsolete protocols or a weak/legacy cipher list to see what a server will accept, not what it ordinarily negotiates, or sending payloads. A connection to the target is not itself what makes a check active; the roadmap's own example makes this precise: "finding a server is passive, reading its admin panel is not," and finding a server requires connecting to it. **The practical effect today:** the email scanner needs no authorisation in Standard mode any more than in Light — the product-wide contract that Light needs none stays exactly what it was. The TLS scanner's eight Light checks and three of its six Standard checks read only the certificate an ordinary handshake already presents (the same bytes any browser would see) and need no row in any mode. TLS's other three Standard checks — `tls-protocol-obsolete`, `tls-weak-cipher`, `tls-no-forward-secrecy` — force an abnormal protocol or cipher offer specifically to see what the server will accept, so *Standard* mode needs authorisation for TLS, but Light still does not. See `docs/12-cli-runbook.md` for a real transcript.
+- **A scanner that has not migrated is unaffected.** `BaseScanner.requires_authorisation()` defaults to `None` — "no declaration" — which falls back unchanged to the old mode-based rule. `None` is never treated as "passive"; the only way to skip authorisation is an explicit `passive=True` traced to a specific check.
+- **Standard and Deep still deny by default** for any check declared active, in whatever mode it runs under. No entry, expired entry, or revoked entry means the scan does not run.
 - Every edit is a reviewed commit. The git history *is* the audit log.
 - The evidence file (the actual DNS answer or HTTP response proving the nonce) is committed alongside. A row asserting verification without its proof is not verification.
 - Targets we personally own may be marked `method: self_owned` with a note — still an explicit row, never an implicit exemption.

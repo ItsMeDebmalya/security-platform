@@ -54,6 +54,7 @@ from scanners.tls.checks import (
     WEAK_CIPHER_MARKERS,
     Check,
 )
+from scanners.tls.checks import requires_authorisation as _requires_authorisation
 
 NO_VERDICT_FOR_ERROR = {
     "timeout": "timeout",
@@ -86,6 +87,9 @@ class TlsScanner(BaseScanner):
     version = "1.0.0"
     supported_modes = frozenset({"light", "standard"})
     target_types = frozenset({"domain", "url", "ip"})
+
+    def requires_authorisation(self, mode: Mode) -> bool:
+        return _requires_authorisation(mode)
 
     def run(self, target: Asset, mode: Mode, ctx: ScanContext) -> ScanResult:
         self.validate(target, mode)

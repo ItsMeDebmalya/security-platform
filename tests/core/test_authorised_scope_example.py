@@ -115,10 +115,19 @@ def test_every_example_row_cites_a_proof_file_that_exists():
 
 def test_every_example_row_uses_a_reserved_domain():
     """RFC 2606 reserves .example, .test, .invalid and .localhost. An example
-    pointing at a registrable domain is an invitation to scan it."""
+    pointing at a registrable domain is an invitation to scan it.
+
+    `localhost` (bare, no TLD) is the one exception: RFC 6761 reserves it
+    outright, unregistrable by construction, and it is the literal target of
+    the local TLS lab used to demonstrate docs/03-roadmap.md 0b.6 - TLS
+    needing authorisation in Light mode - in docs/12-cli-runbook.md §5.
+    """
     rows = yaml.safe_load(EXAMPLE.read_text())
 
-    assert all(row["target"]["value"].endswith(".example") for row in rows)
+    assert all(
+        row["target"]["value"].endswith(".example") or row["target"]["value"] == "localhost"
+        for row in rows
+    )
 
 
 def test_no_example_authorisation_runs_longer_than_ninety_days():

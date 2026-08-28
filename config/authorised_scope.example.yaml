@@ -6,13 +6,28 @@
 #
 # To try it without touching the live file:
 #
-#   uv run scan run email --target corpus-pnone.example --mode standard \
-#     --replay corpus/fixtures/email/dmarc-monitoring-only \
+#   uv run scan run tls --target https://localhost:14400 --mode standard \
+#     --replay corpus/fixtures/tls/healthy \
 #     --scope-file config/authorised_scope.example.yaml
 #
 # Every domain below uses the `.example` TLD, which RFC 2606 reserves and
 # nobody can ever register. An example that pointed at a real domain would be
 # an invitation to scan it.
+#
+# docs/03-roadmap.md 0b.6: authorisation is gated per check, not per mode.
+# Passive is what an ordinary client does; active is deliberately abnormal
+# input - offering obsolete protocols or weak/legacy ciphers to see what a
+# server will accept, not what it ordinarily negotiates. TLS's eight Light
+# checks and three of its six Standard checks read only what an ordinary
+# handshake already shows (the same certificate a browser gets) and need no
+# row in any mode - `--mode light` above needs no `--scope-file` at all.
+# TLS's other three Standard checks (tls-protocol-obsolete, tls-weak-cipher,
+# tls-no-forward-secrecy) force that abnormal input, so *Standard* mode
+# needs a row - which is what the command above demonstrates. Every email
+# check reads only public DNS in every mode, so email needs no row in any
+# mode, Standard included - the row below for corpus-pnone.example is kept
+# as a worked example of `method: self_owned`, not because a Standard email
+# scan requires it any more.
 #
 # The dates are illustrative and some of them are deliberately in the past.
 # Regenerate them; do not copy them.
@@ -97,6 +112,27 @@
     evidence_file: corpus/authz/lapsed.example-2026-01-10.txt
   verified_at: 2026-01-10
   expires_at: 2026-04-10             # in the past -> denied until re-verified
+  verified_by: operator:satwik
+  attestation_ref: null
+
+# ---------------------------------------------------------------------------
+# 5. The TLS corpus lab, authorising the command at the top of this file.
+#    docs/03-roadmap.md 0b.6: TLS's three protocol/cipher-probing Standard
+#    checks force deliberately abnormal input, so this row is required for
+#    the Standard-mode command above. It would not be needed to run the
+#    same target in Light mode - every Light check is an ordinary handshake.
+# ---------------------------------------------------------------------------
+
+- authz_id: authz_2026-08-28-005
+  org_id: org_internal
+  target: { type: domain, value: localhost, wildcard: false }
+  method: self_owned
+  proof:
+    observed: 'local TLS lab started by corpus/generators/tls.py on this machine'
+    observed_at: 2026-08-28T00:00:00Z
+    evidence_file: corpus/authz/localhost-2026-08-28.txt
+  verified_at: 2026-08-28
+  expires_at: 2026-11-26
   verified_by: operator:satwik
   attestation_ref: null
 

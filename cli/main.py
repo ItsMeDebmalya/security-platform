@@ -133,7 +133,12 @@ def _execute(
     scanner = registry.get(scanner_name)()
 
     scope = AuthorisedScope.load(scope_file)
-    authz_ref = scope.require(target, mode=_as_mode(mode))
+    # docs/03-roadmap.md 0b.6: ask the scanner what its own checks declare
+    # rather than trusting mode alone. `None` means "no declaration", which
+    # falls back unchanged to the pre-0b.6 mode-based rule inside authorise().
+    active = scanner.requires_authorisation(_as_mode(mode))
+    passive = None if active is None else not active
+    authz_ref = scope.require(target, mode=_as_mode(mode), passive=passive)
 
     resolver: Any
     tls_backend: Any

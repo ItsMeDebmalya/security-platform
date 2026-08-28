@@ -261,33 +261,105 @@ uv run scan run email -t example.com --format json 2>/dev/null \
 
 ---
 
-## 5. Standard mode and the authorisation gate
+## 5. The authorisation gate — a per-check declaration, not a mode setting
 
-**Light mode is passive** — it reads public DNS and touches nothing belonging to the target. It needs no permission and can be run against any domain.
+**As of docs/03-roadmap.md 0b.6, the gate is not "Light is exempt, Standard and Deep are not."** It asks the scanner what its checks actually do. Every `Check` in `scanners/*/checks.py` carries a `passive: bool` with no default, and `core/authz.checks_require_authorisation()` reads that catalogue rather than trusting the mode label.
 
-**Standard and Deep are active** and require verified ownership of the target. This is a legal requirement, not a product setting, and it is enforced deny-by-default in `core/authz.py` from the first Standard check.
+**Passive is what an ordinary client does** — one normal connection, nothing the target would not serve to any visitor. **Active is deliberately abnormal input** — offering obsolete protocols or a weak/legacy cipher list to see what a server will accept, not what it ordinarily negotiates, or sending payloads. A connection to the target is not itself what makes a check active — "finding a server is passive, reading its admin panel is not," and finding a server requires connecting to it.
 
-```bash
-$ uv run scan run email --target python.org --mode standard
-authorisation denied: no authorisation record for python.org in config/authorised_scope.yaml
-$ echo $?
-1
-```
+- **Email is pure DNS in every mode.** Every check reads a public authoritative answer we queried ourselves; nothing touches the target's own infrastructure. So email needs **no authorisation in Standard mode**, exactly as it needed none in Light:
 
-That is the correct outcome. **Do not add an allowlist entry for a domain you do not control** — the git history of that file is the audit record, and a row asserting verification you did not perform is worse than no scanner at all.
+  ```bash
+  $ uv run scan run email --target corpus-good.example --mode standard \
+      --replay corpus/fixtures/email/known-good
+  [   5%] checking the zone for wildcards
+  [  25%] reading SPF, DMARC and MX
+  [  50%] looking for DKIM selectors
+  [  75%] resolving the SPF include chain
+  [  90%] simulating the receiver decision
+  [ 100%] done
+
+  email 1.0.0 standard corpus-good.example -> succeeded
+  no findings
+
+  17 check(s) ran, 0% inconclusive, 8 request(s)
+  ```
+
+- **TLS's Light checks, and three of its six Standard checks, read only the certificate an ordinary handshake already presents** — the same bytes any browser gets. So TLS still needs **no authorisation in Light mode**, unchanged from before this task and consistent with docs/00-context.md's product-wide contract that Light "may be pointed at anything" (docs/13-test-targets.md):
+
+  ```bash
+  $ uv run scan run tls --target https://localhost:14400 --mode light \
+      --replay corpus/fixtures/tls/healthy
+  [  20%] connecting to localhost:14400
+  [  50%] checking the certificate
+  [ 100%] done
+
+  tls 1.0.0 light https://localhost:14400 -> succeeded
+  no findings
+
+  8 check(s) ran, 0% inconclusive, 1 request(s)
+  ```
+
+- **TLS's other three Standard checks force deliberately abnormal input.** `tls-protocol-obsolete` opens separate handshakes pinned to obsolete protocol versions; `tls-weak-cipher` and `tls-no-forward-secrecy` read the cipher negotiated when the client offered a deliberately permissive, weak-inclusive cipher list (`core.tls.PERMISSIVE_CIPHERS`) specifically to see whether the server would pick something weak. So **Standard mode does need authorisation for TLS**, even against the same target that just ran unauthorised in Light mode:
+
+  ```bash
+  $ uv run scan run tls --target https://localhost:14400 --mode standard \
+      --replay corpus/fixtures/tls/healthy
+  authorisation denied: no authorisation record for localhost in config/authorised_scope.yaml
+  $ echo $?
+  1
+  ```
+
+  Some Standard checks needing no authorisation while others in the same mode do is 0b.6 working as intended, not a bug — the same shape as email's Standard checks all being passive.
+
+A scanner that has not migrated to a `Check` catalogue with `passive` declarations (only the reference `example` scanner, today) falls back unchanged to the old mode-based rule: Light exempt, Standard/Deep gated. `BaseScanner.requires_authorisation()` returns `None` for it, and `None` is never read as "passive" — the only way to skip the gate is an explicit `passive=True` on a specific check.
+
+This is still a legal requirement, not a product setting, and it is still enforced deny-by-default in `core/authz.py`.
+
+That denial is the correct outcome. **Do not add an allowlist entry for a domain you do not control** — the git history of that file is the audit record, and a row asserting verification you did not perform is worse than no scanner at all.
 
 ### Authorising a target you do own
 
 1. Prove control. For a domain, publish a TXT record containing a nonce at `_scanverify.<domain>` and save the DNS answer as a file.
 2. Add a row to `config/authorised_scope.yaml` **with its proof file committed alongside**. `core/authz.py` refuses to load a row that does not name an `evidence_file` at all. It does **not** currently check that the file exists on disk — that is enforced by review, and by the test on the worked example.
 
-A fully annotated, runnable example of all four row shapes — verified, self-owned, expired, revoked — is committed at `config/authorised_scope.example.yaml`. Try it without touching the live file:
+A fully annotated, runnable example of all five row shapes — verified, self-owned, TLS-lab, expired, revoked — is committed at `config/authorised_scope.example.yaml`. Try it without touching the live file, authorising the TLS lab's Standard-mode scan from §5 above:
 
 ```bash
-uv run scan run email --target corpus-pnone.example --mode standard \
-  --replay corpus/fixtures/email/dmarc-monitoring-only \
-  --scope-file config/authorised_scope.example.yaml
+$ uv run scan run tls --target https://localhost:14400 --mode standard \
+    --replay corpus/fixtures/tls/healthy \
+    --scope-file config/authorised_scope.example.yaml
+[  20%] connecting to localhost:14400
+[  50%] checking the certificate
+[  75%] enumerating protocols
+[ 100%] done
+
+tls 1.0.0 standard https://localhost:14400 -> succeeded
+
+severity  conf   state          check                            location
+info      0.97   informational  tls-no-certificate-transparency  localhost:14400
+
+14 check(s) ran, 0% inconclusive, 5 request(s)
 ```
+
+The row that authorises it:
+
+```yaml
+- authz_id: authz_2026-08-28-005
+  org_id: org_internal
+  target: { type: domain, value: localhost, wildcard: false }
+  method: self_owned
+  proof:
+    observed: 'local TLS lab started by corpus/generators/tls.py on this machine'
+    observed_at: 2026-08-28T00:00:00Z
+    evidence_file: corpus/authz/localhost-2026-08-28.txt
+  verified_at: 2026-08-28
+  expires_at: 2026-11-26        # 90 days. Domains change hands.
+  verified_by: operator:satwik
+  attestation_ref: null
+```
+
+For a domain you actually own, the shape is the same but `method: dns_txt` with a real proof file:
 
 ```yaml
 - authz_id: authz_2026-08-24-001
@@ -304,19 +376,7 @@ uv run scan run email --target corpus-pnone.example --mode standard \
   attestation_ref: null
 ```
 
-3. Run it. Standard mode adds eight more checks — all still passive for this scanner:
-
-```
-email 1.0.0 standard corpus-pnone.example -> succeeded
-
-severity  conf   state          check                            location
-high      0.96   confirmed      spoofing-possible                $
-medium    0.98   confirmed      dmarc-policy-none                $
-
-17 check(s) ran, 0% inconclusive, 9 request(s)
-```
-
-Note 17 checks rather than 9 — but the *same* two findings. **Modes are additive:** Standard returns everything Light returns plus more. A higher mode never gives a different answer to the same check.
+**Modes are still additive where authorisation is not the question:** Standard returns everything Light returns plus more, for both scanners. A higher mode never gives a different answer to the same check; it only ever runs more checks.
 
 Authorisation is refused for an entry that is expired, revoked, or absent. `wildcard: false` means the record covers `your-domain.example` and **not** `api.your-domain.example`.
 
@@ -525,7 +585,7 @@ Every message below is real output.
 Typo, or the scanner package is not registered. Scanners register on import of `scanners/<name>/__init__.py`; check the `@register` decorator is on the class.
 
 **`authorisation denied: no authorisation record for X in config/authorised_scope.yaml`** — exit 1.
-Working as intended for Standard/Deep. Use `--mode light`, or authorise a domain you actually control (§5).
+Working as intended for any check declared active (§5) — which, since 0b.6, is not simply "Standard or Deep": TLS's `tls-protocol-obsolete`, `tls-weak-cipher` and `tls-no-forward-secrecy` are active and gated in Standard mode, but TLS's Light mode and its other three Standard checks are passive and need no authorisation at all. `--mode light` still works with no scope file for TLS. Authorise a target you actually control instead.
 
 **`error: unknown mode 'aggressive'; expected light, standard or deep`** — exit 1.
 

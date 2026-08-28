@@ -27,6 +27,7 @@ from typing import Any
 import typer
 import yaml
 
+from core.assetgraph import seed_asset_graph
 from core.authz import Scope
 from core.context import ScanContext
 from core.dns import DnsClient, MissingFixtureError, ReplayResolver
@@ -73,6 +74,7 @@ def _run_case(scanner_name: str, case: dict[str, Any]) -> ScanResult:
     ctx = ScanContext(
         dns=DnsClient(resolver=ReplayResolver(fixtures), resolvers=["1.1.1.1", "8.8.8.8"]),
         tls=TlsClient(scope=Scope.for_target(target), backend=ReplayTlsBackend(fixtures)),
+        assets=seed_asset_graph(case.get("seed_assets", []) or []),
         progress=lambda message, fraction: None,
     )
     return scanner.run(target, case.get("mode", "light"), ctx)

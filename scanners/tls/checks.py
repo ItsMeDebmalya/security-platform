@@ -22,6 +22,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from core.authz import checks_require_authorisation
+from core.models import Mode
+
 CERTIFICATE = "certificate"
 """We parsed the certificate the server sent and read a field from it."""
 
@@ -42,6 +45,11 @@ class Check:
     severity: str
     likelihood_ratio: float
     justification: str
+    passive: bool
+    """docs/03-roadmap.md 0b.6: the ownership gate enforces this declaration
+    directly, regardless of `mode` - see `core.authz.checks_require_authorisation`.
+    No default, deliberately: a check with no opinion here fails to
+    construct rather than reading as passive by omission."""
     mode: str = "light"
 
 
@@ -49,6 +57,37 @@ CHECKS: dict[str, Check] = {
     c.check_id: c
     for c in [
         # --- Light ---------------------------------------------------------
+        # docs/03-roadmap.md 0b.6: passive is what an ordinary client does -
+        # one normal connection, nothing the target would not serve to any
+        # visitor. Active is deliberately abnormal input: offering obsolete
+        # protocols or a restricted/weak cipher list to see what a server
+        # will accept, not what it would ordinarily negotiate.
+        #
+        # `self.observation` (scanners/tls/scanner.py `_Scan.execute`) is
+        # one handshake made with `core.tls`'s permissive client context -
+        # `PERMISSIVE_CIPHERS = "ALL:@SECLEVEL=0"`, deliberately offering
+        # every cipher including weak and legacy ones, needed so an obsolete
+        # or misconfigured server can be observed at all rather than just
+        # refusing the connection outright.
+        #
+        # For a check that reads only the *certificate* the server presented
+        # on that handshake - dates, subject/issuer, trust-path verdict, key
+        # size, signature algorithm, the SCT extension - the permissive
+        # offer changes nothing about the result: any ordinary visitor's
+        # browser is served the identical certificate bytes regardless of
+        # which cipher list it offered. Those checks are passive.
+        #
+        # `tls-weak-cipher` and `tls-no-forward-secrecy` instead read the
+        # *cipher the server negotiated* from that same handshake - and the
+        # abnormally permissive offer is exactly what makes that answer
+        # meaningful: it is asking "will you agree to something weak if
+        # allowed", not observing what an ordinary client would get. That
+        # is the deliberately-abnormal-input case, so both are active
+        # despite sharing the connection with the passive checks above.
+        # `tls-protocol-obsolete` opens *further*, separate handshakes each
+        # pinned to one specific old protocol version
+        # (`self.tls.probe_protocols`) purely to see whether the server will
+        # still speak it - unambiguously active.
         Check(
             check_id="tls-no-handshake",
             title="No TLS connection could be established",
@@ -58,6 +97,7 @@ CHECKS: dict[str, Check] = {
                 "nothing was observed, so nothing moves the prior; this exists to say so "
                 "out loud rather than to claim anything"
             ),
+            passive=True,
         ),
         Check(
             check_id="tls-cert-expired",
@@ -68,6 +108,7 @@ CHECKS: dict[str, Check] = {
                 "a date in the past, read from the certificate and independently "
                 "confirmed by the trust path; there is no ambiguity in either"
             ),
+            passive=True,
         ),
         Check(
             check_id="tls-cert-expiring-soon",
@@ -75,6 +116,7 @@ CHECKS: dict[str, Check] = {
             severity="medium",
             likelihood_ratio=60.0,
             justification="arithmetic on a date we parsed; nothing to interpret",
+            passive=True,
         ),
         Check(
             check_id="tls-cert-not-yet-valid",
@@ -82,6 +124,7 @@ CHECKS: dict[str, Check] = {
             severity="high",
             likelihood_ratio=60.0,
             justification="as above, in the other direction; usually a clock or a rollout error",
+            passive=True,
         ),
         Check(
             check_id="tls-hostname-mismatch",
@@ -92,6 +135,7 @@ CHECKS: dict[str, Check] = {
                 "RFC 6125 matching is well defined, but wildcard and SAN handling is "
                 "where implementations differ, so this sits below a plain date check"
             ),
+            passive=True,
         ),
         Check(
             check_id="tls-cert-self-signed",
@@ -102,6 +146,7 @@ CHECKS: dict[str, Check] = {
                 "subject equals issuer in the certificate, and the trust path says the "
                 "same; two independent readings of one fact"
             ),
+            passive=True,
         ),
         Check(
             check_id="tls-untrusted-root",
@@ -112,6 +157,7 @@ CHECKS: dict[str, Check] = {
                 "the chain is complete and terminates in a root the trust store does not "
                 "carry; that is a direct observation from path building, not an inference"
             ),
+            passive=True,
         ),
         Check(
             check_id="tls-chain-incomplete",
@@ -123,6 +169,7 @@ CHECKS: dict[str, Check] = {
                 "our trust store does not carry; both are real problems for a visitor, but "
                 "the cause is genuinely ambiguous, so the ratio is low"
             ),
+            passive=True,
         ),
         # --- Standard ------------------------------------------------------
         Check(
@@ -134,6 +181,7 @@ CHECKS: dict[str, Check] = {
                 "a completed handshake pinned to that version is the server doing it, "
                 "not advertising it"
             ),
+            passive=False,
             mode="standard",
         ),
         Check(
@@ -142,6 +190,7 @@ CHECKS: dict[str, Check] = {
             severity="high",
             likelihood_ratio=60.0,
             justification="the modulus length is measured from the key itself",
+            passive=True,
             mode="standard",
         ),
         Check(
@@ -150,6 +199,7 @@ CHECKS: dict[str, Check] = {
             severity="high",
             likelihood_ratio=60.0,
             justification="the algorithm is named in the certificate; nothing is inferred",
+            passive=True,
             mode="standard",
         ),
         Check(
@@ -162,6 +212,7 @@ CHECKS: dict[str, Check] = {
                 "a different client offering less might get a better one, which is why "
                 "this is not as strong as a certificate field"
             ),
+            passive=False,
             mode="standard",
         ),
         Check(
@@ -170,6 +221,7 @@ CHECKS: dict[str, Check] = {
             severity="medium",
             likelihood_ratio=40.0,
             justification="key exchange is named in the cipher suite we negotiated",
+            passive=False,
             mode="standard",
         ),
         Check(
@@ -181,10 +233,40 @@ CHECKS: dict[str, Check] = {
                 "the SCT extension is either present or not, but its absence is normal "
                 "for private and internal certificates, so this is informational"
             ),
+            passive=True,
             mode="standard",
         ),
     ]
 }
+
+
+def requires_authorisation(mode: Mode) -> bool:
+    """Whether this scanner's checks need a valid authorisation record in `mode`.
+
+    Every Light-tier check is declared `passive=True` - each reads only what
+    an ordinary client's handshake already sees, exactly like a browser
+    visiting the site - so this returns False in `light` mode, matching
+    docs/00-context.md's product-wide contract: Light needs no permission
+    and "may be pointed at anything" (docs/13-test-targets.md).
+
+    Standard adds three checks that force deliberately abnormal input to see
+    what a server will accept rather than what it ordinarily would -
+    `tls-protocol-obsolete` (separate handshakes pinned to old protocol
+    versions), `tls-weak-cipher` and `tls-no-forward-secrecy` (both read the
+    cipher negotiated when the client deliberately offered weak and legacy
+    suites, `core.tls.PERMISSIVE_CIPHERS`). Those three are `passive=False`,
+    so this returns True in `standard` mode even though the other three
+    Standard checks (`tls-weak-key`, `tls-weak-signature`,
+    `tls-no-certificate-transparency` - all read straight off the
+    certificate) are themselves passive. That split - some Standard checks
+    passive, some not - is 0b.6 working as intended, the same shape as
+    email's Standard checks all being passive.
+
+    Computed from the catalogue, not hand-set, so reclassifying a check
+    here is the only place that has to change.
+    """
+    return checks_require_authorisation(CHECKS.values(), mode=mode)
+
 
 MIN_KEY_BITS = 2048
 EXPIRY_WARNING_DAYS = 30
