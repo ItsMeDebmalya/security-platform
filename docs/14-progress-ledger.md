@@ -236,6 +236,8 @@ same certificate on both: True
 
 Six real defects in Tools 1 and 2, all found by live runs, none by a corpus at `precision 1.000`. The corpus's job is regression — proving today's change did not break yesterday's behaviour — and it does that well. It cannot discover new failure modes, because **a corpus written by the scanner's author encodes the scanner's assumptions**: every case passes by agreeing with the code. Now [ADR-017](02-decisions.md#adr-017--live-verification-is-part-of-a-tools-definition-of-done).
 
+**Amended 2026-08-28.** 0b.1 added a third category: a defect found by *review*, caught by neither the corpus nor a live run. The corpus harness silently discarded the `derivation` field, and it could not have been found by running anything — the scanners emit no derived findings yet, so the wrong number and the right number were both empty. Some defects are only visible by reading the code that carries a value from one place to another.
+
 ### What our gate numbers rest on
 
 Both scanners read `1.000`. They are not equally evidenced.
@@ -335,6 +337,46 @@ The client asked for differentiation that holds up in 2026 rather than 2022. Res
 
 ---
 
+## 2026-08-28 · Phase 0b.1 — dated and derived findings
+
+**Plan:** [03-roadmap.md](03-roadmap.md) Phase 0b · **Status: complete** · Commit `2b5b989`
+
+First task of Phase 0b, and the one everything else in the phase is built against. [ADR-018](02-decisions.md#adr-018--findings-carry-a-date-and-say-whether-they-were-detected-or-derived) implemented as written.
+
+### Built
+
+- **Four additive fields on the Finding** — `materialises_at`, `materialises_reason`, `derivation`, `derived_from` — in `contracts/finding.schema.json` and `core/models.py`. All optional, all defaulting, so every finding written before this commit stays valid and scores identically. Recorded in [08-changelog.md](08-changelog.md) §v3.4c with revert instructions, because ADR-002 makes a contract change a migration rather than an edit.
+- **Two co-dependency validators** — a date without a reason is rejected, and so is a `derived` finding that does not name its premise. Both raise in the same loud, specific style as the existing state/id validator.
+- **`ConfidenceEngine.inherit()`** — deliberately a separate method from `combine()`, not a flag on it. Several premises inherit the weakest, per [ADR-022](02-decisions.md#adr-022--prove-connect-close-aggressive-proof-never-touching-the-target).
+- **Detected/derived claim counts reported separately** in `core/measurement.py`. The gate itself is untouched: the split tells the two apart within `tp`/`fp`, it does not change either.
+
+`core/state.py` has a zero-line diff. The truth table does not move for a dated or derived finding, which was the constraint held most tightly during review.
+
+### Found & fixed
+
+**The corpus harness never passed `derivation`, and nothing failed.** `cli/corpus.py` built every `Observation` from a finding with four fields and stopped. Because the field defaults to `"detected"`, every claim any scanner ever made would have scored as detected, and the derived half of the split would have reported `None` — indistinguishable from *"no derived claims yet"* rather than *"never wired up"*.
+
+All 672 tests passed with the bug present. The new tests constructed `Observation` objects directly and so bypassed the single place the value has to come from.
+
+**The shape worth remembering: a defaulted field plus a construction site that forgets it fails silently, and the default is precisely what makes it silent.** This is the same failure mode `ScanContext` avoids by handing out a raising `UnconfiguredClient` instead of a working default — there, forgetting to wire a client is a loud error rather than a quiet reach for the network.
+
+Fixed with one argument. The fix that matters is the test: a harness-level one that calls `_score()` on a real `ScanResult`, because a `score_case()` test cannot fail when the harness forgets an argument. Verified by removing the argument and watching it fail.
+
+**The Phase 0b exit criterion was unreadable.** `03-roadmap.md` had it spliced mid-sentence when 0b.8 and 0b.9 were appended in `61b031b`, leaving `"...and on:**"` in the middle of the first clause. Repaired, and relabelled *Exit criterion* to match every other phase.
+
+### Decided
+
+- **`materialises_at` is a `date`, not a `datetime`.** The ADR's examples and the whole deprecation-clock framing are day-granular. An hour on a compliance deadline would be false precision.
+- **`inherit()` takes confidence values, not findings or ids.** It mirrors `combine()`'s shape and keeps the confidence engine free of any opinion about how a caller resolves `derived_from` to a stored finding — which is 0b.8's problem, not the engine's.
+- **The measurement split covers `tp`/`fp` only, not `fn`.** No corpus expectation carries a derivation yet, and inventing that shape before Tool 2 v1.1 lands a real derived finding would be guessing at a requirement. Noted in the changelog as a thing to revisit then.
+- **`derived_from` carries the premise's `id` string with no format constraint**, consistent with `related_assets` and the other reference fields in the contract.
+
+### Deferred
+
+Nothing new owed.
+
+---
+
 ## D. Deferred register
 
 Single source of truth for what is owed. Move an item out only when it lands.
@@ -368,8 +410,10 @@ They cluster, which matters more than the individual entries:
 
 ## Next
 
-**Tool 3 — DNS & Subdomain Enumeration (Light).** Gate: precision ≥ 0.95, **recall ≥ 0.80 corpus-relative**.
+**Phase 0b.3 and 0b.4 — one record/replay layer in `core/`, then HTTP on top of it.**
 
-The recall figure is the thing to get right before writing any of it. "All subdomains that exist" is not a knowable set, so recall here is measured against the corpus's known set only, and [10-measurement.md](10-measurement.md) requires every published number to say which kind it is. Reporting corpus-relative recall as though it were absolute is the specific dishonesty this product exists to avoid.
+Taken together because 0b.4 is the largest single unblock in the register (D2: Tool 4 in its entirety, plus D10 and all AI-exposure work) and 0b.3 is the shape it should be built into. Writing HTTP replay as a third hand-rolled implementation and unifying afterwards is the expensive order.
 
-This tool also matters disproportionately because **it produces the asset list every other tool scans** — its output is Tool 2's input.
+0b.3 touches working code, which 0b.1 did not: `core/dns.py` and `core/tls.py` each grew their own fixture naming, backend and missing-fixture error. Both scanners' corpora replay through them, so the constraint is that email and TLS keep reporting 1.000/1.000 through the refactor — a silent change in fixture naming would invalidate committed fixtures rather than fail loudly.
+
+Then Tool 3 (DNS enumeration), whose recall definition is the thing to settle before writing any of it — "all subdomains that exist" is not a knowable set, and reporting corpus-relative recall as though it were absolute is the specific dishonesty this product exists to avoid.
