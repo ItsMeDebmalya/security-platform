@@ -130,6 +130,32 @@ def test_every_reported_method_carries_its_justified_prior(engine):
     assert result.detection_methods[0]["prior_justification"]
 
 
+# --- derived findings: inheritance, not combination ------------------------
+
+
+def test_a_derived_finding_inherits_its_premises_confidence_exactly(engine):
+    """ADR-018: a derived finding is never more confident than its premise -
+    and here there is exactly one, so it is exactly as confident."""
+    assert engine.inherit([0.97]) == 0.97
+
+
+def test_a_chained_derivation_inherits_the_weakest_premise(engine):
+    """ADR-022: confidence inherits from the weakest link in the chain."""
+    assert engine.inherit([0.97, 0.6, 0.85]) == 0.6
+
+
+def test_inheriting_from_nothing_is_an_error(engine):
+    with pytest.raises(ValueError, match="at least one premise"):
+        engine.inherit([])
+
+
+def test_inherit_does_not_push_the_value_through_combine(engine):
+    """Inheritance never invents a likelihood ratio - the returned value is
+    the premise confidence itself, not something derived from it via logit
+    or sigmoid."""
+    assert engine.inherit([0.42]) == 0.42
+
+
 def test_a_signal_without_a_justified_prior_is_refused():
     with pytest.raises(ValueError, match="justification"):
         Signal(

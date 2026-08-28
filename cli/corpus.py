@@ -86,6 +86,7 @@ def _score(result: ScanResult, expected: list[dict[str, str]]) -> CaseScore:
                 location=f.location,
                 state=f.state,
                 severity=f.severity,
+                derivation=f.derivation,
             )
             for f in result.findings
         ],

@@ -59,7 +59,7 @@ Phases 0–5 are terminal-only. **Nothing has a user interface until Phase 6.** 
 | 0b.9 | **Correlation pass + composition rules** ([ADR-022](02-decisions.md#adr-022--prove-connect-close-aggressive-proof-never-touching-the-target)) | Turns a list of findings into attack stories, and "fix these first" falls out. Runs after all scanners, reads the asset graph, imports no scanner, emits `derived` findings. Rules are curated data, like the calendar. |
 | 0b.7 | **The deprecation calendar as curated data** | Deadlines are versioned, sourced, reviewed data with a lifecycle — not constants in code. A rotted clock asserts wrong dates in our name, which is worse than not shipping one. |
 
-a scanner can re-verify a single finding and transition its status with fresh evidence; a run can connect related findings into one story with inherited confidence; and on:** a scanner can emit a dated, derived finding whose confidence is inherited from its premise; a scanner can read assets another scanner discovered; and one `core/` recording layer serves DNS, TLS and HTTP.
+**Exit criterion:** a scanner can emit a dated, derived finding whose confidence is inherited from its premise; a scanner can read assets another scanner discovered; one `core/` recording layer serves DNS, TLS and HTTP; a scanner can re-verify a single finding and transition its status with fresh evidence; and a run can connect related findings into one story with inherited confidence.
 
 ---
 

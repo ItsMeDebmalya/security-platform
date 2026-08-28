@@ -42,12 +42,19 @@ class Expected:
         return (self.check_id, self.location)
 
 
+Derivation = Literal["detected", "derived"]
+
+
 @dataclass(frozen=True)
 class Observation:
     check_id: str
     location: str
     state: str
     severity: str
+    derivation: Derivation = "detected"
+    """ADR-018. Defaults to 'detected' so every scanner from before v3.4 -
+    which claims nothing else - scores exactly as it did before this field
+    existed."""
 
     def key(self) -> tuple[str, str]:
         return (self.check_id, self.location)
@@ -61,6 +68,10 @@ class CaseScore:
     suspected: int = 0
     inconclusive: int = 0
     checks_run: int = 0
+    tp_detected: int = 0
+    fp_detected: int = 0
+    tp_derived: int = 0
+    fp_derived: int = 0
 
 
 def score_case(
@@ -68,7 +79,8 @@ def score_case(
 ) -> CaseScore:
     expected_keys = {e.key() for e in expected}
 
-    claimed = {o.key() for o in observations if o.state in REPORTED_STATES}
+    claims = [o for o in observations if o.state in REPORTED_STATES]
+    claimed = {o.key() for o in claims}
     hedged = {o.key() for o in observations if o.state == "suspected"}
     unresolved = {o.key() for o in observations if o.state == "inconclusive"}
 
@@ -76,13 +88,28 @@ def score_case(
     # nor a miss: it is excluded, and its rate is tracked instead.
     excused = hedged | unresolved
 
+    tp_keys = claimed & expected_keys
+    fp_keys = claimed - expected_keys
+
+    # Split by derivation (ADR-018 / docs/10-measurement.md: "What a gate
+    # number actually rests on") - a derived claim is arithmetic applied to
+    # an observation, and its precision partly measures a rule we wrote, not
+    # the world. This split never changes tp/fp/fn or the gate: it only
+    # tells the two apart within them.
+    detected_keys = {o.key() for o in claims if o.derivation == "detected"}
+    derived_keys = {o.key() for o in claims if o.derivation == "derived"}
+
     return CaseScore(
-        tp=len(claimed & expected_keys),
-        fp=len(claimed - expected_keys),
+        tp=len(tp_keys),
+        fp=len(fp_keys),
         fn=len(expected_keys - claimed - excused),
         suspected=len(hedged),
         inconclusive=len(unresolved),
         checks_run=checks_run,
+        tp_detected=len(tp_keys & detected_keys),
+        fp_detected=len(fp_keys & detected_keys),
+        tp_derived=len(tp_keys & derived_keys),
+        fp_derived=len(fp_keys & derived_keys),
     )
 
 
@@ -96,6 +123,10 @@ class TierSummary:
     inconclusive: int
     checks_run: int
     cases: int
+    tp_detected: int = 0
+    fp_detected: int = 0
+    tp_derived: int = 0
+    fp_derived: int = 0
 
     @property
     def precision(self) -> float | None:
@@ -103,6 +134,24 @@ class TierSummary:
         claims has no precision to report."""
         claimed = self.tp + self.fp
         return self.tp / claimed if claimed else None
+
+    @property
+    def precision_detected(self) -> float | None:
+        """Precision restricted to `detected` claims - the confidence engine's
+        own accuracy, unmixed with any rule we wrote."""
+        claimed = self.tp_detected + self.fp_detected
+        return self.tp_detected / claimed if claimed else None
+
+    @property
+    def precision_derived(self) -> float | None:
+        """Precision restricted to `derived` claims.
+
+        docs/10-measurement.md: this partly measures arithmetic we wrote, not
+        the world, so it is reported beside `precision_detected` and never
+        merged into one number with it.
+        """
+        claimed = self.tp_derived + self.fp_derived
+        return self.tp_derived / claimed if claimed else None
 
     @property
     def recall(self) -> float | None:
@@ -145,6 +194,18 @@ class TierSummary:
             "suspected_rate": self.suspected_rate,
             "inconclusive_rate": self.inconclusive_rate,
             "false_positives_on_known_good": self.false_positives_on_known_good,
+            "claims": {
+                "detected": {
+                    "tp": self.tp_detected,
+                    "fp": self.fp_detected,
+                    "precision": self.precision_detected,
+                },
+                "derived": {
+                    "tp": self.tp_derived,
+                    "fp": self.fp_derived,
+                    "precision": self.precision_derived,
+                },
+            },
         }
 
 
@@ -160,6 +221,10 @@ def summarise(scores_by_tier: dict[str, list[CaseScore]]) -> dict[str, TierSumma
             inconclusive=sum(s.inconclusive for s in scores),
             checks_run=sum(s.checks_run for s in scores),
             cases=len(scores),
+            tp_detected=sum(s.tp_detected for s in scores),
+            fp_detected=sum(s.fp_detected for s in scores),
+            tp_derived=sum(s.tp_derived for s in scores),
+            fp_derived=sum(s.fp_derived for s in scores),
         )
     return summaries
 

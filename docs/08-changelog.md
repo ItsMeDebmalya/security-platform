@@ -336,3 +336,31 @@ The client asked for differentiation that holds up in 2026 rather than 2022. Res
 **The gap this closes honestly.** "We verify your fix" has been a differentiator since v2 with no design behind it. It is now specified, and its dependency (findings that persist between scans) is named as foundation work rather than assumed.
 
 **Revert.** Drop ADR-022, tasks 0b.8/0b.9, and the two architecture sections. The finding store is the only real infrastructure; correlation and prioritise are framing over data already produced.
+
+---
+
+## v3.4c — 0b.1 implemented: dated and derived findings land in the contract (2026-08-28)
+
+*Recorded here for the same reason as v3.2 — [ADR-002](02-decisions.md#adr-002--freeze-the-scanner-contract-before-writing-tool-1) makes a contract change a migration rather than an edit, even an additive one, and even one the ADR already approved.*
+
+**What changed.** [ADR-018](02-decisions.md#adr-018--findings-carry-a-date-and-say-whether-they-were-detected-or-derived) is implemented. Four fields on `Finding`, all additive and all optional:
+
+- `materialises_at` — a date or null. Null means true now, which is every finding before this and almost every finding after it.
+- `materialises_reason` — required exactly when `materialises_at` is set, forbidden otherwise.
+- `derivation` — `"detected"` (default) or `"derived"`.
+- `derived_from` — the premise finding's `id`, required exactly when `derivation` is `"derived"`, forbidden otherwise.
+
+`contracts/finding.schema.json` and `core/models.py` both gained the fields, with `Finding` rejecting either co-dependency violation at construction — loud, not silent, matching every other validator in that file. `core/state.py` was **not touched**, per the ADR: the truth table does not move for a dated finding.
+
+`core/confidence.py` gained `ConfidenceEngine.inherit(premise_confidences)`, a second and deliberately separate path from `combine()`. It returns the minimum of the given premise confidences — never more confident than the weakest premise, per ADR-018, and per ADR-022 when a derivation chains from several premises. It does not touch `combine()`'s log-odds machinery at all: pushing a calendar date through a likelihood ratio would mean inventing one, which is exactly what the ADR forbids.
+
+`core/measurement.py`'s `Observation` gained a `derivation` field (default `"detected"`), and `CaseScore`/`TierSummary` now carry `tp_detected` / `fp_detected` / `tp_derived` / `fp_derived` alongside the combined `tp`/`fp`, with `precision_detected` and `precision_derived` properties and a `claims: {detected, derived}` block in `to_dict()`. **The gate itself reads only the combined numbers, unchanged** — this adds a breakdown, it does not change what passes or fails.
+
+**Corpus impact: none.** No scanner emits a dated or derived finding yet (that is Tool 2 v1.1, a later task) — this task only makes it possible. `make corpus` shows email and tls unchanged at `1.000/1.000`.
+
+**Judgement calls made, not fully specified by the ADR:**
+- `materialises_at` is typed as an ISO date (`format: "date"`), not a datetime, since a certificate-lifetime rule or a deprecation deadline is stated in days, not seconds — matching `docs/15-iot-scanner.md`'s and the roadmap's framing of "the calendar" as dates.
+- `inherit()` takes a plain list of floats rather than a list of `Finding`s or ids, mirroring `combine()`'s `Signal`-list shape at the *value* level; the caller (a future scanner or the correlation pass, 0b.9) is responsible for resolving `derived_from` to a confidence before calling it.
+- The measurement split counts `tp`/`fp` by derivation only, not `fn`. `Expected` corpus fixtures have no derivation of their own — a false negative is a thing the scanner failed to claim, and until a corpus actually contains derived expectations (no scanner emits them yet) there is nothing to split there. Revisit when Tool 2 v1.1 lands derived findings in a corpus.
+
+**Revert.** Drop the four fields from the schema and model, the two new validators, `ConfidenceEngine.inherit`, and the four new `CaseScore`/`TierSummary` fields plus the `claims` block in `to_dict()`. Every finding stored today already has `derivation: "detected"` and `materialises_at: null` in effect (the fields did not exist), so nothing needs rewriting either direction.

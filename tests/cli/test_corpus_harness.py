@@ -237,3 +237,40 @@ def test_every_tls_check_has_a_corpus_case():
     uncovered = {"tls-weak-cipher", "tls-no-certificate-transparency", "tls-no-handshake"}
 
     assert set(CHECKS) - uncovered - covered == set()
+
+
+# --- ADR-018: the harness must carry derivation through, not just score_case ---
+#
+# core/measurement.py's Observation.derivation defaults to "detected", which
+# is exactly what makes an unwired construction site silent rather than a
+# crash: every test that builds an Observation directly (test_measurement.py)
+# bypasses the one place the value has to actually come from a Finding. This
+# exercises that place - cli/corpus.py's `_score` - so removing the
+# `derivation=f.derivation` argument there fails this test, not just leaves a
+# stat quietly wrong.
+
+
+def test_the_harness_scores_a_derived_finding_as_derived(make_finding):
+    from cli.corpus import _score
+    from core.models import Asset, ScanResult, Telemetry
+
+    premise = make_finding()
+    derived = make_finding(
+        check_id="cert-lifetime-noncompliant-2027",
+        derivation="derived",
+        derived_from=premise.id,
+    )
+    result = ScanResult(
+        scanner="email",
+        scanner_version="1.0.0",
+        target=Asset(type="domain", value="example.com"),
+        mode="light",
+        findings=[derived],
+        telemetry=Telemetry(
+            checks_run=[{"check_id": derived.check_id, "outcome": "reported", "location": "$"}]
+        ),
+    )
+
+    score = _score(result, expected=[{"check_id": derived.check_id, "location": "$"}])
+
+    assert (score.tp, score.tp_detected, score.tp_derived) == (1, 0, 1)

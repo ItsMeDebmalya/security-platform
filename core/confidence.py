@@ -132,6 +132,26 @@ class ConfidenceEngine:
             notes=notes,
         )
 
+    def inherit(self, premise_confidences: list[float]) -> float:
+        """Stage 0, before combine - confidence for a *derived* finding.
+
+        ADR-018: a derived finding is a rule applied to something already
+        detected, not a new observation. A calendar date is arithmetic, not
+        evidence - pushing it through `combine()` would mean inventing a
+        likelihood ratio to make the arithmetic clear the reporting
+        threshold, which would corrupt the one thing that method exists to
+        do (weighing genuine evidence).
+
+        So a derived finding inherits confidence rather than earning it: it
+        is never more confident than its premise. When a derivation chains
+        from several premises, ADR-022's rule applies - confidence inherits
+        from the weakest link, because a chain of claims is only as strong
+        as the least certain one in it.
+        """
+        if not premise_confidences:
+            raise ValueError("a derived finding needs at least one premise to inherit from")
+        return min(premise_confidences)
+
     def calibrate(self, confidence: float, *, scanner: str, method: str) -> float:
         """The identity function until Phase 4, per docs/04-phase-0-foundations.md."""
         return confidence

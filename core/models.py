@@ -16,7 +16,7 @@ Two invariants are enforced here rather than left to scanner authors:
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated, Any, ClassVar, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, model_validator
@@ -28,6 +28,7 @@ Mode = Literal["light", "standard", "deep"]
 Severity = Literal["critical", "high", "medium", "low", "info"]
 Status = Literal["open", "closed", "accepted_risk", "false_positive"]
 Outcome = Literal["succeeded", "partial", "errored", "killed"]
+Derivation = Literal["detected", "derived"]
 ValidationOutcome = Literal["passed", "failed", "unavailable", "not_applicable"]
 NoVerdictReason = Literal[
     "timeout",
@@ -339,6 +340,40 @@ class Finding(Strict):
     last_seen: datetime
     last_seen_scan_id: str = Field(min_length=1)
     cost: Cost = Field(default_factory=Cost)
+
+    # --- v3.4 / ADR-018: a finding carries a date, and says where it came from
+    materialises_at: date | None = None
+    materialises_reason: str | None = Field(default=None, min_length=1)
+    derivation: Derivation = "detected"
+    derived_from: str | None = None
+
+    @model_validator(mode="after")
+    def _materialisation_reason_needs_a_date(self) -> Self:
+        if self.materialises_at is not None and not self.materialises_reason:
+            raise ValueError(
+                "materialises_reason is required when materialises_at is set: "
+                "a future date with no stated reason is not a claim we can stand behind"
+            )
+        if self.materialises_at is None and self.materialises_reason is not None:
+            raise ValueError(
+                "materialises_reason is meaningless without materialises_at: "
+                "either set both or neither"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def _derivation_and_premise_agree(self) -> Self:
+        if self.derivation == "derived" and not self.derived_from:
+            raise ValueError(
+                "derived_from is required when derivation is 'derived': a derived finding "
+                "must name the premise it was computed from, per ADR-018"
+            )
+        if self.derivation == "detected" and self.derived_from is not None:
+            raise ValueError(
+                "derived_from is forbidden when derivation is 'detected': it names the "
+                "premise a derived finding was computed from, and a detected finding has none"
+            )
+        return self
 
     @model_validator(mode="after")
     def _state_and_id_are_derived_not_chosen(self) -> Self:

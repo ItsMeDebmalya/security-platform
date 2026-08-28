@@ -128,7 +128,27 @@
     "first_seen_scan_id": { "type": "string", "minLength": 1 },
     "last_seen": { "type": "string", "format": "date-time" },
     "last_seen_scan_id": { "type": "string", "minLength": 1 },
-    "cost": { "$ref": "#/$defs/cost" }
+    "cost": { "$ref": "#/$defs/cost" },
+
+    "materialises_at": {
+      "type": ["string", "null"],
+      "format": "date",
+      "description": "When this finding becomes true. null means true now - every finding before v3.4, and almost everything since. Set, it names a future date on which the world's rules change, not our confidence in what we observed."
+    },
+    "materialises_reason": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "description": "What changes on materialises_at. Required when materialises_at is set; meaningless without it."
+    },
+    "derivation": {
+      "enum": ["detected", "derived"],
+      "default": "detected",
+      "description": "detected: we looked at the target, confidence comes from the confidence engine. derived: we applied a rule to something already detected, and confidence is inherited from derived_from rather than recalculated."
+    },
+    "derived_from": {
+      "type": ["string", "null"],
+      "description": "The id of the finding this was computed from. Required when derivation is 'derived'; forbidden when it is 'detected'."
+    }
   },
   "$defs": {
     "asset": {

@@ -12,8 +12,14 @@ import pytest
 from core.measurement import CaseScore, Expected, Gate, Observation, score_case, summarise
 
 
-def _obs(check_id, state, location="$", severity="medium"):
-    return Observation(check_id=check_id, location=location, state=state, severity=severity)
+def _obs(check_id, state, location="$", severity="medium", derivation="detected"):
+    return Observation(
+        check_id=check_id,
+        location=location,
+        state=state,
+        severity=severity,
+        derivation=derivation,
+    )
 
 
 def _expected(*pairs):
@@ -241,3 +247,102 @@ def test_corpus_relative_recall_is_labelled_as_such_in_the_report():
     )
 
     assert "corpus" in gate.recall_label.lower()
+
+
+# --- detected vs derived claim counts (ADR-018) -----------------------------
+#
+# docs/10-measurement.md: "precision 1.000 across derived claims is a weaker
+# statement than the same figure across detected ones... report the split;
+# never merge them into one number." This never changes tp/fp/fn or what the
+# gate passes on - it only tells the two apart within them.
+
+
+def test_an_observation_defaults_to_detected():
+    """Every observation from before v3.4 carries no derivation - it must
+    still score as a detected claim, unchanged."""
+    score = score_case(
+        observations=[_obs("dmarc-policy-none", "confirmed")],
+        expected=_expected(("dmarc-policy-none", "$")),
+        checks_run=1,
+    )
+
+    assert (score.tp_detected, score.tp_derived) == (1, 0)
+
+
+def test_a_derived_true_positive_is_counted_in_the_derived_bucket_only():
+    score = score_case(
+        observations=[_obs("cert-lifetime-noncompliant-2027", "confirmed", derivation="derived")],
+        expected=_expected(("cert-lifetime-noncompliant-2027", "$")),
+        checks_run=1,
+    )
+
+    assert (score.tp, score.tp_detected, score.tp_derived) == (1, 0, 1)
+
+
+def test_a_derived_false_positive_is_counted_in_the_derived_bucket_only():
+    score = score_case(
+        observations=[_obs("cert-lifetime-noncompliant-2027", "confirmed", derivation="derived")],
+        expected=[],
+        checks_run=1,
+    )
+
+    assert (score.fp, score.fp_detected, score.fp_derived) == (1, 0, 1)
+
+
+def test_the_combined_tp_fp_are_unaffected_by_the_split():
+    score = score_case(
+        observations=[
+            _obs("dmarc-policy-none", "confirmed", derivation="detected"),
+            _obs("cert-lifetime-noncompliant-2027", "confirmed", derivation="derived"),
+        ],
+        expected=_expected(("dmarc-policy-none", "$"), ("cert-lifetime-noncompliant-2027", "$")),
+        checks_run=2,
+    )
+
+    assert (score.tp, score.tp_detected, score.tp_derived) == (2, 1, 1)
+
+
+def test_precision_detected_and_precision_derived_are_reported_separately():
+    summary = _summary(
+        [
+            CaseScore(
+                tp=3,
+                fp=1,
+                tp_detected=2,
+                fp_detected=0,
+                tp_derived=1,
+                fp_derived=1,
+                checks_run=4,
+            )
+        ]
+    )
+
+    assert summary.precision == pytest.approx(0.75)
+    assert summary.precision_detected == pytest.approx(1.0)
+    assert summary.precision_derived == pytest.approx(0.5)
+
+
+def test_a_tier_with_no_derived_claims_reports_no_derived_precision():
+    summary = _summary([CaseScore(tp=1, fp=0, tp_detected=1, checks_run=1)])
+
+    assert summary.precision_derived is None
+
+
+def test_the_gate_still_evaluates_off_the_combined_number_not_the_split():
+    """0b.1 does not change what the gate passes or fails on - only detected
+    findings exist in the shipped scanners today, so the combined and
+    detected-only numbers agree, and the gate must still read the combined
+    one."""
+    summary = _summary(
+        [CaseScore(tp=100, fp=0, fn=2, tp_detected=100, checks_run=200, inconclusive=5)]
+    )
+
+    assert GATE.evaluate(summary).passed
+
+
+def test_to_dict_carries_the_detected_derived_breakdown():
+    summary = _summary([CaseScore(tp=2, fp=0, tp_detected=1, tp_derived=1, checks_run=2)])
+
+    claims = summary.to_dict()["claims"]
+    assert claims["detected"]["tp"] == 1
+    assert claims["derived"]["tp"] == 1
