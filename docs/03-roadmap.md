@@ -9,9 +9,11 @@
 | Phase | Name | Rough time | What exists at the end |
 |---|---|---|---|
 | **0** | Foundations | **3–4 weeks** | A skeleton that runs a trivial scanner end to end |
+| **0b** | Foundation for the calendar | — | Dated and derived findings, the asset graph, one record/replay layer, per-check passivity, the calendar, the finding store and `scan verify`, the correlation pass |
 | **1** | The cheap accurate tools | 4–6 weeks | 4 scanners, each passing its accuracy gate |
 | **2** | The hard one | **5–8 months** | OOB server + Website Scanner Standard (descoped) |
 | **3** | Breadth | 8–10 weeks | Network, API, monitoring, replay, imports |
+| **3a** | IoT & Device Security | — | Device exposure (5a), then device vulnerability (5b) |
 | **4** | Intelligence | 6–8 weeks | Confidence calibration, correlation, scores, reports |
 | **5** | Depth tools | 10–14 weeks | Code, container, cloud, supply chain, LLM |
 | **6** | The site | 10–14 weeks | The actual product users log into |

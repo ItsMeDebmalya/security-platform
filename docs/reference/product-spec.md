@@ -5,7 +5,16 @@
 **Use this document for:** what a given scanner should detect, what a platform feature covers.
 **Do not use it for:** build order (see [../03-roadmap.md](../03-roadmap.md)), decisions (see [../02-decisions.md](../02-decisions.md)), or the phase labels below — **the "Phase:" annotations in this document are the original v2 phases and are superseded by [../03-roadmap.md](../03-roadmap.md).**
 
-The scan-mode definitions referenced throughout are in [../00-context.md](../00-context.md).
+**What v3.4 added that is not in this catalogue** (it was written at v2, and is preserved as written):
+
+- **A19 — IoT & Device Security Scanner**, a distinct tool with its own document: [../15-iot-scanner.md](../15-iot-scanner.md). Its claim is that the scan is *safe* to point at fragile devices.
+- **AI and agent exposure** folded into A1 (Website Scanner) — MCP servers, agent panels and model endpoints, passive detection only. Finding an exposed server is passive; reading what is on it is not.
+- **The deprecation clock, certificate lifetime readiness and post-quantum exposure** — dated findings across A1 and A3, per [ADR-018](../02-decisions.md) and [ADR-020](../02-decisions.md).
+- **Prove, connect, close** ([ADR-022](../02-decisions.md)) — which promotes C5 (verify the fix) from a bullet to a built feature, and replaces C4 (attack paths, cut by [ADR-014](../02-decisions.md)) with hand-written composition rules.
+
+Two entries below are **cut and must not be built**: C4's chokepoint analysis, and A9's reachability analysis. Both are [ADR-014](../02-decisions.md). A6's "almost nobody does BOLA testing" note is also false as of Dec 2025 — build the feature, drop the claim.
+
+The scan-mode definitions referenced throughout are in [../00-context.md](../00-context.md). Note that **passivity is now declared per check** rather than inferred from the mode ([ADR-019 era, Phase 0b.6](../14-progress-ledger.md)), so "Light = no permission" is no longer the mechanism, even though it remains true in practice for both shipped scanners.
 
 ---
 
