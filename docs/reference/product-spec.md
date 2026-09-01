@@ -14,7 +14,7 @@
 
 Two entries below are **cut and must not be built**: C4's chokepoint analysis, and A9's reachability analysis. Both are [ADR-014](../02-decisions.md). A6's "almost nobody does BOLA testing" note is also false as of Dec 2025 — build the feature, drop the claim.
 
-The scan-mode definitions referenced throughout are in [../00-context.md](../00-context.md). Note that **passivity is now declared per check** rather than inferred from the mode ([ADR-019 era, Phase 0b.6](../14-progress-ledger.md)), so "Light = no permission" is no longer the mechanism, even though it remains true in practice for both shipped scanners.
+The scan-mode definitions referenced throughout are in [../00-context.md](../00-context.md). Note that **passivity is now declared per check** rather than inferred from the mode ([Phase 0b.6](../03-roadmap.md); no ADR of its own — it changed a mechanism, not a decision, and the reasoning is in the ledger), so "Light = no permission" is no longer the mechanism, even though it remains true in practice for both shipped scanners.
 
 ---
 
