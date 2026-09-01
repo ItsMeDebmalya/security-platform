@@ -617,6 +617,42 @@ D16 (post-quantum blocked on Python 3.15 final) added. D2 retired. See §D.
 
 ---
 
+## 2026-09-01 · D1 closed — CI verified, running all along
+
+**Status: 32 successful runs, first one observed.**
+
+D1 was open from Phase 0, and its wording was wrong. It read "verify CI actually runs", on the assumption that a workflow written before a remote existed had never executed. Inspecting the Actions API directly settled it: **CI has run on every push since late August — 32 runs, every one green, ~27s average.** It was never unrun. It was unobserved, which from inside the repo is indistinguishable from unrun, and that is the whole of what D1 actually was.
+
+So the correction that mattered was not making CI work — it already did — but gaining the ability to look at it, and verifying that what it does is what we think. That verification, done against run #32 (`7315f26`):
+
+- The runner uses `UV_PYTHON: 3.13.15` — the toolchain pin holds on GitHub's infrastructure, not only locally.
+- Lint, `mypy` (38 files), licence policy (19 components), **789 unit tests**, and the corpus gate all pass in the log text, not merely as green checkmarks.
+- The corpus step prints email `1.000/1.000`, tls `1.000/1.000`, example `1.000/1.000`.
+- The uploaded `corpus-results` artifact matches the local baseline's TP/FP/FN for all three scanners — CI measures the same thing the developer's machine measures.
+
+### Built
+
+- `.github/workflows/ci.yml` gains **`workflow_dispatch`** (trigger a run by hand from the Actions tab without pushing — the cheap way to *look*, which is what was missing), a **concurrency group** cancelling superseded runs, a **10-minute timeout** (runs take ~27s, so 10 minutes means a hang), and the corpus scores **uploaded as an artifact whether the run passes or fails**. Verified in practice: run #32 uploaded a 1552-byte `corpus-results`.
+- **`docs/17-testing-runbook.md`** — the eight test layers, the corpus, the labs, live verification and CI, copy-pasteable from WSL, including how to read a run through the API and the `gh` CLI. Its scope boundary against `12-cli-runbook.md` is stated in both files: 12 is how to run a scan, 17 is how to prove the scanners are correct.
+
+### Found & fixed
+
+**A gap in the register can be a wrong belief, not just missing work.** D1 was not an unrun pipeline needing a fix; it was an assumption nobody had checked, carried for a week as if it were a task. The lesson is the same one ADR-017 draws about the corpus: an unverified claim in a decision document is a liability regardless of which direction it turns out to be wrong in. Here it was wrong in our favour — the thing we feared was broken had been working the whole time — which is the more insidious direction, because nothing forces you to look.
+
+**An invented command in a runbook, caught by running it.** A worked example cited `tests/core/test_tls.py::test_expired_certificate`. No such test exists; the name was plausible and fabricated. Found because every command in that document was executed before it was written down, which is the only reason the runbook's contract — nothing in it is invented — survives contact with an author. Same defect class as the fabricated SPF quote (Tool 1) and the edited transcript target (0b.9): asserting something not observed. Third occurrence, third different costume.
+
+**An invented command in a runbook, caught by running it.** A worked example cited `tests/core/test_tls.py::test_expired_certificate`. No such test exists; the name was plausible and fabricated. Found because every command in that document was executed before it was written down, which is the only reason the runbook's contract — nothing in it is invented — survives contact with an author. Same defect class as the fabricated SPF quote (Tool 1) and the edited transcript target (0b.9): asserting something not observed. Third occurrence, third different costume.
+
+### Decided
+
+- **A green CI run is not the same as a trustworthy one, and the register should not imply otherwise.** D1 is closed because the pipeline demonstrably executes and gates. What it enforces is still the corpus, which proves regression rather than correctness — [ADR-017](02-decisions.md)'s live-verification requirement is untouched by this and remains the layer that finds real defects.
+
+### Deferred
+
+Nothing new owed. **D1 retired.**
+
+---
+
 ## D. Deferred register
 
 Single source of truth for what is owed. Move an item out only when it lands.
@@ -625,12 +661,11 @@ They cluster, which matters more than the individual entries:
 
 - **Corpus realism** — D6 (real domains), D3 (benchmark tier), D11 (a weak-cipher case). Each one narrows the gap between a gate number and a claim about the world.
 - **Capability gaps a user would notice** — D12 (revocation: `revoked.badssl.com` reads as a pass), D4 (SMTP checks), D5 (lookalike domains).
-- **Infrastructure** — D1 (CI has never run) and D7 (a local authoritative DNS zone).
+- **Infrastructure** — D7 (a local authoritative DNS zone). D1 (CI) closed 2026-09-01.
 - **Unverified numbers in decision documents** — D13 (v3.4 research from vendor blogs) and D16 (0b.5's own roadmap row claimed 3.13 unblocks post-quantum; it does not) are the same failure mode twice: a figure reached an ADR or roadmap row without being checked against its primary source.
 
 | # | Item | Why deferred | Blocks |
 |---|---|---|---|
-| **D1** | Verify CI actually runs | No remote existed when it was written; one exists now, but no run has been observed | Nothing yet — but every gate claim rests on it |
 | **D3** | Benchmark corpus tier (OWASP Benchmark, WAVSEP) | Explicitly deferred by the plan until it has a consumer | Phase 2 web scanner |
 | **D4** | `open-relay`, `mail-tls-weak` | Need SMTP connections — active, not passive; belong behind the authorisation gate | Nothing; Tool 1 passes without them |
 | **D5** | `lookalike-domain` | Needs RDAP over HTTP plus a permutation engine; larger than the rest of Tool 1 combined | Nothing |
