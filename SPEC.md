@@ -39,7 +39,7 @@ Every scanner exposes three modes: **Light**, **Standard**, **Deep/Validated**.
 |---|---|---|---|
 | What | Passive checks | Active checks | Standard + a proof pass on each finding |
 | Cost | Free | Paid | Business tier |
-| Permission | — | — | — |
+| Permission | *Not a property of the mode* — see below. An active check needs verified ownership in **any** mode; a passive one needs none in any mode. | | |
 
 **This changed in Phase 0b.6, and it is the part most likely to be misread from older docs.** Passivity is **declared per check**, not inferred from the mode name. A `Check` in a scanner's catalogue carries a `passive: bool` property (`core/authz.py`). `core/authz.py` enforces:
 
@@ -49,7 +49,7 @@ Every scanner exposes three modes: **Light**, **Standard**, **Deep/Validated**.
 
 In practice, for the two shipped scanners every check happens to be passive, so **Light remains free and unauthorised in practice** — but that is a fact about Email and TLS's check catalogues today, not a rule the mode enforces. The next scanner to add an active Light-mode check (plausible for AI/agent exposure, see A1) will be denied by `core/authz.py` exactly as a Standard check would be, and that is correct behaviour, not a bug.
 
-**Note on document drift:** [docs/00-context.md](docs/00-context.md)'s scan-mode table still reads "Permission: None / Verified ownership required / Ownership + agreement" as if permission were a property of the mode. That is the pre-0b.6 framing. It is not wrong about the two shipped scanners' current behaviour, but it does not state the per-check mechanism above. Flagged here rather than silently fixed — 00-context.md is not this document's file to edit unprompted.
+**Resolved 2026-09-01.** [docs/00-context.md](docs/00-context.md)'s scan-mode table carried the pre-0b.6 framing — permission as a property of the mode — and has been corrected to state the mechanism above, with the table row kept as a description of what is true of the two shipped scanners today rather than as the rule. The same correction was applied to [docs/12-cli-runbook.md](docs/12-cli-runbook.md), [docs/13-test-targets.md](docs/13-test-targets.md) and [docs/how-to-add-a-scanner.md](docs/how-to-add-a-scanner.md).
 
 Full mechanism: `core/authz.py`. Legal grounding: [docs/09-ownership-verification.md](docs/09-ownership-verification.md).
 
@@ -126,7 +126,7 @@ One-line: certificate, chain, protocol and cipher analysis, plus (v1.1) certific
 - **[v2 said]** an A+–F grade "like SSL Labs" → **deferred by decision (D9)**: a grade is an opinion and gets argued with; facts don't. Not built, may ship later with the full rubric visible if it does.
 - Mechanism: **our own TLS engine** in Python's `ssl`/ stdlib, not a testssl.sh wrapper. **[v2 said]** "build our own in Go... recommended long term" or wrap testssl.sh → **[ADR-016, now]** own engine decided and built; testssl.sh runs only as an external cross-check (`make crosscheck`), GPLv2, subprocess only, never linked.
 - **v1.1 additions (v3.4):** certificate lifetime readiness (dated, `materialises_at` set to the date renewal cadence breaks) and post-quantum exposure. Post-quantum is **Blocked on Python 3.15** (`ssl.SSLContext.set_groups`/`get_groups`, `SSLSocket.group()`) — **not 3.13 as the roadmap originally and incorrectly stated (D16, corrected 2026-08-28).** Certificate lifetime readiness has no such blocker and is Not built yet.
-- **Status: Shipped.** 13 checks (Standard), gate met.
+- **Status: Shipped.** 14 checks — 8 Light, 6 Standard. 11 are passive, 3 active (0b.6). Gate met.
 - **Gate:** precision ≥ 0.98, recall ≥ 0.95, inconclusive ≤ 0.15. **Actual, from `make corpus` (2026-09-01):** `precision 1.000, recall 1.000, susp% 6.0%, inconc% 0.0%, PASS` — 134 checks run, **5 claims** (`confirmed`/`highly_likely`). Read the claim count with the number: most findings land as `suspected` (honest — one `independence_class` — and excused from the gate on both sides), so 1.000 rests on five claims, not 134.
 - **Caveats that belong here, not buried:** 14-case corpus, cross-checked against testssl.sh. Six real defects across Tools 1 and 2 survived their corpora at precision 1.000 — three of the six were in the TLS lab itself (a CA missing `basicConstraints`, servers accepting TLS 1.0, a two-level chain standing in for an incomplete one), found only by reading the fixtures, not by the harness. Certificate revocation checking (OCSP/CRL) is not built — `revoked.badssl.com` currently returns nothing, which reads as a pass (D12). No weak-cipher (`RC4`/`3DES`) positive case exists; OpenSSL 3 compiles them out (D11).
 - Depends on: HTTP record/replay for HSTS (done, 0b.4).
@@ -393,7 +393,7 @@ Verified against the repo and `make corpus` (2026-09-01) — see the run at the 
 
 | Tool / Feature | Status | Gate | Actual (where shipped) |
 |---|---|---|---|
-| A1 Website Scanner | Not built | precision ≥0.90 (`confirmed`≥0.98), recall ≥0.75 (benchmark) | — |
+| A1 Website Scanner | Not built | **Standard mode:** precision ≥0.90 (`confirmed`≥0.98), recall ≥0.75 (benchmark tier). No Light-mode gate is set in the roadmap. | — |
 | A2 Network Scanner | Not built | not yet set | — |
 | A3 SSL/TLS Analyzer | **Shipped** | precision ≥0.98, recall ≥0.95, inconc ≤0.15 | 1.000 / 1.000, 134 checks, 5 claims, 0.0% inconc, PASS |
 | A4 Domain & Subdomain Enum | Not built (next) | precision ≥0.95, recall corpus-relative | — |
