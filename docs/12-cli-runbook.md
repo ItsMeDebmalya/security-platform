@@ -8,6 +8,8 @@ Related: [how-to-add-a-scanner.md](how-to-add-a-scanner.md) for writing a new sc
 
 ---
 
+> **Testing, the corpus, the labs and CI live in [17-testing-runbook.md](17-testing-runbook.md).** This document is how to *run a scan*; that one is how to prove the scanners are correct.
+
 ## 1. Setup
 
 Requires **Python 3.13** ([`.python-version`](../.python-version) pins `3.13.15` exactly — TLS corpus numbers depend on the OpenSSL build the interpreter ships with, currently **OpenSSL 3.5.7**, so `uv` should resolve the pinned version rather than whatever Python happens to be on the machine) and [`uv`](https://docs.astral.sh/uv/).

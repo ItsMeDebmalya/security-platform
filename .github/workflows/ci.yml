@@ -4,10 +4,23 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Lets you trigger a run by hand from the Actions tab, without pushing a
+  # commit. This is how you check the pipeline works at all - D1 in the ledger
+  # was open for a week because a workflow that has never run is indistinguishable
+  # from one that does not work.
+  workflow_dispatch:
+
+# A superseded run tells you nothing. Cancel it rather than pay for it.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   check:
     runs-on: ubuntu-latest
+    # The whole suite is ~2 minutes. Ten means something hung; fail rather
+    # than burn the month's minutes on it.
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -36,3 +49,14 @@ jobs:
 
       - name: Corpus
         run: uv run python -m cli.corpus --check-baseline
+
+      # The scores, kept whether the gate passed or failed - a red build is
+      # exactly when you want to read the numbers rather than re-run locally
+      # and hope you reproduced it.
+      - name: Keep the corpus scores
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: corpus-results
+          path: corpus/results/latest.json
+          if-no-files-found: warn

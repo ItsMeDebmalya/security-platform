@@ -27,6 +27,7 @@ Read `docs/14-progress-ledger.md` for where things stand — including **standin
 - `docs/14-progress-ledger.md` — **what has been built, what broke, what is owed**; append after each phase or tool
 - `docs/13-test-targets.md` — the vulnerable corpus targets, how to run them, and what we deliberately do not scan
 - `docs/12-cli-runbook.md` — **operator guide for the `scan` CLI**: every command, real output, exit codes, troubleshooting
+- `docs/17-testing-runbook.md` — **how to prove the scanners are correct**: the test layers, the corpus, the labs, live verification, CI. Copy-pasteable
 - `docs/16-learning-map.md` — **what the developer needs to learn**, dev and security, tiered by when it is needed
 - `docs/how-to-add-a-scanner.md` — the practical guide, written by building the reference scanner
 - `docs/08-changelog.md` — v2→v3, v3→v3.1, and the v3.2 additive contract changes made during Phase 0, with revert notes
@@ -47,6 +48,7 @@ This set has drifted before, in both directions: a document restating another's 
 | When, in what order, against what gate? | `docs/03-roadmap.md` |
 | What actually happened, what broke, what is owed? | `docs/14-progress-ledger.md` |
 | How do I run it? | `docs/12-cli-runbook.md` |
+| How do I test it, and run the labs? | `docs/17-testing-runbook.md` |
 | How is accuracy computed? | `docs/10-measurement.md` |
 
 **Historical, and deliberately not maintained** — do not "fix" these to match today:
