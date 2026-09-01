@@ -568,11 +568,11 @@ email          240   21    0    0      1.000    1.000   0.0%    0.8%  PASS
            recall is absolute (the true set is knowable for this scanner)
 example          3    2    0    0      1.000    1.000   0.0%    0.0%  PASS
            recall is absolute (the true set is knowable for this scanner)
-tls            121    5    0    0      1.000    1.000   6.6%    0.0%  PASS
+tls            134    5    0    0      1.000    1.000   6.0%    0.0%  PASS
            recall is absolute (the true set is knowable for this scanner)
 ```
 
-**Read the suspected column, not just precision.** The TLS row's 1.000 rests on **5 claims, not 121 checks** — most TLS findings sit on a single independence class and surface as `suspected`, which the gate excuses from both true positives and false negatives. The numbers are honest; they are also thinner than they look, and `susp%` is where that shows.
+**Read the suspected column, not just precision.** The TLS row's 1.000 rests on **5 claims, not 134 checks** — most TLS findings sit on a single independence class and surface as `suspected`, which the gate excuses from both true positives and false negatives. The numbers are honest; they are also thinner than they look, and `susp%` is where that shows.
 
 - **precision** = of what we claimed, how much was real
 - **recall** = of what was really there, how much we caught
@@ -725,7 +725,7 @@ Presence-based conclusions are downgraded to `inconclusive` there, because a zon
 
 1. **Never add an allowlist entry for an asset you do not control.** The git history of `config/authorised_scope.yaml` is the audit record.
 2. **Never update the corpus baseline to make a build pass.** It is a claim about accuracy.
-3. **Never run Standard or Deep against a third party.** Light is passive and always safe; the other two are not, and this is a legal line, not a policy preference.
+3. **Never run an *active* check against a third party.** Passivity is declared per check, not inferred from the mode (0b.6): all 17 email checks are passive, and 11 of 14 TLS checks are. The active ones are a legal line, not a policy preference, and `core/authz.py` enforces it.
 4. **Do not present confidence as calibrated.** `confidence_provisional: true` means the number is a hand-assigned prior.
 5. **Never say "compliant."** Only "compliance readiness" ([ADR-011](02-decisions.md#adr-011--compliance-readiness-never-compliance)).
 

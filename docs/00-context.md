@@ -82,11 +82,13 @@ Every scanner exposes the same three modes. This is a product-wide contract, not
 |---|---|---|---|
 | **What** | Passive only — public data and normal responses | Active — we send test requests | Standard + we prove each finding |
 | **Time** | 30s – 2min | 5 – 30 min | Longer, varies |
-| **Permission** | None | **Verified asset ownership required** | Ownership + explicit authorisation agreement |
+| **Permission** | None in practice — every check in both shipped scanners is passive | **Verified asset ownership** for its active checks | Ownership + explicit authorisation agreement |
 | **Risk to target** | Effectively zero | Low, rate-limited | Low, rate-limited |
 | **Commercial role** | Free hook | The paid product | Business tier and above — the differentiator |
 
-**Enforcement is not optional.** A Standard or Deep scan against an unverified asset must be impossible, not merely discouraged. See [06-guidelines.md](06-guidelines.md).
+**Permission follows the check, not the mode.** Since Phase 0b.6 every check declares `passive: bool`, and `core/authz.py` reads that declaration rather than inferring from the mode name. An **active** check requires a valid authorisation record in *any* mode, including Light; a **passive** one requires none, including in Standard. A check that omits the declaration counts as active, so forgetting can never widen what runs. The row above still describes what happens today — all 17 email checks and 11 of 14 TLS checks are passive — but it is a consequence, not the mechanism. `SPEC.md` is authoritative on the mechanism.
+
+**Enforcement is not optional.** An active check against an unverified asset must be impossible, not merely discouraged. See [06-guidelines.md](06-guidelines.md).
 
 ---
 

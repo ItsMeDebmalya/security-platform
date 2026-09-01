@@ -2,8 +2,10 @@
 
 *Preserved verbatim from v2, Parts A and B. This is the catalogue of what each tool does and what each platform feature is — the "what", not the "when" or the "how".*
 
-**Use this document for:** what a given scanner should detect, what a platform feature covers.
-**Do not use it for:** build order (see [../03-roadmap.md](../03-roadmap.md)), decisions (see [../02-decisions.md](../02-decisions.md)), or the phase labels below — **the "Phase:" annotations in this document are the original v2 phases and are superseded by [../03-roadmap.md](../03-roadmap.md).**
+**[../../SPEC.md](../../SPEC.md) is the authority for what to build now.** This document is its content source for v2's original tool descriptions, and stays only as history — SPEC.md corrects what v2 got wrong or what later ADRs changed (cut features, licence corrections, scope changes) and is what to read for current truth. Where the two disagree, SPEC.md wins.
+
+**Use this document for:** the original v2 wording of what a given scanner should detect, what a platform feature covers.
+**Do not use it for:** current scope or status (see [../../SPEC.md](../../SPEC.md)), build order (see [../03-roadmap.md](../03-roadmap.md)), decisions (see [../02-decisions.md](../02-decisions.md)), or the phase labels below — **the "Phase:" annotations in this document are the original v2 phases and are superseded by [../03-roadmap.md](../03-roadmap.md).**
 
 **What v3.4 added that is not in this catalogue** (it was written at v2, and is preserved as written):
 

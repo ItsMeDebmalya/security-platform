@@ -253,6 +253,14 @@ TLS's precision rests on five claims because most TLS findings sit on a single i
 
 Three of the TLS lab's faults made every corpus case *easier* than intended while the gate stayed green — a CA without `basicConstraints`, servers accepting TLS 1.0 because `@SECLEVEL=0` was needed for weak keys, and a two-level chain that cannot express an incomplete chain. **Nothing in the harness can detect this.** Only reading the fixtures can.
 
+### A verifier that shares the blind spot confirms nothing
+
+A correctly configured TLS client cannot complete a handshake with the obsolete servers this product exists to find — and `openssl s_client` carries the same safety floor, so it once "disproved" a finding that was correct. Before trusting a second tool to check the first, ask whether it is capable of seeing the thing being checked. Independence is about failure modes, not about being a different program.
+
+### Never put words in a target's mouth
+
+A finding once asserted a domain's SPF record was `v=spf1 -all` when it authorised nine IP ranges. Descriptions now quote what was actually read, never a reconstructed string. The same defect recurred in a different costume at 0b.9, where a runbook transcript's `target` field was edited so two unrelated scans would appear to agree. **Asserting something about a target we did not observe is the worst failure this product can have**, because every other claim we make rests on the reader believing we only say what we saw.
+
 ### The blocking questions are non-technical, and building does not move them
 
 [Q4](07-open-questions.md) (legal review of the tool list), [Q5](07-open-questions.md) (ToS and the authorisation agreement) and [Q4a](07-open-questions.md) (GDPR, blocks Phase 3) are all 🔴 and all unanswered. Two tools have shipped since they were raised. They will not resolve by writing more scanners, and Q4a blocks a phase we are two tools away from.

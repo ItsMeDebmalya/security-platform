@@ -15,6 +15,7 @@
 | Read this | If you want |
 |---|---|
 | **[docs/14-progress-ledger.md](docs/14-progress-ledger.md)** | **What actually happened** — built, broken, fixed, owed. Read before anything else. |
+| **[SPEC.md](SPEC.md)** | **The canonical build specification** — what each tool must do, its status, its gate. The authority on WHAT to build. |
 | **[docs/00-context.md](docs/00-context.md)** | The product, the strategy, and the standard everything is held to |
 | **[docs/01-architecture.md](docs/01-architecture.md)** | The Scanner Contract, the finding model, evidence, confidence, the asset graph |
 | **[docs/02-decisions.md](docs/02-decisions.md)** | Every decision (ADRs 001–022), its reasoning, and what it costs to reverse |

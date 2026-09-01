@@ -10,9 +10,9 @@ The corpus tiers are defined in [10-measurement.md](10-measurement.md). This doc
 
 > **Never point an active scan at something you do not run.**
 
-Standard and Deep modes require a verified authorisation record ([09-ownership-verification.md](09-ownership-verification.md)), enforced deny-by-default. That constraint is what makes this list *self-hosted only*. Every target below is a container you start yourself, published to `127.0.0.1`, on the same machine as the scanner.
+**Active** checks require a verified authorisation record ([09-ownership-verification.md](09-ownership-verification.md)), enforced deny-by-default. Passivity is declared per check rather than inferred from the mode (0b.6), so what needs a record is what a check *does*, not what its mode is called. That constraint is what makes this list *self-hosted only*. Every target below is a container you start yourself, published to `127.0.0.1`, on the same machine as the scanner.
 
-Light mode is passive and needs no authorisation, so it may be pointed at anything — including the public test sites in §5.
+Every check in both shipped scanners' Light mode is passive, so Light needs no authorisation and may be pointed at anything — including the public test sites in §5. That is a property of the checks, not a guarantee of the mode: a future scanner may declare an active Light check, and the gate will demand a record for it.
 
 ---
 

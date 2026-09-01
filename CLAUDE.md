@@ -6,15 +6,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Phase 0 is implemented; Tools 1 (Email) and 2 (TLS) pass their gates.** The Scanner Contract is frozen, `core/` services exist, the CLI runs, and the corpus harness gates on real numbers.
 
-Scanners: `example` (reference), `email` (Tool 1 — 17 checks, 1.000/1.000, 16-case corpus), `tls` (Tool 2 — 13 checks, 1.000/1.000, 14-case corpus, cross-checked against testssl.sh).
+Scanners: `example` (reference), `email` (Tool 1 — 17 checks, 1.000/1.000, 16-case corpus), `tls` (Tool 2 — 14 checks, 1.000/1.000, cross-checked against testssl.sh).
 
-Commands: `make install`, `make test`, `make lint`, `make typecheck`, `make licence-check`, `make corpus`, `make crosscheck`, `make targets-up`, and `scan run <tool> --target <t>`. Python 3.12+, dependencies via `uv`.
+Commands: `make install`, `make test`, `make lint`, `make typecheck`, `make licence-check`, `make corpus`, `make crosscheck`, `make targets-up`, and `scan run <tool> --target <t>`. Python 3.13.15, pinned in `.python-version`; dependencies via `uv`.
 
 Read `docs/14-progress-ledger.md` for where things stand — including **standing observations**, which apply to every tool, not just the last one. To operate the CLI, read `docs/12-cli-runbook.md`. For the vulnerable test targets, `docs/13-test-targets.md` (`make targets-up`). To add a scanner, read `docs/how-to-add-a-scanner.md`.
 
 ## Documents
 
 - `tools-and-features-list.md` — entry point and index
+- `SPEC.md` — **the canonical build specification: what each tool must do, current status, gates.** Authority for "what to build," replacing `docs/reference/product-spec.md` in that role.
 - `docs/00-context.md` — product, strategy, standards
 - `docs/01-architecture.md` — **the Scanner Contract, finding/evidence model, confidence engine**
 - `docs/02-decisions.md` — ADRs 001–022
@@ -34,6 +35,31 @@ Read `docs/14-progress-ledger.md` for where things stand — including **standin
 - `docs/11-operations.md` — incident response, observability, secrets, data retention
 - `docs/reference/product-spec.md` — full 18-tool / 12-feature catalogue (v2 Parts A+B, verbatim; its "Phase:" labels are superseded by `03-roadmap.md`)
 - `docs/archive/tools-and-features-list-v2.md` — original, unchanged
+
+## Which document is authoritative — read this before editing any of them
+
+This set has drifted before, in both directions: a document restating another's facts and then falling behind it, and a second document appearing to cover ground the first already owned. **Each fact has exactly one home. Everywhere else links to it.**
+
+| Question | The one authority |
+|---|---|
+| What are we building, what must each tool do, what is its status? | **`SPEC.md`** |
+| Why was it decided that way? | `docs/02-decisions.md` (the ADRs) |
+| When, in what order, against what gate? | `docs/03-roadmap.md` |
+| What actually happened, what broke, what is owed? | `docs/14-progress-ledger.md` |
+| How do I run it? | `docs/12-cli-runbook.md` |
+| How is accuracy computed? | `docs/10-measurement.md` |
+
+**Historical, and deliberately not maintained** — do not "fix" these to match today:
+
+- `docs/archive/` — the original v2 proposal, byte-for-byte. **Never edit it.** `docs/08-changelog.md`'s revert instructions copy from it verbatim, and it is the only record of what was originally asked for.
+- `docs/reference/product-spec.md` — the v2 catalogue, preserved. Superseded by `SPEC.md` for anything you intend to build.
+
+**Rules that keep it from drifting again:**
+
+1. **Do not restate a fact that another document owns — link to it.** A number copied into a second place is a number that will be wrong in one of them.
+2. **A change that alters a decision updates the ADR**, not only the place it surfaces, and is recorded in `docs/08-changelog.md`.
+3. **Do not add a new status or summary document.** `SPEC.md` holds current state; the ledger holds history. A third view of the same thing is how this happened before.
+4. **When two documents disagree, fix the wrong one and say so** — do not add a third document explaining the difference.
 
 ## The product
 

@@ -164,6 +164,8 @@ Then `make corpus`. Then `uv run python -m cli.corpus --update-baseline` once th
 
 ## 8. Standard mode
 
-Standard and Deep are active. They run only against a target with a valid record in `config/authorised_scope.yaml` — `core/authz.py` denies by default and the CLI exits 1. See [09-ownership-verification.md](09-ownership-verification.md).
+Every check declares `passive: bool` — there is no default, so a check that omits it fails at construction rather than being quietly permitted (0b.6). An **active** check runs only against a target with a valid record in `config/authorised_scope.yaml`, in any mode; `core/authz.py` denies by default and the CLI exits 1. A passive check needs no record, also in any mode.
+
+Passive means what an ordinary client does: one normal connection, no state change, nothing the target would not serve any visitor. Active means deliberately abnormal input. Connecting is not what makes a check active — finding a server is passive, reading its admin panel is not. If you are unsure, declare it active. See [09-ownership-verification.md](09-ownership-verification.md).
 
 Modes are additive: Standard returns everything Light returns plus more. Never a *different* answer for the same check at a higher mode.
