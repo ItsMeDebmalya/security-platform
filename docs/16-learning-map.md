@@ -8,6 +8,63 @@ Legend: ★ needed immediately · ◐ needed within Phase 1 · ○ needed later,
 
 ---
 
+## Orientation — the repository itself
+
+*Read this before Tier 0. The tiers below name files like `core/authz.py` as reasons to learn something; this is what those files are and why they sit where they do.*
+
+Roughly **8,900 lines of scanner code and 8,200 lines of tests**, plus the document set. It is a command-line tool today — no website, no accounts, no billing, and none of those before Phase 6 ([ADR-001](02-decisions.md)).
+
+**The organising idea:** scanners are interchangeable plugins; everything shared, and everything dangerous, lives in one place.
+
+### The code
+
+| Directory | What it is | Why it is separate |
+|---|---|---|
+| **`contracts/`** | Four JSON Schema files defining a finding, its evidence, a scan result and a scan run. | The shape every scanner must produce, **frozen**. Tools are built one at a time over ~two years; without a fixed shape agreed first you get twenty dialects and a rewrite the day the site arrives ([ADR-002](02-decisions.md)). |
+| **`core/`** | 22 modules: the network clients (`http`, `dns`, `tls`), the legal gate (`authz`), the kill switch, state derivation, the confidence engine, evidence capture, measurement, record/replay, the asset graph, correlation, the finding store, the deprecation calendar. | **Scanners never construct their own network clients.** Rate limiting, scope enforcement, cost accounting and the kill switch are enforced *inside* these clients, so they are guarantees rather than things an author remembered. A scanner that could open its own socket could bypass all four. |
+| **`scanners/`** | `email` (Tool 1, 17 checks), `tls` (Tool 2, 14 checks), `example` (reference). | Two of nineteen planned tools. `example` is not a product — it is a deliberately trivial scanner that exercises the whole loop, and the thing you copy when adding one. Scanners **never import each other**; shared logic moves to `core/`. |
+| **`cli/`** | `scan run`, `scan verify`, `scan correlate`, the corpus scorer, the licence checker. | The only user interface until Phase 6. |
+
+### The parts that make it a product rather than a script
+
+| Directory | What it is |
+|---|---|
+| **`corpus/`** | Ground truth. `targets/` the cases, `expected/` the known-correct answers, `fixtures/` frozen recordings so tests run offline, `generators/` the code that builds scenarios (including a TLS lab that mints certificates broken in a chosen way), `crosscheck/` an independent second opinion. This is how "is it accurate?" becomes a number instead of an opinion. |
+| **`tests/`** | Larger than the product code. `tests/architecture/` is the unusual part: it enforces the *rules* rather than behaviour — the build fails if a scanner imports another scanner, if `core/` imports a scanner, or if a GPL tool is registered as linkable. |
+
+**The caveat that belongs with the corpus, and is not hidden anywhere in this repo:** a corpus written by the scanner's own author encodes that author's assumptions, so every case passes by agreeing with the code. Six real defects have survived a perfect score — all found by live runs or by reading fixtures, none by the harness. That is why live verification is part of a tool's definition of done ([ADR-017](02-decisions.md)) and why the ledger's standing observations exist.
+
+### The parts that exist for legal reasons
+
+| Path | Why it exists |
+|---|---|
+| **`config/authorised_scope.yaml`** | The assets we may actively scan. **Its git history is the audit record** — the artefact produced if anyone ever asks by what right we touched a system. Deny-by-default; no entry means no scan. |
+| **`corpus/authz/`** | The proof behind each entry. A row asserting verification without its proof is not verification. |
+| **`tools/registry.yaml`** | Every third-party tool with licence, version and sign-off, so a lawyer's review is a one-day job rather than an archaeology project. |
+| **`docker-compose.yml`** | Deliberately vulnerable practice targets (Juice Shop, DVWA, VAmPI), bound to `127.0.0.1` on purpose. We run them ourselves, which is what makes "we own this" honestly true. |
+| **`config/composition_rules.yaml`, `config/deprecation_calendar.yaml`** | Curated data with sources and review dates, not constants in code. A rotted clock asserts wrong dates in our name. |
+
+### The documents, and how not to drown
+
+Eighteen files in `docs/`. You need four, and each owns exactly one question — the others are detail you pull when the roadmap reaches them:
+
+| Question | Document |
+|---|---|
+| What are we building, and where does each tool stand? | **`SPEC.md`** |
+| Why was it decided that way? | **`docs/02-decisions.md`** — 22 numbered decisions, each with its reversal cost |
+| When, in what order, against what accuracy gate? | **`docs/03-roadmap.md`** |
+| What actually happened — what broke, and what is owed? | **`docs/14-progress-ledger.md`** |
+
+**Read the ledger first, and read it properly.** It is append-only and records mistakes deliberately, because code tells you what it does and never why someone chose it. Its *Found & fixed* sections and *standing observations* are the most useful pages in the repository for someone new: they are the list of ways this specific product has already gone wrong.
+
+Two paths are **historical and deliberately never updated** — do not "fix" them to match today: `docs/archive/` (the original proposal, byte-for-byte, so any decision traces to its origin) and `docs/reference/product-spec.md` (the old catalogue, superseded by `SPEC.md`). `CLAUDE.md` carries the full map of which document owns which fact.
+
+### The shape in one line
+
+`contracts/` fixes the vocabulary · `core/` holds the machinery and the safety rails · `scanners/` are swappable plugins · `corpus/` proves they are accurate · `tests/` proves the rules are not broken · `config/` and `tools/` keep it legal · `docs/` records why.
+
+---
+
 ## Tier 0 — The ground you stand on
 
 ### Python, properly ★
@@ -199,6 +256,7 @@ Learn these only when the roadmap reaches Phase 6. Listed so you know they exist
 
 ## Suggested first-month path
 
+0. **The repository itself** — the Orientation section above. An hour, and everything below has somewhere to attach to.
 1. **Python** to the point you can read every file in `core/` without guessing (Tier 0).
 2. **Git, uv, pytest, ruff, mypy** — the daily loop (Tier 0).
 3. **Networking + DNS + how a socket works** (Tier 1) — enough to understand what a scanner *does*.
