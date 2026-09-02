@@ -156,6 +156,8 @@ Long term, replace testssl.sh with our own implementation for speed anyway.
 
 This is the approach serious autonomous testing platforms take. It is a selling point, not a limitation, and it must be phrased that way in sales material.
 
+**Amended by [ADR-025](#adr-025--authorized-exploitation-deep-tier-only-opt-in-per-scanner).** The default above is unchanged and remains the identity: no exploitation, ever, in Light and Standard, and never at all for the IoT scanner or for anything that changes state or extracts data. ADR-025 carves one narrow, gated exception — controlled exploitation in Deep/Validated mode, only under a signed authorization agreement, only where a finding cannot be proven any safer way. It does not soften this ADR; it defines the single place this ADR does not reach.
+
 **Reversal cost.** Not reversible. It is the product's identity and its legal defensibility.
 
 ---
@@ -612,3 +614,32 @@ Once findings connect, "fix these first" falls out. A finding that is a link in 
 **Reference sets (initial).** TLS: SSL Labs, SSL.org, Mozilla Observatory. Email: MXToolbox. Extended per tool as they are built.
 
 **Reversal cost.** Low — it is a definition-of-done item, not infrastructure.
+
+---
+
+## ADR-025 — Authorized exploitation, Deep tier only, opt-in per scanner
+
+**Decision.** [ADR-004](#adr-004--no-exploitation-ever)'s default stands as the product's identity: **no exploitation in Light or Standard, ever.** This ADR defines the single narrow exception. A **Deep/Validated** scan *may* perform controlled exploitation to confirm a finding, **only** when **all** of the following hold:
+
+1. The customer has signed the **explicit authorization agreement** for that asset — the Q5 legal artifact ([07-open-questions.md](07-open-questions.md)), which does not yet exist. No agreement, no exploitation, full stop.
+2. The specific scanner **declares itself exploitation-capable** — a per-scanner opt-in, the same shape as the per-check `passive` declaration ([ADR-023](#adr-023--passive-is-ordinary-negotiation-only-malformed-input-is-active)). Deny-by-default: a scanner that says nothing never exploits.
+3. The finding **genuinely cannot be confirmed by inference or by out-of-band proof** ([ADR-022](#adr-022--prove-connect-close-aggressive-proof-never-touching-the-target)). Exploitation is the last resort, never the first reach. If OOB can prove it, OOB proves it.
+
+**Hard exclusions — these never exploit, even in Deep, even with an agreement:**
+
+- **The IoT & Device Security Scanner** ([ADR-021](#adr-021--the-iot--device-security-scanner-is-its-own-tool-not-a-check-family)). Its entire claim is that it is safe to point at fragile devices; a device does not care that you are authorized, and exploitation can physically brick it. This exclusion is stop-the-line.
+- **Anything that changes persistent state or extracts real data.** We may prove a SQL injection executes; we never dump the table. We may prove a write is possible; we never leave the write in place. The line ADR-004 draws around *data* and *state* does not move — Deep exploitation proves reachability, never consequence.
+
+**Why this is an amendment and not a reversal.**
+
+- **Real authorized testing includes it.** Deep/Validated already requires a signed authorization agreement precisely because it does more than Standard. Controlled exploitation of an asset the customer owns, with written consent, is what a pentest engagement is — legally practiced, and distinct from touching a system you were not invited to.
+- **Some findings are unreachable any other way.** A handful of vulnerability classes cannot be *confirmed* without triggering them. For those, ADR-004's inference gives `highly_likely`; ADR-025 lets a consenting Deep customer reach `confirmed`. That is the whole value of the Deep tier — proof, not stronger suspicion.
+- **The default and the moat survive.** "Safe by construction" remains true of the free and paid-standard product, which is where the market comparison happens and where the sales material must stay anchored. Exploitation is an opt-in escalation a customer asks for, never the headline.
+
+**Caveats recorded so they are not lost.**
+
+- **Gated behind three things that do not exist yet:** Deep mode, the OOB server (Phase 2a), and the Q5 authorization agreement (open 🔴 legal). This ADR is a *recorded direction*, not buildable now, and must not be built until those land. It changes nothing in the two shipped scanners.
+- **Liability is real for a two-person team.** One exploitation defect against a customer's production can end the company. That is why it is Deep-only, opt-in, last-resort, and behind a signed agreement — the containment is the point, not bureaucracy.
+- **Sales discipline.** The marketing stays on *safe-by-default*; exploitation is described, if at all, as a consenting Deep-tier escalation. The moment a deck implies the product exploits by default, [ADR-004](#adr-004--no-exploitation-ever)'s selling point is lost.
+
+**Reversal cost.** Low today, because nothing is built — it is a policy plus a future per-scanner flag. It rises as scanners gain exploitation capability, which is the argument for keeping the flag opt-in and the exclusions hard from the first line of code.

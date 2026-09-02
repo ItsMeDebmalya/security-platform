@@ -18,7 +18,7 @@ Read `docs/14-progress-ledger.md` for where things stand — including **standin
 - `SPEC.md` — **the canonical build specification: what each tool must do, current status, gates.** Authority for "what to build," replacing `docs/reference/product-spec.md` in that role.
 - `docs/00-context.md` — product, strategy, standards
 - `docs/01-architecture.md` — **the Scanner Contract, finding/evidence model, confidence engine**
-- `docs/02-decisions.md` — ADRs 001–024
+- `docs/02-decisions.md` — ADRs 001–025
 - `docs/03-roadmap.md` — phases 0, **0b (foundation for the calendar)**, 1–7 with accuracy gates
 - `docs/04-phase-0-foundations.md`, `docs/05-phase-1-first-tools.md` — task-level plans
 - `docs/06-guidelines.md` — rules for all code
@@ -77,7 +77,7 @@ The contract was audited in v3.1 before freezing and gained: a `ScanRun` entity,
 
 ## Hard constraints (see `docs/06-guidelines.md`)
 
-1. **No exploitation.** No shells, no state changes, no data extraction, no brute-force, no load testing. Blind bugs are proven via out-of-band callbacks and canary tokens.
+1. **No exploitation.** No shells, no state changes, no data extraction, no brute-force, no load testing. Blind bugs are proven via out-of-band callbacks and canary tokens. This is absolute in Light and Standard and for the IoT scanner. **ADR-025** carves one future exception — controlled exploitation in Deep mode, under a signed authorization agreement, opt-in per scanner, never for state changes / data extraction / IoT — but it is gated behind Deep mode, the OOB server and the Q5 legal artifact, none of which exist, so **today the rule is still absolute everywhere.**
 2. **No active scan without verified ownership**, enforced deny-by-default in `core/authz.py` — from the first Standard-mode check, not from Phase 6. See `docs/09-ownership-verification.md`.
 3. **Licence rule (ADR-003):** permissive OSS may be embedded; commercial/restrictive/unclear may not. Forbidden: **Nmap** (use naabu — its licence bars inclusion *even inside a container*), Nessus, Burp, Acunetix/Invicti, **Semgrep's rules** (use Opengrep + own rules), **TruffleHog** (AGPL — use Gitleaks + own validator), OpenVAS. We import their output instead.
 4. **GPL tools run as separate processes only** — testssl.sh, ScoutSuite, and **MobSF (GPLv3, a Django app: run as its own service, never import it)**. Never linked, never copied. This applies to data too: **Wappalyzer's fingerprint database and its forks are GPL-3.0** and must not seed our fingerprint DB.
