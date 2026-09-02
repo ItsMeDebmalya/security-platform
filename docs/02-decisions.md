@@ -575,3 +575,40 @@ Once findings connect, "fix these first" falls out. A finding that is a link in 
 **Costs we accept.** Correlation can over-tell a story — three findings that *look* like a chain but are not. The mitigation is the same as everywhere: a composition rule states its premise, the confidence inherits from the weakest link, and a chain that cannot be justified is not drawn. Under-telling (missing a real chain) is preferred to over-telling, consistent with precision-over-recall.
 
 **Reversal cost.** Low for connect and prioritise (scope/framing). Moderate for close — the finding store is real infrastructure, which is why it is foundation work done before the tools that will lean on it.
+
+---
+
+## ADR-023 — Passive is ordinary negotiation; only malformed input is active
+
+**Decision.** A check is **passive** if it does what an ordinary client does — completes a connection and reads what the server presents. A check is **active** only if it sends **malformed or exploit-adjacent input**. Completing a handshake at an obsolete protocol version, or with a legacy cipher list, is **passive**. This reclassifies `tls-protocol-obsolete`, `tls-weak-cipher` and `tls-no-forward-secrecy` from active to passive, which makes **every TLS check passive** — so TLS needs no authorisation in any mode, the same as email.
+
+**This reverses the 0b.6 first cut.** [Phase 0b.6](14-progress-ledger.md) drew the line at "deliberately abnormal input": offering `core.tls.PERMISSIVE_CIPHERS` (`ALL:@SECLEVEL=0`) or pinning a ClientHello to TLS 1.0 to see what a server accepts was called active. That conflated *abnormal* with *harmful*.
+
+**Reasoning.**
+
+- **A completed handshake changes nothing.** Offering an old protocol or a weak cipher in a ClientHello is a normal negotiation the server freely accepts or refuses. No state changes, nothing is exploited. That is categorically different from the malformed input [ADR-004](#adr-004--no-exploitation-ever) forbids — a Heartbleed heartbeat, a ROBOT padding oracle — which stays active and which we do not send at all.
+- **The whole market treats it as free and unauthenticated.** SSL Labs, SSL.org, Mozilla Observatory and testssl.sh all enumerate protocols and ciphers against any host, no ownership check. Measured directly: SSL Labs' public API enumerated TLS 1.0/1.1/1.2 and 35 cipher suites on `erp.codez.in` with no authorisation. Gating what everyone else gives away left our free Light tier looking thinner than a generic free tool — the gap that prompted this ADR.
+- **It does not weaken the gate.** Deny-by-default is intact; `passive: bool` still has no default, so an undeclared check is still active. What changed is one line of judgement about three checks, not the mechanism. The active path stays enforced and tested (synthetic checks in `test_authz_passivity.py`); its first live consumer is the Website Scanner's payload-sending checks.
+
+**Consequences.** All 14 TLS checks are `passive=True`. TLS Standard now runs with no authorisation record, like email Standard. `core/authz.py` is unchanged. Documented everywhere the split was stated (00-context, SPEC, runbook, this ADR), because it is an authorisation-gate behaviour change and those get recorded in every place an operator might look.
+
+**Reversal cost.** Low. Flipping a `passive` flag back is a one-line change per check; the gate machinery never moved.
+
+---
+
+## ADR-024 — Competitive coverage parity is part of a tool's definition of done
+
+**Decision.** Before a tool ships — and retroactively for the two already shipped — it is benchmarked against a named set of **reference tools**, and must **meet or beat the checks they surface, or record an explicit reason not to.** This extends [ADR-017](#adr-017--live-verification-is-part-of-a-tools-definition-of-done): "verify against reality" gains "and against the incumbents."
+
+**Why.** Two shipped tools passed their gates at precision 1.000 and were then found, by a real head-to-head, to surface *less* than a generic free tool (SSL.org showed a chain, protocol versions, CT and key strength for TLS where our free tier showed an expired cert). Accuracy on the checks we chose says nothing about whether we chose enough checks. A gate measures how well we do what we decided to do; it cannot tell us the incumbents do more. Only looking can.
+
+**The rule this sets.**
+
+- **Coverage is table stakes; proof is the wedge.** We do not need to out-field-count SSL Labs. We need enough coverage that a buyer takes us seriously, and *then* evidence, calibrated confidence, honest `inconclusive` and unification is what wins. Over-correcting into "match every field the incumbents show" would make us a worse clone; the target is *par on the obvious, ahead on the wedge*.
+- **A declined check is recorded, not silently missing.** Named-vulnerability probes that send malformed input (Heartbleed, ROBOT active oracles) are out by [ADR-004](#adr-004--no-exploitation-ever) — that is a principled decline with a written reason, not a coverage gap. Many of those same vulnerabilities are detectable by *inference* from accepted protocols and ciphers (POODLE = SSLv3, BEAST = TLS 1.0+CBC, FREAK = export ciphers), and inference is in scope.
+
+**The method boundary — the licence line, stated so it is not crossed later.** We may read a competitor's **output** and its **published methodology** to build a coverage checklist — "what does a credible TLS tool surface?" is a factual question, and the authoritative answers are public (SSL Labs' rating guide, Mozilla Observatory's open source, the RFCs, testssl.sh which we already cross-check). We may **never seed our checks, rules, or fingerprint data from a proprietary tool's output.** That is the Wappalyzer-fingerprint-data trap ([ADR-003](#adr-003--permissive-open-source-or-we-build-it-ourselves)) one level up: parity is built from primary sources, not by cloning an incumbent's logic out of its results. Automated scraping of competitor services is for bounded manual research only, never a standing runtime dependency.
+
+**Reference sets (initial).** TLS: SSL Labs, SSL.org, Mozilla Observatory. Email: MXToolbox. Extended per tool as they are built.
+
+**Reversal cost.** Low — it is a definition-of-done item, not infrastructure.

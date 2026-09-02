@@ -181,7 +181,7 @@ CHECKS: dict[str, Check] = {
                 "a completed handshake pinned to that version is the server doing it, "
                 "not advertising it"
             ),
-            passive=False,
+            passive=True,
             mode="standard",
         ),
         Check(
@@ -212,7 +212,7 @@ CHECKS: dict[str, Check] = {
                 "a different client offering less might get a better one, which is why "
                 "this is not as strong as a certificate field"
             ),
-            passive=False,
+            passive=True,
             mode="standard",
         ),
         Check(
@@ -221,7 +221,7 @@ CHECKS: dict[str, Check] = {
             severity="medium",
             likelihood_ratio=40.0,
             justification="key exchange is named in the cipher suite we negotiated",
-            passive=False,
+            passive=True,
             mode="standard",
         ),
         Check(
@@ -243,27 +243,28 @@ CHECKS: dict[str, Check] = {
 def requires_authorisation(mode: Mode) -> bool:
     """Whether this scanner's checks need a valid authorisation record in `mode`.
 
-    Every Light-tier check is declared `passive=True` - each reads only what
-    an ordinary client's handshake already sees, exactly like a browser
-    visiting the site - so this returns False in `light` mode, matching
-    docs/00-context.md's product-wide contract: Light needs no permission
-    and "may be pointed at anything" (docs/13-test-targets.md).
+    **Every TLS check is `passive=True`, so this returns False in every mode.**
+    TLS analysis is an ordinary client negotiating a connection and reading
+    what the server presents - a certificate, a protocol version, a cipher
+    choice. None of it changes state, and every credible tool in the market
+    (SSL Labs, SSL.org, Mozilla Observatory, testssl.sh) enumerates protocols
+    and ciphers against any host, unauthenticated and free. See ADR-023.
 
-    Standard adds three checks that force deliberately abnormal input to see
-    what a server will accept rather than what it ordinarily would -
-    `tls-protocol-obsolete` (separate handshakes pinned to old protocol
-    versions), `tls-weak-cipher` and `tls-no-forward-secrecy` (both read the
-    cipher negotiated when the client deliberately offered weak and legacy
-    suites, `core.tls.PERMISSIVE_CIPHERS`). Those three are `passive=False`,
-    so this returns True in `standard` mode even though the other three
-    Standard checks (`tls-weak-key`, `tls-weak-signature`,
-    `tls-no-certificate-transparency` - all read straight off the
-    certificate) are themselves passive. That split - some Standard checks
-    passive, some not - is 0b.6 working as intended, the same shape as
-    email's Standard checks all being passive.
+    This reverses the 0b.6 first cut, which classified `tls-protocol-obsolete`,
+    `tls-weak-cipher` and `tls-no-forward-secrecy` as active because they offer
+    obsolete versions or a legacy cipher list (`core.tls.PERMISSIVE_CIPHERS`)
+    to see what the server accepts. That reasoning conflated *abnormal* with
+    *harmful*: offering an old protocol in a ClientHello is a normal
+    negotiation the server freely accepts or refuses, not the malformed input
+    ADR-004 forbids (Heartbleed, ROBOT). The distinction ADR-023 draws is
+    exactly that line - complete handshakes are passive; malformed or
+    exploit-adjacent probes are active, and we do not send those at all.
 
-    Computed from the catalogue, not hand-set, so reclassifying a check
-    here is the only place that has to change.
+    The active path is still real and still tested (`TestChecksRequire-
+    Authorisation` with synthetic checks); its first live consumer is the
+    Website Scanner's payload-sending checks, not this tool. Computed from the
+    catalogue, not hand-set, so a future active check is the only thing that
+    would flip this.
     """
     return checks_require_authorisation(CHECKS.values(), mode=mode)
 

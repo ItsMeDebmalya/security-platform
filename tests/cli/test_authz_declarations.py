@@ -1,13 +1,12 @@
 """docs/03-roadmap.md 0b.6, exercised through the real `scan` CLI.
 
 Passive is what an ordinary client does; active is deliberately abnormal
-input. Email is pure DNS in every mode, including Standard - it must no
-longer be gated just because "standard" sounds active. TLS Light reads
-only what an ordinary handshake already shows (the certificate a browser
-would see), so it must stay ungated exactly as docs/00-context.md's
-product-wide contract requires; TLS Standard adds checks that force
-abnormal protocol/cipher offers, so *those* must be gated even though other
-Standard checks are not.
+input. Email is pure DNS in every mode, and TLS is ordinary negotiation in
+every mode (ADR-023) - reading a certificate, a protocol version, a cipher
+choice - so neither is gated in any mode, matching docs/00-context.md's
+product-wide contract that Light "may be pointed at anything" and matching
+what the whole market does with TLS unauthenticated. The active path stays
+enforced deny-by-default for the first tool that actually sends payloads.
 
 Uses the same frozen corpus fixtures the gate itself replays, so this is a
 real run through `cli/main.py`, not a mock.
@@ -50,11 +49,12 @@ def test_tls_light_mode_still_needs_no_authorisation() -> None:
     assert result.exit_code == 0, result.stdout
 
 
-def test_tls_standard_mode_is_refused_without_authorisation() -> None:
-    # Standard adds tls-protocol-obsolete, tls-weak-cipher and
-    # tls-no-forward-secrecy - each forces an abnormal protocol or cipher
-    # offer to see what the server will accept - so Standard needs a record
-    # even against a target whose Light-mode result was clean.
+def test_tls_standard_mode_also_needs_no_authorisation() -> None:
+    # ADR-023: the protocol/cipher enumeration checks Standard adds are
+    # ordinary negotiation, not malformed input - the whole market runs them
+    # unauthenticated (SSL Labs, SSL.org, Mozilla). So TLS Standard, like
+    # Light and like email, runs with no record. This reverses the 0b.6 first
+    # cut that gated it; see docs/14-progress-ledger.md.
     result = _run(
         "run",
         "tls",
@@ -68,8 +68,7 @@ def test_tls_standard_mode_is_refused_without_authorisation() -> None:
         str(EMPTY_SCOPE),
     )
 
-    assert result.exit_code == 1, result.stdout
-    assert "authoris" in result.stdout.lower()
+    assert result.exit_code == 0, result.stdout
 
 
 def test_email_standard_mode_no_longer_needs_authorisation() -> None:

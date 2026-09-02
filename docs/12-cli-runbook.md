@@ -727,7 +727,7 @@ Presence-based conclusions are downgraded to `inconclusive` there, because a zon
 
 1. **Never add an allowlist entry for an asset you do not control.** The git history of `config/authorised_scope.yaml` is the audit record.
 2. **Never update the corpus baseline to make a build pass.** It is a claim about accuracy.
-3. **Never run an *active* check against a third party.** Passivity is declared per check, not inferred from the mode (0b.6): all 17 email checks are passive, and 11 of 14 TLS checks are. The active ones are a legal line, not a policy preference, and `core/authz.py` enforces it.
+3. **Never run an *active* check against a third party.** Passivity is declared per check, not inferred from the mode (0b.6): all 17 email checks and all 14 TLS checks are passive ([ADR-023](02-decisions.md#adr-023--passive-is-ordinary-negotiation-only-malformed-input-is-active)), so both shipped tools run against anything. The gate exists for the first tool that sends payloads; when one arrives, active means malformed or state-changing input, a legal line `core/authz.py` enforces.
 4. **Do not present confidence as calibrated.** `confidence_provisional: true` means the number is a hand-assigned prior.
 5. **Never say "compliant."** Only "compliance readiness" ([ADR-011](02-decisions.md#adr-011--compliance-readiness-never-compliance)).
 

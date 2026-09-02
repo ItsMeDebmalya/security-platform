@@ -236,7 +236,7 @@ same certificate on both: True
 
 Six real defects in Tools 1 and 2, all found by live runs, none by a corpus at `precision 1.000`. The corpus's job is regression — proving today's change did not break yesterday's behaviour — and it does that well. It cannot discover new failure modes, because **a corpus written by the scanner's author encodes the scanner's assumptions**: every case passes by agreeing with the code. Now [ADR-017](02-decisions.md#adr-017--live-verification-is-part-of-a-tools-definition-of-done).
 
-**Amended 2026-08-28.** 0b.1 added a third category: a defect found by *review*, caught by neither the corpus nor a live run. The corpus harness silently discarded the `derivation` field, and it could not have been found by running anything — the scanners emit no derived findings yet, so the wrong number and the right number were both empty. Some defects are only visible by reading the code that carries a value from one place to another. **Amended again 2026-08-28, after Phase 0b:** this is now the majority category, not a curiosity — four of the phase's defects were found this way and none by a green suite. See the Phase 0b entry for the table; the recurring shape is a plausible default standing in for a value that never arrived.
+**Amended 2026-08-28.** 0b.1 added a third category: a defect found by *review*, caught by neither the corpus nor a live run. The corpus harness silently discarded the `derivation` field, and it could not have been found by running anything — the scanners emit no derived findings yet, so the wrong number and the right number were both empty. Some defects are only visible by reading the code that carries a value from one place to another. **Amended again 2026-08-28, after Phase 0b:** this is now the majority category, not a curiosity — four of the phase's defects were found this way and none by a green suite. See the Phase 0b entry for the table; the recurring shape is a plausible default standing in for a value that never arrived. **Amended 2026-09-02:** a fourth discovery route appeared — a *competitor*. `tls-chain-incomplete`'s false negative (D17) was caught by neither the corpus, a live run, nor a code read, but by SSL Labs and SSL.org disagreeing with us on a real host. That is the eighth defect to survive precision 1.000, and the reason competitive baselining is now definition-of-done ([ADR-024](02-decisions.md#adr-024--competitive-coverage-parity-is-part-of-a-tools-definition-of-done)). The corpus has still never found one.
 
 ### What our gate numbers rest on
 
@@ -653,6 +653,32 @@ Nothing new owed. **D1 retired.**
 
 ---
 
+## 2026-09-02 · Competitive baseline — the free tools were at par, and why
+
+**Trigger:** a real head-to-head, run while building the pitch deck. The operator ran MXToolbox against `kinetrix.in` (email) and an SSL checker against `erp.codez.in` (TLS), and found the free tools surfaced **as much or more** than our shipped scanners. This is the first time an outside reference, rather than our own corpus, judged the tools — and it is exactly the check [ADR-017](02-decisions.md) always implied but never named against competitors.
+
+### Found
+
+**The gap was mostly self-inflicted, not a lack of capability.** A coverage matrix built from the SSL Labs public API (grade `T`, 35 cipher suites and 13 named-vuln probes enumerated on `erp.codez.in`, no authorisation), SSL.org's output, and our own JSON, sorted into four buckets:
+
+1. **At par** — cert validity, expiry, hostname, key, signature, CT. Fine.
+2. **We had it but gated behind authorisation while the incumbents give it free** — protocol enumeration, ciphers, forward secrecy. **The whole market runs these unauthenticated.** This was the 0b.6 classification being over-cautious, and it is the bulk of why our free tier looked thin. → [ADR-023](02-decisions.md#adr-023--passive-is-ordinary-negotiation-only-malformed-input-is-active), fixed in this session.
+3. **We lack it and can add it safely** — named vulnerabilities by *inference* (POODLE/BEAST/FREAK/Logjam/RC4), OCSP, HSTS. → D17–D19.
+4. **We lack it and should** — Heartbleed/ROBOT active oracles send malformed input, out by [ADR-004](02-decisions.md). Not a gap; a principled decline.
+
+**`tls-chain-incomplete` is a real false negative.** Both reference tools flagged the `erp.codez.in` chain incomplete; we returned `clear`. A definition split (behavioural path-building vs "did the server send every cert"), and theirs is the more useful answer. **The corpus never caught it** — the eighth defect to survive precision 1.000, and the first found by a competitor rather than a live run or fixture read. → D17.
+
+### Decided
+
+- **[ADR-023](02-decisions.md#adr-023--passive-is-ordinary-negotiation-only-malformed-input-is-active)** — passive means *ordinary negotiation*, active means *malformed input*. Reclassifies `tls-protocol-obsolete`, `tls-weak-cipher`, `tls-no-forward-secrecy` to passive → **all 14 TLS checks are now passive**, TLS needs no authorisation in any mode. Applied in code this session: the flags flipped, the two TLS-specific authz tests rewritten, the split corrected in 00-context, SPEC, the runbook and CLAUDE.md. **789 tests, gates unchanged**, and `scan run tls --mode standard` now runs with no scope file. ADR-004 untouched — completing a handshake is not exploitation.
+- **[ADR-024](02-decisions.md#adr-024--competitive-coverage-parity-is-part-of-a-tools-definition-of-done)** — competitive coverage parity joins the definition of done, extending ADR-017. Coverage is table stakes, proof is the wedge; a declined check is recorded, not silently missing; and the licence line is drawn: read a competitor's output and published methodology to build a checklist, never seed our checks or fingerprints from their output.
+
+### Deferred
+
+D17 (`tls-chain-incomplete` false negative), D18 (inference-based named vulns), D19 (HSTS, now unblocked). All raised by the competitive check; none block the current gate.
+
+---
+
 ## D. Deferred register
 
 Single source of truth for what is owed. Move an item out only when it lands.
@@ -680,6 +706,9 @@ They cluster, which matters more than the individual entries:
 | **D15** | A real device network to verify against | The IoT corpus will be emulators and recorded exchanges. An emulator written from an RFC agrees with a scanner written from the same RFC — the corpus-encodes-the-author's-assumptions failure in its purest form, in the domain where devices violate their own specs most | Calling tool 5a/5b done |
 | **D8** | `evidence_file` existence check in `core/authz.py` | The loader checks the field is present, not that the file exists, so a scope file stays loadable outside the repo. Enforced on the committed file by test instead | Nothing; it is a belt-and-braces item |
 | **D16** | Post-quantum exposure detection needs Python 3.15 | `ssl.SSLContext.set_groups`/`get_groups` and `SSLSocket.group()` — the whole of reading back a negotiated key-exchange group — arrive in Python 3.15, not 3.13 as the original 0b.5 roadmap row claimed. Verified directly against the `ssl` module across 3.12/3.13/3.14/3.15rc1; 3.15 is currently at rc1, not final | The post-quantum-exposure claim in ADR-020 |
+| **D17** | `tls-chain-incomplete` false-negatives an incomplete chain | On `erp.codez.in` both SSL Labs and SSL.org flagged the chain incomplete; we returned `clear`. Likely a definition split — our check asks "can a normal client build a path to a trusted root" (behavioural, per the 0b.5 rationale), theirs asks "did the server send every intermediate". Theirs is the more useful answer for an operator. A real correctness gap, found by the ADR-024 competitive check, not the corpus | Nothing gates on it; it is a silent miss |
+| **D18** | Inference-based named-vulnerability detection | SSL Labs surfaces POODLE, BEAST, FREAK, Logjam, RC4 and more. The active/malformed probes (Heartbleed, ROBOT) stay out by ADR-004, but these are all *inferable* from accepted protocols and ciphers (POODLE = SSLv3, BEAST = TLS 1.0+CBC, FREAK = export ciphers), which is in scope. Closes most of the TLS coverage gap ADR-024 measured, safely | TLS reaching parity with the incumbents |
+| **D19** | HSTS check in TLS | An HTTP response header, so it needs an HTTPS GET — **no longer blocked**, HTTP record/replay landed with 0b.4. SSL Labs and SSL.org both surface it. Owed only because nobody has written it. Supersedes the old D10 framing | Nothing; a visible gap in a demo |
 
 ---
 

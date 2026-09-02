@@ -6,3 +6,4 @@ corpus/results/latest.json
 .mypy_cache/
 .pytest_cache/
 tools/bin/
+temp

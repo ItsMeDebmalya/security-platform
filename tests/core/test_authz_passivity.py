@@ -117,24 +117,22 @@ class TestScannerCatalogueDeclarations:
         assert light_checks and all(c.passive for c in light_checks)
         assert requires_authorisation("light") is False
 
-    def test_tls_standard_mode_needs_authorisation_only_because_of_its_active_checks(self) -> None:
-        # The three checks that force deliberately abnormal input - offering
-        # obsolete protocols or weak/legacy ciphers to see what the server
-        # will accept, rather than what it ordinarily negotiates - are
-        # active. The other three Standard checks read straight off the
-        # certificate and are passive, exactly like the Light ones: some
-        # Standard checks being passive is 0b.6 working as intended, the
-        # same shape as email's Standard checks all being passive.
+    def test_every_tls_check_is_passive_so_no_mode_needs_authorisation(self) -> None:
+        # ADR-023: TLS analysis is ordinary negotiation - completing a
+        # handshake and reading what the server presents. Offering an obsolete
+        # protocol or a legacy cipher list is a normal ClientHello the server
+        # freely accepts or refuses, not the malformed input ADR-004 forbids,
+        # and every credible free tool (SSL Labs, SSL.org, Mozilla) enumerates
+        # protocols and ciphers unauthenticated. So every TLS check is passive
+        # and TLS needs no authorisation in any mode - the same as email.
+        # This reverses the 0b.6 first cut, which gated the three enumeration
+        # checks; see docs/14-progress-ledger.md.
         from scanners.tls.checks import CHECKS, requires_authorisation
 
-        active = {c.check_id for c in CHECKS.values() if not c.passive}
-        assert active == {"tls-protocol-obsolete", "tls-weak-cipher", "tls-no-forward-secrecy"}
-
-        passive_standard = {"tls-weak-key", "tls-weak-signature", "tls-no-certificate-transparency"}
-        assert all(CHECKS[cid].passive for cid in passive_standard)
-
-        assert requires_authorisation("standard") is True
-        assert requires_authorisation("deep") is True
+        assert {c.check_id for c in CHECKS.values() if not c.passive} == set()
+        assert requires_authorisation("light") is False
+        assert requires_authorisation("standard") is False
+        assert requires_authorisation("deep") is False
 
     def test_every_check_in_both_catalogues_declares_passivity(self) -> None:
         # A structural guard against a check being added with no opinion -
