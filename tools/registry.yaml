@@ -103,9 +103,13 @@
   spdx: GPL-2.0-only
   source: https://github.com/drwetter/testssl.sh
   purpose: >-
-    independent second opinion for the TLS analyser's corpus cross-check
-    (ADR-016). NOT a runtime dependency - no scanner shells out to it, and
-    nothing in the shipped product needs it installed.
+    a runtime dependency for four Standard-mode TLS checks (tls-vuln-rc4,
+    tls-vuln-sweet32, tls-vuln-freak, tls-vuln-logjam) via core/testssl.py -
+    ADR-016's amendment (D20), the per-check reversal that ADR originally
+    reserved: our own engine's OpenSSL 3.5 has RC4/3DES/export ciphers
+    compiled out and cannot probe for them at all. For every other TLS check
+    it remains the independent second opinion in the corpus cross-check
+    (corpus/crosscheck/testssl.py).
   isolation: subprocess   # GPL: separate process, output parsed. Never imported.
   signed_off_by: satwik
   signed_off_at: 2026-08-24

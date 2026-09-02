@@ -22,6 +22,7 @@ from core.dns import DnsClient
 from core.http import HttpClient
 from core.killswitch import KillSwitch
 from core.ratelimit import ConcurrencyCap, RateLimiter
+from core.testssl import StubTestsslClient, TestsslClient
 from core.tls import TlsClient
 
 ProgressReporter = Callable[[str, float], None]
@@ -95,6 +96,11 @@ class ScanContext:
     ratelimit: RateLimiter = field(default_factory=RateLimiter)
     concurrency: ConcurrencyCap = field(default_factory=ConcurrencyCap)
     oob: OobClient = field(default_factory=StubOobClient)
+    testssl: TestsslClient = field(default_factory=StubTestsslClient)
+    """D20: the runtime testssl.sh wrap for the TLS scanner's four
+    legacy-cipher checks (Standard mode only). Same shape as `oob` - the
+    Phase-0-style default raises `TestsslUnavailableError` so a scan never
+    reaches a subprocess it was not explicitly wired up with."""
     killswitch: KillSwitch = field(default_factory=KillSwitch)
     cost: CostMeter = field(default_factory=CostMeter)
     progress: ProgressReporter = _noop_progress

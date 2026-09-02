@@ -43,3 +43,18 @@ beast-vulnerable:
   - { check_id: tls-protocol-obsolete, location: "localhost:14415" }
   - { check_id: tls-vuln-beast, location: "localhost:14415" }
   - { check_id: tls-no-forward-secrecy, location: "localhost:14415" }
+# D20, real recordings against public badssl.com weak endpoints - the local
+# lab cannot serve any of these (compiled out of OpenSSL 3.5, same wall D11
+# hit). rc4/3des/dh512.badssl.com serve *only* their legacy cipher, so our own
+# engine's handshake fails outright and tls-no-handshake also fires; that is
+# expected and is why it is not listed here as a false positive - `source:
+# frozen` and `expect_inconclusive` are separate axes, and tls-no-handshake is
+# excluded from `test_every_tls_check_has_a_corpus_case`'s coverage set by
+# construction (it can never be a claim).
+legacy-cipher-rc4:
+  - { check_id: tls-vuln-rc4, location: "rc4.badssl.com:443" }
+legacy-cipher-sweet32:
+  - { check_id: tls-vuln-sweet32, location: "3des.badssl.com:443" }
+legacy-cipher-logjam:
+  - { check_id: tls-vuln-logjam, location: "dh512.badssl.com:443" }
+legacy-cipher-clean: []

@@ -38,6 +38,7 @@ from core.models import Asset, AssetType, Mode, ScanResult
 from core.ratelimit import RateLimiter
 from core.registry import discover
 from core.store import FindingStore, VerifyOutcome
+from core.testssl import LiveTestsslClient, RecordingTestsslClient, ReplayTestsslClient
 from core.tls import RecordingTlsBackend, ReplayTlsBackend, SystemTlsBackend, TlsClient
 
 VERIFY_BY = "scan verify"
@@ -424,18 +425,27 @@ def _execute(
     resolver: Any
     tls_backend: Any
     http_backend: Any
+    testssl_client: Any
     if replay is not None:
         resolver = ReplayResolver(replay)
         tls_backend = ReplayTlsBackend(replay)
         http_backend = ReplayHttpBackend(replay)
+        testssl_client = ReplayTestsslClient(replay)
     elif record is not None:
         resolver = RecordingResolver(SystemResolver(DEFAULT_RESOLVERS), record)
         tls_backend = RecordingTlsBackend(record)
         http_backend = RecordingHttpBackend(record)
+        testssl_client = RecordingTestsslClient(record)
     else:
         resolver = SystemResolver(DEFAULT_RESOLVERS)
         tls_backend = SystemTlsBackend()
         http_backend = None  # HttpClient's own default: a live SystemHttpBackend
+        # D20: the one place a scan reaches the real testssl.sh subprocess.
+        # Standard mode only pays for it - the TLS scanner's own mode gate
+        # (`if self.mode == "standard"`) is what keeps Light free of the cost;
+        # this client is wired unconditionally because it is only ever invoked
+        # by a check declared `mode="standard"`.
+        testssl_client = LiveTestsslClient()
 
     # Two limiters, because they protect different things: the target host
     # is someone else's infrastructure, a public resolver is not.
@@ -450,6 +460,7 @@ def _execute(
             scope=Scope.for_target(target), ratelimit=target_limit, backend=http_backend
         ),
         tls=TlsClient(scope=Scope.for_target(target), backend=tls_backend, ratelimit=target_limit),
+        testssl=testssl_client,
         scope=Scope.for_target(target),
         ratelimit=target_limit,
         progress=_progress,

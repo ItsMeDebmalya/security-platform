@@ -41,6 +41,7 @@ from core.measurement import (
 )
 from core.models import Asset, ScanResult
 from core.registry import discover
+from core.testssl import ReplayTestsslClient, StubTestsslClient
 from core.tls import MissingHandshakeError, ReplayTlsBackend, TlsClient
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -71,9 +72,21 @@ def _run_case(scanner_name: str, case: dict[str, Any]) -> ScanResult:
     scanner = discover().get(scanner_name)()
     target = Asset(**case["target"])
     fixtures = ROOT / case["fixtures"]
+    testssl_fixtures = case.get("testssl_fixtures")
     ctx = ScanContext(
         dns=DnsClient(resolver=ReplayResolver(fixtures), resolvers=["1.1.1.1", "8.8.8.8"]),
         tls=TlsClient(scope=Scope.for_target(target), backend=ReplayTlsBackend(fixtures)),
+        # D20: only cases that record legacy-cipher fixtures (`testssl_fixtures`
+        # in targets/tls.yaml) get a working testssl client. Every other case -
+        # every other scanner included - keeps the Stub default, which is
+        # exactly right: no fixtures were recorded for it, so
+        # `TestsslUnavailableError` degrading to `inconclusive` is the honest
+        # answer, not a corpus-harness special case.
+        testssl=(
+            ReplayTestsslClient(ROOT / testssl_fixtures)
+            if testssl_fixtures
+            else StubTestsslClient()
+        ),
         assets=seed_asset_graph(case.get("seed_assets", []) or []),
         progress=lambda message, fraction: None,
     )

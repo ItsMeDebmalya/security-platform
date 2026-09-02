@@ -37,6 +37,20 @@ NEGOTIATION = "negotiation"
 """What the server agreed to speak. Observed by attempting a handshake pinned
 to one protocol version, not inferred from anything it advertises."""
 
+EXTERNAL_PROBE = "external_probe"
+"""D20: testssl.sh completing its own handshake against the same server,
+using its own bundled OpenSSL build and its own socket code. Independent of
+`NEGOTIATION` in the sense the confidence engine cares about - different
+implementation, different process, different failure modes - even though
+both are "the server agreed to a handshake". It is not `CERTIFICATE` or
+`TRUST_PATH` either: nothing here reads or verifies a certificate. A new,
+named class rather than reusing `NEGOTIATION` because collapsing them would
+let a testssl-detected RC4 offer and our own weak-cipher negotiation
+corroborate each other in `ConfidenceEngine.combine()`, when in fact they can
+disagree - RC4 is compiled out of our engine's OpenSSL 3.5, so our engine
+structurally cannot make the observation testssl just made. Treating "we
+didn't look" and "we looked and disagree" as the same signal would be wrong."""
+
 
 @dataclass(frozen=True)
 class Check:
@@ -232,6 +246,67 @@ CHECKS: dict[str, Check] = {
             justification=(
                 "the SCT extension is either present or not, but its absence is normal "
                 "for private and internal certificates, so this is informational"
+            ),
+            passive=True,
+            mode="standard",
+        ),
+        # --- Legacy ciphers, via the testssl.sh runtime wrap (D20) ----------
+        # ADR-016's reserved per-check reversal: our own engine's OpenSSL 3.5
+        # cannot negotiate any of these four families - verified as
+        # "No cipher can be selected" - so `core/testssl.py` shells out to
+        # testssl.sh's own bundled OpenSSL, Standard mode only. Reading what a
+        # server offers is ordinary negotiation (ADR-023), so these stay
+        # passive despite running a second tool to observe it.
+        Check(
+            check_id="tls-vuln-rc4",
+            title="Server offers the RC4 stream cipher",
+            severity="high",
+            likelihood_ratio=60.0,
+            justification=(
+                "testssl.sh completed a real handshake negotiating an RC4 suite against "
+                "this server; a direct observation of what the server offered, not an "
+                "inference from a version string or a banner"
+            ),
+            passive=True,
+            mode="standard",
+        ),
+        Check(
+            check_id="tls-vuln-sweet32",
+            title="Server offers 3DES / 64-bit-block ciphers (SWEET32)",
+            severity="medium",
+            likelihood_ratio=50.0,
+            justification=(
+                "testssl.sh completed a handshake negotiating a 64-bit-block suite; a "
+                "direct negotiation result. Rated below RC4 because a SWEET32 attack "
+                "needs a very long-lived connection carrying attacker-influenced "
+                "plaintext, a harder bar to clear in practice than RC4's outright break"
+            ),
+            passive=True,
+            mode="standard",
+        ),
+        Check(
+            check_id="tls-vuln-freak",
+            title="Server offers export-grade RSA (FREAK)",
+            severity="critical",
+            likelihood_ratio=50.0,
+            justification=(
+                "testssl.sh completed a handshake negotiating an export-grade RSA suite; "
+                "a direct negotiation result. Rated critical because a successful FREAK "
+                "downgrade recovers the session key via a factorable 512-bit RSA modulus, "
+                "not merely a weakened cipher"
+            ),
+            passive=True,
+            mode="standard",
+        ),
+        Check(
+            check_id="tls-vuln-logjam",
+            title="Server offers export-grade or weak Diffie-Hellman (LOGJAM)",
+            severity="critical",
+            likelihood_ratio=50.0,
+            justification=(
+                "testssl.sh read the server's DH group directly off the handshake - "
+                "either an export-grade cipher or (as with a fixed 512-bit group) the "
+                "negotiated parameters themselves; a direct observation, not inferred"
             ),
             passive=True,
             mode="standard",

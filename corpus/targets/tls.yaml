@@ -140,3 +140,45 @@ cases:
     mode: standard
     target: { type: url, value: "https://localhost:14415" }
     fixtures: corpus/fixtures/tls/beast-vulnerable
+
+  # D20: legacy ciphers via the testssl.sh runtime wrap. RC4/3DES/export are
+  # compiled out of OpenSSL 3.5, so nothing local - lab included - can serve
+  # one. These four freeze real recordings against public badssl.com weak
+  # endpoints (corpus/generators/testssl.py), not the local lab. RC4-only and
+  # 3DES-only servers fail our own engine's handshake outright (the same wall
+  # D11 hit), which is why these still assert findings even though
+  # tls-no-handshake also fires - see scanners/tls/scanner.py's early-return
+  # path for standard mode.
+  - id: legacy-cipher-rc4
+    tier: vulnerable
+    source: frozen
+    mode: standard
+    target: { type: url, value: "https://rc4.badssl.com" }
+    fixtures: corpus/fixtures/tls/legacy-cipher-rc4
+    testssl_fixtures: corpus/fixtures/testssl/legacy-cipher-rc4
+
+  - id: legacy-cipher-sweet32
+    tier: vulnerable
+    source: frozen
+    mode: standard
+    target: { type: url, value: "https://3des.badssl.com" }
+    fixtures: corpus/fixtures/tls/legacy-cipher-sweet32
+    testssl_fixtures: corpus/fixtures/testssl/legacy-cipher-sweet32
+
+  - id: legacy-cipher-logjam
+    tier: vulnerable
+    source: frozen
+    mode: standard
+    target: { type: url, value: "https://dh512.badssl.com" }
+    fixtures: corpus/fixtures/tls/legacy-cipher-logjam
+    testssl_fixtures: corpus/fixtures/testssl/legacy-cipher-logjam
+
+  # Negative control: refuses every legacy suite testssl.sh probes for.
+  # Real cert/protocol checks also run and are expected to be clean.
+  - id: legacy-cipher-clean
+    tier: known_good
+    source: frozen
+    mode: standard
+    target: { type: url, value: "https://mozilla-modern.badssl.com" }
+    fixtures: corpus/fixtures/tls/legacy-cipher-clean
+    testssl_fixtures: corpus/fixtures/testssl/legacy-cipher-clean

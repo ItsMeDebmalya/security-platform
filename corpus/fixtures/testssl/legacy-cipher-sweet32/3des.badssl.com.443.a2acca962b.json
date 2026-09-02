@@ -1,0 +1,31 @@
+{
+  "findings": {
+    "FREAK": {
+      "cve": "CVE-2015-0204",
+      "detail": "not vulnerable",
+      "severity": "OK",
+      "testssl_id": "FREAK"
+    },
+    "LOGJAM": {
+      "cve": "CVE-2015-4000",
+      "detail": "not vulnerable, no DH EXPORT ciphers,",
+      "severity": "OK",
+      "testssl_id": "LOGJAM"
+    },
+    "RC4": {
+      "cve": "CVE-2013-2566 CVE-2015-2808",
+      "detail": "not vulnerable",
+      "severity": "OK",
+      "testssl_id": "RC4"
+    },
+    "SWEET32": {
+      "cve": "CVE-2016-2183 CVE-2016-6329",
+      "detail": "uses 64 bit block ciphers",
+      "severity": "LOW",
+      "testssl_id": "SWEET32"
+    }
+  },
+  "host": "3des.badssl.com",
+  "port": 443,
+  "recorded_at": "2026-09-02T12:39:26.952782+00:00"
+}

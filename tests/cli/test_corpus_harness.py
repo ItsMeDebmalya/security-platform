@@ -234,7 +234,19 @@ def test_every_tls_check_has_a_corpus_case():
     #   tls-no-handshake - inconclusive by construction. It exists to say "there
     #     was no TLS here" and can never be a claim, so it has no expected entry;
     #     the `unreachable` case asserts it via expect_inconclusive instead.
-    uncovered = {"tls-weak-cipher", "tls-no-certificate-transparency", "tls-no-handshake"}
+    #   tls-vuln-freak - D20. export.badssl.com, the natural positive target, no
+    #     longer negotiates an export-grade RSA suite against either our engine
+    #     or testssl.sh's bundled OpenSSL, so there is no real public endpoint
+    #     left to record a positive from. Fabricating one is exactly the defect
+    #     recorded twice in the ledger, so it stays uncovered rather than faked
+    #     - see corpus/generators/testssl.py. The check ships and is unit-tested
+    #     (tests/core/test_testssl.py); only its corpus recall is unproven.
+    uncovered = {
+        "tls-weak-cipher",
+        "tls-no-certificate-transparency",
+        "tls-no-handshake",
+        "tls-vuln-freak",
+    }
 
     assert set(CHECKS) - uncovered - covered == set()
 

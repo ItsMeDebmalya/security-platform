@@ -1,0 +1,15 @@
+{
+  "cipher": null,
+  "cipher_bits": null,
+  "error": "tls_error:SSLV3_ALERT_HANDSHAKE_FAILURE",
+  "observed_at": "2026-09-02T12:40:21.302448+00:00",
+  "openssl_hostname_match": null,
+  "peer_der_b64": null,
+  "protocol": null,
+  "reachable": false,
+  "trusted": false,
+  "verify_code": null,
+  "verify_code_no_time": null,
+  "verify_message": null,
+  "verify_message_no_time": null
+}

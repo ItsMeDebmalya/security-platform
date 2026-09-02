@@ -361,6 +361,19 @@ Both are isolated services behind interfaces, so this is a contained cost, not a
 
 **Reversal cost.** Low. The Scanner Contract means a scanner can be replaced by a third-party wrapper without touching anything else, which is exactly the property ADR-002 was bought for.
 
+**Amendment (D20, 2026-09-02) — the reserved per-check reversal, exercised.** "That is a per-check decision, not an all-or-nothing one" above is what this amendment invokes. RC4, 3DES and export-grade RSA/DH are compiled out of OpenSSL 3.5 — verified directly (`No cipher can be selected`), not assumed — so our own engine cannot probe for them at all, the same wall D11 hit trying to build a lab case for `tls-weak-cipher`. testssl.sh drives its own bundled OpenSSL and can.
+
+`core/testssl.py` wraps testssl.sh **at runtime, for exactly four checks** (`tls-vuln-rc4`, `tls-vuln-sweet32`, `tls-vuln-freak`, `tls-vuln-logjam`), **in Standard mode only**. The 1-3 minute/host cost this ADR originally rejected as a blanket runtime dependency is accepted here, deliberately scoped: Light stays free and fast because none of these checks are `mode="light"`, and the cost lands only on the scans that already choose to spend minutes on a target.
+
+Everything else about this ADR is unchanged and still the load-bearing decision:
+
+- **The own-engine thesis holds for every other check.** Fourteen of eighteen TLS checks still make their own handshake; only these four reach for a second process, and only because our own engine is structurally incapable of the observation, not because wrapping was easier.
+- **The corpus stays real, not reconstructed.** The four checks are proven against real recordings of public badssl.com weak endpoints (`corpus/generators/testssl.py`) rather than the local lab, which cannot serve a legacy cipher any more than our own client can negotiate one.
+- **GPL isolation is unchanged.** `core/testssl.py` shells out to the pinned binary exactly as `corpus/crosscheck/testssl.py` already did; nothing from testssl.sh's source enters this tree, and the CI licence check still enforces subprocess-only.
+- **Degrade, never crash.** Binary missing, subprocess error, timeout, or nothing recorded on replay all become `TestsslUnavailableError`, caught once in the scanner and reported as `inconclusive` — the same shape as `core.context.OobUnavailableError`.
+
+`tools/registry.yaml`'s testssl.sh entry is updated accordingly: its purpose is no longer "NOT a runtime dependency" but "a runtime dependency for four Standard-mode checks; corpus cross-check for the rest."
+
 ---
 
 ## ADR-017 — Live verification is part of a tool's definition of done

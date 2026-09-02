@@ -34,6 +34,12 @@ from core.evidence import tls_evidence
 from core.models import Asset, CheckOutcome, CheckRun, Finding, Mode, ScanResult, Telemetry
 from core.registry import register
 from core.scanner import BaseScanner
+from core.testssl import (
+    CHECK_TO_TESTSSL_ID,
+    LegacyCipherFinding,
+    LegacyCipherReport,
+    TestsslUnavailableError,
+)
 from core.tls import DEFAULT_PORT, TlsClient, TlsObservation
 from scanners.tls.checks import (
     CERTIFICATE,
@@ -41,6 +47,7 @@ from scanners.tls.checks import (
     DEPRECATED_SIGNATURES,
     EXPIRY_URGENT_DAYS,
     EXPIRY_WARNING_DAYS,
+    EXTERNAL_PROBE,
     FORWARD_SECRECY_MARKERS,
     MIN_KEY_BITS,
     NEGOTIATION,
@@ -83,13 +90,25 @@ _REFERENCES = {
         "https://nvd.nist.gov/vuln/detail/CVE-2011-3389",
         "https://www.rfc-editor.org/rfc/rfc8996",
     ],
+    "tls-vuln-rc4": [
+        "https://nvd.nist.gov/vuln/detail/CVE-2013-2566",
+        "https://nvd.nist.gov/vuln/detail/CVE-2015-2808",
+    ],
+    "tls-vuln-sweet32": [
+        "https://nvd.nist.gov/vuln/detail/CVE-2016-2183",
+        "https://nvd.nist.gov/vuln/detail/CVE-2016-6329",
+    ],
+    "tls-vuln-freak": ["https://nvd.nist.gov/vuln/detail/CVE-2015-0204"],
+    "tls-vuln-logjam": ["https://nvd.nist.gov/vuln/detail/CVE-2015-4000"],
 }
+
+LEGACY_CIPHER_CHECK_IDS = tuple(CHECK_TO_TESTSSL_ID)
 
 
 @register
 class TlsScanner(BaseScanner):
     name = "tls"
-    version = "1.1.0"
+    version = "1.2.0"
     supported_modes = frozenset({"light", "standard"})
     target_types = frozenset({"domain", "url", "ip"})
 
@@ -147,6 +166,14 @@ class _Scan:
 
         if not self.observation.is_definite():
             self._no_handshake()
+            if self.mode == "standard":
+                # D20: our own engine's OpenSSL 3.5 has RC4/3DES/export ciphers
+                # compiled out, so a server offering *only* legacy ciphers fails
+                # our handshake outright - that is not a reason to skip the one
+                # channel that can still see it. testssl.sh drives its own
+                # bundled OpenSSL and does not share this limitation.
+                self.ctx.progress("checking for legacy ciphers (testssl.sh)", 0.9)
+                self._check_legacy_ciphers()
             return self._result()
 
         self.now = self.observation.observed_at
@@ -172,6 +199,10 @@ class _Scan:
             self._check_certificate_strength()
             self._check_negotiated_suite()
             self._check_beast()
+
+        if self.mode == "standard":
+            self.ctx.progress("checking for legacy ciphers (testssl.sh)", 0.9)
+            self._check_legacy_ciphers()
 
         self.ctx.progress("done", 1.0)
         return self._result()
@@ -686,6 +717,136 @@ class _Scan:
             return
 
         self._report_derived_beast(premise, cbc_observation)
+
+    def _check_legacy_ciphers(self) -> None:
+        """D20: RC4, SWEET32, FREAK, LOGJAM, via the testssl.sh runtime wrap.
+
+        Our own engine's OpenSSL 3.5 cannot negotiate any of these cipher
+        families, so it cannot observe whether the server still offers them.
+        `ctx.testssl` is the one channel that can (`core/testssl.py`). If it
+        is unavailable - binary missing, subprocess error, timeout, nothing
+        recorded on replay - every one of these four checks is reported
+        `inconclusive` rather than silently skipped or guessed at.
+        """
+        try:
+            report = self.ctx.testssl.legacy_ciphers(self.host, self.port)
+        except TestsslUnavailableError as exc:
+            for check_id in LEGACY_CIPHER_CHECK_IDS:
+                self._emit(
+                    CHECKS[check_id],
+                    no_verdict_reason="blocked_prerequisite",
+                    description=(
+                        f"The legacy-cipher check for {CHECKS[check_id].title.lower()} could "
+                        f"not run against {self._location()}: {exc}"
+                    ),
+                    impact=("Unknown. This is a tooling gap, not an observation about the server."),
+                    remediation=(
+                        "Install testssl.sh (`tools/fetch-testssl.sh`) and re-run this scan in "
+                        "Standard mode."
+                    ),
+                    signals=[self._signal(CHECKS[check_id], EXTERNAL_PROBE, ratio=1.0)],
+                )
+                self.checks.append(
+                    CheckRun(check_id=check_id, location=self._location(), outcome="inconclusive")
+                )
+            return
+
+        for check_id in LEGACY_CIPHER_CHECK_IDS:
+            finding = report.for_check(check_id)
+            if finding is None or not finding.vulnerable:
+                self._clear(check_id)
+                continue
+            self._report_legacy_cipher(check_id, finding, report)
+
+    def _report_legacy_cipher(
+        self, check_id: str, finding: LegacyCipherFinding, report: LegacyCipherReport
+    ) -> None:
+        """Direct detection via a distinct channel (testssl.sh, `EXTERNAL_PROBE`).
+
+        Not a derived finding - this is a new observation, just made by a
+        second tool rather than our own engine - so it is built the same way
+        every other directly-detected check is (`Finding.create` via a single
+        `combine()`), only with its own evidence rather than `tls_evidence`:
+        our own handshake evidence would show *no* negotiated legacy cipher,
+        since our engine structurally cannot negotiate one. Showing that
+        evidence beside a "vulnerable" claim would contradict the claim it is
+        attached to.
+        """
+        check = CHECKS[check_id]
+        signals = [self._signal(check, EXTERNAL_PROBE, ratio=check.likelihood_ratio)]
+        result = self.engine.combine(signals)
+        now = datetime.now(UTC)
+
+        evidence = [
+            {
+                "kind": "file_excerpt",
+                "label": f"testssl.sh vulnerability probe for {self._location()}",
+                "captured_at": now,
+                "control_rationale": (
+                    "The control is testssl.sh's own verdicts for the sibling checks in the "
+                    "same run: not every legacy-cipher id it probes for came back vulnerable, "
+                    "which is what shows the tool differentiates rather than reporting a "
+                    "blanket verdict. Reported as no control (has_control()=False) per the "
+                    "file_excerpt evidence kind - the same convention the tls-vuln-beast "
+                    "derived finding uses, and for the same reason: our own TLS handshake "
+                    "evidence cannot corroborate this claim, since OpenSSL 3.5 structurally "
+                    "cannot negotiate the cipher family being reported."
+                ),
+                "data": {
+                    "testssl_id": finding.testssl_id,
+                    "severity": finding.severity,
+                    "cve": finding.cve,
+                    "finding": finding.detail,
+                    "sibling_verdicts": {
+                        testssl_id: sibling.severity
+                        for testssl_id, sibling in report.findings.items()
+                    },
+                },
+            }
+        ]
+
+        self.findings.append(
+            Finding.create(
+                org_id=self.ctx.org_id,
+                scanner=self.scanner.name,
+                scanner_version=self.scanner.version,
+                check_id=check.check_id,
+                title=check.title,
+                target=self.target,
+                location=self._location(),
+                severity=check.severity,
+                confidence=result.confidence,
+                confidence_provisional=result.provisional,
+                detection_methods=result.detection_methods,
+                validation={"attempted": False, "outcome": "not_applicable", "method": None},
+                evidence=evidence,
+                related_assets=[{"type": "domain", "value": self.host, "relation": "observed_on"}],
+                description=(
+                    f"testssl.sh reports {self._location()} as {check.title.lower()}: "
+                    f"{finding.detail}"
+                ),
+                impact=(
+                    f"{check.title} lets an attacker who can observe or influence the "
+                    "connection recover plaintext or downgrade the session; see "
+                    f"{finding.cve or 'the check title'} for the specific attack."
+                ),
+                remediation=(
+                    "Remove this cipher family from the server's TLS configuration. It is "
+                    "compiled out of current OpenSSL builds for exactly this reason, so a "
+                    "current OpenSSL running with its default configuration will not offer it."
+                ),
+                references=_REFERENCES.get(check.check_id, []),
+                taxonomy={"cwe": ["CWE-327"]},
+                first_seen=now,
+                first_seen_scan_id=self.ctx.scan_id,
+                last_seen=now,
+                last_seen_scan_id=self.ctx.scan_id,
+                cost=self.ctx.cost.snapshot(),
+            )
+        )
+        self.checks.append(
+            CheckRun(check_id=check.check_id, location=self._location(), outcome="reported")
+        )
 
     # --- emitting -----------------------------------------------------------
 
