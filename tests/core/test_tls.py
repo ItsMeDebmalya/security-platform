@@ -284,6 +284,145 @@ def test_an_obsolete_server_is_seen_offering_tls_one_zero():
     assert supported["TLSv1.3"] is False
 
 
+# --- D17: chain-incompleteness masked by an earlier verify failure ---------
+
+
+def test_an_expired_chain_that_is_otherwise_complete_verifies_time_neutrally():
+    """The control case: expired but the intermediate is present. The
+    time-neutral probe should find a buildable path, so no chain-incomplete
+    finding is warranted."""
+    import tempfile
+    from pathlib import Path
+
+    from corpus.generators.tls_lab import LabServer, mint_chain
+
+    with tempfile.TemporaryDirectory() as tmp:
+        ca, leaf, chain = mint_chain(
+            Path(tmp),
+            "exp-complete",
+            common_name="localhost",
+            sans=["localhost"],
+            not_before_days=-800,
+            not_after_days=-400,
+        )
+        server = LabServer(leaf, chain_file=chain, min_version=ssl.TLSVersion.TLSv1_2)
+        try:
+            obs = client(trust_anchor=str(ca.cert_path)).inspect(
+                "127.0.0.1", server.port, servername="localhost"
+            )
+        finally:
+            server.close()
+
+    assert obs.trusted is False
+    assert obs.verify_code == 10  # expired
+    assert obs.verify_code_no_time is None  # time-neutral chain builds fine
+
+
+def test_a_genuinely_missing_chain_is_reported_the_same_with_or_without_the_date_problem():
+    """OpenSSL builds the trust path structurally before it ever checks
+    validity dates (verified directly here, and cross-checked against the
+    `openssl verify` CLI): a certificate with no discoverable issuer anywhere
+    - not served, not in the trust store - fails with
+    "unable to get local issuer certificate" regardless of whether it is also
+    expired. So for a chain that is genuinely missing everywhere, the ordinary
+    verify and the time-neutral probe agree, and the pre-existing
+    `VERIFY_NO_ISSUER` branch already reports `tls-chain-incomplete` on its
+    own - this is the control for the masked case below, proving the
+    no-issuer family of codes is not itself date-sensitive."""
+    import tempfile
+    from pathlib import Path
+
+    from corpus.generators.tls_lab import LabServer, mint_three_level
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root, _, leaf, _ = mint_three_level(
+            Path(tmp),
+            "exp-incomplete",
+            common_name="localhost",
+            sans=["localhost"],
+            not_before_days=-800,
+            not_after_days=-400,
+        )
+        # Serve the leaf only - no intermediate, and nowhere else to find one.
+        server = LabServer(leaf, min_version=ssl.TLSVersion.TLSv1_2)
+        try:
+            obs = client(trust_anchor=str(root.cert_path)).inspect(
+                "127.0.0.1", server.port, servername="localhost"
+            )
+        finally:
+            server.close()
+
+    assert obs.trusted is False
+    assert obs.verify_code in (2, 20, 21)  # unable to get local issuer
+    assert obs.verify_code_no_time in (2, 20, 21)  # agrees once dates are ignored too
+
+
+def test_the_time_neutral_probe_reveals_a_chain_masked_by_ambient_trust():
+    """The masking D17 actually fixes: a chain that verifies successfully
+    only because the client's trust store *already carries* the certificate
+    the server itself never sent - production's system CA bundle commonly
+    does, for a widely deployed intermediate. `verify_code` alone then reads
+    "expired" and nothing else, exactly like a complete chain would. The
+    time-neutral probe cannot recover the "not sent by the server" fact
+    (that needs the peer's own certificate list, which is the
+    `get_unverified_chain()` this design deliberately avoids), but it does
+    prove there is nothing further to unmask here: ignoring dates, the same
+    path builds and trusts cleanly, so the masking is confined to the date
+    finding already reported separately."""
+    import tempfile
+    from pathlib import Path
+
+    from corpus.generators.tls_lab import LabServer, mint_three_level
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root, intermediate, leaf, _ = mint_three_level(
+            Path(tmp),
+            "ambient",
+            common_name="localhost",
+            sans=["localhost"],
+            not_before_days=-800,
+            not_after_days=-400,
+        )
+        anchor = Path(tmp) / "anchor.pem"
+        anchor.write_bytes(root.cert_path.read_bytes() + intermediate.cert_path.read_bytes())
+        # Serve the leaf alone - the server never sends its intermediate -
+        # but the trust anchor stands in for a client whose store already
+        # has it cached from elsewhere.
+        server = LabServer(leaf, min_version=ssl.TLSVersion.TLSv1_2)
+        try:
+            obs = client(trust_anchor=str(anchor)).inspect(
+                "127.0.0.1", server.port, servername="localhost"
+            )
+        finally:
+            server.close()
+
+    assert obs.trusted is False
+    assert obs.verify_code == 10  # expired; the ambient intermediate hides the omission
+    assert obs.verify_code_no_time is None  # and there is nothing left to unmask
+
+
+def test_the_time_neutral_probe_is_skipped_when_the_chain_is_already_trusted():
+    """No point asking twice when there is nothing to unmask - also what keeps
+    an already-passing corpus fixture's recorded content unchanged."""
+    import tempfile
+    from pathlib import Path
+
+    from corpus.generators.tls_lab import LabServer, mint
+
+    with tempfile.TemporaryDirectory() as tmp:
+        minted = mint(Path(tmp), "trusted", common_name="localhost", sans=["localhost"])
+        server = LabServer(minted, min_version=ssl.TLSVersion.TLSv1_2)
+        try:
+            obs = client(trust_anchor=str(minted.cert_path)).inspect(
+                "127.0.0.1", server.port, servername="localhost"
+            )
+        finally:
+            server.close()
+
+    assert obs.trusted is True
+    assert obs.verify_code_no_time is None
+
+
 # --- when we cannot tell ----------------------------------------------------
 
 

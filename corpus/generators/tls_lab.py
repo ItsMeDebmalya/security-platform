@@ -223,7 +223,7 @@ def mint_chain(
 
 
 def mint_three_level(
-    directory: Path, stem: str, *, common_name: str, sans: list[str] | None = None
+    directory: Path, stem: str, *, common_name: str, sans: list[str] | None = None, **leaf_kwargs
 ) -> tuple[Minted, Minted, Minted, Path]:
     """A trusted root, an intermediate it signed, and a leaf under that.
 
@@ -232,6 +232,10 @@ def mint_three_level(
     intermediate, and the gap in the middle cannot be bridged. A two-level
     chain cannot express this - if the signer is the trusted root, no
     intermediate is needed and the path builds fine.
+
+    `leaf_kwargs` (e.g. `not_before_days`/`not_after_days`) pass through to
+    the leaf only, so D17's corpus case can mint a leaf that is *both*
+    expired and missing its intermediate.
     """
     root = mint(directory, f"{stem}-root", common_name=f"{common_name} Test Root", is_ca=True)
     intermediate = mint(
@@ -249,6 +253,7 @@ def mint_three_level(
         sans=sans,
         issuer_cn=f"{common_name} Test Intermediate",
         issuer_key=_load_key(intermediate.key_path),
+        **leaf_kwargs,
     )
     full = directory / f"{stem}-full.pem"
     full.write_bytes(leaf.cert_path.read_bytes() + intermediate.cert_path.read_bytes())

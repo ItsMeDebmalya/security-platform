@@ -194,6 +194,136 @@ def test_the_obsolete_protocol_finding_shows_a_current_one_as_its_control():
         assert found[0].evidence[0].control is not None
 
 
+# --- D17: chain-incompleteness masked by an earlier verify failure ---------
+
+
+def _expired_incomplete_chain_server(tmp_path):
+    from corpus.generators.tls_lab import LabServer, mint_three_level
+
+    root, _, leaf, _ = mint_three_level(
+        tmp_path,
+        "expinc",
+        common_name="localhost",
+        sans=["localhost"],
+        not_before_days=-800,
+        not_after_days=-400,
+    )
+    return LabServer(leaf, min_version=ssl.TLSVersion.TLSv1_2), root
+
+
+def test_an_expired_and_incomplete_chain_reports_both_findings(tmp_path):
+    server, root = _expired_incomplete_chain_server(tmp_path)
+    ctx = ScanContext(tls=TlsClient(scope=LOOPBACK, trust_anchor=str(root.cert_path)))
+    target = Asset(type="url", value=f"https://localhost:{server.port}")
+    try:
+        result = TlsScanner().run(target, "light", ctx)
+    finally:
+        server.close()
+
+    reported = {f.check_id for f in result.findings}
+    assert "tls-cert-expired" in reported
+    assert "tls-chain-incomplete" in reported
+
+
+def test_expired_and_chain_incomplete_are_two_separate_findings_not_one(tmp_path):
+    """One problem, one finding - a certificate that is both expired and
+    missing its intermediate is two separate problems, and reporting both is
+    correct rather than a double-report of one (docs/14-progress-ledger.md,
+    D17)."""
+    server, root = _expired_incomplete_chain_server(tmp_path)
+    ctx = ScanContext(tls=TlsClient(scope=LOOPBACK, trust_anchor=str(root.cert_path)))
+    target = Asset(type="url", value=f"https://localhost:{server.port}")
+    try:
+        result = TlsScanner().run(target, "light", ctx)
+    finally:
+        server.close()
+
+    expired = next(f for f in result.findings if f.check_id == "tls-cert-expired")
+    chain = next(f for f in result.findings if f.check_id == "tls-chain-incomplete")
+    assert expired.id != chain.id
+
+
+def test_the_time_neutral_probe_stands_down_once_the_chain_is_already_explained(tmp_path):
+    """A genuinely missing chain fails with 'unable to get local issuer'
+    whether or not dates are checked (OpenSSL builds the path before it
+    checks validity) - so the ordinary `verify_code` already carries the
+    no-issuer code here, and the time-neutral probe agrees rather than
+    revealing anything further. `verify_code_no_time` is asserted directly
+    at the client layer in tests/core/test_tls.py; this proves the scanner's
+    finding is unaffected by which of the two branches supplied it."""
+    server, root = _expired_incomplete_chain_server(tmp_path)
+    ctx = ScanContext(tls=TlsClient(scope=LOOPBACK, trust_anchor=str(root.cert_path)))
+    target = Asset(type="url", value=f"https://localhost:{server.port}")
+    try:
+        result = TlsScanner().run(target, "light", ctx)
+    finally:
+        server.close()
+
+    chain_finding = next(f for f in result.findings if f.check_id == "tls-chain-incomplete")
+    assert "issuer" in chain_finding.description.lower()
+
+
+# --- BEAST (first derived finding, ADR-018) ---------------------------------
+
+
+def test_tls_one_zero_with_a_cbc_cipher_reports_beast():
+    with lab_server(
+        common_name="localhost", ciphers="AES128-SHA:@SECLEVEL=0", max_version=ssl.TLSVersion.TLSv1
+    ) as srv:
+        found = findings(srv, "tls-vuln-beast", mode="standard")
+
+    assert found
+    assert found[0].derivation == "derived"
+    assert found[0].derived_from
+
+
+def test_beast_confidence_is_exactly_inherited_from_its_premise():
+    with lab_server(
+        common_name="localhost", ciphers="AES128-SHA:@SECLEVEL=0", max_version=ssl.TLSVersion.TLSv1
+    ) as srv:
+        result = scan(srv, mode="standard")
+
+    premise = next(f for f in result.findings if f.check_id == "tls-protocol-obsolete")
+    beast = next(f for f in result.findings if f.check_id == "tls-vuln-beast")
+
+    assert beast.derived_from == premise.id
+    assert beast.confidence == premise.confidence
+
+
+def test_beast_shares_the_premises_independence_class():
+    with lab_server(
+        common_name="localhost", ciphers="AES128-SHA:@SECLEVEL=0", max_version=ssl.TLSVersion.TLSv1
+    ) as srv:
+        found = findings(srv, "tls-vuln-beast", mode="standard")
+
+    assert found
+    classes = {m.independence_class for m in found[0].detection_methods}
+    assert classes == {"negotiation"}
+
+
+def test_a_modern_server_does_not_report_beast():
+    with lab_server(common_name="localhost", min_version=ssl.TLSVersion.TLSv1_2) as srv:
+        assert findings(srv, "tls-vuln-beast", mode="standard") == []
+
+
+def test_beast_severity_is_medium_and_honest_about_mitigation():
+    with lab_server(
+        common_name="localhost", ciphers="AES128-SHA:@SECLEVEL=0", max_version=ssl.TLSVersion.TLSv1
+    ) as srv:
+        found = findings(srv, "tls-vuln-beast", mode="standard")
+
+    assert found and found[0].severity == "medium"
+    assert "mitigated" in found[0].impact.lower()
+
+
+def test_light_mode_never_reports_beast():
+    """BEAST depends on protocol enumeration, which is standard-mode only."""
+    with lab_server(
+        common_name="localhost", ciphers="AES128-SHA:@SECLEVEL=0", max_version=ssl.TLSVersion.TLSv1
+    ) as srv:
+        assert findings(srv, "tls-vuln-beast", mode="light") == []
+
+
 # --- certificate strength ---------------------------------------------------
 
 
@@ -263,6 +393,12 @@ def test_every_finding_carries_a_control_alongside_its_test():
         result = scan(srv, mode="standard")
 
     for finding in result.findings:
+        if finding.derivation == "derived":
+            # ADR-018: a derived finding makes no new observation of the
+            # target - its evidence is the premise finding plus the rule
+            # applied, not a control-vs-test pair. core/correlation.py's
+            # composition findings are the same shape.
+            continue
         assert any(e.has_control() for e in finding.evidence), finding.check_id
 
 

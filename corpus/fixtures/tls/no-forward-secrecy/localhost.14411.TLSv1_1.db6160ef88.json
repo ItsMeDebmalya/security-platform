@@ -2,12 +2,14 @@
   "cipher": null,
   "cipher_bits": null,
   "error": "tls_error:TLSV1_ALERT_PROTOCOL_VERSION",
-  "observed_at": "2026-08-25T10:52:48.359836+00:00",
+  "observed_at": "2026-09-02T09:52:45.707105+00:00",
   "openssl_hostname_match": null,
   "peer_der_b64": null,
   "protocol": null,
   "reachable": false,
   "trusted": false,
   "verify_code": null,
-  "verify_message": null
+  "verify_code_no_time": null,
+  "verify_message": null,
+  "verify_message_no_time": null
 }

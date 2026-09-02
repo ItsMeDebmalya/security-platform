@@ -236,6 +236,23 @@ CHECKS: dict[str, Check] = {
             passive=True,
             mode="standard",
         ),
+        # --- Derived (ADR-018) ----------------------------------------------
+        Check(
+            check_id="tls-vuln-beast",
+            title="Server permits the TLS configuration BEAST exploits",
+            severity="medium",
+            likelihood_ratio=1.0,
+            justification=(
+                "this is a derived finding (ADR-018): its confidence is inherited from "
+                "the tls-protocol-obsolete finding it builds on, via "
+                "ConfidenceEngine.inherit(), never recomputed through combine(). This "
+                "likelihood ratio is a neutral placeholder (LR=1.0, contributes no shift) "
+                "kept so the detection_methods entry stays schema-honest rather than "
+                "inventing a fake signal to push arithmetic through the evidence engine"
+            ),
+            passive=True,
+            mode="standard",
+        ),
     ]
 }
 
@@ -285,6 +302,24 @@ a suite containing any of these has no defensible use in 2026."""
 FORWARD_SECRECY_MARKERS = ("ECDHE", "DHE", "TLS_AES", "TLS_CHACHA")
 """TLS 1.3 suites are all forward-secret and do not name their key exchange,
 hence the TLS_ prefixes."""
+
+CBC_EXCLUDED_MARKERS = ("GCM", "CCM", "CHACHA20", "POLY1305", "RC4", "NULL")
+"""AEAD and stream markers - anything carrying one of these is not CBC mode."""
+
+
+def is_cbc_cipher(cipher: str) -> bool:
+    """Whether a negotiated suite is CBC-mode, for the BEAST inference.
+
+    No AEAD suite exists for TLS 1.0/1.1 - GCM/CCM/ChaCha20-Poly1305 all
+    require TLS 1.2, and this is only ever consulted against a handshake
+    pinned to TLS 1.0 or 1.1 (`OBSOLETE_PROTOCOLS`). RC4 is compiled out of
+    OpenSSL 3 (D18/ledger) and excluded here for the same reason it is
+    excluded everywhere else: if it ever reappears, it is a stream cipher,
+    not CBC, and BEAST does not apply to it.
+    """
+    upper = cipher.upper()
+    return not any(marker in upper for marker in CBC_EXCLUDED_MARKERS)
+
 
 # OpenSSL verification codes we map to specific findings. Anything else becomes
 # a generic untrusted-chain result rather than a guess.

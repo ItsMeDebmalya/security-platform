@@ -36,3 +36,10 @@ no-forward-secrecy:
 obsolete-protocol:
   - { check_id: tls-protocol-obsolete, location: "localhost:14412" }
 unreachable: []
+expired-and-incomplete-chain:
+  - { check_id: tls-cert-expired, location: "localhost:14414" }
+  - { check_id: tls-chain-incomplete, location: "localhost:14414" }
+beast-vulnerable:
+  - { check_id: tls-protocol-obsolete, location: "localhost:14415" }
+  - { check_id: tls-vuln-beast, location: "localhost:14415" }
+  - { check_id: tls-no-forward-secrecy, location: "localhost:14415" }

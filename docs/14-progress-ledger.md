@@ -679,6 +679,31 @@ D17 (`tls-chain-incomplete` false negative), D18 (inference-based named vulns), 
 
 ---
 
+## 2026-09-02 · D17 fixed, BEAST shipped — TLS v1.1.0
+
+**Status: complete for what the toolchain allows.** Gate green: tls 162 checks, precision 1.000, recall 1.000, susp% 8.6%.
+
+### Built
+
+- **D17 — the chain-incompleteness false negative, fixed.** The cause was sharper than the register first guessed. Not a definition split: OpenSSL's verifying handshake returns a **single** `verify_code`, the first failure it hits, so on a cert that is both expired *and* served without intermediates the code is `certificate has expired` and the chain check fell through to `clear`. The fix decouples the two questions — a second verifying handshake with `X509_V_FLAG_NO_CHECK_TIME` (`0x200000`, set through `SSLContext.verify_flags` because Python's `ssl.VerifyFlags` has no name for it) asks "ignoring expiry, does the chain build to a trusted root?" A host can now report both `tls-cert-expired` and `tls-chain-incomplete`, which is correct — they are different problems. `get_unverified_chain` was deliberately not adopted; the behavioural fix honours the 0b.5 rationale.
+- **BEAST — the first derived finding any scanner emits.** `tls-vuln-beast` fires when a handshake completed at TLS 1.0/1.1 with a CBC cipher. `derivation="derived"`, `derived_from` names the `tls-protocol-obsolete` finding, confidence **inherited** via `ConfidenceEngine.inherit()` and never recomputed — verified live: premise and derived both 0.9804, same `negotiation` independence class so no false corroboration, `suspected` state inherited honestly. Severity medium, and the description says plainly that modern clients mitigate BEAST — the finding is "the server still permits the configuration", not "you are exploitable today". This is the first live exercise of the `inherit()` path and the detected/derived measurement split built in 0b.1 and never run by a scanner until now; both held.
+- `tls` `scanner_version` bumped to **1.1.0** — a new check, and a chain finding that did not fire before.
+
+### Found & fixed
+
+- **The build agent hit the account session limit mid-task** and left the tree partial: code complete, `scanner_version` bumped, corpus cases written — but the **fixtures were never generated** and the ledger entry never written. Regenerating with `python -m corpus.generators.tls` produced them and the gate went green. A reminder that a corpus case is three parts (target, expected, fixture) and the fixture is the one a dead process leaves missing.
+- Formatting was left un-run (`ruff format`); two files needed it.
+
+### Decided
+
+- **The legacy-cipher class is blocked, and the way out is ADR-016's reserved per-check wrap (D20).** Verified directly: OpenSSL 3.5 refuses to offer RC4, 3DES or export ciphers, so RC4/Sweet32/FREAK cannot be probed by our engine at all — the same wall D11 hit for the lab. BEAST is the exception because TLS 1.0 and CBC are both still in OpenSSL 3.5. testssl.sh drives its own bundled OpenSSL and can speak the legacy ciphers; wrapping it for exactly those checks is the per-check decision ADR-016 anticipated.
+
+### Deferred
+
+D17 closed. D18 partial (BEAST done; the cipher-based vulns wait on D20). D20 raised — the legacy-cipher backend. None block the gate.
+
+---
+
 ## D. Deferred register
 
 Single source of truth for what is owed. Move an item out only when it lands.
@@ -706,8 +731,9 @@ They cluster, which matters more than the individual entries:
 | **D15** | A real device network to verify against | The IoT corpus will be emulators and recorded exchanges. An emulator written from an RFC agrees with a scanner written from the same RFC — the corpus-encodes-the-author's-assumptions failure in its purest form, in the domain where devices violate their own specs most | Calling tool 5a/5b done |
 | **D8** | `evidence_file` existence check in `core/authz.py` | The loader checks the field is present, not that the file exists, so a scope file stays loadable outside the repo. Enforced on the committed file by test instead | Nothing; it is a belt-and-braces item |
 | **D16** | Post-quantum exposure detection needs Python 3.15 | `ssl.SSLContext.set_groups`/`get_groups` and `SSLSocket.group()` — the whole of reading back a negotiated key-exchange group — arrive in Python 3.15, not 3.13 as the original 0b.5 roadmap row claimed. Verified directly against the `ssl` module across 3.12/3.13/3.14/3.15rc1; 3.15 is currently at rc1, not final | The post-quantum-exposure claim in ADR-020 |
-| **D17** | `tls-chain-incomplete` false-negatives an incomplete chain | On `erp.codez.in` both SSL Labs and SSL.org flagged the chain incomplete; we returned `clear`. Likely a definition split — our check asks "can a normal client build a path to a trusted root" (behavioural, per the 0b.5 rationale), theirs asks "did the server send every intermediate". Theirs is the more useful answer for an operator. A real correctness gap, found by the ADR-024 competitive check, not the corpus | Nothing gates on it; it is a silent miss |
-| **D18** | Inference-based named-vulnerability detection | SSL Labs surfaces POODLE, BEAST, FREAK, Logjam, RC4 and more. The active/malformed probes (Heartbleed, ROBOT) stay out by ADR-004, but these are all *inferable* from accepted protocols and ciphers (POODLE = SSLv3, BEAST = TLS 1.0+CBC, FREAK = export ciphers), which is in scope. Closes most of the TLS coverage gap ADR-024 measured, safely | TLS reaching parity with the incumbents |
+| ~~**D17**~~ | ~~`tls-chain-incomplete` false-negatives an incomplete chain~~ | **Closed 2026-09-02.** The cause was sharper than the definition split first guessed: a single `verify_code` reports only the *first* failure, so expiry masked the incomplete chain. Fixed behaviourally — a second verifying handshake with `X509_V_FLAG_NO_CHECK_TIME` set asks "ignoring expiry, does the chain build?", independent of the trust verdict. `get_unverified_chain` deliberately not adopted. A host now reports both `tls-cert-expired` and `tls-chain-incomplete` | — |
+| **D18** | Inference-based named-vulnerability detection — **partial** | **BEAST shipped 2026-09-02** (TLS 1.0/1.1 + CBC → derived finding, the first any scanner emits). **RC4, Sweet32, FREAK, Logjam remain blocked**: verified that OpenSSL 3.5 refuses to *offer* RC4/3DES/export ciphers (`No cipher can be selected`), so our own engine cannot probe a target for them, the same wall as D11. Unblocking needs the legacy-cipher backend (D20) | TLS parity on the legacy-cipher class |
+| **D20** | A legacy-cipher-capable TLS backend | RC4, 3DES and export ciphers are compiled out of OpenSSL 3.5, so neither our client nor the lab can speak them (D11, D18). The per-check decision ADR-016 reserved: wrap testssl.sh for exactly these checks (it drives its own bundled OpenSSL and is already registered, GPLv2, subprocess-only), keeping our own engine for everything else. Decided; not yet built | D11, and the RC4/Sweet32/FREAK/Logjam half of D18 |
 | **D19** | HSTS check in TLS | An HTTP response header, so it needs an HTTPS GET — **no longer blocked**, HTTP record/replay landed with 0b.4. SSL Labs and SSL.org both surface it. Owed only because nobody has written it. Supersedes the old D10 framing | Nothing; a visible gap in a demo |
 
 ---

@@ -121,3 +121,22 @@ cases:
     expect_inconclusive: true
     target: { type: url, value: "https://localhost:14413" }
     fixtures: corpus/fixtures/tls/unreachable
+
+  # D17: expired and missing its intermediate at once. OpenSSL reports only
+  # its first objection ("certificate has expired"), which previously masked
+  # the chain-incompleteness entirely - both must fire now.
+  - id: expired-and-incomplete-chain
+    tier: vulnerable
+    source: frozen
+    mode: light
+    target: { type: url, value: "https://localhost:14414" }
+    fixtures: corpus/fixtures/tls/expired-and-incomplete-chain
+
+  # BEAST (first derived finding, ADR-018): TLS 1.0 negotiating a CBC-mode
+  # cipher.
+  - id: beast-vulnerable
+    tier: vulnerable
+    source: frozen
+    mode: standard
+    target: { type: url, value: "https://localhost:14415" }
+    fixtures: corpus/fixtures/tls/beast-vulnerable

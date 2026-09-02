@@ -53,6 +53,7 @@ from scanners.tls.checks import (
     VERIFY_UNTRUSTED_ROOT,
     WEAK_CIPHER_MARKERS,
     Check,
+    is_cbc_cipher,
 )
 from scanners.tls.checks import requires_authorisation as _requires_authorisation
 
@@ -78,13 +79,17 @@ _REFERENCES = {
     "tls-weak-cipher": ["https://www.rfc-editor.org/rfc/rfc7525"],
     "tls-no-forward-secrecy": ["https://www.rfc-editor.org/rfc/rfc7525#section-6.3"],
     "tls-no-certificate-transparency": ["https://www.rfc-editor.org/rfc/rfc6962"],
+    "tls-vuln-beast": [
+        "https://nvd.nist.gov/vuln/detail/CVE-2011-3389",
+        "https://www.rfc-editor.org/rfc/rfc8996",
+    ],
 }
 
 
 @register
 class TlsScanner(BaseScanner):
     name = "tls"
-    version = "1.0.0"
+    version = "1.1.0"
     supported_modes = frozenset({"light", "standard"})
     target_types = frozenset({"domain", "url", "ip"})
 
@@ -166,6 +171,7 @@ class _Scan:
             self._check_protocols()
             self._check_certificate_strength()
             self._check_negotiated_suite()
+            self._check_beast()
 
         self.ctx.progress("done", 1.0)
         return self._result()
@@ -447,6 +453,41 @@ class _Scan:
                 ),
                 signals=[self._signal(CHECKS["tls-chain-incomplete"], TRUST_PATH)],
             )
+        elif self.observation.verify_code_no_time in VERIFY_NO_ISSUER:
+            # D17: the ordinary verify failed on the certificate's dates
+            # first and never reached the chain - OpenSSL reports only its
+            # first objection. A second, time-neutral verify (core.tls's
+            # NO_CHECK_TIME probe) shows the chain is *also* unbuildable, so
+            # this fires alongside whatever date finding already reported.
+            # Two different problems, two findings - not a double-report of
+            # one.
+            self._report(
+                "tls-chain-incomplete",
+                description=(
+                    f"A trusted path to {self.host}'s certificate could not be built, "
+                    "independently of its validity dates: "
+                    f'"{self.observation.verify_message_no_time}". The certificate is also '
+                    f'invalid on dates ("{self.observation.verify_message}"), which is why an '
+                    "ordinary check never reaches this - OpenSSL reports only its first "
+                    "objection. Either the server is not sending its intermediate "
+                    "certificates, or its issuer is not one we trust; we cannot tell which "
+                    "from the outside, and both break some visitors."
+                ),
+                impact=(
+                    "Clients that fetch missing intermediates themselves will work; those that "
+                    "do not - many mobile apps, command-line tools and older browsers - will "
+                    "fail. That produces the worst kind of bug report: it works for most people. "
+                    "This holds independently of the certificate's date problem, and will still "
+                    "be true after the certificate is renewed."
+                ),
+                remediation=(
+                    "Serve the full chain. Your certificate authority provides a bundle "
+                    "containing the intermediates; configure the server to send it alongside "
+                    "the leaf certificate, then re-test. Do this in addition to fixing the "
+                    "certificate's dates - they are two separate problems."
+                ),
+                signals=[self._signal(CHECKS["tls-chain-incomplete"], TRUST_PATH)],
+            )
         else:
             self._clear("tls-chain-incomplete")
 
@@ -609,6 +650,43 @@ class _Scan:
         else:
             self._clear("tls-no-forward-secrecy")
 
+    def _check_beast(self) -> None:
+        """The first derived finding (ADR-018).
+
+        Fires when the server completed a handshake at TLS 1.0 or 1.1 *and*
+        the negotiated cipher on that handshake is CBC-mode - the
+        configuration BEAST (CVE-2011-3389) exploits. Both facts are already
+        gathered: `tls-protocol-obsolete` detected the obsolete protocol, and
+        the cipher is in that same protocol-pinned observation.
+
+        Never recomputed from combine(): confidence is inherited from the
+        `tls-protocol-obsolete` finding it derives from, per
+        `ConfidenceEngine.inherit()`. No exploitation and no malformed
+        input - this is pure inference from a handshake already made.
+        """
+        premise = next((f for f in self.findings if f.check_id == "tls-protocol-obsolete"), None)
+        if premise is None:
+            self._clear("tls-vuln-beast")
+            return
+
+        cbc_observation: TlsObservation | None = None
+        for label in OBSOLETE_PROTOCOLS:
+            candidate = self.protocol_observations.get(label)
+            if (
+                candidate is not None
+                and candidate.reachable
+                and candidate.cipher
+                and is_cbc_cipher(candidate.cipher)
+            ):
+                cbc_observation = candidate
+                break
+
+        if cbc_observation is None:
+            self._clear("tls-vuln-beast")
+            return
+
+        self._report_derived_beast(premise, cbc_observation)
+
     # --- emitting -----------------------------------------------------------
 
     def _location(self) -> str:
@@ -701,6 +779,98 @@ class _Scan:
                 last_seen_scan_id=self.ctx.scan_id,
                 cost=self.ctx.cost.snapshot(),
             )
+        )
+
+    def _report_derived_beast(self, premise: Finding, observation: TlsObservation) -> None:
+        """Build the `tls-vuln-beast` finding, following `core.correlation`'s
+        pattern for a derived finding: confidence inherited, never combined."""
+        check = CHECKS["tls-vuln-beast"]
+        confidence = self.engine.inherit([premise.confidence])
+        now = datetime.now(UTC)
+
+        detection_methods = [
+            {
+                "method": f"tls_{NEGOTIATION}",
+                "likelihood_ratio": check.likelihood_ratio,
+                "independence_class": NEGOTIATION,
+                "prior": 0.5,
+                "prior_justification": check.justification,
+            }
+        ]
+        evidence = [
+            {
+                "kind": "file_excerpt",
+                "label": f"BEAST inference for {self._location()}",
+                "captured_at": now,
+                "control_rationale": (
+                    "A derived finding makes no new observation of the target; its evidence "
+                    "is the premise finding plus the rule applied to it. Reported as no "
+                    "control (has_control()=False) rather than borrowing the premise's "
+                    "already-independent control as its own."
+                ),
+                "data": {
+                    "premise_finding_id": premise.id,
+                    "premise_check_id": premise.check_id,
+                    "premise_confidence": premise.confidence,
+                    "rule": (
+                        "BEAST (CVE-2011-3389): a completed handshake at TLS 1.0/1.1 "
+                        "negotiating a CBC-mode cipher is the configuration BEAST exploits. "
+                        "No exploitation attempted - inferred from the accepted protocol "
+                        "version and the negotiated cipher alone."
+                    ),
+                    "protocol": observation.protocol,
+                    "cipher": observation.cipher,
+                },
+            }
+        ]
+
+        self.findings.append(
+            Finding.create(
+                org_id=self.ctx.org_id,
+                scanner=self.scanner.name,
+                scanner_version=self.scanner.version,
+                check_id=check.check_id,
+                title=check.title,
+                target=self.target,
+                location=self._location(),
+                severity=check.severity,
+                confidence=confidence,
+                confidence_provisional=True,
+                detection_methods=detection_methods,
+                validation={"attempted": False, "outcome": "not_applicable", "method": None},
+                evidence=evidence,
+                related_assets=[{"type": "domain", "value": self.host, "relation": "observed_on"}],
+                description=(
+                    f"{self.host}:{self.port} completed a handshake at {observation.protocol} "
+                    f"negotiating {observation.cipher}, a CBC-mode cipher - the configuration "
+                    "the BEAST attack (CVE-2011-3389) exploits. Derived from the "
+                    "tls-protocol-obsolete finding above plus the negotiated cipher; nothing "
+                    "further was tested."
+                ),
+                impact=(
+                    "BEAST let an attacker who can inject traffic into the connection recover "
+                    "plaintext from a CBC-mode TLS 1.0 session. It is largely mitigated in "
+                    "modern clients (1/n-1 record splitting), so this says the server still "
+                    "permits the configuration, not that visitors are exploitable today - the "
+                    "residual risk is clients that lack the mitigation."
+                ),
+                remediation=(
+                    "Disable TLS 1.0 and 1.1. This is the same fix as the obsolete-protocol "
+                    "finding above; there is no separate BEAST-specific configuration."
+                ),
+                references=_REFERENCES.get(check.check_id, []),
+                taxonomy={"cwe": ["CWE-696"]},
+                first_seen=now,
+                first_seen_scan_id=self.ctx.scan_id,
+                last_seen=now,
+                last_seen_scan_id=self.ctx.scan_id,
+                cost=self.ctx.cost.snapshot(),
+                derivation="derived",
+                derived_from=premise.id,
+            )
+        )
+        self.checks.append(
+            CheckRun(check_id=check.check_id, location=self._location(), outcome="reported")
         )
 
     def _clear(self, check_id: str) -> None:

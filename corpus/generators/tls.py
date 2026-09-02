@@ -76,6 +76,25 @@ CASES: dict[str, dict[str, Any]] = {
         "server": {"max_version": ssl.TLSVersion.TLSv1},
     },
     "unreachable": {"mode": "light", "closed": True},
+    # D17: OpenSSL reports only its first objection, so an expired leaf
+    # served without its intermediate previously verified as "expired" and
+    # the missing-chain problem never surfaced. Both must fire now.
+    "expired-and-incomplete-chain": {
+        "mode": "light",
+        "incomplete_chain": True,
+        "leaf": {"not_before_days": -800, "not_after_days": -400},
+    },
+    # BEAST (first derived finding, ADR-018): a completed TLS 1.0 handshake
+    # negotiating a CBC-mode cipher. AES128-SHA has no AEAD suite at TLS 1.0,
+    # so pinning the ceiling there is enough to force a CBC negotiation.
+    "beast-vulnerable": {
+        "mode": "standard",
+        "chain": {},
+        "server": {
+            "ciphers": "AES128-SHA:@SECLEVEL=0",
+            "max_version": ssl.TLSVersion.TLSv1,
+        },
+    },
 }
 
 
@@ -100,7 +119,7 @@ def _build(tmp: Path, case_id: str, spec: dict[str, Any], port: int):
 
     if spec.get("incomplete_chain"):
         root, _, leaf, _ = mint_three_level(
-            tmp, case_id, common_name="localhost", sans=["localhost"]
+            tmp, case_id, common_name="localhost", sans=["localhost"], **spec.get("leaf", {})
         )
         # Serve the leaf only: the root is trusted, the intermediate is missing.
         return LabServer(leaf, port=port, **server_kwargs), str(root.cert_path)

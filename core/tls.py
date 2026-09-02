@@ -32,6 +32,15 @@ forgets to send its intermediates, working in some clients and failing in
 others — is detected behaviourally instead, by whether the verifying context
 can build a path. That measures what a user experiences rather than what the
 bytes contain, so it is the better check regardless.
+
+**D17.** OpenSSL reports only its first objection, so a certificate that is
+both expired and served without its intermediates verifies as "certificate
+has expired" and chain-incompleteness never surfaces. When the ordinary
+verify fails, a second verifying handshake is made with `NO_CHECK_TIME` set,
+asking "ignoring expiry, does the chain build to a trusted root?"
+independently of the date verdict. Still behavioural, still no
+`get_unverified_chain()` — just a second path-building attempt with one
+variable removed.
 """
 
 from __future__ import annotations
@@ -83,6 +92,20 @@ is usually built without it, so "not supported" would report our own build
 rather than the target's, and a finding about ourselves is worse than none."""
 
 PERMISSIVE_CIPHERS = "ALL:@SECLEVEL=0"
+
+NO_CHECK_TIME = 0x200000
+"""OpenSSL's `X509_V_FLAG_NO_CHECK_TIME`. Python's `ssl.VerifyFlags` does not
+expose it (checked directly on 3.13.15: `VERIFY_DEFAULT`,
+`VERIFY_CRL_CHECK_LEAF`, `VERIFY_CRL_CHECK_CHAIN`, `VERIFY_X509_STRICT`,
+`VERIFY_ALLOW_PROXY_CERTS`, `VERIFY_X509_TRUSTED_FIRST`,
+`VERIFY_X509_PARTIAL_CHAIN` - no sibling for time), but `SSLContext.verify_flags`
+accepts and ORs in a raw integer, and OpenSSL honours it. Used for D17
+(docs/14-progress-ledger.md): the verifying handshake reports only its first
+objection, so a certificate that is both expired and served without its
+intermediates comes back as "certificate has expired" and chain-incompleteness
+is masked. Verifying a second time with this flag set answers "ignoring
+expiry, does the chain build to a trusted root?" independently of the date
+verdict."""
 
 
 # --- what we learned --------------------------------------------------------
@@ -178,6 +201,13 @@ class TlsObservation:
     verify_message: str | None = None
     openssl_hostname_match: bool | None = None
     elapsed_ms: int = 0
+    verify_code_no_time: int | None = None
+    verify_message_no_time: str | None = None
+    """D17: the trust-path verdict from a second verifying handshake that
+    ignores certificate validity dates (see `NO_CHECK_TIME`). `None` when the
+    probe was not run - it is only meaningful, and only attempted, when the
+    ordinary verify already failed, since a trusted chain has nothing left to
+    unmask."""
 
     @property
     def hostname_matches(self) -> bool | None:
@@ -210,6 +240,8 @@ class TlsObservation:
             "hostname_matches": self.hostname_matches,
             "openssl_hostname_match": self.openssl_hostname_match,
             "certificate": self.certificate.to_dict() if self.certificate else None,
+            "verify_code_no_time": self.verify_code_no_time,
+            "verify_message_no_time": self.verify_message_no_time,
         }
 
 
@@ -229,6 +261,8 @@ class RawHandshake:
     verify_message: str | None = None
     openssl_hostname_match: bool | None = None
     elapsed_ms: int = 0
+    verify_code_no_time: int | None = None
+    verify_message_no_time: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -243,6 +277,8 @@ class RawHandshake:
             "verify_code": self.verify_code,
             "verify_message": self.verify_message,
             "openssl_hostname_match": self.openssl_hostname_match,
+            "verify_code_no_time": self.verify_code_no_time,
+            "verify_message_no_time": self.verify_message_no_time,
         }
 
     @classmethod
@@ -260,6 +296,8 @@ class RawHandshake:
             verify_code=data.get("verify_code"),
             verify_message=data.get("verify_message"),
             openssl_hostname_match=data.get("openssl_hostname_match"),
+            verify_code_no_time=data.get("verify_code_no_time"),
+            verify_message_no_time=data.get("verify_message_no_time"),
         )
 
 
@@ -361,6 +399,18 @@ class SystemTlsBackend:
 
         trusted, code, message = self._verify(host, port, servername, trust_anchor, timeout_s)
         hostname_match = self._verify_hostname(host, port, servername, der, trust_anchor, timeout_s)
+
+        code_no_time: int | None = None
+        message_no_time: str | None = None
+        if not trusted:
+            # D17: only worth asking when the ordinary verify already failed -
+            # a trusted chain has nothing left to unmask, and skipping it here
+            # is what keeps every already-passing corpus case's fixtures
+            # unchanged.
+            _, code_no_time, message_no_time = self._verify(
+                host, port, servername, trust_anchor, timeout_s, no_check_time=True
+            )
+
         return RawHandshake(
             reachable=True,
             observed_at=observed_at,
@@ -373,6 +423,8 @@ class SystemTlsBackend:
             verify_message=message,
             openssl_hostname_match=hostname_match,
             elapsed_ms=int((time.monotonic() - started) * 1000),
+            verify_code_no_time=code_no_time,
+            verify_message_no_time=message_no_time,
         )
 
     @staticmethod
@@ -437,11 +489,19 @@ class SystemTlsBackend:
 
     @staticmethod
     def _verify(
-        host: str, port: int, servername: str | None, trust_anchor: str | None, timeout_s: float
+        host: str,
+        port: int,
+        servername: str | None,
+        trust_anchor: str | None,
+        timeout_s: float,
+        *,
+        no_check_time: bool = False,
     ) -> tuple[bool, int | None, str | None]:
         try:
             with socket.create_connection((host, port), timeout=timeout_s) as raw:
                 context = _verifying_context(trust_anchor)
+                if no_check_time:
+                    context.verify_flags |= NO_CHECK_TIME
                 with context.wrap_socket(raw, server_hostname=servername or host):
                     return True, None, None
         except ssl.SSLCertVerificationError as exc:
@@ -609,6 +669,8 @@ class TlsClient:
             verify_message=raw.verify_message,
             openssl_hostname_match=raw.openssl_hostname_match,
             elapsed_ms=raw.elapsed_ms,
+            verify_code_no_time=raw.verify_code_no_time,
+            verify_message_no_time=raw.verify_message_no_time,
         )
 
 
