@@ -131,16 +131,17 @@ One-line: certificate, chain, protocol and cipher analysis, plus (v1.1) certific
 - **Caveats that belong here, not buried:** 14-case corpus, cross-checked against testssl.sh. Six real defects across Tools 1 and 2 survived their corpora at precision 1.000 — three of the six were in the TLS lab itself (a CA missing `basicConstraints`, servers accepting TLS 1.0, a two-level chain standing in for an incomplete one), found only by reading the fixtures, not by the harness. Certificate revocation checking (OCSP/CRL) is not built — `revoked.badssl.com` currently returns nothing, which reads as a pass (D12). No weak-cipher (`RC4`/`3DES`) positive case exists; OpenSSL 3 compiles them out (D11).
 - Depends on: HTTP record/replay for HSTS (done, 0b.4).
 
-### A4. Domain & Subdomain Enumeration — Tool 3, next
+### A4. Domain & Subdomain Enumeration — Tool 3 (`domscout`), **Shipped (Light); live cross-check owed**
 
 One-line: the asset list every other tool scans, plus subdomain-takeover detection.
 
-- **Light** — subdomains from CT logs and passive DNS, all DNS record types, WHOIS/RDAP, nameservers, DNSSEC, domain expiry.
-- **Standard** — active brute-force, liveness check, tech-per-subdomain, subdomain takeover, AXFR misconfig check, wildcard DNS detection, related-domain discovery, OSINT harvesting, shadow IT discovery.
-- Mechanism: subfinder, dnsx, httpx, Amass (all approved permissive licences) for Standard; own takeover-fingerprint list.
-- **Status: Not built.** Named next in the ledger's "what to do next."
-- **Gate:** precision ≥ 0.95, recall corpus-relative and **never published as absolute** — "all subdomains that exist" is not a knowable set ([docs/10-measurement.md](docs/10-measurement.md)). Settling the recall definition is explicitly called out as owed before any code is written.
-- Depends on: asset graph (0b.2, done) — this is the tool the graph mechanism exists for; it discovers assets onto the shared graph rather than reading one seeded for it.
+- **Light** — subdomains from CT logs (crt.sh), all DNS record types, RDAP domain-expiry, nameservers, DNSSEC delegation state, and **dangling-CNAME subdomain-takeover** (passive under [ADR-023](docs/02-decisions.md#adr-023--passive-is-ordinary-negotiation-only-malformed-input-is-active): ordinary DNS plus at most one ordinary HTTPS GET, never claiming the resource). **[v2/earlier SPEC said]** takeover was a Standard item → **[now]** the dangling-CNAME check is passive and ships in Light, matching the roadmap row; active brute-forced takeover stays Standard.
+- **Standard (not built)** — active brute-force, liveness check, tech-per-subdomain, AXFR misconfig check, deeper-label wildcard detection, related-domain discovery, OSINT harvesting, shadow IT discovery.
+- Mechanism: own crt.sh + DNS + RDAP + takeover-fingerprint code (no third-party enumerator embedded); subfinder/dnsx/httpx/Amass are the **cross-check** references (ADR-024), not embedded.
+- **The recall model (settled, and it changed the spec):** subdomain enumeration is **informational inventory, not a vulnerability**, so it is **not** confidence-scored and **not** gated on precision/recall — `core/state.py` maps `info` severity to `informational`, which [docs/10-measurement.md](docs/10-measurement.md) excludes entirely. The gate applies **only to the real security findings** (`dnssec-status`, `domain-expiring`/`domain-expired`, `subdomain-takeover`). Enumeration is guarded against *false discovery* by the no-false-discovery corpus cases, and its *completeness* is assessed **live** against subfinder/crt.sh as a disagreement comparison — never published as a score. This supersedes the "two-number recall" framing in the design spec's §1; the ledger records why.
+- **Status: Shipped (Light), v1.0.0**, gate met on the frozen corpus. **Live cross-check + hand-verification against real domains (ADR-017/ADR-024) is owed before it is "done"** — the ledger's D-DS.
+- **Gate:** precision ≥ 0.95, recall ≥ 0.80, inconclusive ≤ 0.15. **Actual, from `make corpus` (2026-09-03):** `precision 1.000, recall 1.000, PASS` — 44 checks, **1 claim** (`dnssec-status`, `confirmed` via independent second-resolver validation). Read the number with its claim count: expiry and takeover are honest `suspected` (excused), and enumeration is informational (excluded), so the gate rests on one validated claim — thinner than TLS's five, stated plainly.
+- Depends on: asset graph (0b.2, done) — this is the tool the graph mechanism exists for; it discovers assets onto the shared graph rather than reading one seeded for it. First real producer for the graph.
 
 ### A5. Deface / Change Monitoring
 
@@ -389,14 +390,14 @@ Full text: [docs/06-guidelines.md](docs/06-guidelines.md), [docs/10-measurement.
 
 ## Status summary table
 
-Verified against the repo and `make corpus` (2026-09-01) — see the run at the end of this document.
+Verified against the repo and `make corpus` (2026-09-03) — see the run at the end of this document.
 
 | Tool / Feature | Status | Gate | Actual (where shipped) |
 |---|---|---|---|
 | A1 Website Scanner | Not built | **Standard mode:** precision ≥0.90 (`confirmed`≥0.98), recall ≥0.75 (benchmark tier). No Light-mode gate is set in the roadmap. | — |
 | A2 Network Scanner | Not built | not yet set | — |
 | A3 SSL/TLS Analyzer | **Shipped v1.2.0** | precision ≥0.98, recall ≥0.95, inconc ≤0.15 | 1.000 / 1.000, 220 checks, 5 claims, PASS |
-| A4 Domain & Subdomain Enum | Not built (next) | precision ≥0.95, recall corpus-relative | — |
+| A4 Domain & Subdomain Enum (`domscout`) | **Shipped (Light) v1.0.0; live cross-check owed** | precision ≥0.95, recall ≥0.80, inconc ≤0.15 | 1.000 / 1.000, 44 checks, **1 claim**, PASS |
 | A5 Deface Monitoring | Not built | not yet set | — |
 | A6 API Scanner | Not built | not yet set | — |
 | A7 Email Security | **Shipped** | precision ≥0.99, recall ≥0.95, inconc ≤0.15 | 1.000 / 1.000, 240 checks, 21 claims, 0.8% inconc, PASS |
@@ -426,15 +427,14 @@ Verified against the repo and `make corpus` (2026-09-01) — see the run at the 
 
 `example` scanner (reference, not a product tool): 1.000 / 1.000, 3 checks, 2 claims, PASS — not counted in the product catalogue above.
 
-**`make corpus` output used for this table (2026-09-01):**
+**`make corpus` output used for this table (2026-09-03):**
 
 ```
 scanner     checks   TP   FP   FN  precision   recall   susp%  inconc%  gate
 ----------------------------------------------------------------------------
+domscout        44    1    0    0      1.000    1.000   4.5%    0.0%  PASS
+           recall is over the security findings; enumeration is informational, ungated
 email          240   21    0    0      1.000    1.000   0.0%    0.8%  PASS
-           recall is absolute (the true set is knowable for this scanner)
 example          3    2    0    0      1.000    1.000   0.0%    0.0%  PASS
-           recall is absolute (the true set is knowable for this scanner)
-tls            134    5    0    0      1.000    1.000   6.0%    0.0%  PASS
-           recall is absolute (the true set is knowable for this scanner)
+tls            220    5    0    0      1.000    1.000   7.7%   12.3%  PASS
 ```

@@ -169,3 +169,11 @@ Every check declares `passive: bool` — there is no default, so a check that om
 Passive means what an ordinary client does: one normal connection, no state change, nothing the target would not serve any visitor. Active means deliberately abnormal input. Connecting is not what makes a check active — finding a server is passive, reading its admin panel is not. If you are unsure, declare it active. See [09-ownership-verification.md](09-ownership-verification.md).
 
 Modes are additive: Standard returns everything Light returns plus more. Never a *different* answer for the same check at a higher mode.
+
+## 9. Reading a third-party service (CT logs, RDAP, …)
+
+A scanner that queries a public *service* it does not own — `crt.sh`, an RDAP endpoint — hits a wall: `HttpClient` scope-checks every host and refuses anything but the target. That is correct for the target's own infrastructure, but a CT log is the HTTP analogue of a DNS resolver: something we ask *about* the target, not the target itself.
+
+Declare those hosts on the scanner: `service_hosts: frozenset[str] = frozenset({"crt.sh", "rdap.org"})` (`domscout` is the first to do this). `cli/main.py` and `cli/corpus.py` union them into the HTTP scope. This **never widens the target scope and confers no authorisation** — it is a fixed, code-reviewed allowlist of read-only public services, and `core/authz.py` remains the only gate. Keep the list minimal and justified; each host is part of the scanner's audited definition, like its checks.
+
+**Enumeration/inventory is not a vulnerability.** If your scanner's output is an asset list (subdomains, records), those findings are `severity: info` → `informational`, and `docs/10-measurement.md` excludes them from precision/recall by design. Do not invent a confidence score for inventory. Gate only the actual security findings; guard inventory against *false discovery* (a known-good/wildcard case that must report nothing false), and assess completeness live against a competitor, never as a frozen-corpus number (`domscout`, ledger 2026-09-03).

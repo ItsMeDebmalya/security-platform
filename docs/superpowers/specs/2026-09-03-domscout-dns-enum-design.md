@@ -18,7 +18,17 @@ The blocking decision, settled before any code (per the ledger's "Next" and SPEC
 is defined when "all subdomains that exist" is unknowable.** Publishing a corpus-relative number as
 if it were absolute is the specific dishonesty this product exists to avoid.
 
-**Settled: recall is reported as two separate numbers, never merged into one.**
+> **⚠️ SUPERSEDED during implementation (2026-09-03).** The two-number recall model below did not
+> survive contact with the code: subdomain enumeration findings are honestly `severity: info` →
+> `informational`, which `core/state.py`/`docs/10-measurement.md` exclude from precision/recall
+> entirely — so there is no "enumeration recall" to gate. The operator and coordinator settled the
+> honest model instead: **enumeration is informational inventory, not confidence-scored and not
+> recall-gated; the gate applies only to the real security findings (DNSSEC/expiry/takeover), and
+> enumeration completeness is assessed *live* against subfinder/crt.sh as a comparison, never a
+> score.** See the ledger's 2026-09-03 Tool 3 entry. The rest of this spec stands; only this §1
+> decision was replaced. Kept here unedited as the record of what was originally settled.
+
+**Originally settled (superseded — see the note above): recall is reported as two separate numbers, never merged into one.**
 
 - **Enumeration recall** — for subdomain *discovery*, the denominator (every subdomain that
   exists) is unknowable. We can only measure against the subdomains we deliberately planted in our
