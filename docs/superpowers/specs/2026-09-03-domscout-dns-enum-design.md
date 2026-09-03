@@ -68,7 +68,10 @@ tier). crt.sh is free and fully replayable offline.
 `scanners/domscout/{__init__.py, scanner.py, checks.py}`, following email/TLS exactly. Optional
 pure parser modules (`ct.py`, `rdapp.py`, `takeover.py`) as they earn their place, each pure and
 separately tested before anything touches the network — the same discipline as the email RFC
-parsers.
+parsers. Class declares `name = "domscout"`, `version = "1.0.0"`, **`supported_modes =
+frozenset({"light"})`** (this build is Light-only; the §2 out-of-scope Standard checks are a later
+version bump), `target_types = frozenset({"domain"})`, and `requires_authorisation(mode)` returning
+`False` for every mode (all checks passive) — mirroring `scanners/email/scanner.py:63-66`.
 
 `run()` (one pass, mirrors `_Scan` in the email scanner):
 
@@ -138,9 +141,18 @@ ctx.assets.contribute(DiscoveredAsset(
   explicitly (no default; 0b.6).
 - **Version-strings-lie / caps:** `subdomain-takeover` caps at `suspected` — we detect the dangling
   fingerprint, we never prove the takeover by taking it, so it rests on one observation and one
-  independence class. `dns-records` presence and `dnssec-unsigned` are direct observations. Expiry
-  is arithmetic on an RDAP date → a **dated** finding (`materialises_at` = expiry date) for
-  "expiring", and a present-tense finding for already-expired.
+  independence class. `dns-records` presence and `dnssec-status` are direct observations.
+- **`domain-expiring` is `detected` AND dated — not `derived`.** `materialises_at` (dated) and
+  `derivation` (detected/derived) are **orthogonal** fields (ADR-018 / 0b.1). `domain-expiring` is a
+  direct observation of the RDAP expiry date, so `derivation="detected"`, confidence from the
+  confidence engine, single independence class `rdap`, capping at `suspected` — structurally
+  identical to TLS's `tls-cert-expiring-soon` (a detected, single-class, dated finding — *not* the
+  derived `tls-vuln-beast`). It carries `materialises_at` = the expiry date and
+  `materialises_reason`. It has **no** `derived_from` and needs no separate premise finding. The
+  word "arithmetic" is deliberately avoided: a threshold on an observation is still a detected
+  observation here; ADR-018's `derived` path (inherited confidence via `derived_from`) is used only
+  by the correlation pass, never by this check. `domain-expired` is the same, present-tense (no
+  `materialises_at`).
 - **Evidence — control-vs-test pair required on every finding:**
   - DNS findings: `dns_evidence(...)`, control = the wildcard probe (already the house pattern).
   - CT-log / takeover HTTP: `capture_http_pair(...)`, redacted + size-capped.
@@ -162,18 +174,31 @@ ctx.assets.contribute(DiscoveredAsset(
 
 ## 6. The one core change: per-family recall in `core/measurement.py`
 
-`make corpus` currently reports a single recall per scanner. DomScout needs recall bucketed by a
-**recall family** so enumeration (corpus-relative) and finite checks (true) print separately and are
-gated separately. Proposed minimal change:
+`make corpus` currently reports a single recall per scanner — `TierSummary.recall` is computed from
+tier-aggregated `tp + fn` (`core/measurement.py:157`), with **no family dimension** on `Observation`,
+`CaseScore`, or `TierSummary`. So a per-family split is a **structural change across the scoring
+types, not a one-line tag** (confirmed by reading the module — the first review draft understated
+this):
 
-- A corpus case (or an expected entry) may tag its expected findings with a `recall_family`
-  (`enumeration` | `finite`). Untagged → `finite` (the existing behaviour for email/TLS, so their
-  output is unchanged byte-for-byte).
-- `core/measurement.py` computes **both precision and recall per family**; the gate binds
-  `enumeration` recall at ≥ 0.80 and precision at ≥ 0.95 (roadmap), and `finite` at its own targets.
-  The printed table gains a family column / second line for DomScout only.
+- **Family is derived from `check_id`, not stored on `Observation`/`Expected`.** A small classifier
+  maps DomScout's enumeration checks (`subdomains-ct-log`, `dns-records`) to `enumeration` and the
+  rest to `finite`; every email/TLS check maps to `finite` by default. This keeps `Observation` and
+  `Expected` untouched (so their fixtures and numbers cannot move) and confines the change to the
+  scoring path.
+- `score_case` (which still has the per-key detail) partitions `tp`/`fn`/`fp` by family; `CaseScore`
+  and `TierSummary` gain family-bucketed counts; `TierSummary` exposes `recall_enumeration` /
+  `recall_finite` / `precision_enumeration` / `precision_finite`; `Gate` evaluates the DomScout gate
+  as **two** family gates. This touches `score_case`, `CaseScore`, `TierSummary`, and `Gate` — plan
+  for four types, not one field.
+- **Gate targets, pinned** (removing the review's "its own targets" TBD): `enumeration` recall ≥
+  **0.80**, `enumeration` precision ≥ **0.95** (roadmap A4). `finite` recall ≥ **0.95**, `finite`
+  precision ≥ **0.95** — matching email/TLS, because the finite checks are a genuinely knowable,
+  true-recall surface of the same kind. The roadmap states only one pair for A4 (≥0.95/≥0.80);
+  reconciling it to name both families is part of §8's doc work, and the 0.80 is read as the
+  enumeration floor (the hard, corpus-relative one).
 - Guard test: email and TLS corpus numbers must be **numerically identical** before and after this
-  change (they carry no `enumeration` family).
+  change (every one of their checks classifies `finite`, and the single-family path must reduce to
+  today's exact arithmetic).
 
 **What an enumeration false positive is** (precision needs this pinned, per the review): an
 apex-canonicalised name we report as a discovered subdomain that is (a) not actually under the apex
@@ -286,13 +311,15 @@ zone unsigned). States, mapped to canonical finding states:
 
 | DNSSEC observation | Finding |
 |---|---|
-| No DS at parent, no DNSKEY | `insecure` (unsigned delegation) — a real finding, `suspected`/`highly_likely` per corroboration |
-| DS + DNSKEY + valid RRSIG | `signed` — reported `informational` (correct posture), or `clear` |
-| DS present but validation fails (missing/expired RRSIG, key mismatch) | `bogus` — a finding; **full bogus detection needs a validating resolver, so where we cannot validate we return `inconclusive`, not `bogus`** |
-| SERVFAIL / timeout on the DNSSEC queries | `inconclusive` |
+| No DS at parent, no DNSKEY | `insecure` (unsigned delegation) — a real finding, canonical state `suspected`/`highly_likely` per corroboration |
+| DS + DNSKEY + valid RRSIG | signed = correct posture: either an **`informational`** finding or **no finding and the check records `CheckRun.outcome="clear"`** — `clear` is a check *outcome*, not a finding state |
+| DS present but validation fails (missing/expired RRSIG, key mismatch) | `bogus` — a finding; **full bogus detection needs a validating resolver, so where we cannot validate we return the `inconclusive` state, not `bogus`** |
+| SERVFAIL / timeout on the DNSSEC queries | `inconclusive` state |
 
-Terminology: the finding names the **delegation validation state** (`insecure`/`bogus`), not a bare
-"unsigned", because that is the operationally meaningful thing.
+The DNSSEC *observation* label (`signed`/`insecure`/`bogus`) is the delegation validation state the
+finding **describes** — the operationally meaningful thing — and is distinct from the finding's
+canonical `state`, which is always one of the five fixed values derived by `core/state.py`. The two
+must not be conflated: "insecure" is what we say about the zone; `suspected` is how sure we are.
 
 ### 10.3 RDAP & the expiring threshold
 
@@ -423,6 +450,18 @@ ADR-019 — not re-architected; §4).
 - **Moving takeover out of Light.** Overridden by an explicit product decision (takeover ships in
   Light, passive, detected-only) and the roadmap listing takeover under Tool 3. The adapter interface
   that made the "it's complex" point actionable is adopted anyway (§10.6).
+
+**Second review (in-context, against the ADRs — verified against the code):** a follow-up review
+with full repo context found four sound issues, all now fixed above: (1) §10.2 had let a signed zone
+"report … or `clear`", reading as a sixth finding state — corrected to distinguish the DNSSEC
+*observation* label from the finding `state` and to name `clear` as a `CheckRun` outcome; (2)
+`domain-expiring` was described with "arithmetic on a date", which reads as ADR-018 `derived` —
+pinned as `detected` + dated (orthogonal fields), mirroring TLS's `tls-cert-expiring-soon`, with no
+`derived_from`; (3) §6 understated the `core/measurement.py` change — corrected to name the four
+scoring types affected and the check_id-classifier approach; (4) the finite-family gate numbers were
+"TBD" — pinned to recall ≥ 0.95 / precision ≥ 0.95. Its verification that the spec's claims about
+`core/dns.py` (`has_wildcard`), `core/assetgraph.py`, `core/state.py`, and `core/authz.py` are
+factually correct is on record; those claims stand.
 
 ---
 
