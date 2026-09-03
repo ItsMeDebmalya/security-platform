@@ -394,6 +394,13 @@ class _Scan:
             self._clear("dnssec-status")
             return
 
+        # Independent second-resolver re-query: a zone that reads the same
+        # unsigned/bogus state through a second resolver is confirmed, not
+        # merely suspected — the one domscout finding that earns a validated
+        # claim (the email pattern). A resolver that strips DNSSEC records
+        # would disagree here, which is exactly what validation is for.
+        validation = self._validate_dnssec(state)
+
         description = {
             "insecure": (
                 f"{self.domain} publishes no DS record at the parent and no DNSKEY at the "
@@ -431,7 +438,31 @@ class _Scan:
                     "remove the DS record until signing is correctly configured."
                 )
             ),
+            validation=validation,
         )
+
+    def _validate_dnssec(self, state: str) -> dict[str, Any]:
+        """Re-query DS/DNSKEY through an independent resolver.
+
+        Passed only when the second resolver reaches the same reported state.
+        Unavailable (never failed silently) when no second resolver is
+        configured — validation that cannot run says so, it does not pretend.
+        """
+        second = self.dns.second_resolver()
+        if second is None:
+            return {
+                "attempted": False,
+                "outcome": "unavailable",
+                "method": "second_resolver_dnssec",
+            }
+        ds = self.dns.query(self.domain, "DS", resolver=second)
+        dnskey = self.dns.query(self.domain, "DNSKEY", resolver=second)
+        agreed = dnssec.dnssec_state(ds, dnskey) == state
+        return {
+            "attempted": True,
+            "outcome": "passed" if agreed else "failed",
+            "method": "second_resolver_dnssec",
+        }
 
     # --- RDAP expiry ----------------------------------------------------
 
@@ -688,6 +719,7 @@ class _Scan:
         materialises_at: date | None = None,
         materialises_reason: str | None = None,
         references: list[str] | None = None,
+        validation: dict[str, Any] | None = None,
     ) -> Finding:
         del analysis  # carried on the evidence's own `analysis` field, not here
         result = self.engine.combine(
@@ -714,7 +746,7 @@ class _Scan:
             confidence=result.confidence,
             confidence_provisional=result.provisional,
             detection_methods=result.detection_methods,
-            validation={"attempted": False, "outcome": "not_applicable"},
+            validation=validation or {"attempted": False, "outcome": "not_applicable"},
             evidence=evidence,
             related_assets=related_assets or [],
             description=description,

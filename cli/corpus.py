@@ -31,6 +31,7 @@ from core.assetgraph import seed_asset_graph
 from core.authz import Scope
 from core.context import ScanContext
 from core.dns import DnsClient, MissingFixtureError, ReplayResolver
+from core.http import HttpClient, ReplayHttpBackend
 from core.measurement import (
     CaseScore,
     Expected,
@@ -74,8 +75,14 @@ def _run_case(scanner_name: str, case: dict[str, Any]) -> ScanResult:
     target = Asset(**case["target"])
     fixtures = ROOT / case["fixtures"]
     testssl_fixtures = case.get("testssl_fixtures")
+    # The HTTP scope is the target host unioned with the scanner's declared
+    # service hosts (crt.sh, rdap.org for domscout; empty for email/tls, so
+    # their scope is unchanged). The replay backend never touches the network;
+    # a scanner that makes no HTTP request (email/tls) never exercises it.
+    http_scope = Scope(frozenset(Scope.for_target(target).hosts | scanner.service_hosts))
     ctx = ScanContext(
         dns=DnsClient(resolver=ReplayResolver(fixtures), resolvers=["1.1.1.1", "8.8.8.8"]),
+        http=HttpClient(scope=http_scope, backend=ReplayHttpBackend(fixtures)),
         tls=TlsClient(scope=Scope.for_target(target), backend=ReplayTlsBackend(fixtures)),
         # D20: only cases that record legacy-cipher fixtures (`testssl_fixtures`
         # in targets/tls.yaml) get a working testssl client. Every other case -
