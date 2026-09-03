@@ -84,7 +84,7 @@ tls            134    5    0    0      1.000    1.000   6.0%    0.0%  PASS
 - **inconc%** — shrugs ÷ checks that ran, **capped at 15%**; without the cap a scanner could score perfectly by declining to answer everything
 - **susp%** — hedged findings. Read this column: they are excluded from precision on both sides, so a high `susp%` means the precision figure rests on fewer claims than `checks` suggests
 
-**Read the claim count with the number.** TLS's 1.000 rests on **5 claims out of 134 checks**. Email's rests on 21 out of 240. Both pass; they are not the same weight of evidence.
+**Read the claim count with the number.** TLS's 1.000 rests on **5 claims out of 220 checks**. Email's rests on 21 out of 240. Both pass; they are not the same weight of evidence.
 
 ### The gate, as CI runs it
 

@@ -120,14 +120,14 @@ tls          134    5    0    0      1.000    1.000    6.0%     0.0%  PASS
 
 Two caveats we publish rather than bury:
 
-- **A gate number is read with its claim count.** TLS's 1.000 rests on **5 claims out of 134 checks**. Honest, and thinner than it looks.
+- **A gate number is read with its claim count.** TLS's 1.000 rests on **5 claims out of 220 checks**. Honest, and thinner than it looks.
 - **The corpus proves regression, not correctness.** A corpus written by the scanner's author encodes the scanner's assumptions. **Six real defects have survived corpora at precision 1.000** — every one found by a live run or by review, none by the corpus. Live verification is part of a tool's definition of done ([ADR-017](docs/02-decisions.md)).
 
 ---
 
 ## What is built, and what is not
 
-**Built and passing:** Email Security (17 checks) · SSL/TLS Analyzer (14 checks) · the Scanner Contract · the confidence engine · ownership verification with an audit trail · record/replay for DNS, TLS and HTTP · the asset graph · the finding store and `scan verify` · the correlation pass · the deprecation calendar.
+**Built and passing:** Email Security (17 checks) · SSL/TLS Analyzer (19 checks, v1.2.0) · the Scanner Contract · the confidence engine · ownership verification with an audit trail · record/replay for DNS, TLS and HTTP · the asset graph · the finding store and `scan verify` · the correlation pass · the deprecation calendar.
 
 **Not built, stated plainly:** DNS enumeration and the Website Scanner (Tools 3 and 4, next) · the out-of-band callback server · every Phase 3+ tool · calibrated confidence (everything is `confidence_provisional: true` until Phase 4) · post-quantum detection, which needs Python 3.15 — measured, not assumed · the website itself.
 

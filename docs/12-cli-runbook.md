@@ -574,7 +574,7 @@ tls            134    5    0    0      1.000    1.000   6.0%    0.0%  PASS
            recall is absolute (the true set is knowable for this scanner)
 ```
 
-**Read the suspected column, not just precision.** The TLS row's 1.000 rests on **5 claims, not 134 checks** — most TLS findings sit on a single independence class and surface as `suspected`, which the gate excuses from both true positives and false negatives. The numbers are honest; they are also thinner than they look, and `susp%` is where that shows.
+**Read the suspected column, not just precision.** The TLS row's 1.000 rests on **5 claims, not 220 checks** — most TLS findings sit on a single independence class and surface as `suspected`, which the gate excuses from both true positives and false negatives. The numbers are honest; they are also thinner than they look, and `susp%` is where that shows.
 
 - **precision** = of what we claimed, how much was real
 - **recall** = of what was really there, how much we caught

@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Phase 0 is implemented; Tools 1 (Email) and 2 (TLS) pass their gates.** The Scanner Contract is frozen, `core/` services exist, the CLI runs, and the corpus harness gates on real numbers.
 
-Scanners: `example` (reference), `email` (Tool 1 — 17 checks, 1.000/1.000, 16-case corpus), `tls` (Tool 2 — 14 checks, 1.000/1.000, cross-checked against testssl.sh).
+Scanners: `example` (reference), `email` (Tool 1 — 17 checks, 1.000/1.000, 16-case corpus), `tls` (Tool 2 — v1.2.0, 19 checks, 1.000/1.000 over 220 corpus checks, cross-checked against testssl.sh; includes the first derived finding and a runtime testssl.sh wrap for legacy ciphers in Standard mode).
 
 Commands: `make install`, `make test`, `make lint`, `make typecheck`, `make licence-check`, `make corpus`, `make crosscheck`, `make targets-up`, and `scan run <tool> --target <t>`. Python 3.13.15, pinned in `.python-version`; dependencies via `uv`.
 
