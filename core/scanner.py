@@ -30,6 +30,11 @@ class BaseScanner(ABC):
     version: ClassVar[str]
     supported_modes: ClassVar[frozenset[Mode]]
     target_types: ClassVar[frozenset[str]]
+    service_hosts: ClassVar[frozenset[str]] = frozenset()
+    """Public third-party hosts this scanner talks to beyond the target
+    itself (a CT log, an RDAP service). Additive and defaulted to empty so
+    scanners that talk only to the target (email, tls) are unaffected;
+    domscout is first to set it non-empty."""
 
     def validate(self, target: Asset, mode: Mode = "light") -> None:
         """Reject targets and modes this scanner cannot handle. Raises."""
