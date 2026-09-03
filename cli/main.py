@@ -457,7 +457,9 @@ def _execute(
         authz_ref=authz_ref,
         dns=DnsClient(resolver=resolver, resolvers=DEFAULT_RESOLVERS, ratelimit=resolver_limit),
         http=HttpClient(
-            scope=Scope.for_target(target), ratelimit=target_limit, backend=http_backend
+            scope=Scope(frozenset(Scope.for_target(target).hosts | scanner.service_hosts)),
+            ratelimit=target_limit,
+            backend=http_backend,
         ),
         tls=TlsClient(scope=Scope.for_target(target), backend=tls_backend, ratelimit=target_limit),
         testssl=testssl_client,
