@@ -36,6 +36,7 @@ from core.measurement import (
     Expected,
     Gate,
     Observation,
+    TierSummary,
     score_case,
     summarise,
 )
@@ -93,7 +94,11 @@ def _run_case(scanner_name: str, case: dict[str, Any]) -> ScanResult:
     return scanner.run(target, case.get("mode", "light"), ctx)
 
 
-def _score(result: ScanResult, expected: list[dict[str, str]]) -> CaseScore:
+def _score(
+    result: ScanResult,
+    expected: list[dict[str, str]],
+    enumeration_check_ids: frozenset[str] = frozenset(),
+) -> CaseScore:
     return score_case(
         observations=[
             Observation(
@@ -107,6 +112,7 @@ def _score(result: ScanResult, expected: list[dict[str, str]]) -> CaseScore:
         ],
         expected=[Expected(**e) for e in expected],
         checks_run=len(result.telemetry.checks_run),
+        enumeration_check_ids=enumeration_check_ids,
     )
 
 
@@ -116,6 +122,7 @@ def run_scanner_corpus(
     definition = _load((targets_dir or TARGETS_DIR) / f"{scanner_name}.yaml")
     expected_by_case = _load((expected_dir or EXPECTED_DIR) / f"{scanner_name}.yaml") or {}
     gate = Gate(**definition["gate"])
+    enumeration_check_ids = frozenset(gate.enumeration_check_ids)
 
     outcomes: list[CaseOutcome] = []
     expected_by_case_id: dict[str, list[dict[str, str]]] = {}
@@ -139,7 +146,7 @@ def run_scanner_corpus(
             continue
         expects_inconclusive = bool(case.get("expect_inconclusive"))
         expected_by_case_id[case["id"]] = expected_by_case.get(case["id"], []) or []
-        score = _score(result, expected_by_case_id[case["id"]])
+        score = _score(result, expected_by_case_id[case["id"]], enumeration_check_ids)
         delivered = any(f.state == "inconclusive" for f in result.findings)
 
         if expects_inconclusive:
@@ -153,6 +160,12 @@ def run_scanner_corpus(
                 suspected=score.suspected,
                 inconclusive=0,
                 checks_run=0,
+                tp_enum=score.tp_enum,
+                fp_enum=score.fp_enum,
+                fn_enum=score.fn_enum,
+                tp_finite=score.tp_finite,
+                fp_finite=score.fp_finite,
+                fn_finite=score.fn_finite,
             )
 
         outcomes.append(
@@ -181,17 +194,29 @@ def run_scanner_corpus(
     ]
     errored = [o.case_id for o in outcomes if o.errors]
 
+    gate_dict: dict[str, Any] = {
+        "precision": gate.precision,
+        "recall": gate.recall,
+        "inconclusive_max": gate.inconclusive_max,
+        "recall_definition": gate.recall_definition,
+        "recall_label": gate.recall_label,
+    }
+    families_configured = bool(enumeration_check_ids) or gate.finite is not None
+    if gate.finite is not None:
+        gate_dict["finite"] = gate.finite
+        gate_dict["enumeration_check_ids"] = gate.enumeration_check_ids
+
+    def _tier_dict(summary: TierSummary) -> dict[str, Any]:
+        d: dict[str, Any] = summary.to_dict()
+        if not families_configured:
+            d.pop("families", None)
+        return d
+
     return {
         "scanner": scanner_name,
-        "gate": {
-            "precision": gate.precision,
-            "recall": gate.recall,
-            "inconclusive_max": gate.inconclusive_max,
-            "recall_definition": gate.recall_definition,
-            "recall_label": gate.recall_label,
-        },
-        "overall": overall.to_dict(),
-        "tiers": {name: summary.to_dict() for name, summary in summaries.items()},
+        "gate": gate_dict,
+        "overall": _tier_dict(overall),
+        "tiers": {name: _tier_dict(summary) for name, summary in summaries.items()},
         "cases": [
             {
                 "id": o.case_id,

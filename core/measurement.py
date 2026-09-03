@@ -72,10 +72,20 @@ class CaseScore:
     fp_detected: int = 0
     tp_derived: int = 0
     fp_derived: int = 0
+    tp_enum: int = 0
+    fp_enum: int = 0
+    fn_enum: int = 0
+    tp_finite: int = 0
+    fp_finite: int = 0
+    fn_finite: int = 0
 
 
 def score_case(
-    *, observations: list[Observation], expected: list[Expected], checks_run: int
+    *,
+    observations: list[Observation],
+    expected: list[Expected],
+    checks_run: int,
+    enumeration_check_ids: frozenset[str] = frozenset(),
 ) -> CaseScore:
     expected_keys = {e.key() for e in expected}
 
@@ -99,10 +109,15 @@ def score_case(
     detected_keys = {o.key() for o in claims if o.derivation == "detected"}
     derived_keys = {o.key() for o in claims if o.derivation == "derived"}
 
+    def _fam(key: tuple[str, str]) -> str:
+        return "enum" if key[0] in enumeration_check_ids else "finite"
+
+    fn_keys = expected_keys - claimed - excused
+
     return CaseScore(
         tp=len(tp_keys),
         fp=len(fp_keys),
-        fn=len(expected_keys - claimed - excused),
+        fn=len(fn_keys),
         suspected=len(hedged),
         inconclusive=len(unresolved),
         checks_run=checks_run,
@@ -110,6 +125,12 @@ def score_case(
         fp_detected=len(fp_keys & detected_keys),
         tp_derived=len(tp_keys & derived_keys),
         fp_derived=len(fp_keys & derived_keys),
+        tp_enum=sum(_fam(k) == "enum" for k in tp_keys),
+        fp_enum=sum(_fam(k) == "enum" for k in fp_keys),
+        fn_enum=sum(_fam(k) == "enum" for k in fn_keys),
+        tp_finite=sum(_fam(k) == "finite" for k in tp_keys),
+        fp_finite=sum(_fam(k) == "finite" for k in fp_keys),
+        fn_finite=sum(_fam(k) == "finite" for k in fn_keys),
     )
 
 
@@ -127,6 +148,32 @@ class TierSummary:
     fp_detected: int = 0
     tp_derived: int = 0
     fp_derived: int = 0
+    tp_enum: int = 0
+    fp_enum: int = 0
+    fn_enum: int = 0
+    tp_finite: int = 0
+    fp_finite: int = 0
+    fn_finite: int = 0
+
+    @property
+    def recall_enumeration(self) -> float | None:
+        actual = self.tp_enum + self.fn_enum
+        return self.tp_enum / actual if actual else None
+
+    @property
+    def recall_finite(self) -> float | None:
+        actual = self.tp_finite + self.fn_finite
+        return self.tp_finite / actual if actual else None
+
+    @property
+    def precision_enumeration(self) -> float | None:
+        claimed = self.tp_enum + self.fp_enum
+        return self.tp_enum / claimed if claimed else None
+
+    @property
+    def precision_finite(self) -> float | None:
+        claimed = self.tp_finite + self.fp_finite
+        return self.tp_finite / claimed if claimed else None
 
     @property
     def precision(self) -> float | None:
@@ -206,6 +253,22 @@ class TierSummary:
                     "precision": self.precision_derived,
                 },
             },
+            "families": {
+                "enumeration": {
+                    "tp": self.tp_enum,
+                    "fp": self.fp_enum,
+                    "fn": self.fn_enum,
+                    "precision": self.precision_enumeration,
+                    "recall": self.recall_enumeration,
+                },
+                "finite": {
+                    "tp": self.tp_finite,
+                    "fp": self.fp_finite,
+                    "fn": self.fn_finite,
+                    "precision": self.precision_finite,
+                    "recall": self.recall_finite,
+                },
+            },
         }
 
 
@@ -225,6 +288,12 @@ def summarise(scores_by_tier: dict[str, list[CaseScore]]) -> dict[str, TierSumma
             fp_detected=sum(s.fp_detected for s in scores),
             tp_derived=sum(s.tp_derived for s in scores),
             fp_derived=sum(s.fp_derived for s in scores),
+            tp_enum=sum(s.tp_enum for s in scores),
+            fp_enum=sum(s.fp_enum for s in scores),
+            fn_enum=sum(s.fn_enum for s in scores),
+            tp_finite=sum(s.tp_finite for s in scores),
+            fp_finite=sum(s.fp_finite for s in scores),
+            fn_finite=sum(s.fn_finite for s in scores),
         )
     return summaries
 
@@ -242,6 +311,8 @@ class Gate:
     inconclusive_max: float = DEFAULT_INCONCLUSIVE_MAX
     recall_definition: RecallDefinition = "absolute"
     notes: list[str] = field(default_factory=list)
+    finite: dict[str, float] | None = None
+    enumeration_check_ids: list[str] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         if self.recall_definition not in RECALL_LABELS:
@@ -257,10 +328,24 @@ class Gate:
 
     def evaluate(self, summary: TierSummary) -> GateResult:
         failures: list[str] = []
-        if summary.precision is None or summary.precision < self.precision:
-            failures.append(f"precision {_fmt(summary.precision)} < {self.precision:.3f}")
-        if summary.recall is None or summary.recall < self.recall:
-            failures.append(f"recall {_fmt(summary.recall)} < {self.recall:.3f}")
+        if self.finite is not None:
+            re = summary.recall_enumeration
+            if re is None or re < self.recall:
+                failures.append(f"enumeration recall {_fmt(re)} < {self.recall:.3f}")
+            pe = summary.precision_enumeration
+            if pe is None or pe < self.precision:
+                failures.append(f"enumeration precision {_fmt(pe)} < {self.precision:.3f}")
+            rf = summary.recall_finite
+            if rf is not None and rf < self.finite["recall"]:
+                failures.append(f"finite recall {_fmt(rf)} < {self.finite['recall']:.3f}")
+            pf = summary.precision_finite
+            if pf is not None and pf < self.finite["precision"]:
+                failures.append(f"finite precision {_fmt(pf)} < {self.finite['precision']:.3f}")
+        else:
+            if summary.precision is None or summary.precision < self.precision:
+                failures.append(f"precision {_fmt(summary.precision)} < {self.precision:.3f}")
+            if summary.recall is None or summary.recall < self.recall:
+                failures.append(f"recall {_fmt(summary.recall)} < {self.recall:.3f}")
         if summary.inconclusive_rate > self.inconclusive_max:
             failures.append(
                 f"inconclusive rate {summary.inconclusive_rate:.3f} > {self.inconclusive_max:.3f}"
