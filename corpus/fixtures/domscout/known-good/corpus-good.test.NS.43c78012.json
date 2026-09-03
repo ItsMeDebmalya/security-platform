@@ -1,0 +1,12 @@
+{
+  "flags": [],
+  "name": "corpus-good.test",
+  "rcode": "NOERROR",
+  "records": [
+    "ns1.corpus-good.test.",
+    "ns2.corpus-good.test."
+  ],
+  "resolver": null,
+  "rrtype": "NS",
+  "ttl": 300
+}

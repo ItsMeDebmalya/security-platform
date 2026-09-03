@@ -1,0 +1,9 @@
+{
+  "body": "[]",
+  "body_truncated": false,
+  "elapsed_ms": 1,
+  "headers": {},
+  "redactions": [],
+  "status": 200,
+  "url": "https://crt.sh/?q=corpus-expired.test&output=json"
+}

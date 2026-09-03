@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "blog.corpus-liveghp.test",
+  "rcode": "NOERROR",
+  "records": [
+    "owner.github.io."
+  ],
+  "resolver": null,
+  "rrtype": "CNAME",
+  "ttl": 300
+}

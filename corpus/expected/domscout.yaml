@@ -1,0 +1,31 @@
+# Known-correct answers per case: check_id + location pairs that must be
+# reported as confirmed or highly_likely. An empty list means the case must
+# report NO security finding at all (informational discovery is not listed —
+# it is excluded from the gate by design).
+
+# Report nothing: correctly configured, or no real asset behind the name.
+known-good: []
+takeover-negative: []
+wildcard-zone: []
+
+# Discovery only — three subdomains are contributed to the asset graph as
+# informational inventory; no security finding is expected.
+enum-basic: []
+
+# The one validated claim the gate rests on: an unsigned delegation, confirmed
+# by an independent second resolver agreeing no DS/DNSKEY is served.
+dnssec-insecure:
+  - { check_id: dnssec-status, location: "$" }
+
+# domain-expired and subdomain-takeover fire as honest `suspected` findings
+# (single RDAP source; a takeover is never proven by taking it), which are
+# excused from the gate on both sides — so they are not listed as expected
+# reported-positives. Listed here as a note, not as an assertion:
+#   domain-expired     -> domain-expired@$   (suspected)
+#   takeover-positive  -> subdomain-takeover@gone.corpus-takeover.test (suspected)
+domain-expired: []
+takeover-positive: []
+
+# All sources fail: every check must resolve to inconclusive, asserted via
+# expect_inconclusive rather than as a reported finding.
+servfail: []

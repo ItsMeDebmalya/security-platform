@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "corpus-liveghp.test",
+  "rcode": "NOERROR",
+  "records": [
+    "ns1.corpus-liveghp.test. hostmaster.corpus-liveghp.test. 1 2 3 4 5"
+  ],
+  "resolver": null,
+  "rrtype": "SOA",
+  "ttl": 300
+}

@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "corpus-enum.test",
+  "rcode": "NODATA",
+  "records": [],
+  "resolver": null,
+  "rrtype": "TXT",
+  "ttl": 300
+}

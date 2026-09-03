@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "corpus-wildcard.test",
+  "rcode": "NOERROR",
+  "records": [
+    "ns1.corpus-wildcard.test. hostmaster.corpus-wildcard.test. 1 2 3 4 5"
+  ],
+  "resolver": null,
+  "rrtype": "SOA",
+  "ttl": 300
+}

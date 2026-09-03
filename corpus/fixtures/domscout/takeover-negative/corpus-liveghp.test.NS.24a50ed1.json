@@ -1,0 +1,12 @@
+{
+  "flags": [],
+  "name": "corpus-liveghp.test",
+  "rcode": "NOERROR",
+  "records": [
+    "ns1.corpus-liveghp.test.",
+    "ns2.corpus-liveghp.test."
+  ],
+  "resolver": null,
+  "rrtype": "NS",
+  "ttl": 300
+}

@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "corpus-good.test",
+  "rcode": "NODATA",
+  "records": [],
+  "resolver": null,
+  "rrtype": "MX",
+  "ttl": 300
+}

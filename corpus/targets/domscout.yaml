@@ -1,0 +1,97 @@
+# Ground-truth corpus for DomScout (Tool 3 — DNS & subdomain enumeration, Light).
+#
+# Every case is a synthetic zone recorded by corpus/generators/domscout.py.
+# Re-generate with: uv run python -m corpus.generators.domscout
+#
+# What this gate measures, and what it deliberately does NOT (design spec,
+# revised recall model):
+#
+#  * Subdomain enumeration is INFORMATIONAL inventory, not a vulnerability, so
+#    it is excluded from precision/recall by design (docs/10-measurement.md).
+#    The corpus guards it only against *false discovery* — the known_good and
+#    wildcard cases must report and contribute nothing false. Completeness is
+#    unknowable on a frozen set and is assessed live against subfinder/crt.sh
+#    (a comparison, never a score).
+#  * The gate applies only to the real security findings. Only `dnssec-status`
+#    reaches a validated `confirmed` claim (independent second resolver); the
+#    expiry and takeover findings are honest `suspected` and excused from the
+#    gate on both sides. So the number rests on a SMALL claim count — read it
+#    with the susp% column, exactly as TLS's is read.
+#  * `recall_definition: absolute` refers to the gated security findings, whose
+#    answers are knowable per domain. It is NOT a claim about subdomain
+#    completeness, which is corpus-relative-at-best and measured live only.
+
+gate:
+  precision: 0.95
+  recall: 0.80
+  inconclusive_max: 0.15
+  recall_definition: absolute
+  notes:
+    - "recall is over the security findings (dnssec/expiry/takeover), not over subdomain discovery"
+    - "subdomain enumeration is informational inventory, ungated; completeness is assessed live"
+
+cases:
+  # --- known-good / no-false-discovery: anything reported here is an FP -----
+
+  - id: known-good
+    tier: known_good
+    source: frozen
+    mode: light
+    target: { type: domain, value: corpus-good.test }
+    fixtures: corpus/fixtures/domscout/known-good
+
+  - id: takeover-negative
+    tier: known_good
+    source: frozen
+    mode: light
+    target: { type: domain, value: corpus-liveghp.test }
+    fixtures: corpus/fixtures/domscout/takeover-negative
+
+  - id: wildcard-zone
+    tier: known_good
+    source: frozen
+    mode: light
+    target: { type: domain, value: corpus-wildcard.test }
+    fixtures: corpus/fixtures/domscout/wildcard-zone
+
+  # --- discovery exercise (informational only, no security finding) ---------
+
+  - id: enum-basic
+    tier: vulnerable
+    source: frozen
+    mode: light
+    target: { type: domain, value: corpus-enum.test }
+    fixtures: corpus/fixtures/domscout/enum-basic
+
+  # --- security findings ----------------------------------------------------
+
+  - id: dnssec-insecure
+    tier: vulnerable
+    source: frozen
+    mode: light
+    target: { type: domain, value: corpus-nodnssec.test }
+    fixtures: corpus/fixtures/domscout/dnssec-insecure
+
+  - id: domain-expired
+    tier: vulnerable
+    source: frozen
+    mode: light
+    target: { type: domain, value: corpus-expired.test }
+    fixtures: corpus/fixtures/domscout/domain-expired
+
+  - id: takeover-positive
+    tier: vulnerable
+    source: frozen
+    mode: light
+    target: { type: domain, value: corpus-takeover.test }
+    fixtures: corpus/fixtures/domscout/takeover-positive
+
+  # --- inconclusive: the scanner must say "I don't know", not "nothing" -----
+
+  - id: servfail
+    tier: vulnerable
+    source: frozen
+    mode: light
+    target: { type: domain, value: corpus-broken.test }
+    fixtures: corpus/fixtures/domscout/servfail
+    expect_inconclusive: true

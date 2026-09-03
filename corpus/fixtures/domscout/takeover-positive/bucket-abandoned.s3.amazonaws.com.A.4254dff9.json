@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "bucket-abandoned.s3.amazonaws.com",
+  "rcode": "NXDOMAIN",
+  "records": [],
+  "resolver": null,
+  "rrtype": "A",
+  "ttl": null
+}

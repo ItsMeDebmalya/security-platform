@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "corpus-good.test",
+  "rcode": "NOERROR",
+  "records": [
+    "257 3 13 AwEAAetc0123456789ABCDEFsignedkeymaterialforcorpususeonly=="
+  ],
+  "resolver": null,
+  "rrtype": "DNSKEY",
+  "ttl": 300
+}

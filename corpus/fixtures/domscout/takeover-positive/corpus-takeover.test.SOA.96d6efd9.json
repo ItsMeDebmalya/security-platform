@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "corpus-takeover.test",
+  "rcode": "NOERROR",
+  "records": [
+    "ns1.corpus-takeover.test. hostmaster.corpus-takeover.test. 1 2 3 4 5"
+  ],
+  "resolver": null,
+  "rrtype": "SOA",
+  "ttl": 300
+}

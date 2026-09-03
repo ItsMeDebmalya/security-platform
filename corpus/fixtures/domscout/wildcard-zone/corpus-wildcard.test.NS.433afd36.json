@@ -1,0 +1,12 @@
+{
+  "flags": [],
+  "name": "corpus-wildcard.test",
+  "rcode": "NOERROR",
+  "records": [
+    "ns1.corpus-wildcard.test.",
+    "ns2.corpus-wildcard.test."
+  ],
+  "resolver": null,
+  "rrtype": "NS",
+  "ttl": 300
+}

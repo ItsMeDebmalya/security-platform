@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "corpus-expired.test",
+  "rcode": "NODATA",
+  "records": [],
+  "resolver": null,
+  "rrtype": "CNAME",
+  "ttl": 300
+}

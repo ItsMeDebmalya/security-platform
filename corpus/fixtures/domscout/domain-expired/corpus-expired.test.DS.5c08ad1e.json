@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "corpus-expired.test",
+  "rcode": "NOERROR",
+  "records": [
+    "12345 13 2 0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF"
+  ],
+  "resolver": null,
+  "rrtype": "DS",
+  "ttl": 300
+}

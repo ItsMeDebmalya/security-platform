@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "corpus-broken.test",
+  "rcode": "SERVFAIL",
+  "records": [],
+  "resolver": null,
+  "rrtype": "DNSKEY",
+  "ttl": null
+}

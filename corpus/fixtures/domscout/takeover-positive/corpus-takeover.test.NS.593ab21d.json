@@ -1,0 +1,12 @@
+{
+  "flags": [],
+  "name": "corpus-takeover.test",
+  "rcode": "NOERROR",
+  "records": [
+    "ns1.corpus-takeover.test.",
+    "ns2.corpus-takeover.test."
+  ],
+  "resolver": null,
+  "rrtype": "NS",
+  "ttl": 300
+}

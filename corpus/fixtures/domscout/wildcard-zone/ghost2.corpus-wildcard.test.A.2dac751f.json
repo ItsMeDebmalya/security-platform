@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "ghost2.corpus-wildcard.test",
+  "rcode": "NOERROR",
+  "records": [
+    "198.51.100.7"
+  ],
+  "resolver": null,
+  "rrtype": "A",
+  "ttl": 300
+}

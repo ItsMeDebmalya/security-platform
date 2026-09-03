@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "blog.corpus-liveghp.test",
+  "rcode": "NXDOMAIN",
+  "records": [],
+  "resolver": null,
+  "rrtype": "A",
+  "ttl": 300
+}

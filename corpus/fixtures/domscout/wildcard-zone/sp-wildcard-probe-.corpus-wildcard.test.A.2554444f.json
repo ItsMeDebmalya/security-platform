@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "sp-wildcard-probe-7e480802.corpus-wildcard.test",
+  "rcode": "NOERROR",
+  "records": [
+    "198.51.100.7"
+  ],
+  "resolver": null,
+  "rrtype": "A",
+  "ttl": 300
+}

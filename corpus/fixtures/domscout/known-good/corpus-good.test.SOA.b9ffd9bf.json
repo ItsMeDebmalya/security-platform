@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "corpus-good.test",
+  "rcode": "NOERROR",
+  "records": [
+    "ns1.corpus-good.test. hostmaster.corpus-good.test. 1 2 3 4 5"
+  ],
+  "resolver": null,
+  "rrtype": "SOA",
+  "ttl": 300
+}

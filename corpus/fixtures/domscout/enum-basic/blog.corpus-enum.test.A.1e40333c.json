@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "blog.corpus-enum.test",
+  "rcode": "NOERROR",
+  "records": [
+    "192.0.2.20"
+  ],
+  "resolver": null,
+  "rrtype": "A",
+  "ttl": 300
+}

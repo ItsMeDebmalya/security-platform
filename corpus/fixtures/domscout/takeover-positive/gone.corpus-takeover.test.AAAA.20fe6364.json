@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "gone.corpus-takeover.test",
+  "rcode": "NXDOMAIN",
+  "records": [],
+  "resolver": null,
+  "rrtype": "AAAA",
+  "ttl": 300
+}

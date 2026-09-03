@@ -1,0 +1,12 @@
+{
+  "flags": [],
+  "name": "corpus-nodnssec.test",
+  "rcode": "NOERROR",
+  "records": [
+    "ns1.corpus-nodnssec.test.",
+    "ns2.corpus-nodnssec.test."
+  ],
+  "resolver": null,
+  "rrtype": "NS",
+  "ttl": 300
+}

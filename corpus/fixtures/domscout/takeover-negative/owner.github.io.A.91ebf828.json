@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "owner.github.io",
+  "rcode": "NOERROR",
+  "records": [
+    "185.199.108.153"
+  ],
+  "resolver": null,
+  "rrtype": "A",
+  "ttl": 300
+}

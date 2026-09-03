@@ -1,0 +1,9 @@
+{
+  "body": "<html><body>a real published blog</body></html>",
+  "body_truncated": false,
+  "elapsed_ms": 1,
+  "headers": {},
+  "redactions": [],
+  "status": 200,
+  "url": "https://blog.corpus-liveghp.test/"
+}

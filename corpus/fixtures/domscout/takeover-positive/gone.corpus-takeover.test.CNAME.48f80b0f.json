@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "gone.corpus-takeover.test",
+  "rcode": "NOERROR",
+  "records": [
+    "bucket-abandoned.s3.amazonaws.com."
+  ],
+  "resolver": null,
+  "rrtype": "CNAME",
+  "ttl": 300
+}

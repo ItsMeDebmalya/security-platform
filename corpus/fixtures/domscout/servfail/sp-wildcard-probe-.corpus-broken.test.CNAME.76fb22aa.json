@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "sp-wildcard-probe-e31a370d.corpus-broken.test",
+  "rcode": "SERVFAIL",
+  "records": [],
+  "resolver": null,
+  "rrtype": "CNAME",
+  "ttl": null
+}

@@ -1,0 +1,12 @@
+{
+  "flags": [],
+  "name": "corpus-enum.test",
+  "rcode": "NOERROR",
+  "records": [
+    "ns1.corpus-enum.test.",
+    "ns2.corpus-enum.test."
+  ],
+  "resolver": null,
+  "rrtype": "NS",
+  "ttl": 300
+}

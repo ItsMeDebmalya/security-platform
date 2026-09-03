@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "ghost1.corpus-wildcard.test",
+  "rcode": "NXDOMAIN",
+  "records": [],
+  "resolver": null,
+  "rrtype": "AAAA",
+  "ttl": null
+}
