@@ -929,7 +929,11 @@ Consequence: the two-family measurement machinery added in the plan's Task 1 (`c
 Run against operator infrastructure, cross-checked against `subfinder` + crt.sh.
 
 - **`codez.in`** — `dnssec-status: confirmed` (unsigned zone) **hand-verified true** with `dig DS`/`dig DNSKEY` (both empty). `domain-expiring` correctly `inconclusive`: `.in` RDAP is not reachable through the `rdap.org` bootstrap — the honest answer, not a guess. Discovery (after the CNAME fix): 16 live subdomains, all resolving, including real hosts (`erp`, `banktransfer`, `openproject`, `support`).
-- **Disagreement analysis vs `subfinder`:** subfinder surfaced ~68 names to our 16. Sorted: (a) the CNAME gap above — real, fixed; (b) names that appear in other passive sources but **not** crt.sh (`mail`, `ns1a`, …) — the single-source coverage gap (see Deferred); (c) many subfinder names that **do not resolve** (historical), correctly absent from our *live-asset* inventory. A competitor-unique **resolving** name is a false negative to chase; a non-resolving one is not.
+- **Disagreement analysis vs `subfinder` 2.16.0** (run in-session; both scanners on `codez.in`, then every subfinder-only name categorised by resolves? × in-crt.sh?): subfinder 60, domscout 16, domscout-only 0. The 44 subfinder-only names, **after** the CNAME fix:
+  - **`resolves AND in CT logs` = 0** — the decisive number: domscout misses **no** live subdomain that appears in the CT logs. The CNAME fix closed the real bug completely.
+  - **`resolves but NOT in CT logs` = 8** (`mail`, `ns1a`–`ns1d`, `ns2018a/b`, `bkp2017`) — nameservers, mail, a backup host: live, but no TLS cert, so invisible to a CT-only seed. This *is* D-DS1, quantified.
+  - **`does not resolve` = 36** (`blog`, `store`, `vps`, `cpanel.*`, `webmail.*`, many `www.*` variants) — dead/historical names subfinder carries from CT history; domscout **correctly** excludes them from a live-asset inventory.
+  - The honest read: domscout reports 16 subdomains, **all live**; subfinder reports 60, of which **36 are dead**. It trades breadth for precision — the right trade for a scan-target list — and its only real recall gap is the 8 non-CT live hosts. A competitor-unique *resolving* name is a false negative to chase; a non-resolving one is not.
 
 ### Decided
 
