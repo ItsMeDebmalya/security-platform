@@ -893,11 +893,11 @@ A real transcript demonstrating `expiring-cert-blind-to-renewal` — `scan run t
 
 ## 2026-09-03 · Tool 3 — DNS & Subdomain Enumeration (`domscout`, Light)
 
-**Plan:** `docs/superpowers/plans/2026-09-03-domscout-dns-enum.md` · **Spec:** `docs/superpowers/specs/2026-09-03-domscout-dns-enum-design.md` · **Gate: precision ≥ 0.95, recall ≥ 0.80, inconclusive ≤ 15%** · **Status: built and gated; live cross-check (D-DS) owed before "done"**
+**Plan:** `docs/superpowers/plans/2026-09-03-domscout-dns-enum.md` · **Spec:** `docs/superpowers/specs/2026-09-03-domscout-dns-enum-design.md` · **Gate: precision ≥ 0.95, recall ≥ 0.80, inconclusive ≤ 15%** · **Status: built, gated, and live-verified against operator infrastructure**
 
 ```
 scanner    checks   TP   FP   FN  precision   recall   susp%  inconc%  gate
-domscout       44    1    0    0      1.000    1.000    4.5%     0.0%  PASS
+domscout       50    1    0    0      1.000    1.000    4.0%     0.0%  PASS
 ```
 
 **Read the number with its claim count: the gate rests on ONE confirmed claim** (`dnssec-status`, validated by an independent second resolver). That is thinner than TLS's five, and deliberately so — see the recall decision below.
@@ -908,7 +908,7 @@ domscout       44    1    0    0      1.000    1.000    4.5%     0.0%  PASS
 - **Six checks:** `subdomains-ct-log`, `dns-records` (both `info` → informational inventory), `dnssec-status`, `domain-expiring`/`domain-expired`, `subdomain-takeover`.
 - **Discovery discipline:** only names under the apex that resolve to an address (A/AAAA), canonicalized, are contributed to `ctx.assets`; a CNAME to a third-party host and an MX target are recorded as `related_assets`, **not** as scannable graph assets — so a later scanner is never handed someone else's host. A CT-log name that does not resolve is an enumeration observation, never a graph asset.
 - **`BaseScanner.service_hosts`** (additive, defaulted) — a passive scanner's allowlist of read-only third-party service hosts (`crt.sh`, `rdap.org`), unioned into the HTTP scope by the CLI (`cli/main.py`, `cli/corpus.py`). The HTTP analogue of scoping the DNS resolver, not the names. Confers no authorisation; `core/authz.py` stays the only gate. Empty for email/tls, so they are unchanged. **This touches the scope model — flagged for an ADR (see Deferred).**
-- **8-case frozen corpus** recorded by `corpus/generators/domscout.py` (DNS via `RecordingResolver`, HTTP via `RecordingHttpBackend` — crt.sh/RDAP/takeover). Cases: three no-false-discovery (`known-good`, `takeover-negative`, `wildcard-zone`), `enum-basic` (three subdomains discovered, no security finding), `dnssec-insecure` (the one confirmed claim), `domain-expired` + `takeover-positive` (honest `suspected`), `servfail` (all inconclusive).
+- **9-case frozen corpus** recorded by `corpus/generators/domscout.py` (DNS via `RecordingResolver`, HTTP via `RecordingHttpBackend` — crt.sh/RDAP/takeover). Cases: three no-false-discovery (`known-good`, `takeover-negative`, `wildcard-zone`), `enum-basic` (three direct-A subdomains) and `enum-cname` (a resolving CNAME'd subdomain + an internal alias, both contributed), `dnssec-insecure` (the one confirmed claim), `domain-expired` + `takeover-positive` (honest `suspected`), `servfail` (all inconclusive).
 
 ### The recall decision — and how it changed under implementation
 
@@ -922,6 +922,14 @@ Consequence: the two-family measurement machinery added in the plan's Task 1 (`c
 - **`domain-expiring` would have rotted as a frozen fixture** — the scanner compares expiry against wall-clock `date.today()`, so a fixed near-future date drifts from "expiring" to "expired" as the corpus ages (the exact TLS `observed_at` lesson). The corpus freezes `domain-expired` (a fixed *past* date, stable forever) instead; the expiring path is covered by unit tests, not a frozen case.
 - **A plan interface defect:** the plan assumed `Check` carried `prior`/`independence_class`. The real `Check` does not — those are per-`Signal` at emit time (the email pattern). Caught at Task 6; the implementer mirrored the real dataclass, and findings attach priors/classes per `Signal` in the scanner.
 - **The stale committed baseline** (pre-D20 tls: `0.0` inconclusive / 134 checks) made `--check-baseline` red on this branch before any Tool 3 work. Refreshed with this tool's baseline update; `--check-baseline` is green again.
+- **CNAME'd subdomains were dropped from the discovered inventory — found by the live cross-check, not the corpus.** The first cut contributed only names with a *direct* A/AAAA: an internal alias (`www` → apex) was skipped, and a third-party CNAME (`accounts` → `customer-books.zoho.com`) recorded only its *target* as a related asset, never the source name. Against `codez.in` that lost 8 live owned subdomains (`www`, `accounts`, `assessment`, `bots`, `domains`, `interviews`, `share`, `uptime`). Fixed: any in-apex name that resolves to an address — directly or by following its CNAME, and not a wildcard shadow — is a discovered subdomain and is contributed; the CNAME target stays a related asset (we never scan a third party's host); a dangling CNAME (target NXDOMAIN) still has no address, so it is not contributed and is left to the takeover check. **The frozen corpus could not have caught this** — its cases were built from direct-A subdomains, encoding the same assumption the code had. Eighth-plus instance of the standing rule: the corpus proves regression, a competitor comparison finds the bug. Re-verified live: `codez.in` discovery went 8 → 16, `www`/`accounts` now present (ADR-022 *close* — re-ran the exact scan that exposed it).
+
+### Live verification (ADR-017 / ADR-024)
+
+Run against operator infrastructure, cross-checked against `subfinder` + crt.sh.
+
+- **`codez.in`** — `dnssec-status: confirmed` (unsigned zone) **hand-verified true** with `dig DS`/`dig DNSKEY` (both empty). `domain-expiring` correctly `inconclusive`: `.in` RDAP is not reachable through the `rdap.org` bootstrap — the honest answer, not a guess. Discovery (after the CNAME fix): 16 live subdomains, all resolving, including real hosts (`erp`, `banktransfer`, `openproject`, `support`).
+- **Disagreement analysis vs `subfinder`:** subfinder surfaced ~68 names to our 16. Sorted: (a) the CNAME gap above — real, fixed; (b) names that appear in other passive sources but **not** crt.sh (`mail`, `ns1a`, …) — the single-source coverage gap (see Deferred); (c) many subfinder names that **do not resolve** (historical), correctly absent from our *live-asset* inventory. A competitor-unique **resolving** name is a false negative to chase; a non-resolving one is not.
 
 ### Decided
 
@@ -931,16 +939,17 @@ Consequence: the two-family measurement machinery added in the plan's Task 1 (`c
 
 ### Deferred
 
-- **D-DS (owed before "done"):** the live subfinder/crt.sh **disagreement cross-check** (ADR-024) and hand-verification against `codez.in`, `kinetrix.in`, `kinetrix.co.in` + a DNSSEC-signed reference. The corpus proves regression, not correctness, and per ADR-017 live verification is definition-of-done — **not yet run** (needs subfinder installed on the operator's WSL). The frozen gate passing is necessary, not sufficient.
+- **D-DS1 — single-source enumeration coverage.** Discovery seeds from **crt.sh only**. A subdomain with no certificate in the CT logs (and not the apex) is never seen, so recall is materially below a multi-source tool like `subfinder` (which layers CT from several providers, passive DNS and APIs). This is a *coverage* limitation, not an incorrectness — everything we report is real. **The path to close it:** add more passive sources under the same passivity/replay rules — certspotter's free CT API first, then a passive-DNS source — deduplicating aggressively, exactly as the research says the best tools do. Stated plainly wherever coverage is cited (SPEC A4); not a gate blocker, but the honest ceiling on Light-mode recall today.
+- **D-DS2 — `kinetrix.in` / `kinetrix.co.in` not yet live-run.** `codez.in` was verified end-to-end; the two kinetrix domains (and a DNSSEC-*signed* reference for the positive DNSSEC path) are still owed for full ADR-017 coverage.
 - **An ADR for `service_hosts`** — it extends the scope model (additively, passive-only), so it should be recorded as a decision with `docs/08-changelog.md`, not left only in code. Owed.
 - **Remove the unused two-family measurement machinery** (plan Task 1) — YAGNI, guarded/harmless today.
-- **Session-limit note:** the shared-account limit killed the Task 7 implementer subagent mid-run; the scanner and Tasks 8/10 were completed and reviewed **inline** by the coordinator rather than via the usual fresh-subagent review loop. Task 7's independent whole-branch review is therefore still owed — flagged for the final review.
+- **Session-limit note:** the shared-account limit killed the Task 7 implementer subagent mid-run; the scanner and Tasks 8/10 plus the CNAME fix were completed and reviewed **inline** by the coordinator rather than via the usual fresh-subagent review loop. Task 7's independent whole-branch review is therefore still owed — flagged for the final review.
 
 ---
 
 ## Next
 
-**Tool 3's live cross-check and verification (D-DS above)** — install subfinder, run the disagreement analysis and hand-verify against the operator's own domains, then the whole-branch review and the PR. After that, the next tool per the roadmap.
+**Finish Tool 3's owed items, then the PR:** the `service_hosts` ADR + changelog entry, the `kinetrix.in`/`kinetrix.co.in` live runs (D-DS2), removing the unused two-family measurement machinery, and the whole-branch review (Task 7 got inline review only). D-DS1 (single-source coverage, add certspotter/passive-DNS) is a genuine follow-up, not a blocker. Then the next tool per the roadmap.
 
 *(Historical note — the pre-Tool-3 "Next", now superseded:)* **Tool 3 (DNS & Subdomain Enumeration)**, whose recall definition is the thing to settle before writing any of it — "all subdomains that exist" is not a knowable set, and reporting corpus-relative recall as though it were absolute is the specific dishonesty this product exists to avoid. Phase 0b is complete: the recording layer, the asset graph, passivity declarations, the calendar, the finding store plus `scan verify`, and now the correlation pass are all in place for Tool 3 to build on — in particular, Tool 3 is the first scanner positioned to actually *discover* assets onto the graph rather than only read one seeded for it, and the first real chance to prove the correlation pass's cross-scanner rule on genuine (not relabelled) shared assets.
 

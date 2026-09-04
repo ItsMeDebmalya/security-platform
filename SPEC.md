@@ -131,7 +131,7 @@ One-line: certificate, chain, protocol and cipher analysis, plus (v1.1) certific
 - **Caveats that belong here, not buried:** 14-case corpus, cross-checked against testssl.sh. Six real defects across Tools 1 and 2 survived their corpora at precision 1.000 — three of the six were in the TLS lab itself (a CA missing `basicConstraints`, servers accepting TLS 1.0, a two-level chain standing in for an incomplete one), found only by reading the fixtures, not by the harness. Certificate revocation checking (OCSP/CRL) is not built — `revoked.badssl.com` currently returns nothing, which reads as a pass (D12). No weak-cipher (`RC4`/`3DES`) positive case exists; OpenSSL 3 compiles them out (D11).
 - Depends on: HTTP record/replay for HSTS (done, 0b.4).
 
-### A4. Domain & Subdomain Enumeration — Tool 3 (`domscout`), **Shipped (Light); live cross-check owed**
+### A4. Domain & Subdomain Enumeration — Tool 3 (`domscout`), **Shipped (Light) v1.0.0 — live-verified**
 
 One-line: the asset list every other tool scans, plus subdomain-takeover detection.
 
@@ -139,8 +139,9 @@ One-line: the asset list every other tool scans, plus subdomain-takeover detecti
 - **Standard (not built)** — active brute-force, liveness check, tech-per-subdomain, AXFR misconfig check, deeper-label wildcard detection, related-domain discovery, OSINT harvesting, shadow IT discovery.
 - Mechanism: own crt.sh + DNS + RDAP + takeover-fingerprint code (no third-party enumerator embedded); subfinder/dnsx/httpx/Amass are the **cross-check** references (ADR-024), not embedded.
 - **The recall model (settled, and it changed the spec):** subdomain enumeration is **informational inventory, not a vulnerability**, so it is **not** confidence-scored and **not** gated on precision/recall — `core/state.py` maps `info` severity to `informational`, which [docs/10-measurement.md](docs/10-measurement.md) excludes entirely. The gate applies **only to the real security findings** (`dnssec-status`, `domain-expiring`/`domain-expired`, `subdomain-takeover`). Enumeration is guarded against *false discovery* by the no-false-discovery corpus cases, and its *completeness* is assessed **live** against subfinder/crt.sh as a disagreement comparison — never published as a score. This supersedes the "two-number recall" framing in the design spec's §1; the ledger records why.
-- **Status: Shipped (Light), v1.0.0**, gate met on the frozen corpus. **Live cross-check + hand-verification against real domains (ADR-017/ADR-024) is owed before it is "done"** — the ledger's D-DS.
-- **Gate:** precision ≥ 0.95, recall ≥ 0.80, inconclusive ≤ 0.15. **Actual, from `make corpus` (2026-09-03):** `precision 1.000, recall 1.000, PASS` — 44 checks, **1 claim** (`dnssec-status`, `confirmed` via independent second-resolver validation). Read the number with its claim count: expiry and takeover are honest `suspected` (excused), and enumeration is informational (excluded), so the gate rests on one validated claim — thinner than TLS's five, stated plainly.
+- **Status: Shipped (Light), v1.0.0**, gate met and **live-verified against `codez.in`** (ADR-017/ADR-024): the `dnssec-status` claim hand-verified with `dig`, discovery cross-checked against `subfinder`. Two items remain owed (ledger D-DS1/D-DS2): the `kinetrix` domains' live runs, and the single-source coverage gap below.
+- **Known coverage limit (D-DS1), stated plainly:** enumeration seeds from **crt.sh only**. A subdomain with no certificate in the CT logs is not discovered, so recall is materially below a multi-source tool (`subfinder` found ~68 names to our 16 on `codez.in` — though most of its extras do not resolve). Everything we report is real; what we miss is names outside CT logs. The path to close it is adding more passive sources (certspotter's CT API, then passive DNS) under the same passivity/replay rules — not built yet. **No Nmap-parity-style completeness claim is made.**
+- **Gate:** precision ≥ 0.95, recall ≥ 0.80, inconclusive ≤ 0.15. **Actual, from `make corpus` (2026-09-03):** `precision 1.000, recall 1.000, PASS` — 50 checks, **1 claim** (`dnssec-status`, `confirmed` via independent second-resolver validation). Read the number with its claim count: expiry and takeover are honest `suspected` (excused), and enumeration is informational (excluded), so the gate rests on one validated claim — thinner than TLS's five, stated plainly.
 - Depends on: asset graph (0b.2, done) — this is the tool the graph mechanism exists for; it discovers assets onto the shared graph rather than reading one seeded for it. First real producer for the graph.
 
 ### A5. Deface / Change Monitoring
@@ -397,7 +398,7 @@ Verified against the repo and `make corpus` (2026-09-03) — see the run at the 
 | A1 Website Scanner | Not built | **Standard mode:** precision ≥0.90 (`confirmed`≥0.98), recall ≥0.75 (benchmark tier). No Light-mode gate is set in the roadmap. | — |
 | A2 Network Scanner | Not built | not yet set | — |
 | A3 SSL/TLS Analyzer | **Shipped v1.2.0** | precision ≥0.98, recall ≥0.95, inconc ≤0.15 | 1.000 / 1.000, 220 checks, 5 claims, PASS |
-| A4 Domain & Subdomain Enum (`domscout`) | **Shipped (Light) v1.0.0; live cross-check owed** | precision ≥0.95, recall ≥0.80, inconc ≤0.15 | 1.000 / 1.000, 44 checks, **1 claim**, PASS |
+| A4 Domain & Subdomain Enum (`domscout`) | **Shipped (Light) v1.0.0 — live-verified; kinetrix+coverage owed** | precision ≥0.95, recall ≥0.80, inconc ≤0.15 | 1.000 / 1.000, 50 checks, **1 claim**, PASS |
 | A5 Deface Monitoring | Not built | not yet set | — |
 | A6 API Scanner | Not built | not yet set | — |
 | A7 Email Security | **Shipped** | precision ≥0.99, recall ≥0.95, inconc ≤0.15 | 1.000 / 1.000, 240 checks, 21 claims, 0.8% inconc, PASS |
@@ -432,7 +433,7 @@ Verified against the repo and `make corpus` (2026-09-03) — see the run at the 
 ```
 scanner     checks   TP   FP   FN  precision   recall   susp%  inconc%  gate
 ----------------------------------------------------------------------------
-domscout        44    1    0    0      1.000    1.000   4.5%    0.0%  PASS
+domscout        50    1    0    0      1.000    1.000   4.0%    0.0%  PASS
            recall is over the security findings; enumeration is informational, ungated
 email          240   21    0    0      1.000    1.000   0.0%    0.8%  PASS
 example          3    2    0    0      1.000    1.000   0.0%    0.0%  PASS
