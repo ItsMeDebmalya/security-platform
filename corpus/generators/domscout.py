@@ -112,6 +112,20 @@ def cname_subdomain(domain: str, label: str, target: str) -> dict[tuple[str, str
     }
 
 
+def resolving_cname_subdomain(
+    domain: str, label: str, target: str, ip: str = "203.0.113.9"
+) -> dict[tuple[str, str], DnsResponse]:
+    """A CNAME'd subdomain that RESOLVES: the A query follows the CNAME and
+    returns the final address, as a real resolver does. Such a name is a live
+    owned subdomain and must be contributed (2026-09-03 live-cross-check fix)."""
+    name = f"{label}.{domain}"
+    return {
+        (name, "A"): rr(name, "A", ip),
+        (name, "AAAA"): rr(name, "AAAA", rcode="NODATA"),
+        (name, "CNAME"): rr(name, "CNAME", f"{target}."),
+    }
+
+
 class ServfailResolver:
     """Every lookup fails. The scanner must say inconclusive, not "nothing"."""
 
@@ -201,6 +215,22 @@ def _cases() -> dict[str, tuple[str, object, FakeHttpBackend, str]]:
         d,
         FakeResolver(apex_zone(d, subdomains=subs)),
         http_backend(d, ct_names=[f"www.{d}", f"api.{d}", f"blog.{d}"], expiry=FAR_FUTURE),
+        "light",
+    )
+
+    # 2b. enum-cname: a CNAME'd subdomain that resolves is contributed (its
+    # third-party target stays a related asset); an internal www alias too.
+    d = "corpus-cname.test"
+    subs = {
+        # a generic SaaS target (not a takeover fingerprint) so this case
+        # exercises CNAME contribution only, not the takeover path.
+        **resolving_cname_subdomain(d, "app", "customer-books.zoho.com"),
+        **resolving_cname_subdomain(d, "www", d),
+    }
+    cases["enum-cname"] = (
+        d,
+        FakeResolver(apex_zone(d, subdomains=subs)),
+        http_backend(d, ct_names=[f"app.{d}", f"www.{d}"], expiry=FAR_FUTURE),
         "light",
     )
 

@@ -63,6 +63,13 @@ cases:
     target: { type: domain, value: corpus-enum.test }
     fixtures: corpus/fixtures/domscout/enum-basic
 
+  - id: enum-cname
+    tier: vulnerable
+    source: frozen
+    mode: light
+    target: { type: domain, value: corpus-cname.test }
+    fixtures: corpus/fixtures/domscout/enum-cname
+
   # --- security findings ----------------------------------------------------
 
   - id: dnssec-insecure

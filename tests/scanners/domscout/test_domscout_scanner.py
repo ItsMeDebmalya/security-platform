@@ -279,3 +279,36 @@ def test_third_party_cname_and_mx_target_are_related_assets_not_contributed():
         assert "blog.thirdparty.example" in related_values or "mail.thirdparty.example" in (
             related_values
         )
+
+
+def test_resolving_cname_subdomain_is_contributed_with_target_related():
+    """A CNAME'd subdomain that RESOLVES is a live owned name — it is contributed
+    to the graph, while its third-party target stays a related asset only.
+
+    Regression for the 2026-09-03 live cross-check finding: dropping CNAME'd
+    names lost www/accounts/... from real infrastructure."""
+    dns_answers = base_dns()
+    # accounts -> third-party CNAME that resolves (the A query follows the CNAME).
+    acc = f"accounts.{APEX}"
+    dns_answers[(acc, "CNAME")] = answer(acc, "CNAME", "customer-books.zoho.com.")
+    dns_answers[(acc, "A")] = answer(acc, "A", "204.141.42.79")
+    dns_answers[(acc, "AAAA")] = answer(acc, "AAAA", rcode="NODATA")
+    # www -> internal alias to the apex, resolving.
+    www = f"www.{APEX}"
+    dns_answers[(www, "CNAME")] = answer(www, "CNAME", f"{APEX}.")
+    dns_answers[(www, "A")] = answer(www, "A", "116.203.1.171")
+    dns_answers[(www, "AAAA")] = answer(www, "AAAA", rcode="NODATA")
+
+    http = no_op_http({crtsh_test_url(): (200, crtsh_json([acc, www]))})
+    result, ctx = run_scan(dns_answers, http)
+
+    contributed = {d.asset.value for d in ctx.assets.all()}
+    assert acc in contributed  # the source name is a discovered subdomain
+    assert www in contributed  # an internal alias is still a live name
+    assert "customer-books.zoho.com" not in contributed  # never scan the third party
+    assert APEX not in contributed  # the apex is the target, not a discovery
+
+    # the third-party target is recorded as a relationship
+    dns_rec = next(f for f in result.findings if f.check_id == "dns-records")
+    related = {r.value for r in dns_rec.related_assets}
+    assert "customer-books.zoho.com" in related

@@ -1,6 +1,6 @@
 {
   "flags": [],
-  "name": "sp-wildcard-probe-f82edb07.corpus-nodnssec.test",
+  "name": "sp-wildcard-probe-9ce4e525.corpus-nodnssec.test",
   "rcode": "NXDOMAIN",
   "records": [],
   "resolver": null,

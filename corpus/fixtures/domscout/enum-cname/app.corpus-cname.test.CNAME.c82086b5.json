@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "app.corpus-cname.test",
+  "rcode": "NOERROR",
+  "records": [
+    "customer-books.zoho.com."
+  ],
+  "resolver": null,
+  "rrtype": "CNAME",
+  "ttl": 300
+}

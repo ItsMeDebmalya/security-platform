@@ -8,9 +8,12 @@ known-good: []
 takeover-negative: []
 wildcard-zone: []
 
-# Discovery only — three subdomains are contributed to the asset graph as
-# informational inventory; no security finding is expected.
+# Discovery only — subdomains are contributed to the asset graph as
+# informational inventory; no security finding is expected. enum-cname also
+# covers CNAME'd subdomains (a resolving CNAME is a live owned name that must
+# be contributed; its third-party target stays a related asset only).
 enum-basic: []
+enum-cname: []
 
 # The one validated claim the gate rests on: an unsigned delegation, confirmed
 # by an independent second resolver agreeing no DS/DNSKEY is served.

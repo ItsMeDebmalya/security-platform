@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "app.corpus-cname.test",
+  "rcode": "NODATA",
+  "records": [],
+  "resolver": null,
+  "rrtype": "AAAA",
+  "ttl": 300
+}

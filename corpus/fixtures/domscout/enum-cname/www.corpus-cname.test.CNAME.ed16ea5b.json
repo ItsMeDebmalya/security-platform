@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "www.corpus-cname.test",
+  "rcode": "NOERROR",
+  "records": [
+    "corpus-cname.test."
+  ],
+  "resolver": null,
+  "rrtype": "CNAME",
+  "ttl": 300
+}

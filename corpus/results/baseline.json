@@ -52,6 +52,18 @@
       {
         "errors": [],
         "expect_inconclusive": false,
+        "expected": [],
+        "fn": 0,
+        "fp": 0,
+        "id": "enum-cname",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "tier": "vulnerable",
+        "tp": 0
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
         "expected": [
           {
             "check_id": "dnssec-status",
@@ -112,8 +124,8 @@
       "recall_label": "absolute (the true set is knowable for this scanner)"
     },
     "overall": {
-      "cases": 8,
-      "checks_run": 44,
+      "cases": 9,
+      "checks_run": 50,
       "claims": {
         "derived": {
           "fp": 0,
@@ -132,7 +144,7 @@
       "inconclusive_rate": 0.0,
       "precision": 1.0,
       "recall": 1.0,
-      "suspected_rate": 0.045454545454545456,
+      "suspected_rate": 0.04,
       "tier": "all",
       "tp": 1
     },
@@ -166,8 +178,8 @@
         "tp": 0
       },
       "vulnerable": {
-        "cases": 5,
-        "checks_run": 25,
+        "cases": 6,
+        "checks_run": 31,
         "claims": {
           "derived": {
             "fp": 0,
@@ -186,7 +198,7 @@
         "inconclusive_rate": 0.0,
         "precision": 1.0,
         "recall": 1.0,
-        "suspected_rate": 0.08,
+        "suspected_rate": 0.06451612903225806,
         "tier": "vulnerable",
         "tp": 1
       }

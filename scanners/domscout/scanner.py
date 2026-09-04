@@ -280,12 +280,20 @@ class _Scan:
             info = self.resolved[name]
             if self._is_wildcard_shadow(info):
                 continue
+            # A CNAME's *target* is a relationship, not a scannable asset of
+            # ours (we never scan a third party's host). But the source name is
+            # a live subdomain under this domain if it resolves — found by the
+            # live cross-check (2026-09-03): dropping CNAME'd names lost
+            # www/accounts/... from real infrastructure. So the target is
+            # recorded as `related`, and the name itself is still contributed
+            # below whenever it resolves to an address, whether directly or by
+            # following the CNAME. A dangling CNAME (target NXDOMAIN) has no
+            # address, so it is correctly not contributed and is left to the
+            # takeover check.
             if info.cname.is_definite() and info.cname.records:
                 target = info.cname.records[0].strip().rstrip(".").lower()
-                if ct.is_within_apex(target, self.domain):
-                    continue  # an internal alias — nothing new to contribute here
-                related.append({"type": "domain", "value": target, "relation": "cname_target"})
-                continue
+                if not ct.is_within_apex(target, self.domain):
+                    related.append({"type": "domain", "value": target, "relation": "cname_target"})
             has_address = (info.a.is_definite() and info.a.records) or (
                 info.aaaa.is_definite() and info.aaaa.records
             )

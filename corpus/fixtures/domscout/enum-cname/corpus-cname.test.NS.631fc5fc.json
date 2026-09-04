@@ -1,0 +1,12 @@
+{
+  "flags": [],
+  "name": "corpus-cname.test",
+  "rcode": "NOERROR",
+  "records": [
+    "ns1.corpus-cname.test.",
+    "ns2.corpus-cname.test."
+  ],
+  "resolver": null,
+  "rrtype": "NS",
+  "ttl": 300
+}
