@@ -14,7 +14,7 @@ Read `docs/14-progress-ledger.md` for where things stand — including **standin
 
 ## Documents
 
-- `tools-and-features-list.md` — entry point and index
+- `docs/18-v4-plan.md` — **current plan entry point** (v4). The v3.4 front door, `tools-and-features-list.md`, is archived in `docs/archive/`
 - `SPEC.md` — **the canonical build specification: what each tool must do, current status, gates.** Authority for "what to build," replacing `docs/reference/product-spec.md` in that role.
 - `docs/00-context.md` — product, strategy, standards
 - `docs/01-architecture.md` — **the Scanner Contract, finding/evidence model, confidence engine**

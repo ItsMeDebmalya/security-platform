@@ -6,13 +6,13 @@
 
 ## The original is preserved
 
-**[archive/tools-and-features-list-v2.md](archive/tools-and-features-list-v2.md)** — the v2 document, byte-for-byte unchanged.
+**[archive/tools-and-features-list-v2.md](archive/tools-and-features-list-v2.md)** — the v2 document, byte-for-byte unchanged apart from the two-line ARCHIVED banner added at the top in v4.0-pre (see below).
 
 Nothing was deleted. Every tool description, feature list, differentiator and decision from v2 survives, either in the working documents or in [reference/product-spec.md](reference/product-spec.md).
 
 **To revert entirely:**
 ```bash
-cp docs/archive/tools-and-features-list-v2.md tools-and-features-list.md
+tail -n +3 docs/archive/tools-and-features-list-v2.md > tools-and-features-list.md  # skip the 2-line ARCHIVED banner
 rm -rf docs/0*.md docs/reference
 ```
 That returns you to exactly the state before this rewrite.
@@ -364,3 +364,20 @@ The client asked for differentiation that holds up in 2026 rather than 2022. Res
 - The measurement split counts `tp`/`fp` by derivation only, not `fn`. `Expected` corpus fixtures have no derivation of their own — a false negative is a thing the scanner failed to claim, and until a corpus actually contains derived expectations (no scanner emits them yet) there is nothing to split there. Revisit when Tool 2 v1.1 lands derived findings in a corpus.
 
 **Revert.** Drop the four fields from the schema and model, the two new validators, `ConfidenceEngine.inherit`, and the four new `CaseScore`/`TierSummary` fields plus the `claims` block in `to_dict()`. Every finding stored today already has `derivation: "detected"` and `materialises_at: null` in effect (the fields did not exist), so nothing needs rewriting either direction.
+
+---
+
+## v4.0-pre — v4 migration housekeeping (2026-10-02)
+
+**What changed.**
+- `tools-and-features-list.md` (the v3.4 front door) moved to [archive/tools-and-features-list.md](archive/tools-and-features-list.md). Its internal relative links were left as they were and no longer resolve from `docs/archive/`. That is accepted for an archived file.
+- Both archive files, `archive/tools-and-features-list.md` and `archive/tools-and-features-list-v2.md`, gained a two-line banner at the top: `> ARCHIVED — superseded by docs/18-v4-plan.md. Do not use for current direction.` followed by a blank line. This is the only edit ever made to the v2 file. The revert step under "The original is preserved" now skips those two lines.
+- v4 plan documents added (docs/18 ~526 lines, docs/19 ~453 lines, docs/20 ~297 lines): [18-v4-plan.md](18-v4-plan.md), [19-v4-roadmap.md](19-v4-roadmap.md), [20-migration-runbook.md](20-migration-runbook.md).
+- `CLAUDE.md` and `SPEC.md` now point to `docs/18-v4-plan.md` as the plan entry point instead of `tools-and-features-list.md`.
+
+**Revert.**
+```bash
+tail -n +3 docs/archive/tools-and-features-list.md > tools-and-features-list.md && git rm -q docs/archive/tools-and-features-list.md
+tail -n +3 docs/archive/tools-and-features-list-v2.md > /tmp/v2 && mv /tmp/v2 docs/archive/tools-and-features-list-v2.md
+```
+Then restore the entry-point lines in `CLAUDE.md` and `SPEC.md`, and the revert step above, to point at `tools-and-features-list.md` again.

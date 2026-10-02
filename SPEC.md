@@ -12,7 +12,7 @@ This document is **not**:
 
 - the schedule — that is [docs/03-roadmap.md](docs/03-roadmap.md);
 - the decision record — that is [docs/02-decisions.md](docs/02-decisions.md);
-- the strategy front door — that is [tools-and-features-list.md](tools-and-features-list.md);
+- the strategy front door — that is [docs/18-v4-plan.md](docs/18-v4-plan.md);
 - the build log — that is [docs/14-progress-ledger.md](docs/14-progress-ledger.md).
 
 Where those documents own something, this one **links, does not restate**. Restating is how this document set has drifted apart before — see the ledger's repeated "a number reached a decision document without being checked against its primary source" defect (D13, D16). Do not repeat it here.
