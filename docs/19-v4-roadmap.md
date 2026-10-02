@@ -1,4 +1,3 @@
-# v4 Roadmap
 # Integrated Security Platform — Development Roadmap (Draft v1)
 
 **Companion to: Draft Plan (v4)**

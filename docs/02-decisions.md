@@ -6,7 +6,7 @@ Status values: **Decided** · **Provisional** (decided but low-confidence, revis
 
 | # | Decision | Status | Reversal cost |
 |---|---|---|---|
-| 001 | Tool-first build order | Decided | Low |
+| 001 | Tool-first build order | **Superseded** by [026](#adr-026--adopt-api-first-architecture-supersedes-adr-001-tool-first-and-adr-012-platform-deferral) | Low |
 | 002 | Freeze the Scanner Contract before tool #1 | Decided | Very high once tools exist |
 | 003 | Permissive-OSS-or-build-it-ourselves | Decided | Very high (legal) |
 | 004 | No exploitation, ever | Decided | Not reversible — product identity |
@@ -17,7 +17,7 @@ Status values: **Decided** · **Provisional** (decided but low-confidence, revis
 | 009 | Postgres + queue + object storage for the platform | Provisional | Medium |
 | 010 | Import findings from commercial scanners | Decided | Low |
 | 011 | Compliance *readiness*, never "compliance" | Decided | Not reversible — legal |
-| 012 | Defer all platform/billing work to Phase 6 | Decided | Low |
+| 012 | Defer all platform/billing work to Phase 6 | **Superseded** by [026](#adr-026--adopt-api-first-architecture-supersedes-adr-001-tool-first-and-adr-012-platform-deferral) | Low |
 | 013 | Measurement spec: gates are precision + recall + inconclusive rate | Decided | Low |
 | 014 | Descope the moat claims to what 2 people can own | Decided | Low |
 | 015 | Ownership verification exists from tool #1, not Phase 6 | Decided | Not reversible (legal) |
@@ -27,6 +27,8 @@ Status values: **Decided** · **Provisional** (decided but low-confidence, revis
 ---
 
 ## ADR-001 — Build tools first, platform second
+
+> **Superseded by [ADR-026](#adr-026--adopt-api-first-architecture-supersedes-adr-001-tool-first-and-adr-012-platform-deferral) (2026-10-02).** The v4 plan replaces tool-first with API-first. The text below is kept unchanged as the historical record of why tool-first was chosen.
 
 **Decision.** Build and prove scanners one at a time as standalone CLI tools. Build the website only after a shelf of them exists and passes accuracy gates.
 
@@ -283,6 +285,8 @@ Both are isolated services behind interfaces, so this is a contained cost, not a
 ---
 
 ## ADR-012 — Defer all platform, billing and account work to Phase 6
+
+> **Superseded by [ADR-026](#adr-026--adopt-api-first-architecture-supersedes-adr-001-tool-first-and-adr-012-platform-deferral) (2026-10-02).** The v4 Phase 1 MVP includes accounts, ownership verification, billing and Free/Pro tiers, so they are no longer deferred to Phase 6. The text below is kept unchanged as the historical record.
 
 **Decision.** No accounts, payments, dashboards, teams or tiers until the scanner shelf exists.
 
@@ -656,3 +660,13 @@ Once findings connect, "fix these first" falls out. A finding that is a link in 
 - **Sales discipline.** The marketing stays on *safe-by-default*; exploitation is described, if at all, as a consenting Deep-tier escalation. The moment a deck implies the product exploits by default, [ADR-004](#adr-004--no-exploitation-ever)'s selling point is lost.
 
 **Reversal cost.** Low today, because nothing is built — it is a policy plus a future per-scanner flag. It rises as scanners gain exploitation capability, which is the argument for keeping the flag opt-in and the exclusions hard from the first line of code.
+
+---
+
+## ADR-026 — Adopt API-first architecture (supersedes ADR-001 tool-first and ADR-012 platform deferral)
+
+**Decision.** The v4 plan ([18-v4-plan.md](18-v4-plan.md)) replaces the tool-first build order of [ADR-001](#adr-001--build-tools-first-platform-second). `api/` and `web/` are now built from Phase 1 of the v4 migration, not deferred to Phase 6. It also supersedes [ADR-012](#adr-012--defer-all-platform-billing-and-account-work-to-phase-6): the v4 Phase 1 MVP includes accounts, ownership verification, billing and Free/Pro tiers ([19-v4-roadmap.md](19-v4-roadmap.md)), so none of them waits for Phase 6. Every capability is exposed through `api/` first, and `web/` is a thin client of it that holds no logic of its own. The schedule is in [19-v4-roadmap.md](19-v4-roadmap.md) and the steps are in [20-migration-runbook.md](20-migration-runbook.md).
+
+**What carries forward unchanged.** ADR-001 named the Scanner Contract ([ADR-002](#adr-002--freeze-the-scanner-contract-before-writing-tool-1)) as what lets the platform be built at any time without touching scanners, and this ADR relies on that. The contract stays frozen. The validated `core/` services and the shipped scanners are extended, not rebuilt. Every accuracy gate, licence rule, the no-exploitation rule and the ownership rule still apply.
+
+**Reversal cost.** Low while `api/` and `web/` are empty. It rises with every endpoint and screen built on them, and sharply once accounts and billing hold customer data.

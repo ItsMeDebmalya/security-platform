@@ -1,4 +1,3 @@
-# Migration Runbook
 # ProofScan → v4 Migration & Claude Code Execution Runbook (v2)
 
 **Grounded in the actual repository structure. How to evolve the existing ProofScan repo into the v4 architecture (API-first + dual-mode) without disrupting the core, the frozen Scanner Contract, or the validated tools — and how to feed the current state into Claude Code so it builds correctly.**
