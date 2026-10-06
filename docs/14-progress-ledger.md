@@ -265,6 +265,14 @@ A finding once asserted a domain's SPF record was `v=spf1 -all` when it authoris
 
 [Q4](07-open-questions.md) (legal review of the tool list), [Q5](07-open-questions.md) (ToS and the authorisation agreement) and [Q4a](07-open-questions.md) (GDPR, blocks Phase 3) are all 🔴 and all unanswered. Two tools have shipped since they were raised. They will not resolve by writing more scanners, and Q4a blocks a phase we are two tools away from.
 
+### A broad `except` can turn a corpus gap into an `inconclusive` (2026-10-06)
+
+Found while planning Tool 4a, by reading rather than running. **Recorded, not fixed — domscout is unchanged.** `scanners/domscout/scanner.py` wraps each of its HTTP calls (crt.sh, RDAP, the takeover fetch) in `except Exception`. On replay, a URL with no recorded fixture raises `MissingFixtureError`, and that catch swallows it: the check reports `inconclusive` / `blocked_prerequisite` and the scan finishes normally. A missing fixture is a corpus defect, not a target condition, and `cli/corpus.py` exists to fail loudly on it ("fixtures do not cover this scanner version").
+
+Verified directly on 2026-10-06. Replaying the `servfail` case, `ReplayHttpBackend` raised `MissingFixtureError` for both `https://crt.sh/?q=%25.corpus-broken.test&output=json` and `https://rdap.org/domain/corpus-broken.test`. The scan still returned `subdomains-ct-log` and `domain-expiring` as `inconclusive` / `blocked_prerequisite`. **That case's expected inconclusive outcome currently *depends* on this masking.** Its generator simulates a failed fetch, a failed fetch writes no HTTP fixture, and the gap is what the scanner reads on replay.
+
+The consequence: if a future domscout change requests a URL the frozen fixtures do not cover, its corpus would degrade to more `inconclusive` rather than error. The inconclusive-rate gate would catch a large drift, but not a small one. It is the "plausible default standing in for a value that never arrived" shape from the Phase 0b defects. `web` (Tool 4a) re-raises `MissingFixtureError` and `ScanKilledError` and catches only transport failures. Fixing domscout means re-raising in its three handlers **and** giving `servfail` a recordable failure. HTTP replay cannot represent a transport failure today, so that second part may need a `core/replay.py` extension. It is a separate, reviewed change.
+
 ---
 
 ## 2026-08-25 · v3.4 restructuring — the calendar
