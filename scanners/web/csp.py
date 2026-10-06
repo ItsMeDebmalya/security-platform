@@ -3,6 +3,10 @@
 Presence is not protection: a CSP with 'unsafe-inline' is close to worthless
 (docs/05-phase-1-first-tools.md, Tool 4 gotchas). Multiple policies are all
 enforced, so a weakness counts only if every policy permits it.
+
+CSP3 note: 'strict-dynamic' neutralises host/scheme sources (*, http:, https:,
+data:) by instructing browsers to ignore them; they are backward-compat fallbacks
+and do not expose weaknesses when strict-dynamic is present.
 """
 
 from __future__ import annotations
@@ -49,18 +53,21 @@ def weaknesses(policy: Policy) -> frozenset[str]:
     sources = script_sources(policy)
     if sources is None:
         return ALL_WEAKNESSES
-    exempt = "'strict-dynamic'" in sources or any(s.startswith(_NONCE_OR_HASH) for s in sources)
+    has_strict_dynamic = "'strict-dynamic'" in sources
+    exempt_inline = has_strict_dynamic or any(s.startswith(_NONCE_OR_HASH) for s in sources)
     found: set[str] = set()
-    if "'unsafe-inline'" in sources and not exempt:
+    if "'unsafe-inline'" in sources and not exempt_inline:
         found.add("unsafe-inline")
     if "'unsafe-eval'" in sources:
         found.add("unsafe-eval")
-    if "*" in sources:
-        found.add("wildcard")
-    if "http:" in sources:
-        found.add("scheme-http")
-    if "data:" in sources:
-        found.add("scheme-data")
+    # Schemes and wildcard are ignored when strict-dynamic is present
+    if not has_strict_dynamic:
+        if "*" in sources:
+            found.add("wildcard")
+        if "http:" in sources:
+            found.add("scheme-http")
+        if "data:" in sources:
+            found.add("scheme-data")
     return frozenset(found)
 
 
