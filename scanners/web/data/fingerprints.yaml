@@ -1,0 +1,118 @@
+# Technology fingerprints for the web scanner (Tool 4a).
+# Authored from vendor documentation and our own observation of real responses
+# (SPEC A1 licence guardrail; ADR-003). Each entry carries its source and the
+# date it was last reviewed; CI fails when one is older than STALE_AFTER_DAYS.
+# match keys: headers (name -> regex), generator, asset (script/link/img URLs),
+# html (page body). A named group `version` captures a version.
+
+- name: nginx
+  category: web-server
+  source: https://nginx.org/en/docs/http/ngx_http_core_module.html#server_tokens
+  reviewed_on: 2026-10-06
+  match:
+    headers: {server: '^nginx(?:/(?P<version>\d+(?:\.\d+)+))?(?:\s|$)'}
+- name: Apache httpd
+  category: web-server
+  source: https://httpd.apache.org/docs/2.4/mod/core.html#servertokens
+  reviewed_on: 2026-10-06
+  match:
+    headers: {server: '^Apache(?:/(?P<version>\d+(?:\.\d+)+))?(?:\s|$)'}
+- name: Microsoft-IIS
+  category: web-server
+  source: https://learn.microsoft.com/en-us/lifecycle/products/internet-information-services-iis
+  reviewed_on: 2026-10-06
+  match:
+    headers: {server: '^Microsoft-IIS/(?P<version>\d+(?:\.\d+)*)'}
+- name: PHP
+  category: language
+  source: https://www.php.net/manual/en/ini.core.php#ini.expose-php
+  reviewed_on: 2026-10-06
+  match:
+    headers: {x-powered-by: '^PHP/(?P<version>\d+(?:\.\d+)+)'}
+- name: ASP.NET
+  category: framework
+  source: https://learn.microsoft.com/en-us/dotnet/api/system.web.configuration.httpruntimesection.enableversionheader
+  reviewed_on: 2026-10-06
+  match:
+    headers: {x-aspnet-version: '^(?P<version>\d+(?:\.\d+)+)', x-powered-by: '^ASP\.NET$'}
+- name: Express
+  category: framework
+  source: https://expressjs.com/en/advanced/best-practice-security.html
+  reviewed_on: 2026-10-06
+  match:
+    headers: {x-powered-by: '^Express$'}
+- name: Next.js
+  category: framework
+  source: https://nextjs.org/docs/app/api-reference/config/next-config-js/poweredByHeader
+  reviewed_on: 2026-10-06
+  match:
+    headers: {x-powered-by: '^Next\.js'}
+    asset: ['/_next/static/']
+- name: WordPress
+  category: cms
+  source: https://developer.wordpress.org/reference/functions/the_generator/
+  reviewed_on: 2026-10-06
+  match:
+    generator: ['^WordPress(?: (?P<version>\d+(?:\.\d+)+))?']
+    asset: ['/wp-(?:content|includes)/']
+- name: Drupal
+  category: cms
+  source: "own observation: verify a live Drupal site's <meta name=\"Generator\"> before committing"
+  reviewed_on: 2026-10-06
+  match:
+    generator: ['^Drupal (?P<version>\d+)']
+    headers: {x-generator: '^Drupal (?P<version>\d+)'}
+- name: Joomla
+  category: cms
+  source: "own observation: verify a live Joomla site's <meta name=\"generator\"> before committing"
+  reviewed_on: 2026-10-06
+  match:
+    generator: ['^Joomla!']
+- name: jQuery
+  category: js-library
+  source: https://jquery.com/download/
+  reviewed_on: 2026-10-06
+  match:
+    asset: ['jquery[-.](?P<version>\d+\.\d+\.\d+)(?:\.slim)?(?:\.min)?\.js']
+- name: AngularJS
+  category: js-library
+  source: https://docs.angularjs.org/misc/downloading
+  reviewed_on: 2026-10-06
+  match:
+    asset: ['angular(?:js)?/(?P<version>1\.\d+\.\d+)/angular(?:\.min)?\.js']
+- name: Bootstrap
+  category: css-framework
+  source: https://getbootstrap.com/docs/5.3/getting-started/download/
+  reviewed_on: 2026-10-06
+  match:
+    asset: ['bootstrap(?:@|/)(?P<version>\d+\.\d+\.\d+)/']
+- name: Cloudflare
+  category: cdn
+  source: https://developers.cloudflare.com/fundamentals/reference/http-headers/
+  reviewed_on: 2026-10-06
+  match:
+    headers: {cf-ray: '.+'}
+- name: Amazon CloudFront
+  category: cdn
+  source: https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/RequestAndResponseBehaviorCustomOrigin.html
+  reviewed_on: 2026-10-06
+  match:
+    headers: {x-amz-cf-id: '.+'}
+- name: Fastly
+  category: cdn
+  source: https://www.fastly.com/documentation/reference/http/http-headers/X-Served-By/
+  reviewed_on: 2026-10-06
+  match:
+    headers: {x-served-by: '^cache-'}
+- name: Akamai
+  category: cdn
+  source: "own observation: verify a live AkamaiGHost Server header before committing"
+  reviewed_on: 2026-10-06
+  match:
+    headers: {server: '^AkamaiGHost'}
+- name: Vercel
+  category: cdn
+  source: https://vercel.com/docs/headers/response-headers
+  reviewed_on: 2026-10-06
+  match:
+    headers: {x-vercel-id: '.+'}
