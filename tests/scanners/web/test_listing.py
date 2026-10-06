@@ -26,9 +26,8 @@ IIS = (
     '<pre><A HREF="/">[To Parent Directory]</A><br><br> 10/1/2026 10:00 AM 12 '
     '<A HREF="/assets/app.js">app.js</A><br></pre>'
 )
-IIS_SUBDIR = (
-    '<pre><A HREF="/">[To Parent Directory]</A><br><br> 10/1/2026 10:00 AM 12 '
-    '<A HREF="/assets/app.js">app.js</A><br></pre>'
+IIS_PARENT_FILTERED = (
+    '<pre><A HREF="/files/">[To Parent Directory]</A><br><A HREF="/files/sub/x.js">x.js</A></pre>'
 )
 
 
@@ -63,10 +62,10 @@ def test_apache_subdir_filters_parent_link():
 
 
 def test_iis_listing_filters_parent_link():
-    """IIS parent link / and entry /assets/app.js both absolute; only app.js
-    is under /assets/."""
-    found = listing.detect(IIS_SUBDIR)
-    assert found.kind == "iis" and found.entries == frozenset({"app.js"})
+    """IIS parent link /files/ must be dropped; /files/sub/x.js yields x.js.
+    Without filtering, phantom entry 'files' would leak."""
+    found = listing.detect(IIS_PARENT_FILTERED)
+    assert found.kind == "iis" and found.entries == frozenset({"x.js"})
 
 
 def test_index_of_title_needs_h1():
@@ -88,3 +87,14 @@ def test_directory_listing_title_needs_h1():
 def test_to_parent_directory_needs_pre():
     """[To Parent Directory] in a <p> tag is not IIS listing marker."""
     assert listing.detect("<p><a href='/'>[To Parent Directory]</a></p><p>Some content</p>") is None
+
+
+def test_url_encoded_path_filtering():
+    """URL-encoded paths in hrefs should match unquoted h1 paths."""
+    body = (
+        "<title>Index of /my dir/</title><h1>Index of /my dir/</h1><table>"
+        '<tr><td><a href="/my%20dir/">Parent Directory</a></td></tr>'
+        '<tr><td><a href="/my%20dir/file.txt">file.txt</a></td></tr></table>'
+    )
+    found = listing.detect(body)
+    assert found.kind == "index-of" and found.entries == frozenset({"file.txt"})
