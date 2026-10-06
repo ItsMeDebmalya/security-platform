@@ -37,22 +37,29 @@ class _Extractor(HTMLParser):
         self.generator: str | None = None
         self.assets: list[str] = []
 
-    def _abs(self, value: str) -> str:
-        return urljoin(self.base_url, value.strip())
+    def _abs(self, value: str) -> str | None:
+        try:
+            return urljoin(self.base_url, value.strip())
+        except ValueError:
+            return None
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         a = {k.lower(): (v or "") for k, v in attrs}
         if tag == "script" and a.get("src"):
             url = self._abs(a["src"])
-            self.scripts.append(Script(src=url, integrity=a.get("integrity") or None))
-            self.assets.append(url)
+            if url is not None:
+                self.scripts.append(Script(src=url, integrity=a.get("integrity") or None))
+                self.assets.append(url)
         elif tag == "link" and a.get("href"):
             url = self._abs(a["href"])
-            if "stylesheet" in a.get("rel", "").lower().split():
-                self.stylesheets.append(url)
-            self.assets.append(url)
+            if url is not None:
+                if "stylesheet" in a.get("rel", "").lower().split():
+                    self.stylesheets.append(url)
+                self.assets.append(url)
         elif tag == "img" and a.get("src"):
-            self.assets.append(self._abs(a["src"]))
+            url = self._abs(a["src"])
+            if url is not None:
+                self.assets.append(url)
         elif tag == "meta":
             equiv = a.get("http-equiv", "").strip().lower()
             name = a.get("name", "").strip().lower()
@@ -78,13 +85,18 @@ def extract(body: str, base_url: str) -> PageFacts:
     )
 
 
-def _origin(url: str) -> tuple[str, str, int | None]:
-    parts = urlsplit(url)
-    return parts.scheme.lower(), (parts.hostname or "").lower(), parts.port
+def _origin(url: str) -> tuple[str, str, int | None] | None:
+    try:
+        parts = urlsplit(url)
+        return parts.scheme.lower(), (parts.hostname or "").lower(), parts.port
+    except ValueError:
+        return None
 
 
 def is_same_origin(url: str, base_url: str) -> bool:
-    return _origin(url) == _origin(base_url)
+    url_origin = _origin(url)
+    base_origin = _origin(base_url)
+    return url_origin is not None and base_origin is not None and url_origin == base_origin
 
 
 def _parent(path: str) -> str | None:

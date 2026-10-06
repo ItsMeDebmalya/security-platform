@@ -74,3 +74,29 @@ def test_malformed_markup_never_raises():  # Review Focus 5
     )
     assert isinstance(facts, html.PageFacts)
     assert html.extract("", BASE).asset_urls == ()
+    # Parser recovers the /a.js script despite malformed markup
+    assert facts.scripts == (html.Script("https://x.test/a.js", None),)
+
+
+def test_invalid_ipv6_url_never_raises():
+    # Invalid IPv6 in URL attribute should not raise; bad URL is skipped
+    facts = html.extract('<img src="http://[bad">', BASE)
+    assert isinstance(facts, html.PageFacts)
+    # The bad URL is not recorded (dropped due to ValueError)
+    assert facts.asset_urls == ()
+
+
+def test_non_numeric_port_never_raises():
+    # Non-numeric port like 'abc' should not raise in extract or helpers
+    facts = html.extract('<script src="https://x.test:abc/a.js"></script>', BASE)
+    assert isinstance(facts, html.PageFacts)
+    # Bad port is recorded (URL string is valid), but same-origin helpers don't crash
+    assert len(facts.scripts) == 1
+    assert facts.scripts[0].src == "https://x.test:abc/a.js"
+    # is_same_origin returns False for bad port (can't parse it)
+    assert not html.is_same_origin("https://x.test:abc/a", BASE)
+    # same_origin_directories and linked_files don't raise
+    dirs = html.same_origin_directories(facts, BASE)
+    assert isinstance(dirs, list)
+    files = html.linked_files(facts, BASE)
+    assert isinstance(files, dict)
