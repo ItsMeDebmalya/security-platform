@@ -243,3 +243,51 @@ def test_same_error_on_homepage_clears_debug_check():
     assert any(
         c.check_id == "web-debug-mode" and c.outcome == "clear" for c in result.telemetry.checks_run
     )
+
+
+def _dump(result):
+    return json.dumps(result.model_dump(mode="json"))
+
+
+def test_secret_in_server_header_is_not_stored(site):
+    hardened(site)
+    site.serve(
+        "https://x.test/",
+        headers={**HARDENED, "server": "nginx/1.27.3 AKIAIOSFODNN7EXAMPLE"},
+        body=PAGE,
+    )
+    result = run(site)
+    assert by_id(result, "web-version-disclosure") and by_id(result, "web-technology")
+    assert "AKIAIOSFODNN7EXAMPLE" not in _dump(result)
+
+
+def test_secret_in_powered_by_header_is_not_stored(site):
+    hardened(site)
+    token = "ghp_" + "a1B2c3D4e5" * 3
+    site.serve(
+        "https://x.test/", headers={**HARDENED, "x-powered-by": f"PHP/7.4.33 {token}"}, body=PAGE
+    )
+    result = run(site)
+    assert by_id(result, "web-component-eol") and by_id(result, "web-version-disclosure")
+    assert token not in _dump(result)
+
+
+def test_secret_in_csp_header_is_not_stored(site):
+    hardened(site)
+    token = "ghp_" + "a1B2c3D4e5" * 3
+    csp = f"script-src 'unsafe-inline' https://cdn.y.test/{token}/x.js"
+    site.serve("https://x.test/", headers={**HARDENED, "content-security-policy": csp}, body=PAGE)
+    result = run(site)
+    assert by_id(result, "web-csp-weak")
+    assert token not in _dump(result)
+
+
+def test_secret_in_url_path_is_not_stored(site):
+    hardened(site)
+    key = "AKIAIOSFODNN7EXAMPLE"
+    site.serve("https://x.test/", headers=HARDENED, body=f'<script src="/{key}/app.js"></script>')
+    site.serve(f"https://x.test/{key}/", headers=HARDENED, body=NGINX_LISTING)
+    result = run(site)
+    listing = [f for f in by_id(result, "web-directory-listing")]
+    assert len(listing) == 1 and listing[0].state == "highly_likely"
+    assert key not in _dump(result)

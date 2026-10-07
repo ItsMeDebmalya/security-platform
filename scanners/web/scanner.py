@@ -254,7 +254,7 @@ def _why_unusable(f: Fetched) -> tuple[str, str]:
 
 
 def _request(f: Fetched) -> dict[str, Any]:
-    return {"method": "GET", "url": f.url}
+    return {"method": "GET", "url": _redacted(f.url)}
 
 
 def _raw(f: Fetched) -> dict[str, Any]:
@@ -262,7 +262,7 @@ def _raw(f: Fetched) -> dict[str, Any]:
         return {"status": 0, "headers": {}, "body": None, "elapsed_ms": 0}
     return {
         "status": f.response.status_code,
-        "headers": dict(f.response.headers),
+        "headers": {k: _redacted(v) for k, v in f.response.headers.items()},
         "body": f.response.text,
         "elapsed_ms": f.response.captured.get("elapsed_ms"),
     }
@@ -563,6 +563,7 @@ class _Scan:
         instance_key: str | None = None,
         references: list[str] | None = None,
     ) -> None:
+        location = _safe_location(location)
         result = self.engine.combine(signals or [self._signal(check)], version_only=version_only)
         evidence = [
             capture_http_pair(
@@ -616,6 +617,7 @@ class _Scan:
     def _inconclusive(
         self, check: Check, location: str, fetched: Fetched, description: str, *, reason: str
     ) -> None:
+        location = _safe_location(location)
         result = self.engine.combine(
             [
                 self._signal(
@@ -675,6 +677,7 @@ class _Scan:
         )
 
     def _clear(self, check: Check, location: str) -> None:
+        location = _safe_location(location)
         self.checks.append(CheckRun(check_id=check.check_id, location=location, outcome="clear"))
 
     # --- page content --------------------------------------------------------
@@ -996,6 +999,10 @@ class _Scan:
                 f"{f.url} answered HTTP {f.response.status_code} without an RFC 9116 Contact field"
             ),
         )
+
+
+def _safe_location(location: str) -> str:
+    return redact_body(location)[0] or location
 
 
 def _redacted(text: str) -> str:
