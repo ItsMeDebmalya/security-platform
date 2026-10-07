@@ -1,0 +1,23 @@
+{
+  "body": "<!doctype html><html><head><meta charset=\"utf-8\"><title>known good</title><link rel=\"stylesheet\" href=\"/static/site.css\"></head><body><p>Hardened lab page.</p><script src=\"/static/app.js\"></script></body></html>",
+  "body_truncated": false,
+  "elapsed_ms": 0,
+  "headers": {
+    "accept-ranges": "bytes",
+    "connection": "keep-alive",
+    "content-length": "211",
+    "content-security-policy": "default-src 'self'; script-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'",
+    "content-type": "text/html",
+    "date": "Wed, 07 Oct 2026 10:46:28 GMT",
+    "etag": "\"6ac622f3-d3\"",
+    "last-modified": "Wed, 07 Oct 2026 10:46:11 GMT",
+    "referrer-policy": "strict-origin-when-cross-origin",
+    "server": "nginx",
+    "strict-transport-security": "max-age=31536000; includeSubDomains",
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "DENY"
+  },
+  "redactions": [],
+  "status": 200,
+  "url": "https://known-good.web.test/"
+}

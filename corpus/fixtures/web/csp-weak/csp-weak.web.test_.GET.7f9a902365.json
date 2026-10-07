@@ -1,0 +1,23 @@
+{
+  "body": "<!doctype html><html><head><title>lab</title></head><body><p>lab page</p></body></html>",
+  "body_truncated": false,
+  "elapsed_ms": 0,
+  "headers": {
+    "accept-ranges": "bytes",
+    "access-control-allow-origin": "*",
+    "connection": "keep-alive",
+    "content-length": "87",
+    "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; frame-ancestors 'none'",
+    "content-type": "text/html",
+    "date": "Wed, 07 Oct 2026 10:46:28 GMT",
+    "etag": "\"6ac622f3-57\"",
+    "last-modified": "Wed, 07 Oct 2026 10:46:11 GMT",
+    "referrer-policy": "unsafe-url",
+    "server": "nginx",
+    "strict-transport-security": "max-age=31536000",
+    "x-content-type-options": "nosniff"
+  },
+  "redactions": [],
+  "status": 200,
+  "url": "https://csp-weak.web.test/"
+}

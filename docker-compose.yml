@@ -67,3 +67,33 @@ services:
     ports:
       - "127.0.0.1:5001:5000"
     restart: "no"   # vulnerable by design: never resurrect these unasked
+
+  # --- web (Tool 4a) corpus lab: `make web-lab-up`. Profile-gated, so
+  # `make targets-up` never starts it. 127.0.0.1 only.
+  web-lab-nginx:
+    image: nginx:1.27-alpine
+    container_name: sp-web-lab-nginx
+    profiles: ["web-lab"]
+    command: ["nginx", "-c", "/etc/nginx/lab/nginx.conf", "-g", "daemon off;"]
+    ports: ["127.0.0.1:18080:80", "127.0.0.1:18443:443"]
+    volumes:
+      - ./corpus/lab/web/nginx:/etc/nginx/lab:ro
+      - ./corpus/lab/web/sites:/sites:ro
+      - ./corpus/lab/web/certs:/certs:ro
+    depends_on: [web-lab-django, web-lab-pytrace]
+    restart: "no"
+  web-lab-django:
+    image: python:3.13-slim
+    container_name: sp-web-lab-django
+    profiles: ["web-lab"]
+    working_dir: /app
+    volumes: ["./corpus/lab/web/django:/app:ro"]
+    command: ["sh", "-c", "pip install --no-cache-dir 'django==5.2.*' && python app.py runserver 0.0.0.0:8000 --noreload"]
+    restart: "no"
+  web-lab-pytrace:
+    image: python:3.13-slim
+    container_name: sp-web-lab-pytrace
+    profiles: ["web-lab"]
+    volumes: ["./corpus/lab/web/pytrace:/app:ro"]
+    command: ["python", "/app/server.py"]
+    restart: "no"

@@ -1165,5 +1165,273 @@
         "tp": 5
       }
     }
+  },
+  {
+    "cases": [
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [],
+        "fn": 0,
+        "fp": 0,
+        "id": "known-good",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "tier": "known_good",
+        "tp": 0
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [
+          {
+            "check_id": "web-https-redirect-missing",
+            "location": "/"
+          },
+          {
+            "check_id": "web-hsts-missing",
+            "location": "/"
+          },
+          {
+            "check_id": "web-csp-missing",
+            "location": "/"
+          },
+          {
+            "check_id": "web-clickjacking-unprotected",
+            "location": "/"
+          },
+          {
+            "check_id": "web-xcto-missing",
+            "location": "/"
+          }
+        ],
+        "fn": 0,
+        "fp": 0,
+        "id": "bare",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "tier": "vulnerable",
+        "tp": 5
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [
+          {
+            "check_id": "web-hsts-weak",
+            "location": "/"
+          }
+        ],
+        "fn": 0,
+        "fp": 0,
+        "id": "hsts-weak",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "tier": "vulnerable",
+        "tp": 1
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [
+          {
+            "check_id": "web-csp-weak",
+            "location": "/"
+          },
+          {
+            "check_id": "web-referrer-policy-unsafe",
+            "location": "/"
+          },
+          {
+            "check_id": "web-cors-wildcard",
+            "location": "/"
+          }
+        ],
+        "fn": 0,
+        "fp": 0,
+        "id": "csp-weak",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "tier": "vulnerable",
+        "tp": 3
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [],
+        "fn": 0,
+        "fp": 0,
+        "id": "csp-meta",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "tier": "vulnerable",
+        "tp": 0
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [
+          {
+            "check_id": "web-directory-listing",
+            "location": "/assets/"
+          }
+        ],
+        "fn": 0,
+        "fp": 0,
+        "id": "listing",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "tier": "vulnerable",
+        "tp": 1
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [],
+        "fn": 0,
+        "fp": 0,
+        "id": "mixed-sri",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "tier": "vulnerable",
+        "tp": 0
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [],
+        "fn": 0,
+        "fp": 0,
+        "id": "secret",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "tier": "vulnerable",
+        "tp": 0
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [],
+        "fn": 0,
+        "fp": 0,
+        "id": "eol",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "tier": "vulnerable",
+        "tp": 0
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [],
+        "fn": 0,
+        "fp": 0,
+        "id": "django-debug",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "tier": "vulnerable",
+        "tp": 0
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [],
+        "fn": 0,
+        "fp": 0,
+        "id": "pytrace",
+        "inconclusive": 2,
+        "inconclusive_delivered": true,
+        "tier": "vulnerable",
+        "tp": 0
+      }
+    ],
+    "false_positives_on_known_good": 0,
+    "gate": {
+      "inconclusive_max": 0.15,
+      "precision": 0.95,
+      "recall": 0.85,
+      "recall_definition": "corpus_relative",
+      "recall_label": "corpus-relative only - never publish this as absolute"
+    },
+    "overall": {
+      "cases": 11,
+      "checks_run": 234,
+      "claims": {
+        "derived": {
+          "fp": 0,
+          "precision": null,
+          "tp": 0
+        },
+        "detected": {
+          "fp": 0,
+          "precision": 1.0,
+          "tp": 10
+        }
+      },
+      "false_positives_on_known_good": 0,
+      "fn": 0,
+      "fp": 0,
+      "inconclusive_rate": 0.008547008547008548,
+      "precision": 1.0,
+      "recall": 1.0,
+      "suspected_rate": 0.03418803418803419,
+      "tier": "all",
+      "tp": 10
+    },
+    "passed": true,
+    "reason": "pass",
+    "scanner": "web",
+    "tiers": {
+      "known_good": {
+        "cases": 1,
+        "checks_run": 22,
+        "claims": {
+          "derived": {
+            "fp": 0,
+            "precision": null,
+            "tp": 0
+          },
+          "detected": {
+            "fp": 0,
+            "precision": null,
+            "tp": 0
+          }
+        },
+        "false_positives_on_known_good": 0,
+        "fn": 0,
+        "fp": 0,
+        "inconclusive_rate": 0.0,
+        "precision": null,
+        "recall": null,
+        "suspected_rate": 0.0,
+        "tier": "known_good",
+        "tp": 0
+      },
+      "vulnerable": {
+        "cases": 10,
+        "checks_run": 212,
+        "claims": {
+          "derived": {
+            "fp": 0,
+            "precision": null,
+            "tp": 0
+          },
+          "detected": {
+            "fp": 0,
+            "precision": 1.0,
+            "tp": 10
+          }
+        },
+        "false_positives_on_known_good": 0,
+        "fn": 0,
+        "fp": 0,
+        "inconclusive_rate": 0.009433962264150943,
+        "precision": 1.0,
+        "recall": 1.0,
+        "suspected_rate": 0.03773584905660377,
+        "tier": "vulnerable",
+        "tp": 10
+      }
+    }
   }
 ]

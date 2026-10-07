@@ -7,3 +7,4 @@ corpus/results/latest.json
 .pytest_cache/
 tools/bin/
 temp
+corpus/lab/web/certs/

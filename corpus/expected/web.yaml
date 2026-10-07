@@ -1,0 +1,25 @@
+# check_id + location pairs each case must report as confirmed/highly_likely.
+# An empty list means no claim at all. Suspected findings (mixed content, SRI,
+# version, secret, error/debug pages, EOL) are excused from the gate on both
+# sides, so they are noted here, not asserted.
+known-good: []
+bare:
+  - {check_id: web-https-redirect-missing, location: "/"}
+  - {check_id: web-hsts-missing, location: "/"}
+  - {check_id: web-csp-missing, location: "/"}
+  - {check_id: web-clickjacking-unprotected, location: "/"}
+  - {check_id: web-xcto-missing, location: "/"}
+hsts-weak:
+  - {check_id: web-hsts-weak, location: "/"}
+csp-weak:
+  - {check_id: web-csp-weak, location: "/"}
+  - {check_id: web-referrer-policy-unsafe, location: "/"}
+  - {check_id: web-cors-wildcard, location: "/"}
+csp-meta: []        # negative for csp-missing (meta policy counts) and clickjacking (XFO)
+listing:
+  - {check_id: web-directory-listing, location: "/assets/"}
+mixed-sri: []       # web-mixed-content, web-sri-missing -> suspected
+secret: []          # web-secret-in-response -> suspected; the google browser key must NOT fire
+eol: []             # web-component-eol (PHP 7.4, Drupal 7) -> suspected
+django-debug: []    # web-debug-mode -> suspected
+pytrace: []         # web-error-disclosure -> suspected

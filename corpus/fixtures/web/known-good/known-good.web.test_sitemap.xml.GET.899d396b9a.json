@@ -1,0 +1,23 @@
+{
+  "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?><urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"><url><loc>https://known-good.web.test/</loc></url></urlset>",
+  "body_truncated": false,
+  "elapsed_ms": 0,
+  "headers": {
+    "accept-ranges": "bytes",
+    "connection": "keep-alive",
+    "content-length": "157",
+    "content-security-policy": "default-src 'self'; script-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'",
+    "content-type": "text/xml",
+    "date": "Wed, 07 Oct 2026 10:46:28 GMT",
+    "etag": "\"6ac622f3-9d\"",
+    "last-modified": "Wed, 07 Oct 2026 10:46:11 GMT",
+    "referrer-policy": "strict-origin-when-cross-origin",
+    "server": "nginx",
+    "strict-transport-security": "max-age=31536000; includeSubDomains",
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "DENY"
+  },
+  "redactions": [],
+  "status": 200,
+  "url": "https://known-good.web.test/sitemap.xml"
+}

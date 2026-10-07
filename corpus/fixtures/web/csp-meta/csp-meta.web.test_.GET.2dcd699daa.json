@@ -1,0 +1,22 @@
+{
+  "body": "<!doctype html><html><head><title>lab</title><meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'self'; script-src 'self'\"></head><body><p>lab page</p></body></html>",
+  "body_truncated": false,
+  "elapsed_ms": 0,
+  "headers": {
+    "accept-ranges": "bytes",
+    "connection": "keep-alive",
+    "content-length": "178",
+    "content-type": "text/html",
+    "date": "Wed, 07 Oct 2026 10:46:28 GMT",
+    "etag": "\"6ac622f3-b2\"",
+    "last-modified": "Wed, 07 Oct 2026 10:46:11 GMT",
+    "referrer-policy": "strict-origin-when-cross-origin",
+    "server": "nginx",
+    "strict-transport-security": "max-age=31536000",
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "DENY"
+  },
+  "redactions": [],
+  "status": 200,
+  "url": "https://csp-meta.web.test/"
+}
