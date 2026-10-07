@@ -291,3 +291,15 @@ def test_secret_in_url_path_is_not_stored(site):
     listing = [f for f in by_id(result, "web-directory-listing")]
     assert len(listing) == 1 and listing[0].state == "highly_likely"
     assert key not in _dump(result)
+
+
+def test_secret_in_header_name_is_not_stored(site):
+    hardened(site)
+    site.serve(
+        "https://x.test/",
+        headers={**HARDENED, "server": "nginx/1.27.3", "x-AKIAIOSFODNN7EXAMPLE": "1"},
+        body=PAGE,
+    )
+    result = run(site)
+    assert by_id(result, "web-version-disclosure")
+    assert "AKIAIOSFODNN7EXAMPLE" not in _dump(result)

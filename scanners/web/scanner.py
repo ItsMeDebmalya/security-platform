@@ -262,7 +262,7 @@ def _raw(f: Fetched) -> dict[str, Any]:
         return {"status": 0, "headers": {}, "body": None, "elapsed_ms": 0}
     return {
         "status": f.response.status_code,
-        "headers": {k: _redacted(v) for k, v in f.response.headers.items()},
+        "headers": {_redacted(k): _redacted(v) for k, v in f.response.headers.items()},
         "body": f.response.text,
         "elapsed_ms": f.response.captured.get("elapsed_ms"),
     }
