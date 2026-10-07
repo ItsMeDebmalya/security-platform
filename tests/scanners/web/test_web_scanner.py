@@ -521,3 +521,26 @@ def test_normalised_index_document_is_its_directory():
 
     assert _normalised("https://x.test/a/index.htm") == _normalised("https://x.test/a/")
     assert _normalised("https://x.test/index.html.bak") != _normalised("https://x.test/")
+
+
+def _expired():
+    from tests.scanners.web.test_fetch import EXPIRED
+
+    return EXPIRED
+
+
+def test_expired_cert_is_named_in_https_checks(site):
+    site.raise_on("https://x.test/", _expired())
+    site.raise_on(f"https://x.test{PROBE}", _expired())
+    site.serve("http://x.test/", headers={"content-type": "text/html"}, body=PAGE)
+    f = only(run(site), "web-hsts-missing")
+    assert f.state == "inconclusive" and f.no_verdict_reason == "blocked_prerequisite"
+    assert "TLS certificate verification failed (certificate has expired)" in f.description
+
+
+def test_expired_cert_on_both_schemes_is_named(site):
+    for u in ("https://x.test/", "http://x.test/"):
+        site.raise_on(u, _expired())
+    f = only(run(site), "web-xcto-missing")
+    assert f.state == "inconclusive"
+    assert "TLS certificate verification failed (certificate has expired)" in f.description

@@ -12,10 +12,12 @@ corpus gap is a bug, not a target condition) and ScanKilledError.
 from __future__ import annotations
 
 import hashlib
+import re
 from dataclasses import dataclass
 from urllib.parse import urlsplit
 
 from core.context import ScanContext
+from core.evidence import redact_body
 from core.http import CapturedResponse, HttpClient, MissingFixtureError, OutOfScopeError
 from core.killswitch import ScanKilledError
 from core.models import Asset
@@ -32,6 +34,39 @@ def probe_path(host: str) -> str:
     return f"/{PROBE_PREFIX}{hashlib.sha256(host.encode()).hexdigest()[:16]}"
 
 
+_DETAIL_CAP = 200
+_SSL_TOKEN = re.compile(r"\[SSL: [A-Z0-9_]+\]")
+_DNS_MARKERS = (
+    "name or service not known",
+    "nodename nor servname",
+    "getaddrinfo",
+    "temporary failure in name resolution",
+)
+
+
+def describe_transport_failure(exc: BaseException) -> str:
+    """Say why a request could not complete, from the exception's class and message."""
+    name, msg = type(exc).__name__, str(exc)
+    low = msg.lower()
+    text: str
+    if "CERTIFICATE_VERIFY_FAILED" in msg:
+        reason = msg.split("certificate verify failed:", 1)[-1].split(" (_ssl", 1)[0]
+        text = f"TLS certificate verification failed ({reason.strip().rstrip('.')})"
+    elif (token := _SSL_TOKEN.search(msg)) is not None:
+        rest = msg[token.end() :].split(" (_ssl", 1)[0]
+        text = f"TLS handshake failed ({rest.strip()})"
+    elif "timeout" in name.lower():
+        text = "connection timed out"
+    elif "refused" in low:
+        text = "connection refused"
+    elif any(m in low for m in _DNS_MARKERS):
+        text = "DNS lookup failed"
+    else:
+        text = f"transport error ({name})"
+    redacted = redact_body(text)[0] or text
+    return redacted[:_DETAIL_CAP]
+
+
 @dataclass(frozen=True)
 class Fetched:
     label: str
@@ -39,6 +74,7 @@ class Fetched:
     path: str
     response: CapturedResponse | None
     failure: str | None
+    detail: str | None = None
 
     @property
     def usable(self) -> bool:
@@ -121,12 +157,14 @@ class _Fetcher:
         except (MissingFixtureError, ScanKilledError):
             raise
         except OutOfScopeError:
-            return Fetched(label, url, path, None, "blocked_prerequisite")
+            return Fetched(
+                label, url, path, None, "blocked_prerequisite", "the request left the scan's scope"
+            )
         except Exception as exc:  # a transport failure: we could not find out
             reason = (
                 "timeout" if "timeout" in type(exc).__name__.lower() else "blocked_prerequisite"
             )
-            return Fetched(label, url, path, None, reason)
+            return Fetched(label, url, path, None, reason, describe_transport_failure(exc))
         if response.status_code == 429:
             return Fetched(label, url, path, response, "rate_limited")
         if challenge.detect(response.status_code, response.headers, response.text):

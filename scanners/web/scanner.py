@@ -142,7 +142,7 @@ Judge = Callable[[dict[str, str], str], tuple[bool, str]]
 @register
 class WebScanner(BaseScanner):
     name = "web"
-    version = "1.0.0"
+    version = "1.0.1"
     supported_modes = frozenset({"light"})
     target_types = frozenset({"domain", "url"})
 
@@ -246,6 +246,8 @@ def _why_unusable(f: Fetched) -> tuple[str, str]:
         return "rate_limited", f"{f.url} answered HTTP 429 (rate limited)"
     if f.response is None:
         reason = f.failure if f.failure in NO_VERDICT else "blocked_prerequisite"
+        if f.detail:
+            return reason, f"{f.url} could not be fetched: {f.detail}"
         return reason, f"{f.url} could not be fetched ({f.failure or 'not requested'})"
     return "ambiguous_response", (
         f"{f.url} answered HTTP {f.response.status_code}, a server "

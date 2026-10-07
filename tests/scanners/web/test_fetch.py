@@ -85,3 +85,58 @@ def test_url_with_explicit_port_skips_the_other_scheme(site):
     assert obs.root_path == "/app"
     assert obs.http_root.failure == "blocked_prerequisite" and obs.http_root.response is None
     assert not any(c.startswith("http://") for c in site.calls)
+
+
+class ConnectError(Exception):
+    """Named like httpx's."""
+
+
+_VERIFY = "[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: "
+EXPIRED = ConnectError(_VERIFY + "certificate has expired (_ssl.c:1032)")
+SELF_SIGNED = ConnectError(_VERIFY + "self-signed certificate (_ssl.c:1032)")
+WRONG_HOST = ConnectError(
+    _VERIFY + "Hostname mismatch, certificate is not valid for 'wrong.host.badssl.com'. "
+    "(_ssl.c:1032)"
+)
+HANDSHAKE = ConnectError(
+    "[SSL: SSLV3_ALERT_HANDSHAKE_FAILURE] ssl/tls alert handshake failure (_ssl.c:1032)"
+)
+
+
+@pytest.mark.parametrize(
+    ("exc", "expected"),
+    [
+        (EXPIRED, "TLS certificate verification failed (certificate has expired)"),
+        (SELF_SIGNED, "TLS certificate verification failed (self-signed certificate)"),
+        (
+            WRONG_HOST,
+            "TLS certificate verification failed (Hostname mismatch, certificate is not "
+            "valid for 'wrong.host.badssl.com')",
+        ),
+        (HANDSHAKE, "TLS handshake failed (ssl/tls alert handshake failure)"),
+        (ConnectTimeout(""), "connection timed out"),
+        (ConnectError("All connection attempts failed: Connection refused"), "connection refused"),
+        (ConnectError("[Errno -2] Name or service not known"), "DNS lookup failed"),
+        (ConnectError("[Errno -3] Temporary failure in name resolution"), "DNS lookup failed"),
+        (ValueError("odd"), "transport error (ValueError)"),
+    ],
+)
+def test_describe_transport_failure(exc, expected):
+    assert fetch.describe_transport_failure(exc) == expected
+
+
+def test_transport_detail_is_redacted_and_capped():
+    out = fetch.describe_transport_failure(ValueError("x AKIAIOSFODNN7EXAMPLE y"))
+    assert out == "transport error (ValueError)"
+    out = fetch.describe_transport_failure(
+        ConnectError("[SSL: BAD] key AKIAIOSFODNN7EXAMPLE " + "z" * 500 + " (_ssl.c:1)")
+    )
+    assert "AKIAIOSFODNN7EXAMPLE" not in out and len(out) <= 200
+
+
+def test_gather_records_why_https_failed(site):
+    site.raise_on("https://x.test/", EXPIRED)
+    site.serve("http://x.test/", headers=HTML, body="<p>plain</p>")
+    obs = gather(site)
+    assert obs.https_root.failure == "blocked_prerequisite"
+    assert obs.https_root.detail == "TLS certificate verification failed (certificate has expired)"
