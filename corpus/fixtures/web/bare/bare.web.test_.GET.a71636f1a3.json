@@ -1,0 +1,18 @@
+{
+  "body": "<!doctype html><html><head><title>lab</title></head><body><p>lab page</p></body></html>",
+  "body_truncated": false,
+  "elapsed_ms": 0,
+  "headers": {
+    "accept-ranges": "bytes",
+    "connection": "keep-alive",
+    "content-length": "87",
+    "content-type": "text/html",
+    "date": "Wed, 07 Oct 2026 10:46:28 GMT",
+    "etag": "\"6ac622f3-57\"",
+    "last-modified": "Wed, 07 Oct 2026 10:46:11 GMT",
+    "server": "nginx/1.27.5"
+  },
+  "redactions": [],
+  "status": 200,
+  "url": "https://bare.web.test/"
+}

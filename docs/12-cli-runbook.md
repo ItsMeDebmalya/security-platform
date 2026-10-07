@@ -369,6 +369,63 @@ uv run scan run email -t example.com --format json 2>/dev/null \
   | jq -r '.telemetry.checks_run[] | "\(.outcome)\t\(.check_id)"'
 ```
 
+### `scan run web` — the Website Scanner (Light)
+
+`web` makes ordinary GET requests only — it never sends a payload, so Light needs no authorisation. It takes a domain or a URL. This is the real output of `example.com` on 2026-10-07 (the progress lines go to stderr):
+
+```
+$ uv run scan run web --target example.com
+[  10%] fetching the site
+[  40%] judging transport security
+[  55%] judging security headers
+[  70%] judging page content
+[  85%] judging error pages and directories
+[ 100%] done
+
+web 1.0.1 light example.com -> succeeded
+
+severity  conf   state          check                            location
+medium    0.98   confirmed      web-https-redirect-missing       /
+medium    0.98   confirmed      web-hsts-missing                 /
+medium    0.98   confirmed      web-csp-missing                  /
+medium    0.98   confirmed      web-clickjacking-unprotected     /
+low       0.98   confirmed      web-xcto-missing                 /
+info      0.98   informational  web-referrer-policy-missing      /
+info      0.98   informational  web-technology                   /
+info      0.98   informational  web-security-txt-missing         /.well-known/security.txt
+
+21 check(s) ran, 0% inconclusive, 6 request(s)
+```
+
+`example.com` is a bare page, so it earns the headline findings: HTTPS is not enforced, and HSTS, CSP, clickjacking and `X-Content-Type-Options` protections are missing. Each is `confirmed` at 0.98 because the absence was validated against a second, distinct page on the same origin (the deterministic 404 control) — the control half of the evidence pair, which `--format json` shows in full. That is one origin answering twice, not two independent observers, and the finding's description says so.
+
+**Full result to a file:**
+
+```bash
+uv run scan run web --target example.com --format json --out web-example.json
+```
+
+**The request cap.** `web` makes at most **12 GETs of its own** per run. **Redirects are additional** to those 12 — the HTTP client follows in-scope redirects itself and the cost meter counts every hop, so `requests` in the summary line can exceed 12. The cap is therefore not yet a hard ceiling on what the target receives; that is open and **required before beta** — see [ledger D26](14-progress-ledger.md#d-deferred-register).
+
+**`inconclusive` reasons** (the `no_verdict_reason` on a finding, and the check's `outcome` in `telemetry.checks_run`). `inconclusive` means "we could not tell" and is never a pass:
+
+| Reason | What happened |
+|---|---|
+| `waf_block` | The page was an anti-bot challenge (Cloudflare, Akamai edge block). Nothing on it is the site's own content, so content and header checks stop. |
+| `rate_limited` | The target answered 429. |
+| `ambiguous_response` | A 5xx, or a page that could be either the site's content or an error. Only a 404 counts as "definitely absent". |
+| `timeout` | A request timed out. |
+| `blocked_prerequisite` | HTTPS could not be used, so the HTTPS-dependent checks (HSTS, the HTTPS redirect, mixed content) could not be judged. We never report "missing HSTS" on a host with no working HTTPS. |
+
+When a request fails, the finding's description now says **why**, from the exception: `TLS certificate verification failed (…)` with OpenSSL's own reason, `TLS handshake failed (…)`, `connection timed out`, `connection refused`, `DNS lookup failed`, or `transport error (<type>)` when nothing more specific is known. (Before v1.0.1 it said only "could not be fetched (blocked_prerequisite)".) A site with no working HTTPS is reported as `inconclusive` on those checks but, as of today, never as one definite statement — that gap is ledger D23.
+
+Real examples from `web` 1.0.1 (2026-10-07), the cause sentence inside an `inconclusive` finding's description (the description continues with what the check could not judge):
+
+```
+https://expired.badssl.com/ could not be fetched: TLS certificate verification failed (certificate has expired).
+https://httpforever.com/ could not be fetched: TLS handshake failed (ssl/tls alert handshake failure).
+```
+
 ---
 
 ## 5. The authorisation gate — a per-check declaration, not a mode setting

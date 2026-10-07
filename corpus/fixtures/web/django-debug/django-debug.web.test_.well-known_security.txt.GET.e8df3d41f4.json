@@ -1,0 +1,20 @@
+{
+  "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta http-equiv=\"content-type\" content=\"text/html; charset=utf-8\">\n  <title>Page not found at /.well-known/security.txt</title>\n  <meta name=\"robots\" content=\"NONE,NOARCHIVE\">\n  <style>\n    html * { padding:0; margin:0; }\n    body * { padding:10px 20px; }\n    body * * { padding:0; }\n    body { font-family: sans-serif; background:#eee; color:#000; }\n    body > :where(header, main, footer) { border-bottom:1px solid #ddd; }\n    h1 { font-weight:normal; margin-bottom:.4em; }\n    h1 small { font-size:60%; color:#666; font-weight:normal; }\n    table { border:none; border-collapse: collapse; width:100%; }\n    td, th { vertical-align:top; padding:2px 3px; }\n    th { width:12em; text-align:right; color:#666; padding-right:.5em; }\n    #info { background:#f6f6f6; }\n    #info ol { margin: 0.5em 4em; }\n    #info ol li { font-family: monospace; }\n    #summary { background: #ffc; }\n    #explanation { background:#eee; border-bottom: 0px none; }\n    pre.exception_value { font-family: sans-serif; color: #575757; font-size: 1.5em; margin: 10px 0 10px 0; }\n  </style>\n</head>\n<body>\n  <header id=\"summary\">\n    <h1>Page not found <small>(404)</small></h1>\n    \n    <table class=\"meta\">\n      <tr>\n        <th scope=\"row\">Request Method:</th>\n        <td>GET</td>\n      </tr>\n      <tr>\n        <th scope=\"row\">Request URL:</th>\n        <td>http://django-debug.web.test/.well-known/security.txt</td>\n      </tr>\n      \n    </table>\n  </header>\n\n  <main id=\"info\">\n    \n      <p>\n      Using the URLconf defined in <code>__main__</code>,\n      Django tried these URL patterns, in this order:\n      </p>\n      <ol>\n        \n          <li>\n            \n              <code>\n                \n                \n              </code>\n            \n          </li>\n        \n      </ol>\n      <p>\n        \n          The current path, <code>.well-known/security.txt</code>,\n        \n        didn\u2019t match any of these.\n      </p>\n    \n  </main>\n\n  <footer id=\"explanation\">\n    <p>\n      You\u2019re seeing this error because you have <code>DEBUG = True</code> in\n      your Django settings file. Change that to <code>False</code>, and Django\n      will display a standard 404 page.\n    </p>\n  </footer>\n</body>\n</html>\n",
+  "body_truncated": false,
+  "elapsed_ms": 3,
+  "headers": {
+    "connection": "keep-alive",
+    "content-security-policy": "default-src 'self'; script-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'",
+    "content-type": "text/html; charset=utf-8",
+    "date": "Wed, 07 Oct 2026 10:46:28 GMT",
+    "referrer-policy": "strict-origin-when-cross-origin",
+    "server": "nginx",
+    "strict-transport-security": "max-age=31536000; includeSubDomains",
+    "transfer-encoding": "chunked",
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "DENY"
+  },
+  "redactions": [],
+  "status": 404,
+  "url": "https://django-debug.web.test/.well-known/security.txt"
+}

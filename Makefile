@@ -1,6 +1,6 @@
 UV := uv
 
-.PHONY: install test lint format typecheck licence-check targets-up targets-down targets-status crosscheck corpus scan check
+.PHONY: web-lab-up web-lab-down install test lint format typecheck licence-check targets-up targets-down targets-status crosscheck corpus scan check
 
 install:
 	$(UV) sync
@@ -45,3 +45,11 @@ scan:
 	$(UV) run python -m cli.main $(ARGS)
 
 check: lint typecheck test licence-check
+
+web-lab-up:
+	$(UV) run python -m corpus.generators.web certs
+	docker compose --profile web-lab up -d web-lab-nginx web-lab-django web-lab-pytrace
+	@sleep 8
+
+web-lab-down:
+	docker compose --profile web-lab rm -sf web-lab-nginx web-lab-django web-lab-pytrace

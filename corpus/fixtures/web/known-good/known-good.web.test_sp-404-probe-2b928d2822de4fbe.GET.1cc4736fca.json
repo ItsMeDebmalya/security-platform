@@ -1,0 +1,16 @@
+{
+  "body": "<html>\r\n<head><title>301 Moved Permanently</title></head>\r\n<body>\r\n<center><h1>301 Moved Permanently</h1></center>\r\n<hr><center>nginx</center>\r\n</body>\r\n</html>\r\n",
+  "body_truncated": false,
+  "elapsed_ms": 0,
+  "headers": {
+    "connection": "keep-alive",
+    "content-length": "162",
+    "content-type": "text/html",
+    "date": "Wed, 07 Oct 2026 10:46:28 GMT",
+    "location": "https://known-good.web.test/sp-404-probe-2b928d2822de4fbe",
+    "server": "nginx"
+  },
+  "redactions": [],
+  "status": 301,
+  "url": "http://known-good.web.test/sp-404-probe-2b928d2822de4fbe"
+}

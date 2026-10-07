@@ -1,0 +1,20 @@
+{
+  "body": "<!doctype html><html><head><title>pytrace lab</title></head><body>ok</body></html>",
+  "body_truncated": false,
+  "elapsed_ms": 0,
+  "headers": {
+    "connection": "keep-alive",
+    "content-length": "82",
+    "content-security-policy": "default-src 'self'; script-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'",
+    "content-type": "text/html; charset=utf-8",
+    "date": "Wed, 07 Oct 2026 10:46:28 GMT",
+    "referrer-policy": "strict-origin-when-cross-origin",
+    "server": "nginx",
+    "strict-transport-security": "max-age=31536000; includeSubDomains",
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "DENY"
+  },
+  "redactions": [],
+  "status": 200,
+  "url": "https://pytrace.web.test/"
+}

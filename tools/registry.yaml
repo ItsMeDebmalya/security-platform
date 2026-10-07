@@ -222,3 +222,34 @@
   isolation: service
   signed_off_by: satwik
   signed_off_at: 2026-08-24
+
+- name: nginx
+  version: "1.27.5-alpine (digest sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10)"
+  licence: BSD-2-Clause
+  spdx: BSD-2-Clause
+  source: https://nginx.org
+  purpose: web Light (Tool 4a) corpus lab front server - one virtual host per corpus case, 127.0.0.1 only
+  isolation: service
+  signed_off_by: Debmalya Dey
+  signed_off_at: 2026-10-07
+
+- name: python-image
+  version: "3.13-slim (Debian 13 trixie; digest sha256:bf44cdfcb76cd3b41e879bc058fc37ec5872002ccfde7fcb765e218cde0cd79c)"
+  licence: "Mixed - Python itself is PSF-2.0; the Debian 13 base carries ~87 system packages under their own licences, including GPL-3.0-or-later (bash, coreutils) and LGPL-2.1-or-later (glibc). spdx records the most restrictive component."
+  spdx: GPL-3.0-or-later
+  source: https://hub.docker.com/_/python
+  purpose: web Light (Tool 4a) corpus lab app containers - Django DEBUG=True technical 404 and a stdlib server leaking a real Python traceback
+  isolation: service
+  note: "Permitted because isolation is service - a separate container talked to over HTTP, never imported into our code - which satisfies the 'GPL only as separate processes' rule (CLAUDE.md hard constraint 4). Docker Hub: 'these likely also contain other software which may be under other licenses (such as Bash, etc from the base distribution)'. Base and licences verified by running the image on 2026-10-07 (/etc/os-release; /usr/share/doc/{bash,coreutils,libc6}/copyright)."
+  signed_off_by: Debmalya Dey
+  signed_off_at: 2026-10-07
+
+- name: django
+  version: "5.2.18"
+  licence: BSD-3-Clause
+  spdx: BSD-3-Clause
+  source: https://www.djangoproject.com
+  purpose: installed with pip inside the web Light lab container only, for the real DEBUG=True technical 404 page; never a dependency of ours
+  isolation: service
+  signed_off_by: Debmalya Dey
+  signed_off_at: 2026-10-07

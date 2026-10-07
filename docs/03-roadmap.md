@@ -74,7 +74,8 @@ Phases 0–5 are terminal-only. **Nothing has a user interface until Phase 6.** 
 | 1 | **Email Security** | Pure DNS, deterministic, near-zero FP rate, most companies fail it. The ideal first tool — if we cannot get this to 99% precision, nothing else will work. | precision ≥ 0.99, recall ≥ 0.95 |
 | 2 | **SSL/TLS Analyzer** | Cheap, accurate, builds trust fast. badssl.com is a ready-made ground-truth corpus. | precision ≥ 0.98, recall ≥ 0.95 |
 | 3 | **DNS & Subdomain Enumeration (Light)** — `domscout`, **shipped** (live cross-check owed) | Feeds every other tool — it produces the asset list everything else scans. Includes dangling-CNAME subdomain-takeover (passive, Light). The recall target binds the **security findings**, not subdomain discovery — see below. | precision ≥ 0.95, recall ≥ 0.80 (security findings) |
-| 4 | **Website Scanner (Light)** | Passive only: headers, cookies, tech fingerprint, directory listing, info disclosure. No payloads sent. | precision ≥ 0.95, recall ≥ 0.85 |
+| 4a | **Website Scanner (Light)** — `web`, **shipped** (v1.0.1, live-verified) | Passive only: transport, headers, CSP, tech fingerprint and EOL, directory listing, error disclosure, secrets in responses. No payloads sent. Cookie checks deferred (ledger D-W1). Gate numbers and claim count: [SPEC.md A1](../SPEC.md). | precision ≥ 0.95, recall ≥ 0.85 (corpus-relative) — **met** |
+| 4b | **AI and agent exposure** (the v3.4 half of Tool 4) — **not built** | MCP servers, agent panels, model endpoints; passive detection only. Its spec starts with the passivity ADR. | not yet set |
 
 Recall for **Web Light is corpus-relative, not absolute** — "all header misconfigurations on a site we don't fully understand" is not a knowable set. **For DNS enumeration the question was settled differently (Tool 3, 2026-09-03):** subdomain *discovery* is informational inventory, not a vulnerability, so it is **not** confidence-scored or recall-gated at all — its completeness is assessed live against subfinder/crt.sh as a comparison, never a published number. The recall gate for `domscout` therefore binds only its **security findings** (DNSSEC/expiry/takeover), whose per-domain answers are knowable. Any published number must state which kind it is; see [10-measurement.md](10-measurement.md). Email and TLS have genuinely finite check surfaces, so their recall is true recall.
 
@@ -82,7 +83,7 @@ Recall for **Web Light is corpus-relative, not absolute** — "all header miscon
 
 **Also in this phase:** payload library v1 structure (even though Light modes send no payloads, the format and versioning are established now), and the technology fingerprint database v1.
 
-**Exit criterion:** all four pass their gates in CI; a single command runs all four against a domain and produces one merged, deduplicated `ScanResult`. Full task list: [05-phase-1-first-tools.md](05-phase-1-first-tools.md).
+**Exit criterion:** all four tools pass their gates in CI — Tool 4 counts only when **4a and 4b** have both shipped; a single command runs all four against a domain and produces one merged, deduplicated `ScanResult`. Full task list: [05-phase-1-first-tools.md](05-phase-1-first-tools.md).
 
 ---
 

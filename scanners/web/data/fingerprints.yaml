@@ -1,0 +1,217 @@
+# Technology fingerprints for the web scanner (Tool 4a).
+# Authored from vendor documentation and our own observation of real responses
+# (SPEC A1 licence guardrail; ADR-003). Every `source` names a tier:
+#   vendor   - a primary vendor page (https url required, optional note)
+#   observed - our own live capture: each observation records host, UTC date and
+#              the exact header or markup string seen (all required)
+# CI fails when an entry has no valid tier or is older than STALE_AFTER_DAYS.
+# match keys: headers (name -> regex), generator, asset (script/link/img URLs),
+# html (page body). A named group `version` captures a version.
+
+- name: nginx
+  category: web-server
+  source:
+    tier: vendor
+    url: "https://nginx.org/en/docs/http/ngx_http_core_module.html#server_tokens"
+    note: 'documents emitting the nginx version "in the Server response header field"'
+  reviewed_on: 2026-10-06
+  match:
+    headers: {server: '^nginx(?:/(?P<version>\d+(?:\.\d+)+))?(?:\s|$)'}
+- name: Apache httpd
+  category: web-server
+  source:
+    tier: vendor
+    url: "https://httpd.apache.org/docs/2.4/mod/core.html#servertokens"
+    note: 'documents "Server: Apache/2.4.2 (Unix) ..."'
+  reviewed_on: 2026-10-06
+  match:
+    headers: {server: '^Apache(?:/(?P<version>\d+(?:\.\d+)+))?(?:\s|$)'}
+- name: Microsoft-IIS
+  category: web-server
+  source:
+    tier: observed
+    note: 'the IIS lifecycle page confirms IIS returns a default Server header but not its format; format from this capture (GET / and a 404)'
+    observations:
+      - host: www.amity.edu
+        date: 2026-10-07
+        seen: "Server: Microsoft-IIS/10.0"
+  reviewed_on: 2026-10-07
+  match:
+    headers: {server: '^Microsoft-IIS/(?P<version>\d+(?:\.\d+)*)'}
+- name: PHP
+  category: language
+  source:
+    tier: vendor
+    url: "https://www.php.net/manual/en/ini.core.php#ini.expose-php"
+    note: 'documents "X-Powered-By: PHP/5.3.7"'
+  reviewed_on: 2026-10-06
+  match:
+    headers: {x-powered-by: '^PHP/(?P<version>\d+(?:\.\d+)+)'}
+- name: ASP.NET
+  category: framework
+  source:
+    tier: observed
+    note: 'the enableVersionHeader docs say only "a version header"; header names and values from Microsoft-run sites'
+    observations:
+      - host: www.iis.net
+        date: 2026-10-07
+        seen: "X-AspNet-Version: 4.0.30319"
+      - host: www.iis.net
+        date: 2026-10-07
+        seen: "X-Powered-By: ASP.NET"
+      - host: www.asp.net
+        date: 2026-10-07
+        seen: "X-Powered-By: ASP.NET"
+  reviewed_on: 2026-10-07
+  match:
+    headers: {x-aspnet-version: '^(?P<version>\d+(?:\.\d+)+)', x-powered-by: '^ASP\.NET$'}
+- name: Next.js
+  category: framework
+  source:
+    tier: observed
+    note: 'https://nextjs.org/docs/app/api-reference/config/next-config-js/poweredByHeader says the x-powered-by header is added by default but not its value'
+    observations:
+      - host: nextjs.org
+        date: 2026-10-07
+        seen: "x-powered-by: Next.js"
+  reviewed_on: 2026-10-07
+  match:
+    headers: {x-powered-by: '^Next\.js'}
+    asset: ['/_next/static/']
+- name: WordPress
+  category: cms
+  source:
+    tier: observed
+    note: 'developer.wordpress.org is itself WordPress'
+    observations:
+      - host: developer.wordpress.org
+        date: 2026-10-07
+        seen: '<meta name="generator" content="WordPress 7.2-alpha-64224" />'
+  reviewed_on: 2026-10-07
+  match:
+    generator: ['^WordPress(?: (?P<version>\d+(?:\.\d+)+))?']
+    asset: ['/wp-(?:content|includes)/']
+- name: Drupal
+  category: cms
+  source:
+    tier: observed
+    note: 'drupal.org serves a bot challenge to automated clients; www.energy.gov sent no X-Generator header, only the meta tag'
+    observations:
+      - host: www.ed.ac.uk
+        date: 2026-10-07
+        seen: "X-Generator: Drupal 10 (https://www.drupal.org)"
+      - host: www.ed.ac.uk
+        date: 2026-10-07
+        seen: '<meta name="Generator" content="Drupal 10 (https://www.drupal.org)" />'
+      - host: www.energy.gov
+        date: 2026-10-07
+        seen: '<meta name="generator" content="Drupal 8 (http://drupal.org)" />'
+  reviewed_on: 2026-10-07
+  match:
+    generator: ['^Drupal (?P<version>\d+)']
+    headers: {x-generator: '^Drupal (?P<version>\d+)'}
+- name: Joomla
+  category: cms
+  source:
+    tier: observed
+    note: "joomla.org's own homepage"
+    observations:
+      - host: www.joomla.org
+        date: 2026-10-07
+        seen: '<meta name="generator" content="Joomla! - Open Source Content Management">'
+  reviewed_on: 2026-10-07
+  match:
+    generator: ['^Joomla!']
+- name: jQuery
+  category: js-library
+  source:
+    tier: vendor
+    url: "https://jquery.com/download/"
+    note: "the page links jquery-4.0.0.min.js"
+  reviewed_on: 2026-10-06
+  match:
+    asset: ['jquery[-.](?P<version>\d+\.\d+\.\d+)(?:\.slim)?(?:\.min)?\.js']
+- name: AngularJS
+  category: js-library
+  source:
+    tier: vendor
+    url: "https://docs.angularjs.org/misc/downloading"
+    note: "documents //ajax.googleapis.com/ajax/libs/angularjs/1.8.3/angular.min.js"
+  reviewed_on: 2026-10-06
+  match:
+    asset: ['angular(?:js)?/(?P<version>1\.\d+\.\d+)/angular(?:\.min)?\.js']
+- name: Bootstrap
+  category: css-framework
+  source:
+    tier: vendor
+    url: "https://getbootstrap.com/docs/5.3/getting-started/download/"
+    note: "documents https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/..."
+  reviewed_on: 2026-10-06
+  match:
+    asset: ['bootstrap(?:@|/)(?P<version>\d+\.\d+\.\d+)/']
+- name: Cloudflare
+  category: cdn
+  source:
+    tier: observed
+    note: "Cloudflare's header docs list Cf-Ray among headers added to requests sent to the origin, so response presence is from observation"
+    observations:
+      - host: www.loc.gov
+        date: 2026-10-07
+        seen: "cf-ray: a46b98a13aabdeac-PRG"
+      - host: www.npmjs.com
+        date: 2026-10-07
+        seen: "cf-ray: a46b98a1bc585d09-PRG"
+  reviewed_on: 2026-10-07
+  match:
+    headers: {cf-ray: '.+'}
+- name: Amazon CloudFront
+  category: cdn
+  source:
+    tier: observed
+    note: "AWS documents X-Amz-Cf-Id as added to the viewer request forwarded to the origin, so response presence is from observation"
+    observations:
+      - host: www.state.gov
+        date: 2026-10-07
+        seen: "x-amz-cf-id: BmYGRtUTbsogVsen2Dc9x0OIFoB42s-YRI0HbaKTWDBmKr2E308CJA=="
+      - host: www.noaa.gov
+        date: 2026-10-07
+        seen: "x-amz-cf-id: UxoOrddH0o93FD_o51GsJcLFTCL59Y7dByTb4YFRc8yXoImodHOEKg=="
+  reviewed_on: 2026-10-07
+  match:
+    headers: {x-amz-cf-id: '.+'}
+- name: Fastly
+  category: cdn
+  source:
+    tier: vendor
+    url: "https://www.fastly.com/documentation/reference/http/http-headers/X-Served-By/"
+    note: '"Fastly writes this header into responses"; format cache-{datacenter}{nodeid}'
+  reviewed_on: 2026-10-06
+  match:
+    headers: {x-served-by: '^cache-'}
+- name: Akamai
+  category: cdn
+  source:
+    tier: observed
+    note: "all three were HTTP 403 Access Denied edge responses"
+    observations:
+      - host: www.tesla.com
+        date: 2026-10-07
+        seen: "Server: AkamaiGHost"
+      - host: www.fda.gov
+        date: 2026-10-07
+        seen: "Server: AkamaiGHost"
+      - host: www.usda.gov
+        date: 2026-10-07
+        seen: "Server: AkamaiGHost"
+  reviewed_on: 2026-10-07
+  match:
+    headers: {server: '^AkamaiGHost'}
+- name: Vercel
+  category: cdn
+  source:
+    tier: vendor
+    url: "https://vercel.com/docs/headers/response-headers"
+    note: "documents x-vercel-id as a response header"
+  reviewed_on: 2026-10-06
+  match:
+    headers: {x-vercel-id: '.+'}

@@ -1,0 +1,20 @@
+{
+  "body": "<html>\r\n<head><title>Index of /assets/</title></head>\r\n<body>\r\n<h1>Index of /assets/</h1><hr><pre><a href=\"../\">../</a>\r\n<a href=\"app.js\">app.js</a>                                             07-Oct-2026 10:46                   7\r\n<a href=\"site.css\">site.css</a>                                           07-Oct-2026 10:46                   3\r\n</pre><hr></body>\r\n</html>\r\n",
+  "body_truncated": false,
+  "elapsed_ms": 0,
+  "headers": {
+    "connection": "keep-alive",
+    "content-security-policy": "default-src 'self'; script-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'",
+    "content-type": "text/html",
+    "date": "Wed, 07 Oct 2026 10:46:28 GMT",
+    "referrer-policy": "strict-origin-when-cross-origin",
+    "server": "nginx",
+    "strict-transport-security": "max-age=31536000; includeSubDomains",
+    "transfer-encoding": "chunked",
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "DENY"
+  },
+  "redactions": [],
+  "status": 200,
+  "url": "https://listing.web.test/assets/"
+}
