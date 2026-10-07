@@ -222,3 +222,92 @@ def test_requires_no_authorisation():
 
     for mode in ("light", "standard", "deep"):
         assert WebScanner().requires_authorisation(mode) is False
+
+
+def _plain(site, **kw):
+    site.serve("http://x.test/", headers={"content-type": "text/html"}, body=PAGE)
+    return site
+
+
+def test_5xx_http_probe_does_not_validate_redirect(site):
+    _plain(site)
+    site.serve("https://x.test/", headers=HARDENED, body=PAGE)
+    site.serve(f"http://x.test{PROBE}", status=503, body="down")
+    f = only(run(site), "web-https-redirect-missing")
+    assert f.state == "suspected" and f.validation.outcome == "unavailable"
+
+
+@pytest.mark.parametrize(
+    ("kw", "reason"),
+    [
+        (
+            {
+                "status": 403,
+                "headers": {"cf-mitigated": "challenge"},
+                "body": "<title>Just a moment...</title>",
+            },
+            "waf_block",
+        ),
+        ({"status": 429}, "rate_limited"),
+        ({"status": 503, "body": "down"}, "ambiguous_response"),
+    ],
+)
+def test_unusable_https_control_makes_redirect_inconclusive(site, kw, reason):
+    _plain(site)
+    site.serve("https://x.test/", **kw)
+    f = only(run(site), "web-https-redirect-missing")
+    assert f.state == "inconclusive" and f.no_verdict_reason == reason
+    assert "HTTPS is served" not in f.description
+
+
+def test_https_to_http_downgrade_blocks_hsts_and_redirect(site):
+    _plain(site)
+    site.serve("https://x.test/", status=301, headers={"location": "http://x.test/"})
+    result = run(site)
+    for cid in ("web-hsts-missing", "web-hsts-weak", "web-https-redirect-missing"):
+        f = only(result, cid)
+        assert f.state == "inconclusive" and f.no_verdict_reason == "blocked_prerequisite"
+
+
+def test_5xx_plain_http_root_is_inconclusive(site):
+    site.serve("https://x.test/", headers=HARDENED, body=PAGE)
+    site.serve("http://x.test/", status=503, body="down")
+    f = only(run(site), "web-https-redirect-missing")
+    assert f.state == "inconclusive" and f.no_verdict_reason == "ambiguous_response"
+
+
+def test_validation_wording_and_control_is_the_probe(site):
+    result = run(bare(site))
+    f = only(result, "web-xcto-missing")
+    assert "origin-wide" in f.description
+    assert f.evidence[0].control.request.url == f"https://x.test{PROBE}" or (
+        f.evidence[0].control.request.url == f"http://x.test{PROBE}"
+    )
+    assert "None" not in f.description
+    hardened(site)
+    no_hsts = {k: v for k, v in HARDENED.items() if k != "strict-transport-security"}
+    site.serve("https://x.test/", headers=no_hsts, body=PAGE)
+    assert "per route" in only(run(site), "web-hsts-missing").description
+
+
+def test_weak_hsts_with_missing_probe_fails_validation(site):
+    hardened(site)
+    site.serve(
+        "https://x.test/",
+        headers={**HARDENED, "strict-transport-security": "max-age=300"},
+        body=PAGE,
+    )
+    f = only(run(site), "web-hsts-weak")
+    assert f.validation.outcome == "failed"
+
+
+def test_csp_weak_quotes_received_header(site):
+    hardened(site)
+    weak = {
+        **HARDENED,
+        "content-security-policy": (
+            "default-src 'self'; script-src 'unsafe-inline'; frame-ancestors 'none'"
+        ),
+    }
+    site.serve("https://x.test/", headers=weak, body=PAGE)
+    assert "script-src 'unsafe-inline'" in only(run(site), "web-csp-weak").description

@@ -33,6 +33,18 @@ VALIDATION_METHOD = "second_same_origin_response"
 NO_VERDICT = frozenset(
     {"timeout", "waf_block", "blocked_prerequisite", "ambiguous_response", "rate_limited"}
 )
+VALIDATION_NOTES = {
+    "passed": (
+        " Validated on a second same-origin response (the 404 control). Both responses came "
+        "through the same edge, so this shows the policy is origin-wide, not that independent "
+        "infrastructure agrees."
+    ),
+    "failed": (
+        " The 404 control does not show the same deficiency, so the header appears to be set "
+        "per route rather than missing site-wide; reported at reduced confidence."
+    ),
+    "unavailable": " The 404 control was unusable, so this could not be validated.",
+}
 HEADER_FAMILY = frozenset(
     {
         "web-https-redirect-missing",
@@ -72,6 +84,10 @@ class WebScanner(BaseScanner):
 # --- judges: pure functions over (headers, body) -----------------------------
 
 
+def _q(value: str | None) -> str:
+    return "absent" if value is None else repr(value)
+
+
 def _meta_csp(body: str) -> tuple[str, ...]:
     return html.extract(body, "about:blank").meta_csp if body else ()
 
@@ -81,20 +97,26 @@ def _csp_missing(h: dict[str, str], body: str) -> tuple[bool, str]:
     meta = _meta_csp(body)
     return (
         header is None and not meta,
-        f"Content-Security-Policy header {header!r}, <meta> policies {list(meta)!r}",
+        f"Content-Security-Policy header {_q(header)}, <meta> policies {list(meta)!r}",
     )
 
 
 def _csp_weak(h: dict[str, str], body: str) -> tuple[bool, str]:
-    policies = csp.parse(headers.get(h, "content-security-policy"))
-    for value in _meta_csp(body):
+    header = headers.get(h, "content-security-policy")
+    meta = _meta_csp(body)
+    policies = csp.parse(header)
+    for value in meta:
         policies.extend(csp.parse(value))
     if not policies:
         return False, "no policy"
+    received = f"Content-Security-Policy header {_q(header)}, <meta> policies {list(meta)!r}"
     if not csp.restricts_scripts(policies):
-        return True, "no policy sets script-src or default-src, so scripts are unrestricted"
+        return (
+            True,
+            f"{received}; no policy sets script-src or default-src, so scripts are unrestricted",
+        )
     weak = csp.effective_weaknesses(policies)
-    return bool(weak), f"the script policy allows: {', '.join(sorted(weak))}"
+    return bool(weak), f"{received}; the script policy allows: {', '.join(sorted(weak))}"
 
 
 def _clickjacking(h: dict[str, str], body: str) -> tuple[bool, str]:
@@ -102,28 +124,28 @@ def _clickjacking(h: dict[str, str], body: str) -> tuple[bool, str]:
     frame_ancestors = csp.has_frame_ancestors(csp.parse(headers.get(h, "content-security-policy")))
     return (
         not headers.xfo_protects(xfo) and not frame_ancestors,
-        f"X-Frame-Options {xfo!r}, CSP frame-ancestors present: {frame_ancestors}",
+        f"X-Frame-Options {_q(xfo)}, CSP frame-ancestors present: {frame_ancestors}",
     )
 
 
 def _xcto(h: dict[str, str], body: str) -> tuple[bool, str]:
     value = headers.get(h, "x-content-type-options")
-    return not headers.xcto_ok(value), f"X-Content-Type-Options {value!r}"
+    return not headers.xcto_ok(value), f"X-Content-Type-Options {_q(value)}"
 
 
 def _referrer_unsafe(h: dict[str, str], body: str) -> tuple[bool, str]:
     verdict, effective = headers.referrer_verdict(headers.get(h, "referrer-policy"))
-    return verdict == "unsafe", f"effective Referrer-Policy {effective!r}"
+    return verdict == "unsafe", f"effective Referrer-Policy {_q(effective)}"
 
 
 def _referrer_missing(h: dict[str, str], body: str) -> tuple[bool, str]:
     verdict, _ = headers.referrer_verdict(headers.get(h, "referrer-policy"))
-    return verdict == "missing", f"Referrer-Policy {headers.get(h, 'referrer-policy')!r}"
+    return verdict == "missing", f"Referrer-Policy {_q(headers.get(h, 'referrer-policy'))}"
 
 
 def _cors(h: dict[str, str], body: str) -> tuple[bool, str]:
     value = headers.get(h, "access-control-allow-origin")
-    return headers.cors_wildcard(value), f"Access-Control-Allow-Origin {value!r}"
+    return headers.cors_wildcard(value), f"Access-Control-Allow-Origin {_q(value)}"
 
 
 HEADER_POLICIES: tuple[tuple[str, Judge, bool], ...] = (
@@ -231,8 +253,8 @@ class _Scan:
     def _check_https_redirect(self) -> None:
         check, loc = CHECKS["web-https-redirect-missing"], self.obs.root_path
         https, plain = self.obs.https_root, self.obs.http_root
-        if https.response is None:
-            reason, text = _why_unusable(https)
+        if not self._https_ok():
+            reason, text = self._https_problem()
             self._inconclusive(
                 check,
                 loc,
@@ -249,6 +271,16 @@ class _Scan:
             )
             return
         status = plain.response.status_code
+        if status >= 500:
+            self._inconclusive(
+                check,
+                loc,
+                plain,
+                f"{plain.url} answered HTTP {status}, a server error, so whether it redirects "
+                "to HTTPS cannot be judged.",
+                reason="ambiguous_response",
+            )
+            return
         if plain.final_scheme == "https" or not 200 <= status < 300:
             self._clear(check, loc)
             return
@@ -267,7 +299,7 @@ class _Scan:
 
     def _validate_redirect(self) -> dict[str, Any]:
         probe = self.obs.http_probe
-        if probe.response is None or probe.failure is not None:
+        if not probe.usable or probe.response is None or probe.response.status_code >= 500:
             return {"attempted": False, "outcome": "unavailable", "method": VALIDATION_METHOD}
         redirected = probe.final_scheme == "https" or 300 <= probe.response.status_code < 400
         return {
@@ -279,7 +311,10 @@ class _Scan:
     def _check_hsts(self) -> None:
         missing, weak = CHECKS["web-hsts-missing"], CHECKS["web-hsts-weak"]
         root, loc = self.obs.https_root, self.obs.root_path
-        if not self._usable(root, [missing, weak]):
+        if not self._https_ok():
+            reason, text = self._https_problem()
+            for check in (missing, weak):
+                self._inconclusive(check, loc, root, text + ".", reason=reason)
             return
         assert root.response is not None
         value = headers.get(root.response.headers, "strict-transport-security")
@@ -292,12 +327,12 @@ class _Scan:
 
         def judge(h: dict[str, str], body: str) -> tuple[bool, str]:
             v, _ = headers.hsts_verdict(headers.get(h, "strict-transport-security"))
-            return (v == "missing") if fired is missing else (v != "ok"), ""
+            return (v == "missing") if fired is missing else (v == "weak"), ""
 
         observed = (
             "no Strict-Transport-Security header"
             if verdict == "missing"
-            else f"Strict-Transport-Security {value!r} (max-age {age})"
+            else f"Strict-Transport-Security {_q(value)} (max-age {age})"
         )
         self._emit(
             fired,
@@ -333,6 +368,25 @@ class _Scan:
             )
 
     # --- shared helpers (Task 11 reuses these) ------------------------------
+
+    def _https_ok(self) -> bool:
+        f = self.obs.https_root
+        return (
+            f.usable
+            and f.response is not None
+            and f.response.status_code < 500
+            and f.final_scheme == "https"
+        )
+
+    def _https_problem(self) -> tuple[str, str]:
+        f = self.obs.https_root
+        if f.usable and f.response is not None and f.response.status_code < 500:
+            return (
+                "blocked_prerequisite",
+                f"{f.url} redirected to plain HTTP ({f.response.url}), so no HTTPS response's "
+                "headers were observed",
+            )
+        return _why_unusable(f)
 
     def _usable(self, fetched: Fetched, checks: list[Check], location: str | None = None) -> bool:
         if fetched.usable and fetched.response is not None and fetched.response.status_code < 500:
@@ -402,6 +456,9 @@ class _Scan:
                 delta={"test": test.label, "control": control.label},
             )
         ]
+        description = description.rstrip(".") + "."
+        if validation and validation.get("method") == VALIDATION_METHOD:
+            description += VALIDATION_NOTES.get(str(validation.get("outcome")), "")
         now = datetime.now(UTC)
         self.findings.append(
             Finding.create(
@@ -419,7 +476,7 @@ class _Scan:
                 detection_methods=result.detection_methods,
                 validation=validation or {"attempted": False, "outcome": "not_applicable"},
                 evidence=evidence,
-                description=description.rstrip(".") + "." + self._edge_note(check),
+                description=description + self._edge_note(check),
                 impact=check.impact,
                 remediation=check.remediation,
                 references=references or [],
