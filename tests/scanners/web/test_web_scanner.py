@@ -373,3 +373,151 @@ def test_http_probe_redirecting_to_root_does_not_validate_redirect(site):  # (c2
     site.serve("https://x.test/", headers=HARDENED, body=PAGE)
     site.serve(f"http://x.test{PROBE}", status=302, headers={"location": "http://x.test/"})
     _not_confirmed(only(run(site), "web-https-redirect-missing"))
+
+
+# --- Fix Round 4: the control must be a distinct, same-origin response -------
+
+FIVE = (
+    "web-https-redirect-missing",
+    "web-hsts-missing",
+    "web-csp-missing",
+    "web-clickjacking-unprotected",
+    "web-xcto-missing",
+)
+
+
+def _none_of_five_confirmed(result):
+    for cid in FIVE:
+        _not_confirmed(only(result, cid))
+
+
+@pytest.mark.parametrize("location", ["https://x.test", "http://x.test", "https://x.test/#a"])
+def test_probe_redirecting_to_the_root_in_disguise_is_not_validated(site, location):
+    bare(site)
+    plain = location.replace("https://", "http://")  # the http probe stays on plain HTTP
+    site.serve(f"https://x.test{PROBE}", status=302, headers={"location": location})
+    site.serve(f"http://x.test{PROBE}", status=302, headers={"location": plain})
+    _none_of_five_confirmed(run(site))
+
+
+@pytest.mark.parametrize(
+    "location",
+    ["https://x.test/./", "https://X.TEST./", "https://x.test:443/", "/%2e/", "https://x.test//"],
+)
+def test_probe_redirecting_to_a_normalised_root_is_not_validated(site, location):
+    bare(site)
+    site.serve(f"https://x.test{PROBE}", status=302, headers={"location": location})
+    site.serve(f"http://x.test{PROBE}", status=302, headers={"location": "http://x.test/"})
+    result = run(site)
+    for cid in FIVE[1:]:
+        _not_confirmed(only(result, cid))
+
+
+def test_https_probe_redirecting_to_another_host_is_not_validated(site):  # (h)
+    bare(site)
+    site.serve(f"https://x.test{PROBE}", status=302, headers={"location": "https://www.x.test/"})
+    site.serve(f"http://x.test{PROBE}", status=302, headers={"location": "http://www.x.test/"})
+    site.serve("https://www.x.test/", headers={"content-type": "text/html"}, body=PAGE)
+    site.serve("http://www.x.test/", headers={"content-type": "text/html"}, body=PAGE)
+    _none_of_five_confirmed(run(site))
+
+
+def test_root_on_another_host_than_the_probe_is_not_validated(site):  # (f)
+    site.serve("https://x.test/", status=301, headers={"location": "https://www.x.test/"})
+    site.serve("https://www.x.test/", headers={"content-type": "text/html"}, body=PAGE)
+    site.serve("http://x.test/", status=301, headers={"location": "http://www.x.test/"})
+    site.serve("http://www.x.test/", headers={"content-type": "text/html"}, body=PAGE)
+    _none_of_five_confirmed(run(site))
+
+
+def test_http_root_on_another_host_does_not_validate_redirect(site):  # (k)
+    site.serve("https://x.test/", headers=HARDENED, body=PAGE)
+    site.serve("http://x.test/", status=301, headers={"location": "http://www.x.test/"})
+    site.serve("http://www.x.test/", headers={"content-type": "text/html"}, body=PAGE)
+    _not_confirmed(only(run(site), "web-https-redirect-missing"))
+
+
+def test_probe_on_another_port_is_not_validated(site):
+    site.serve("https://x.test:8443/", headers={"content-type": "text/html"}, body=PAGE)
+    site.serve(
+        f"https://x.test:8443{PROBE}", status=302, headers={"location": f"https://x.test{PROBE}"}
+    )
+    result = run(site, "https://x.test:8443/", "url")
+    for cid in FIVE[1:]:
+        _not_confirmed(only(result, cid))
+
+
+def test_probe_redirecting_to_a_distinct_same_origin_page_still_confirms(site):
+    bare(site)
+    site.serve(f"https://x.test{PROBE}", status=302, headers={"location": "https://x.test/login"})
+    site.serve("https://x.test/login", status=404, headers={"content-type": "text/html"}, body="nf")
+    site.serve(f"http://x.test{PROBE}", status=302, headers={"location": "http://x.test/login"})
+    site.serve("http://x.test/login", status=404, headers={"content-type": "text/html"}, body="nf")
+    result = run(site)
+    for cid in FIVE:
+        f = only(result, cid)
+        assert f.state == "confirmed" and f.validation.outcome == "passed", (cid, f.state)
+
+
+@pytest.mark.parametrize(
+    ("a", "b"),
+    [
+        ("https://x.test", "https://x.test:443/"),
+        ("http://x.test/", "http://x.test:80"),
+        ("https://x.test/#a", "https://x.test/"),
+        ("HTTPS://X.Test/p", "https://x.test/p"),
+        ("https://x.test./", "https://x.test/"),
+        ("https://x.test/./a/../", "https://x.test/"),
+        ("https://x.test/%2e/", "https://x.test/"),
+        ("https://x.test//", "https://x.test/"),
+    ],
+)
+def test_normalised_equal(a, b):
+    from scanners.web.scanner import _normalised
+
+    assert _normalised(a) is not None and _normalised(a) == _normalised(b)
+
+
+@pytest.mark.parametrize(
+    ("a", "b"),
+    [
+        ("https://x.test/", "http://x.test/"),
+        ("https://x.test/", "https://x.test:8443/"),
+        ("https://x.test/", "https://www.x.test/"),
+        ("https://x.test/a", "https://x.test/A"),
+        ("https://x.test/?q=1", "https://x.test/"),
+    ],
+)
+def test_normalised_differs(a, b):
+    from scanners.web.scanner import _normalised
+
+    assert _normalised(a) != _normalised(b)
+
+
+def test_normalised_shape_and_bad_input():
+    from scanners.web.scanner import _normalised
+
+    assert _normalised("https://x.test") == ("https", "x.test", 443, "/", "")
+    assert _normalised("http://X.test.:8080/a?b=1#c") == ("http", "x.test", 8080, "/a", "b=1")
+    assert _normalised("https://x.test:99999/") is None
+    assert _normalised("https://[::1/") is None
+
+
+@pytest.mark.parametrize(
+    "location",
+    ["https://x.test/?from=probe", "https://x.test/index.html", "https://x.test/INDEX.PHP"],
+)
+def test_probe_bounced_to_the_root_resource_is_not_validated(site, location):
+    bare(site)
+    site.serve(f"https://x.test{PROBE}", status=302, headers={"location": location})
+    site.serve(location, headers={"content-type": "text/html"}, body=PAGE)
+    result = run(site)
+    for cid in FIVE[1:]:
+        _not_confirmed(only(result, cid))
+
+
+def test_normalised_index_document_is_its_directory():
+    from scanners.web.scanner import _normalised
+
+    assert _normalised("https://x.test/a/index.htm") == _normalised("https://x.test/a/")
+    assert _normalised("https://x.test/index.html.bak") != _normalised("https://x.test/")

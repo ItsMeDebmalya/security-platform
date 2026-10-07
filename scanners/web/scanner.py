@@ -13,9 +13,11 @@ module only judges what came back. Design: docs/superpowers/specs/
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
+from urllib.parse import unquote, urlsplit
 
 from core.confidence import ConfidenceEngine, Signal
 from core.context import ScanContext
@@ -71,6 +73,67 @@ HEADER_FAMILY = frozenset(
         "web-cors-wildcard",
     }
 )
+
+DEFAULT_PORTS = {"https": 443, "http": 80}
+_UNRESERVED = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
+
+Url = tuple[str, str, int, str, str]
+_INDEX = re.compile(r"/index\.(?:html?|php|aspx?|jsp)$", re.IGNORECASE)
+
+
+def _decode_unreserved(path: str) -> str:
+    """RFC 3986 6.2.2.2: percent-encoded unreserved characters equal their literal."""
+    out, i = [], 0
+    while i < len(path):
+        chunk = path[i : i + 3]
+        if path[i] == "%" and len(chunk) == 3 and unquote(chunk) in _UNRESERVED:
+            out.append(unquote(chunk))
+            i += 3
+        else:
+            out.append(path[i])
+            i += 1
+    return "".join(out)
+
+
+def _remove_dot_segments(path: str) -> str:
+    segments: list[str] = []
+    parts = path.split("/")
+    for i, segment in enumerate(parts):
+        last = i == len(parts) - 1
+        if segment == "..":
+            if len(segments) > 1:
+                segments.pop()
+            if last:
+                segments.append("")
+        elif segment == ".":
+            if last:
+                segments.append("")
+        else:
+            segments.append(segment)
+    return "/".join(segments) or "/"
+
+
+def _normalised(url: str) -> Url | None:
+    """(scheme, host, port, path, query) for comparing two final URLs; None if
+    unparseable, which callers treat as unusable. Normalises towards *equal*:
+    two URLs that might name the same resource must not count as distinct.
+    The fragment is dropped - it is never sent, so it names no other response."""
+    try:
+        parts = urlsplit(url)
+        port = parts.port
+    except ValueError:
+        return None
+    scheme = parts.scheme.lower()
+    host = (parts.hostname or "").lower().rstrip(".")
+    if scheme not in DEFAULT_PORTS or not host:
+        return None
+    path = _decode_unreserved(parts.path or "/")
+    while "//" in path:  # most servers merge slashes; never treat // as distinct
+        path = path.replace("//", "/")
+    path = _remove_dot_segments(path if path.startswith("/") else "/" + path)
+    path = _INDEX.sub("/", path)  # /index.html is the directory's default document
+    return scheme, host, port or DEFAULT_PORTS[scheme], path, parts.query
+
 
 Judge = Callable[[dict[str, str], str], tuple[bool, str]]
 """(headers, body) -> (deficient?, what was observed, quoted)."""
@@ -417,15 +480,21 @@ class _Scan:
         return False
 
     def _control_usable(self, control: Fetched, test: Fetched) -> bool:
-        """A second observation proves something only if it is a distinct,
-        same-scheme, readable response: never the test response re-read."""
+        """A second observation proves something only if it is a readable response
+        from the same origin (scheme, host, port) at a distinct path or query:
+        never the test response re-read, never another origin's policy."""
         if not control.usable or control.response is None or test.response is None:
             return False
         if control.response.status_code >= 500:
             return False
-        if control.final_scheme != test.final_scheme:
+        a, b = _normalised(control.response.url), _normalised(test.response.url)
+        if a is None or b is None:
             return False
-        return control.response.url != test.response.url
+        same_origin = a[:3] == b[:3]
+        # Distinct means another path: the same path with a query added (a login
+        # or SPA bounce to "/?from=...") is the same resource re-read.
+        distinct = a[3] != b[3]
+        return same_origin and distinct
 
     def _validate_on_probe(
         self, judge: Judge, probe: Fetched, test: Fetched | None = None
