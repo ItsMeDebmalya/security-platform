@@ -128,6 +128,7 @@ claim was observed on (`"/"` for the root response), never `"$"` for an HTTP obs
 | HTML-comment heuristics beyond secret patterns | declined | too noisy for precision ≥ 0.95 |
 | TLS summary | declined here | the `tls` scanner owns it; `scan all` merges them. A scanner never imports another (CLAUDE.md invariant) |
 | Sensitive-path probing (`/.env`, `/.git/`) | Standard | content discovery, SPEC A1 Standard |
+| `Permissions-Policy` | declined (2026-10-07, after live cross-check) | It limits which powerful browser features (camera, microphone, geolocation, payment, USB …) a page and the frames it embeds may use. That is defence in depth: it reduces the damage of *another* flaw (an XSS, a malicious third-party frame), and its absence is not itself exploitable. There is no safe universal value to test against — the right policy depends on which features the site actually uses — so "missing" would fire on almost every site and bury real findings, against precision ≥ 0.95. Mozilla Observatory does not score it either (securityheaders.com does). Revisit when there is a site-specific signal, e.g. the page embeds third-party frames or requests a sensitive feature |
 
 ---
 
