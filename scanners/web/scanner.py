@@ -312,9 +312,14 @@ class _Scan:
 
     def _validate_redirect(self) -> dict[str, Any]:
         probe = self.obs.http_probe
+        unavailable = {"attempted": False, "outcome": "unavailable", "method": VALIDATION_METHOD}
         if not probe.usable or probe.response is None or probe.response.status_code >= 500:
-            return {"attempted": False, "outcome": "unavailable", "method": VALIDATION_METHOD}
+            return unavailable
         redirected = probe.final_scheme == "https" or 300 <= probe.response.status_code < 400
+        # A control that redirected to HTTPS is itself a readable observation: the
+        # missing redirect is path-specific. A "passed" needs a distinct same-scheme control.
+        if not redirected and not self._control_usable(probe, self.obs.http_root):
+            return unavailable
         return {
             "attempted": True,
             "outcome": "failed" if redirected else "passed",
@@ -353,11 +358,7 @@ class _Scan:
             test=root,
             control=self.obs.https_probe,
             description=f"{root.response.url} is served with {observed}",
-            validation=(
-                self._validate_on_probe(judge, self.obs.https_probe)
-                if self.obs.https_probe.final_scheme == "https"
-                else {"attempted": False, "outcome": "unavailable", "method": VALIDATION_METHOD}
-            ),
+            validation=self._validate_on_probe(judge, self.obs.https_probe, test=root),
         )
         self._clear(other, loc)
 
@@ -381,7 +382,7 @@ class _Scan:
                 test=root,
                 control=probe,
                 description=f"{root.response.url}: {observed}",
-                validation=self._validate_on_probe(judge, probe) if validate else None,
+                validation=(self._validate_on_probe(judge, probe, test=root) if validate else None),
             )
 
     # --- shared helpers (Task 11 reuses these) ------------------------------
@@ -415,8 +416,21 @@ class _Scan:
             )
         return False
 
-    def _validate_on_probe(self, judge: Judge, probe: Fetched) -> dict[str, Any]:
-        if not probe.usable or probe.response is None or probe.response.status_code >= 500:
+    def _control_usable(self, control: Fetched, test: Fetched) -> bool:
+        """A second observation proves something only if it is a distinct,
+        same-scheme, readable response: never the test response re-read."""
+        if not control.usable or control.response is None or test.response is None:
+            return False
+        if control.response.status_code >= 500:
+            return False
+        if control.final_scheme != test.final_scheme:
+            return False
+        return control.response.url != test.response.url
+
+    def _validate_on_probe(
+        self, judge: Judge, probe: Fetched, test: Fetched | None = None
+    ) -> dict[str, Any]:
+        if probe.response is None or not self._control_usable(probe, test or self.obs.root):
             return {"attempted": False, "outcome": "unavailable", "method": VALIDATION_METHOD}
         deficient, _ = judge(probe.response.headers, probe.response.text)
         return {

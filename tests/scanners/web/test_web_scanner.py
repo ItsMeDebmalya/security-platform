@@ -335,3 +335,41 @@ def test_downgraded_root_note_on_header_findings(site):
     site.serve("https://x.test/", status=301, headers={"location": "http://x.test/"})
     f = only(run(site), "web-xcto-missing")
     assert "redirected to plain HTTP" in f.description
+
+
+def _not_confirmed(f):
+    assert f.state != "confirmed" and f.validation.outcome == "unavailable", (f.check_id, f.state)
+
+
+def test_scheme_downgraded_probe_never_validates_headers(site):  # (a)
+    hardened(site)
+    no_xcto = {k: v for k, v in HARDENED.items() if k != "x-content-type-options"}
+    site.serve("https://x.test/", headers=no_xcto, body=PAGE)
+    site.serve(f"https://x.test{PROBE}", status=301, headers={"location": f"http://x.test{PROBE}"})
+    site.serve(f"http://x.test{PROBE}", status=404, body="nf")
+    _not_confirmed(only(run(site), "web-xcto-missing"))
+
+
+def test_downgraded_root_with_https_probe_is_not_validated(site):  # (b)
+    site.serve("https://x.test/", status=301, headers={"location": "http://x.test/"})
+    site.serve("http://x.test/", headers={"content-type": "text/html"}, body=PAGE)
+    site.serve(f"https://x.test{PROBE}", status=404, body="nf")
+    result = run(site)
+    _not_confirmed(only(result, "web-xcto-missing"))
+    _not_confirmed(only(result, "web-csp-missing"))
+
+
+def test_control_that_is_the_root_is_not_validated(site):  # (c1)
+    hardened(site)
+    site.serve("https://x.test/", headers={"content-type": "text/html"}, body=PAGE)
+    site.serve(f"https://x.test{PROBE}", status=302, headers={"location": "https://x.test/"})
+    result = run(site)
+    _not_confirmed(only(result, "web-hsts-missing"))
+    _not_confirmed(only(result, "web-xcto-missing"))
+
+
+def test_http_probe_redirecting_to_root_does_not_validate_redirect(site):  # (c2)
+    _plain(site)
+    site.serve("https://x.test/", headers=HARDENED, body=PAGE)
+    site.serve(f"http://x.test{PROBE}", status=302, headers={"location": "http://x.test/"})
+    _not_confirmed(only(run(site), "web-https-redirect-missing"))
