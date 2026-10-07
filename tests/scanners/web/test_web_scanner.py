@@ -544,3 +544,85 @@ def test_expired_cert_on_both_schemes_is_named(site):
     f = only(run(site), "web-xcto-missing")
     assert f.state == "inconclusive"
     assert "TLS certificate verification failed (certificate has expired)" in f.description
+
+
+# --- Final review C2: a redirect response is never judged as a page ---------
+
+PAGE_CHECKS = (
+    "web-csp-missing",
+    "web-csp-weak",
+    "web-clickjacking-unprotected",
+    "web-xcto-missing",
+    "web-referrer-policy-unsafe",
+    "web-referrer-policy-missing",
+    "web-cors-wildcard",
+    "web-mixed-content",
+    "web-sri-missing",
+)
+
+
+def _page_checks_blocked_by_redirect(result, *, status, location):
+    for cid in PAGE_CHECKS:
+        f = only(result, cid)
+        assert f.state == "inconclusive", (cid, f.state)
+        assert f.no_verdict_reason == "blocked_prerequisite", cid
+        assert f"HTTP {status} redirecting to {location}" in f.description, f.description
+        assert "never rendered as a page" in f.description
+
+
+def test_off_scope_redirect_root_makes_page_checks_inconclusive(site):  # (a)
+    site.serve("https://x.test/", status=301, headers={"location": "https://brand.example/"})
+    site.serve("http://x.test/", status=301, headers={"location": "https://brand.example/"})
+    result = run(site)
+    assert not any("brand.example" in c for c in site.calls)
+    _page_checks_blocked_by_redirect(result, status=301, location="https://brand.example/")
+    hsts = only(result, "web-hsts-missing")
+    assert hsts.state != "inconclusive" and hsts.validation.outcome == "passed"
+
+
+def test_in_scope_redirect_loop_makes_page_checks_inconclusive(site):  # (b)
+    from itertools import pairwise
+
+    from core.http import MAX_REDIRECTS
+
+    hops = ["/"] + [f"/hop{i}" for i in range(MAX_REDIRECTS + 2)]
+    for here, there in pairwise(hops):
+        site.serve(f"https://x.test{here}", status=302, headers={"location": there})
+    site.serve("http://x.test/", status=301, headers={"location": "https://x.test/"})
+    result = run(site)
+    last = hops[MAX_REDIRECTS]
+    _page_checks_blocked_by_redirect(result, status=302, location=last)
+    assert only(result, "web-hsts-missing").state != "inconclusive"
+
+
+def test_redirect_without_location_names_an_unknown_location(site):
+    site.serve("https://x.test/", status=302, headers={})
+    site.serve("http://x.test/", status=301, headers={"location": "https://x.test/"})
+    f = only(run(site), "web-xcto-missing")
+    assert f.state == "inconclusive" and "redirecting to an unknown location" in f.description
+
+
+# --- Minor 7: an unparseable port is rejected before any request ------------
+
+
+def test_url_with_unparseable_port_is_rejected_before_any_request(site):
+    from core.scanner import UnsupportedTargetError
+
+    with pytest.raises(UnsupportedTargetError, match="port"):
+        run(site, "https://x.test:abc/", "url")
+    assert site.calls == []
+
+
+# --- Minor 8: target text is quoted plainly, never as a Python repr ---------
+
+
+def test_observed_values_are_double_quoted(site):
+    hardened(site)
+    weak = {**HARDENED, "x-content-type-options": "sniff"}
+    site.serve("https://x.test/", headers=weak, body=PAGE)
+    site.serve(f"https://x.test{PROBE}", status=404, headers=weak, body="nf")
+    assert 'X-Content-Type-Options "sniff"' in only(run(site), "web-xcto-missing").description
+    no_csp = {k: v for k, v in HARDENED.items() if k != "content-security-policy"}
+    site.serve("https://x.test/", headers=no_csp, body=PAGE)
+    d = only(run(site), "web-csp-missing").description
+    assert "<meta> policies none" in d and "[]" not in d

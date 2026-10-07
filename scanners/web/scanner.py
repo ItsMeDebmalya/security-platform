@@ -1,13 +1,16 @@
 """The Web scanner — the Website Scanner's Light mode (Tool 4a).
 
-Passive and bounded: `fetch.gather` makes at most 12 ordinary GETs once; this
-module only judges what came back. Design: docs/superpowers/specs/
+Passive and bounded: `fetch.gather` makes at most 12 scanner-issued GETs once
+(in-scope redirect hops are additional - ledger D26); this module only judges
+what came back. Design: docs/superpowers/specs/
 2026-10-02-web-light-design.md.
 
 - A header claim is validated by re-reading the policy on the 404 control.
   That shows the policy is origin-wide, not one route's quirk. It does NOT show
   independent infrastructure - both responses come through the same edge.
 - A response we could not read is inconclusive, never clear.
+- A root that ends on a 3xx is a redirect, never a rendered page: page-security
+  checks are inconclusive on it; HSTS and server-identity checks still judge it.
 - State is derived by core/state.py through Finding.create, never set here.
 """
 
@@ -25,11 +28,11 @@ from core.evidence import capture_http_pair, redact_body
 from core.http import HttpClient
 from core.models import Asset, CheckRun, Finding, Mode, ScanResult, Telemetry
 from core.registry import register
-from core.scanner import BaseScanner
+from core.scanner import BaseScanner, UnsupportedTargetError
 from scanners.web import csp, disclosure, eol, fingerprint, headers, html, listing
 from scanners.web.checks import CHECKS, HTML_DOCUMENT, HTTP_HEADER, VERSION_STRING, Check
 from scanners.web.checks import requires_authorisation as _requires_authorisation
-from scanners.web.fetch import Fetched, gather
+from scanners.web.fetch import Fetched, gather, origins
 
 VALIDATION_METHOD = "second_same_origin_response"
 NO_VERDICT = frozenset(
@@ -78,6 +81,11 @@ DEFAULT_PORTS = {"https": 443, "http": 80}
 _UNRESERVED = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
 
 Url = tuple[str, str, int, str, str]
+_PRIVATE_KEY = re.compile(
+    r"(-----BEGIN [A-Z ]*PRIVATE KEY-----)[\s\S]*?(?:-----END [A-Z ]*PRIVATE KEY-----|\Z)"
+)
+ROBOTS_LISTED = 20
+DESCRIPTION_CAP = 2000
 _INDEX = re.compile(r"/index\.(?:html?|php|aspx?|jsp)$", re.IGNORECASE)
 
 
@@ -142,9 +150,19 @@ Judge = Callable[[dict[str, str], str], tuple[bool, str]]
 @register
 class WebScanner(BaseScanner):
     name = "web"
-    version = "1.0.1"
+    version = "1.0.2"
     supported_modes = frozenset({"light"})
     target_types = frozenset({"domain", "url"})
+
+    def validate(self, target: Asset, mode: Mode = "light") -> None:
+        super().validate(target, mode)
+        try:
+            origins(target)
+        except ValueError as exc:  # urlsplit: a port that is not a number in range
+            raise UnsupportedTargetError(
+                f'web cannot read the port in "{target.value.strip()}" ({exc}); '
+                "give a URL with a numeric port, or none"
+            ) from exc
 
     def requires_authorisation(self, mode: Mode) -> bool:
         return _requires_authorisation(mode)
@@ -160,7 +178,11 @@ class WebScanner(BaseScanner):
 
 
 def _q(value: str | None) -> str:
-    return "absent" if value is None else repr(value)
+    return "absent" if value is None else f'"{value}"'
+
+
+def _q_all(values: tuple[str, ...]) -> str:
+    return ", ".join(f'"{v}"' for v in values) if values else "none"
 
 
 def _meta_csp(body: str) -> tuple[str, ...]:
@@ -172,7 +194,7 @@ def _csp_missing(h: dict[str, str], body: str) -> tuple[bool, str]:
     meta = _meta_csp(body)
     return (
         header is None and not meta,
-        f"Content-Security-Policy header {_q(header)}, <meta> policies {list(meta)!r}",
+        f"Content-Security-Policy header {_q(header)}, <meta> policies {_q_all(meta)}",
     )
 
 
@@ -184,7 +206,7 @@ def _csp_weak(h: dict[str, str], body: str) -> tuple[bool, str]:
         policies.extend(csp.parse(value))
     if not policies:
         return False, "no policy"
-    received = f"Content-Security-Policy header {_q(header)}, <meta> policies {list(meta)!r}"
+    received = f"Content-Security-Policy header {_q(header)}, <meta> policies {_q_all(meta)}"
     if not csp.restricts_scripts(policies):
         return (
             True,
@@ -236,6 +258,25 @@ HEADER_POLICIES: tuple[tuple[str, Judge, bool], ...] = (
 POLICY_IDS = frozenset(c for c, _, _ in HEADER_POLICIES)
 
 
+def _redirect_text(f: Fetched) -> str | None:
+    """Why a root that ended on a 3xx says nothing about a page, or None if it did not."""
+    if f.response is None or not 300 <= f.response.status_code < 400:
+        return None
+    location = headers.get(f.response.headers, "location") or "an unknown location"
+    via = f" (after in-scope redirects, at {f.response.url})" if f.response.url != f.url else ""
+    return (
+        f"{f.url}{via} answered HTTP {f.response.status_code} redirecting to {location} — "
+        "a redirect response is never rendered as a page, so its page-security headers "
+        "describe nothing a visitor sees; scan the redirect target instead."
+    )
+
+
+REDIRECT_REMEDIATION = (
+    "Scan the URL the redirect points to; that is the page visitors are shown, and its "
+    "headers are the ones that protect them."
+)
+
+
 def _why_unusable(f: Fetched) -> tuple[str, str]:
     if f.failure == "waf_block":
         return "waf_block", (
@@ -265,7 +306,7 @@ def _raw(f: Fetched) -> dict[str, Any]:
     return {
         "status": f.response.status_code,
         "headers": {_redacted(k): _redacted(v) for k, v in f.response.headers.items()},
-        "body": f.response.text,
+        "body": _strip_private_keys(f.response.text),
         "elapsed_ms": f.response.captured.get("elapsed_ms"),
     }
 
@@ -442,6 +483,11 @@ class _Scan:
         if not self._usable(root, checks):
             return
         assert root.response is not None
+        redirect = _redirect_text(root)
+        if redirect is not None:
+            for check in checks:
+                self._redirect_inconclusive(check, loc, root, redirect)
+            return
         for check_id, judge, validate in HEADER_POLICIES:
             check = CHECKS[check_id]
             deficient, observed = judge(root.response.headers, root.response.text)
@@ -616,8 +662,34 @@ class _Scan:
         )
         self.checks.append(CheckRun(check_id=check.check_id, location=location, outcome="reported"))
 
+    def _redirect_inconclusive(
+        self, check: Check, location: str, fetched: Fetched, description: str
+    ) -> None:
+        self._inconclusive(
+            check,
+            location,
+            fetched,
+            description,
+            reason="blocked_prerequisite",
+            impact="Unknown until the page the redirect leads to is scanned.",
+            remediation=REDIRECT_REMEDIATION,
+            note="the response is a redirect, not a page; test and control are the same response",
+        )
+
     def _inconclusive(
-        self, check: Check, location: str, fetched: Fetched, description: str, *, reason: str
+        self,
+        check: Check,
+        location: str,
+        fetched: Fetched,
+        description: str,
+        *,
+        reason: str,
+        impact: str = "Unknown until the request succeeds.",
+        remediation: str = (
+            "Re-run the scan. A persistent failure means the site is unreachable "
+            "from the scanner, or an edge is blocking it."
+        ),
+        note: str = "no usable response; test and control are the same failed request",
     ) -> None:
         location = _safe_location(location)
         result = self.engine.combine(
@@ -639,7 +711,7 @@ class _Scan:
                 control_response=raw,
                 test_request=_request(fetched),
                 test_response=raw,
-                delta={"note": "no usable response; test and control are the same failed request"},
+                delta={"note": note},
             )
         ]
         now = datetime.now(UTC)
@@ -660,11 +732,8 @@ class _Scan:
                 validation={"attempted": False, "outcome": "unavailable"},
                 evidence=evidence,
                 description=_redacted(description),
-                impact="Unknown until the request succeeds.",
-                remediation=(
-                    "Re-run the scan. A persistent failure means the site is unreachable "
-                    "from the scanner, or an edge is blocking it."
-                ),
+                impact=impact,
+                remediation=remediation,
                 references=[],
                 taxonomy={},
                 first_seen=now,
@@ -711,7 +780,26 @@ class _Scan:
             return
         assert root.response is not None
         page, page_url = self.obs.page, self.obs.page_url
+        sri = CHECKS["web-sri-missing"]
+        redirect = _redirect_text(root)
+        if redirect is not None:  # no page was rendered, so no page content was read
+            for c in ([mixed] if https_ok else []) + [sri]:
+                self._redirect_inconclusive(c, loc, root, redirect)
+        else:
+            self._judge_page(root, probe, page, page_url, https_ok=https_ok)
+        self._judge_server_identity(root, probe, page)
 
+    def _judge_page(
+        self,
+        root: Fetched,
+        probe: Fetched,
+        page: html.PageFacts | None,
+        page_url: str | None,
+        *,
+        https_ok: bool,
+    ) -> None:
+        loc, mixed, sri = self.obs.root_path, CHECKS["web-mixed-content"], CHECKS["web-sri-missing"]
+        assert root.response is not None
         if https_ok:
             insecure = (
                 []
@@ -736,7 +824,6 @@ class _Scan:
             else:
                 self._clear(mixed, loc)
 
-        sri = CHECKS["web-sri-missing"]
         unpinned = (
             []
             if page is None or page_url is None
@@ -760,6 +847,12 @@ class _Scan:
         else:
             self._clear(sri, loc)
 
+    def _judge_server_identity(
+        self, root: Fetched, probe: Fetched, page: html.PageFacts | None
+    ) -> None:
+        """Version, technology and EOL are facts about the server, true on a 3xx too."""
+        loc = self.obs.root_path
+        assert root.response is not None
         version = CHECKS["web-version-disclosure"]
         found = disclosure.version_disclosures(
             root.response.headers, page.generator if page else None
@@ -902,7 +995,7 @@ class _Scan:
             description=(
                 f"A request for a path that does not exist ({probe.url}) "
                 f"returned HTTP {probe.response.status_code} with a {sig.name}: "
-                f'"{_one_line(disclosure.excerpt(redact_body(probe.response.text)[0] or "", sig))}"'
+                f'"{_one_line(disclosure.excerpt(_redacted(probe.response.text), sig))}"'
             ),
         )
         self._clear(other, loc)
@@ -972,15 +1065,18 @@ class _Scan:
         if not disallowed and not sitemaps:
             self._clear(check, f.path)
             return
+        description = (
+            f"robots.txt disallows {_listed(disallowed, 'nothing')} and names "
+            f"sitemaps {_listed(sitemaps, 'none')}"
+        )
+        if len(description) > DESCRIPTION_CAP:
+            description = description[: DESCRIPTION_CAP - 60].rstrip() + " ... (truncated)"
         self._emit(
             check,
             f.path,
             test=f,
             control=self.obs.probe,
-            description=(
-                f"robots.txt disallows {disallowed or 'nothing'} and names "
-                f"sitemaps {sitemaps or 'none'}. These paths were not fetched"
-            ),
+            description=description + ". These paths were not fetched",
         )
 
     def _check_security_txt(self) -> None:
@@ -1009,7 +1105,25 @@ def _safe_location(location: str) -> str:
 
 def _redacted(text: str) -> str:
     """Descriptions are stored and shown; core redacts captured evidence but never them."""
-    return redact_body(text)[0] or ""
+    return redact_body(_strip_private_keys(text))[0] or ""
+
+
+def _strip_private_keys(text: str) -> str:
+    """Cut every PEM private-key block down to its BEGIN line, body and END line gone.
+
+    core's `private_key` pattern redacts only the BEGIN line, so the base64 key
+    body would otherwise be stored (ledger D21). Leaving the BEGIN line lets
+    core still redact it and record the `private_key` hit. An unterminated block
+    is cut to the end of the text. Remove once core redacts whole blocks."""
+    return _PRIVATE_KEY.sub(r"\1", text) if text else text
+
+
+def _listed(items: list[str], empty: str) -> str:
+    if not items:
+        return empty
+    shown = ", ".join(f'"{i}"' for i in items[:ROBOTS_LISTED])
+    more = len(items) - ROBOTS_LISTED
+    return shown + (f" and {more} more" if more > 0 else "")
 
 
 def _one_line(text: str) -> str:

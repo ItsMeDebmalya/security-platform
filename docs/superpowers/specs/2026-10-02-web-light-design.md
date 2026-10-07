@@ -40,14 +40,14 @@ Decisions taken with the operator during design (2026-10-02):
 
 ## 2. Request plan — bounded, ordinary, passive
 
-At most **12** GETs per run, all through `ctx.http`, `ctx.check_alive()` before each:
+At most **12** scanner-issued GETs per run (in-scope redirect hops are additional — ledger D26), all through `ctx.http`, `ctx.check_alive()` before each:
 
 | # | Request | Purpose |
 |---|---|---|
 | 1 | `https://<host>/` | the primary observation |
 | 2 | `http://<host>/` | does plain HTTP redirect to HTTPS? |
-| 3 | `https://<host>/<random-32-hex>` | **the control**: a path that cannot exist. Its 404 is also the error-page probe and the second same-origin response used for validation (§5) |
-| 4 | `http://<host>/<same random path>` | validation for the redirect check |
+| 3 | `https://<host>/sp-404-probe-<sha256(host)[:16]>` | **the control**: a path that cannot exist. Its 404 is also the error-page probe and the second same-origin response used for validation (§5). Deterministic, not random (amended 2026-10-07): a random path would never match a recorded fixture, so replay (0b.4) and the corpus need the same path on every run; 16 hex of a hash is still a path no site serves |
+| 4 | `http://<host>/<same probe path>` | validation for the redirect check |
 | 5 | `/robots.txt` | robots review |
 | 6–7 | up to 2 `Sitemap:` URLs named in robots.txt, same host only | sitemap review |
 | 8 | `/.well-known/security.txt` | RFC 9116 presence |
@@ -253,7 +253,7 @@ An empty `control_rationale` is refused by the contract; none is left empty.
 | HTTPS transport failure | HTTPS-dependent checks `inconclusive`: `timeout` if the failure was a timeout, otherwise `blocked_prerequisite`; the cause is named (certificate verification, handshake, timeout, DNS) |
 | 5xx on root | header checks `inconclusive`, `ambiguous_response` |
 | robots/sitemap/security.txt 404 | definite — "absent", not inconclusive |
-| off-scope redirect declined | reported as observed; checks judge the response we did get |
+| root ends on a 3xx (off-scope redirect declined, or an in-scope chain that exhausted `MAX_REDIRECTS`) | amended 2026-10-07: a redirect response is never rendered as a page, so the page-header checks (`csp-missing`, `csp-weak`, `clickjacking-unprotected`, `xcto-missing`, `referrer-policy-*`, `cors-wildcard`) and the page-content checks (`mixed-content`, `sri-missing`) are `inconclusive`, `blocked_prerequisite`, naming the redirect. HSTS (meaningful on an HTTPS 3xx) and the server-identity checks (`version-disclosure`, `technology`, `component-eol`) still judge it |
 
 Every check appears in `telemetry.checks_run` with its outcome (`reported` / `clear` /
 `inconclusive`) and location. Each source fails independently: robots.txt timing out does not make
@@ -269,7 +269,7 @@ the header checks unknown.
   `disclosure`, `challenge`, `fingerprint`, `eol`.
 - The data-integrity tests of §4.1.
 - Scanner tests over `httpx.MockTransport`: every catalogue check appears in `checks_run`; `state`
-  never hand-set; no request outside §2's plan; ≤ 12 requests; `check_alive` honoured (a killed scan
+  never hand-set; no request outside §2's plan; ≤ 12 scanner-issued requests (in-scope redirect hops are additional — ledger D26); `check_alive` honoured (a killed scan
   stops); `requires_authorisation()` is `False` for every mode.
 - Existing `tests/architecture/` rules apply unchanged.
 

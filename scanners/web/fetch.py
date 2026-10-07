@@ -122,9 +122,11 @@ class Observations:
         return [f for f in candidates if f.usable]
 
 
-def _origins(target: Asset) -> tuple[str, str | None, str | None, str]:
+def origins(target: Asset) -> tuple[str, str | None, str | None, str]:
     """(host, https origin, http origin, root path). The other scheme is derived
-    only on default ports - on an explicit port we cannot know it."""
+    only on default ports - on an explicit port we cannot know it. Raises
+    ValueError on a port that is not a number in range (WebScanner.validate
+    rejects such a target before any request)."""
     value = target.value.strip()
     if target.type == "url" or "://" in value:
         parts = urlsplit(value if "://" in value else f"https://{value}")
@@ -196,7 +198,7 @@ def _sitemaps(robots: Fetched, host: str) -> list[str]:
 
 
 def gather(ctx: ScanContext, http: HttpClient, target: Asset) -> Observations:
-    host, https_origin, http_origin, root_path = _origins(target)
+    host, https_origin, http_origin, root_path = origins(target)
     f = _Fetcher(ctx, http)
     probe = probe_path(host)
 
@@ -212,7 +214,8 @@ def gather(ctx: ScanContext, http: HttpClient, target: Asset) -> Observations:
         if http_root.response is not None
         else https_origin or http_origin
     )
-    assert base is not None
+    if base is None:  # unreachable: origins() always yields at least one origin
+        raise RuntimeError("web derived no origin for the target - a scanner bug")
     robots = f.get("robots.txt", base + "/robots.txt")
     sitemaps = tuple(f.get("sitemap", url) for url in _sitemaps(robots, host))
     security_txt = f.get("security.txt", base + "/.well-known/security.txt")

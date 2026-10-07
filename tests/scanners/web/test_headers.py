@@ -34,6 +34,12 @@ def test_xcto():
     assert not h.xcto_ok(None) and not h.xcto_ok("sniff")
 
 
+def test_xcto_only_the_first_value_counts():  # Fetch: the first value is the one read
+    assert h.xcto_ok("nosniff, sniff")
+    assert not h.xcto_ok("sniff, nosniff")
+    assert not h.xcto_ok("")
+
+
 def test_referrer():
     assert h.referrer_verdict(None) == ("missing", None)
     assert h.referrer_verdict("unsafe-url") == ("unsafe", "unsafe-url")

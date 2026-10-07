@@ -58,7 +58,9 @@ def xfo_protects(value: str | None) -> bool:
 
 
 def xcto_ok(value: str | None) -> bool:
-    return _tokens(value) == {"nosniff"}
+    """Fetch reads only the first value of a repeated header, so "nosniff, sniff" is ok."""
+    first = (value or "").split(",")[0]
+    return first.strip().lower() == "nosniff"
 
 
 def referrer_verdict(value: str | None) -> tuple[Literal["missing", "unsafe", "ok"], str | None]:
