@@ -419,6 +419,13 @@ uv run scan run web --target example.com --format json --out web-example.json
 
 When a request fails, the finding's description now says **why**, from the exception: `TLS certificate verification failed (…)` with OpenSSL's own reason, `TLS handshake failed (…)`, `connection timed out`, `connection refused`, `DNS lookup failed`, or `transport error (<type>)` when nothing more specific is known. (Before v1.0.1 it said only "could not be fetched (blocked_prerequisite)".) A site with no working HTTPS is reported as `inconclusive` on those checks but, as of today, never as one definite statement — that gap is ledger D23.
 
+Real examples from `web` 1.0.1 (2026-10-07), the cause sentence inside an `inconclusive` finding's description (the description continues with what the check could not judge):
+
+```
+https://expired.badssl.com/ could not be fetched: TLS certificate verification failed (certificate has expired).
+https://httpforever.com/ could not be fetched: TLS handshake failed (ssl/tls alert handshake failure).
+```
+
 ---
 
 ## 5. The authorisation gate — a per-check declaration, not a mode setting

@@ -444,4 +444,4 @@ web            234   10    0    0      1.000    1.000   3.4%    0.9%  PASS
            recall is corpus-relative only - never publish this as absolute
 ```
 
-Numbers are pasted from the live run; the per-scanner recall annotations for `domscout`, `email`, `example` and `tls` are kept from the previous block. **Known disagreement, not fixed here (docs only):** today's `make corpus` prints "recall is absolute" under `domscout`, but A4 above says its recall binds the security findings only and enumeration completeness is never published as a number. The harness's label, not A4, looks wrong; it is a code change owed to `cli/corpus.py`.
+Numbers are pasted from the live run; the per-scanner recall annotations for `domscout`, `email`, `example` and `tls` are kept from the previous block. The harness's "recall is absolute" line for domscout applies to its gated security findings; subdomain enumeration is ungated (see A4).
