@@ -1,0 +1,224 @@
+import pytest
+
+from core.http import MissingFixtureError
+from core.killswitch import ScanKilledError
+from core.models import Asset
+from scanners.web.fetch import probe_path
+from tests.scanners.web.conftest import ConnectTimeout, FakeSite
+
+PROBE = probe_path("x.test")
+PAGE = "<!doctype html><html><head><title>t</title></head><body><p>hi</p></body></html>"
+HARDENED = {
+    "content-type": "text/html",
+    "strict-transport-security": "max-age=31536000",
+    "content-security-policy": "default-src 'self'; frame-ancestors 'none'",
+    "x-frame-options": "DENY",
+    "x-content-type-options": "nosniff",
+    "referrer-policy": "strict-origin-when-cross-origin",
+}
+
+
+def hardened(site):
+    site.serve("https://x.test/", headers=HARDENED, body=PAGE)
+    site.serve("http://x.test/", status=301, headers={"location": "https://x.test/"})
+    site.serve(f"https://x.test{PROBE}", status=404, headers=HARDENED, body="<h1>Not Found</h1>")
+    site.serve(f"http://x.test{PROBE}", status=301, headers={"location": f"https://x.test{PROBE}"})
+    site.serve(
+        "https://x.test/.well-known/security.txt",
+        headers={"content-type": "text/plain"},
+        body="Contact: mailto:security@x.test\nExpires: 2027-01-01T00:00:00Z\n",
+    )
+    return site
+
+
+def bare(site):
+    site.serve("https://x.test/", headers={"content-type": "text/html"}, body=PAGE)
+    site.serve("http://x.test/", headers={"content-type": "text/html"}, body=PAGE)
+    return site
+
+
+def run(site, value="x.test", kind="domain"):
+    from scanners.web import WebScanner
+
+    return WebScanner().run(Asset(type=kind, value=value), "light", site.ctx())
+
+
+def only(result, check_id):
+    found = [f for f in result.findings if f.check_id == check_id]
+    assert len(found) == 1, (check_id, [f.state for f in found])
+    return found[0]
+
+
+def claims(result):
+    return {
+        (f.check_id, f.location)
+        for f in result.findings
+        if f.state in ("confirmed", "highly_likely")
+    }
+
+
+def test_hardened_site_reports_nothing_but_informational(site):
+    result = run(hardened(site))
+    assert [f.check_id for f in result.findings if f.state != "informational"] == []
+
+
+def test_bare_site_header_claims_are_confirmed(site):
+    result = run(bare(site))
+    assert claims(result) >= {
+        ("web-https-redirect-missing", "/"),
+        ("web-hsts-missing", "/"),
+        ("web-csp-missing", "/"),
+        ("web-clickjacking-unprotected", "/"),
+        ("web-xcto-missing", "/"),
+    }
+    for f in result.findings:
+        if f.state == "confirmed":
+            assert f.validation.outcome == "passed"
+            assert f.validation.method == "second_same_origin_response"
+
+
+def test_header_set_per_route_is_only_suspected(site):
+    hardened(site)
+    no_hsts = {k: v for k, v in HARDENED.items() if k != "strict-transport-security"}
+    site.serve("https://x.test/", headers=no_hsts, body=PAGE)
+    f = only(run(site), "web-hsts-missing")
+    assert f.state == "suspected" and f.validation.outcome == "failed"
+
+
+def test_weak_hsts_and_weak_csp(site):
+    hardened(site)
+    weak = {
+        **HARDENED,
+        "strict-transport-security": "max-age=300",
+        "content-security-policy": "default-src 'self'; script-src 'unsafe-inline'; "
+        "frame-ancestors 'none'",
+    }
+    site.serve("https://x.test/", headers=weak, body=PAGE)
+    site.serve(f"https://x.test{PROBE}", status=404, headers=weak, body="nf")
+    result = run(site)
+    assert {("web-hsts-weak", "/"), ("web-csp-weak", "/")} <= claims(result)
+    assert not [f for f in result.findings if f.check_id == "web-hsts-missing"]
+
+
+def test_meta_csp_counts_as_a_policy(site):
+    hardened(site)
+    no_csp = {k: v for k, v in HARDENED.items() if k != "content-security-policy"}
+    body = '<html><head><meta http-equiv="Content-Security-Policy" content="default-src \'self\'">'
+    site.serve("https://x.test/", headers=no_csp, body=body + "</head></html>")
+    assert not [f for f in run(site).findings if f.check_id == "web-csp-missing"]
+
+
+def test_duplicate_header_values_do_not_false_positive(site):  # Review Focus 3
+    hardened(site)
+    dup = {
+        **HARDENED,
+        "x-frame-options": "DENY, DENY",
+        "x-content-type-options": "nosniff, nosniff",
+    }
+    site.serve("https://x.test/", headers=dup, body=PAGE)
+    ids = {f.check_id for f in run(site).findings}
+    assert "web-clickjacking-unprotected" not in ids and "web-xcto-missing" not in ids
+
+
+def test_referrer_and_cors(site):
+    hardened(site)
+    h = {**HARDENED, "referrer-policy": "unsafe-url", "access-control-allow-origin": "*"}
+    site.serve("https://x.test/", headers=h, body=PAGE)
+    site.serve(f"https://x.test{PROBE}", status=404, headers=h, body="nf")
+    assert {("web-referrer-policy-unsafe", "/"), ("web-cors-wildcard", "/")} <= claims(run(site))
+
+
+def test_missing_referrer_policy_is_informational(site):
+    result = run(bare(site))
+    assert only(result, "web-referrer-policy-missing").state == "informational"
+
+
+def test_challenge_makes_header_checks_inconclusive(site):
+    site.serve(
+        "https://x.test/",
+        status=403,
+        headers={"cf-mitigated": "challenge", "content-type": "text/html"},
+        body="<title>Just a moment...</title>",
+    )
+    result = run(site)
+    for cid in ("web-hsts-missing", "web-csp-missing", "web-xcto-missing"):
+        f = only(result, cid)
+        assert f.state == "inconclusive" and f.no_verdict_reason == "waf_block"
+
+
+def test_https_unreachable_blocks_only_https_checks(site):
+    site.raise_on("https://x.test/", ConnectTimeout("t"))
+    site.raise_on(f"https://x.test{PROBE}", ConnectTimeout("t"))
+    site.serve("http://x.test/", headers={"content-type": "text/html"}, body=PAGE)
+    result = run(site)
+    assert only(result, "web-hsts-missing").no_verdict_reason == "timeout"
+    assert only(result, "web-https-redirect-missing").state == "inconclusive"
+    assert only(result, "web-xcto-missing").state == "confirmed"  # judged on the HTTP root
+
+
+def test_rate_limited_and_server_error_roots(site):
+    site.serve("https://x.test/", status=429)
+    assert only(run(site), "web-hsts-missing").no_verdict_reason == "rate_limited"
+    other = FakeSite()
+    other.serve("https://x.test/", status=503, body="down")
+    assert only(run(other), "web-xcto-missing").no_verdict_reason == "ambiguous_response"
+
+
+def test_cdn_is_named_in_header_findings(site):
+    bare(site)
+    site.serve(
+        "https://x.test/", headers={"content-type": "text/html", "cf-ray": "abc-BOM"}, body=PAGE
+    )
+    assert "Cloudflare" in only(run(site), "web-hsts-missing").description
+
+
+def test_redirect_to_www_stays_in_scope(site):  # Review Focus 2
+    site.serve("https://x.test/", status=301, headers={"location": "https://www.x.test/"})
+    site.serve("http://x.test/", status=301, headers={"location": "https://www.x.test/"})
+    site.serve(
+        "https://www.x.test/", headers=HARDENED, body='<script src="/static/app.js"></script>'
+    )
+    result = run(site)
+    assert "https://www.x.test/static/" in site.calls
+    assert all(".x.test" in c or "//x.test" in c for c in site.calls)
+    assert not [
+        f
+        for f in result.findings
+        if f.check_id == "web-https-redirect-missing" and f.state != "inconclusive"
+    ]
+
+
+def test_url_target_with_explicit_port(site):
+    site.serve("https://x.test:8443/", headers=HARDENED, body=PAGE)
+    result = run(site, "https://x.test:8443/", "url")
+    assert only(result, "web-https-redirect-missing").no_verdict_reason == "blocked_prerequisite"
+    assert not any(c.startswith("http://") for c in site.calls)
+
+
+def test_fixture_gap_and_kill_switch_propagate(site):
+    site.raise_on("https://x.test/", MissingFixtureError("gap"))
+    with pytest.raises(MissingFixtureError):
+        run(site)
+    other = FakeSite()
+    ctx = other.ctx()
+    ctx.killswitch.kill(scan_id=ctx.scan_id, reason="t")
+    from scanners.web import WebScanner
+
+    with pytest.raises(ScanKilledError):
+        WebScanner().run(Asset(type="domain", value="x.test"), "light", ctx)
+
+
+def test_every_finding_has_a_control_and_requests_stay_bounded(site):
+    result = run(bare(site))
+    assert result.findings
+    for f in result.findings:
+        assert f.evidence and f.evidence[0].has_control()
+    assert len(site.calls) <= 12
+    assert all("x.test" in c for c in site.calls)
+
+
+def test_requires_no_authorisation():
+    from scanners.web import WebScanner
+
+    for mode in ("light", "standard", "deep"):
+        assert WebScanner().requires_authorisation(mode) is False
