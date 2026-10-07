@@ -543,3 +543,86 @@ def test_error_excerpt_window_never_cuts_a_secret(site):
         result = run(site)
         assert by_id(result, "web-error-disclosure")
         _assert_no_key_prefix(result)
+
+
+# --- Fix round 2: a key body that lost BOTH anchors to core's truncation ------
+
+
+def _long_key_lines(n=125):
+    import base64
+    import hashlib
+
+    raw = b"".join(hashlib.sha256(i.to_bytes(2, "big")).digest() for i in range(n * 2))
+    text = base64.b64encode(raw).decode()[: n * 64 - 20]  # last line short, like a real key
+    return [text[i : i + 64] for i in range(0, len(text), 64)]
+
+
+def test_key_body_with_no_surviving_anchor_is_never_stored_on_replay(site, tmp_path):
+    # An unterminated key whose BEGIN falls inside core's truncation gap (default
+    # 256 KB cap): the fixture keeps only bare key lines - no BEGIN, no END, no marker.
+    from core.evidence import DEFAULT_BODY_CAP
+
+    hardened(site)
+    lines = _long_key_lines()
+    filler = "<p>ordinary words in a paragraph</p>\n"
+    head = filler * (131_500 // len(filler))
+    key = "<pre>-----BEGIN RSA PRIVATE KEY-----\n" + "\n".join(lines) + "\n</pre>\n"
+    tail = filler * ((DEFAULT_BODY_CAP + 2_000 - len(head) - len(key)) // len(filler) + 1)
+    body = head + key + tail
+    assert len(body) > DEFAULT_BODY_CAP
+    site.serve("https://x.test/", headers=HARDENED, body=body)
+    live, replayed = _record_then_replay(site, tmp_path)
+    fixture = " ".join(b or "" for b in _fixture_bodies(tmp_path))
+    # precondition: the scenario is real - key lines survive, every anchor is gone
+    assert lines[-10] in fixture
+    assert "BEGIN" not in fixture and "PRIVATE KEY" not in fixture and "private_key" not in fixture
+    for result in (live, replayed):
+        assert only(result, "web-secret-in-response").location == "/"
+        dumped = _dump(result)
+        for line in lines:
+            assert line not in dumped and line[-24:] not in dumped, line
+        assert "ordinary words in a paragraph" in dumped  # the page text survives
+
+
+def test_bare_base64_runs_are_stripped_but_single_lines_are_not():
+    from scanners.web.scanner import _redacted, _strip_private_keys
+
+    lines = _long_key_lines(4)
+    # a run of 2+ lines (LF, CRLF, indented, JSON-escaped) is key material
+    assert _strip_private_keys(f"a\n{lines[0]}\n{lines[1]}\nb") == "a\n[redacted]:private_key\nb"
+    crlf = f"a\r\n  {lines[0]}  \r\n{lines[1]}\r\nb"
+    assert _strip_private_keys(crlf) == "a\r\n[redacted]:private_key\r\nb"
+    escaped = f'{{"k": "{lines[0]}\\n{lines[1]}\\n{lines[2]}", "n": 1}}'
+    assert _strip_private_keys(escaped) == '{"k": "[redacted]:private_key", "n": 1}'
+    padded = f"{lines[0]}\n{lines[1][:60]}==\n"
+    assert _strip_private_keys(padded) == "[redacted]:private_key\n"
+    # a long single-line data: URI and ordinary prose are untouched
+    data_uri = (
+        '<img src="data:image/png;base64,' + "".join(_long_key_lines(40)) + '">\n'
+        "<p>An ordinary paragraph of text, nothing secret here.</p>\n"
+    )
+    assert _strip_private_keys(data_uri) == data_uri
+    assert _redacted(data_uri) == data_uri
+    # one 64-character base64 line on its own is not a run
+    single = f"<p>hash</p>\n{lines[0]}\n<p>more prose</p>"
+    assert _strip_private_keys(single) == single
+    # lines outside 60-76 columns are not key lines
+    short_run = f"{lines[0][:40]}\n{lines[1][:40]}\n"
+    assert _strip_private_keys(short_run) == short_run
+
+
+def test_bare_run_stripping_is_linear():
+    import time
+
+    from scanners.web.scanner import _strip_private_keys
+
+    line = _long_key_lines(1)[0]
+    for text in (
+        (line + " x\n") * 4000,
+        ("A" * 59 + "\n") * 4000,
+        "A" * 262_144,
+        ("\n" + "A" * 77) * 3000,
+    ):
+        started = time.monotonic()
+        _strip_private_keys(text)
+        assert time.monotonic() - started < 1.0

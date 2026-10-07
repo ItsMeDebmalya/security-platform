@@ -100,6 +100,24 @@ _CORE_BEGIN = re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----")
 _KEY_END_LINE = re.compile(_KEY_END)
 _LINE_SPLIT = re.compile(f"({_LINE_BREAK})")
 _KEY_MATERIAL = re.compile(r"[ \t]*[A-Za-z0-9+/=]*[ \t]*")
+_LINE_END = r"(?=\r?\n|\\r\\n|\\n|[\"'<`]|\Z)"
+_LINE_START = r"(?:(?<=\n)|(?<=\\n)|(?<=[>\"'`])|\A)"
+_B64_FULL = (
+    r"[ \t]*(?=[A-Za-z0-9+/]{60,76}={0,2}(?![A-Za-z0-9+/=]))[A-Za-z0-9+/]+={0,2}[ \t]*" + _LINE_END
+)
+_B64_ANY = r"[ \t]*[A-Za-z0-9+/]{1,76}={0,2}[ \t]*" + _LINE_END
+_B64_LAST = r"[ \t]*(?:[A-Za-z0-9+/]{16,76}={0,2}|[A-Za-z0-9+/]{1,75}={1,2})[ \t]*" + _LINE_END
+_AFTER_TRUNCATION = r"(?<=bytes truncated\] \.\.\.\n)"  # the gap marker core's truncation inserts
+_BARE_KEY_RUN = re.compile(
+    rf"(?:{_AFTER_TRUNCATION}{_B64_ANY}(?:{_LINE_BREAK}{_B64_FULL})+"
+    rf"|{_LINE_START}{_B64_FULL}(?:{_LINE_BREAK}{_B64_FULL})+)"
+    rf"(?:{_LINE_BREAK}{_B64_LAST})?"
+)
+"""Two or more whole 60-76 column base64 lines with no anchor: a key body whose BEGIN
+and END both fell into core's truncation gap. The line the gap cut (right after core's
+"bytes truncated" marker, any length) and a key's short last line (16+ characters, or
+padded) go with it; a short word beside a run does not. A single line - a data:
+URI, one hash - is never a run. Genuine 64-column base64 is over-redacted, which is safe."""
 ROBOTS_LISTED = 20
 DESCRIPTION_CAP = 2000
 _TRUNCATED = " ... (truncated)"
@@ -1135,15 +1153,17 @@ def _strip_private_keys(text: str) -> str:
     core still redacts it and records the `private_key` hit; any other anchor
     becomes the marker. A block with no END line ends at the first line that is not
     key material. Last, an END line left with no anchor (core's truncation of the
-    fixture swallowed its BEGIN) takes the key lines just above it with it.
+    fixture swallowed its BEGIN) takes the key lines just above it with it, and a
+    run of bare base64 key lines whose BEGIN and END were both truncated away is cut.
     Remove once core redacts whole blocks."""
     if not text:
         return text
     ends = [m.span() for m in _KEY_END_LINE.finditer(text)]
-    if not ends and _KEY_ANCHOR.search(text) is None:
-        return text
-    text = _cut_key_blocks(text, ends)
-    return _strip_orphan_key_tails(text) if _KEY_END_LINE.search(text) else text
+    if ends or _KEY_ANCHOR.search(text) is not None:
+        text = _cut_key_blocks(text, ends)
+        if _KEY_END_LINE.search(text):
+            text = _strip_orphan_key_tails(text)
+    return _BARE_KEY_RUN.sub(_KEY_MARKER, text)
 
 
 def _cut_key_blocks(text: str, ends: list[tuple[int, int]]) -> str:
