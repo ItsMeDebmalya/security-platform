@@ -140,3 +140,13 @@ def test_gather_records_why_https_failed(site):
     obs = gather(site)
     assert obs.https_root.failure == "blocked_prerequisite"
     assert obs.https_root.detail == "TLS certificate verification failed (certificate has expired)"
+
+
+def test_transport_detail_cap_never_cuts_a_secret():
+    # "TLS handshake failed (" is 22 chars; put the key across the 200-char cap.
+    for pad in range(165, 185):
+        out = fetch.describe_transport_failure(
+            ConnectError("[SSL: BAD] " + "z" * pad + " AKIAIOSFODNN7EXAMPLE tail (_ssl.c:1)")
+        )
+        assert len(out) <= 200
+        assert not any("AKIAIOSFODNN7EXAMPLE"[:n] in out for n in range(8, 21)), (pad, out)

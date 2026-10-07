@@ -1,5 +1,6 @@
 import json
 
+from core.models import Asset
 from scanners.web.checks import CHECKS
 from scanners.web.fetch import probe_path
 from tests.scanners.web.conftest import ConnectTimeout, FakeSite
@@ -380,3 +381,165 @@ def test_robots_description_caps_listed_paths(site):
     assert "/p19/" in f.description and "/p20/" not in f.description
     assert "and 30 more" in f.description
     assert len(f.description) <= 2000
+
+
+# --- Leak fix (v1.0.3): the record-then-replay path, and redact-then-cut ------
+
+AWS_KEY = "AKIAIOSFODNN7EXAMPLE"
+
+
+def _record_then_replay(site, tmp_path, **client_kwargs):
+    """Scan live through core's RecordingHttpBackend, then again from the fixtures it
+    wrote through ReplayHttpBackend - the corpus / `--replay` path, not FakeSite alone."""
+    from core.authz import Scope
+    from core.context import ScanContext
+    from core.http import HttpClient, RecordingHttpBackend, ReplayHttpBackend
+    from scanners.web import WebScanner
+
+    scope = Scope(frozenset({site.host}))
+    target = Asset(type="domain", value=site.host)
+    results = []
+    for backend in (RecordingHttpBackend(tmp_path, site), ReplayHttpBackend(tmp_path)):
+        http = HttpClient(scope=scope, backend=backend, **client_kwargs)
+        results.append(WebScanner().run(target, "light", ScanContext(http=http, scope=scope)))
+    return results
+
+
+def test_private_key_body_is_never_stored_on_record_or_replay(site, tmp_path):
+    hardened(site)
+    site.serve("https://x.test/", headers=HARDENED, body=f"<pre>{_pem()}</pre>")
+    for result in _record_then_replay(site, tmp_path):
+        assert only(result, "web-secret-in-response").location == "/"
+        _assert_no_key_body(result)
+
+
+def test_private_key_in_error_excerpt_is_never_stored_on_replay(site, tmp_path):
+    hardened(site)
+    trace = f'<pre>{_pem()}\nTraceback (most recent call last):\n  File "/app/s.py", line 9\n</pre>'
+    site.serve(f"https://x.test{PROBE}", status=500, headers=HARDENED, body=trace)
+    for result in _record_then_replay(site, tmp_path):
+        assert "Traceback" in only(result, "web-error-disclosure").description
+        assert any(f.location == PROBE for f in by_id(result, "web-secret-in-response"))
+        _assert_no_key_body(result)
+
+
+def test_text_after_a_key_end_line_is_kept_on_record_and_replay(site, tmp_path):
+    hardened(site)
+    body = f"<pre>{_pem()}</pre><p>Keep this sentence after the key.</p>"
+    site.serve("https://x.test/", headers=HARDENED, body=body)
+    for result in _record_then_replay(site, tmp_path):
+        f = only(result, "web-secret-in-response")
+        assert "Keep this sentence after the key." in f.evidence[0].test.response.body
+        _assert_no_key_body(result)
+
+
+def test_key_straddling_core_truncation_is_never_stored_on_replay(site, tmp_path):
+    # core truncates the fixture body (after redacting only the BEGIN line), so on
+    # replay the gap can swallow BEGIN and leave the key's tail and END line headless.
+    hardened(site)
+    body = "x" * 1000 + "\n" + _pem() + "\n" + "y" * 40
+    site.serve("https://x.test/", headers=HARDENED, body=body)
+    live, replayed = _record_then_replay(site, tmp_path, body_cap=400)
+    # precondition: the fixture really is headless - key tail and END, no anchor
+    bodies = " ".join(b or "" for b in _fixture_bodies(tmp_path))
+    assert "END RSA PRIVATE KEY" in bodies and "private_key" not in bodies
+    for result in (live, replayed):
+        assert only(result, "web-secret-in-response").location == "/"
+        _assert_no_key_body(result)
+
+
+def _fixture_bodies(directory):
+    return [json.loads(p.read_text()).get("body") for p in directory.rglob("*.json")]
+
+
+def test_strip_keeps_a_clean_marker_and_does_not_eat_trailing_text():
+    from scanners.web.scanner import _redacted, _strip_private_keys
+
+    # already clean: one marker, nothing after it
+    assert _strip_private_keys("[redacted]:private_key") == "[redacted]:private_key"
+    assert _redacted("[redacted]:private_key") == "[redacted]:private_key"
+    # replayed, terminated: body and END line go, the text after END stays
+    replayed = "[redacted]:private_key\nMIIabc\nMIIdef\n-----END PRIVATE KEY-----\nThe end."
+    assert _redacted(replayed) == "[redacted]:private_key\nThe end."
+    # replayed, unterminated: base64 lines go, the first ordinary line stays
+    bare = "a [redacted]:private_key\nMIIabc\nMIIdef\n</pre>\n<p>Contact us at the desk.</p>"
+    assert _redacted(bare) == "a [redacted]:private_key\n</pre>\n<p>Contact us at the desk.</p>"
+    # a bare marker inside prose eats nothing
+    prose = "found [redacted]:private_key in the page and more words here"
+    assert _redacted(prose) == prose
+    # a JSON-escaped key (service-account file), terminated and unterminated
+    escaped = (
+        '{"k": "-----BEGIN PRIVATE KEY-----\\nMIIabc\\nMIIdef\\n-----END PRIVATE KEY-----\\n"}'
+    )
+    assert _redacted(escaped) == '{"k": "[redacted]:private_key\\n"}'
+    escaped_cut = '{"k": "[redacted]:private_key\\nMIIabc\\nMIIdef", "n": 1}'
+    assert _redacted(escaped_cut) == '{"k": "[redacted]:private_key", "n": 1}'
+    # an orphan END line (BEGIN lost to truncation): its key lines go, prose stays
+    orphan = (
+        "intro line here\n... [9 bytes truncated] ...\nIIabc\nMIIdef\n"
+        "-----END PRIVATE KEY-----\nok, done."
+    )
+    assert (
+        _redacted(orphan)
+        == "intro line here\n... [9 bytes truncated] ...\n[redacted]:private_key\nok, done."
+    )
+    # by design, a lone base64-shaped word right after an unterminated block is taken
+    # as key material (over-redaction is safe; a key's last line can be that short)
+    assert _redacted("[redacted]:private_key\nuQ==\nThanks\nSee you soon.") == (
+        "[redacted]:private_key\nSee you soon."
+    )
+    # idempotent: a second pass changes nothing
+    for text in (replayed, bare, prose, escaped, escaped_cut, orphan):
+        assert _redacted(_redacted(text)) == _redacted(text)
+
+
+def _robots_straddle_body():
+    return (
+        f"Disallow: /{'a' * 1893}\nDisallow: /{AWS_KEY}\nSitemap: https://x.test/{'s' * 400}.xml\n"
+    )
+
+
+def _assert_no_key_prefix(result, key=AWS_KEY):
+    dumped = _dump(result)
+    assert key not in dumped
+    for n in range(8, len(key)):
+        assert key[:n] not in dumped, key[:n]
+
+
+def test_robots_description_redacts_before_capping(site, tmp_path):
+    from scanners.web.scanner import DESCRIPTION_CAP
+
+    hardened(site)
+    site.serve(
+        "https://x.test/robots.txt",
+        headers={"content-type": "text/plain"},
+        body=_robots_straddle_body(),
+    )
+    for result in _record_then_replay(site, tmp_path):
+        f = only(result, "web-robots-paths")
+        assert "(truncated)" in f.description
+        assert len(f.description) <= DESCRIPTION_CAP
+        _assert_no_key_prefix(result)
+
+
+def test_capped_is_a_true_ceiling_and_never_splits_a_secret():
+    from scanners.web.scanner import _capped
+
+    for pad in range(0, 40):
+        text = "p" * (100 + pad) + " " + AWS_KEY + " " + "q" * 200
+        out = _capped(text, 130)
+        assert len(out) <= 130
+        assert not any(AWS_KEY[:n] in out for n in range(8, 21)), (pad, out)
+    assert _capped("short", 130) == "short"
+
+
+def test_error_excerpt_window_never_cuts_a_secret(site):
+    # The window ends 80 chars after the signature; put a key across that edge.
+    hardened(site)
+    sig = "Traceback (most recent call last):"
+    for pad in (60, 65, 70, 75):
+        trace = f"<pre>{sig}{'z' * pad} {AWS_KEY} tail</pre>"
+        site.serve(f"https://x.test{PROBE}", status=500, headers=HARDENED, body=trace)
+        result = run(site)
+        assert by_id(result, "web-error-disclosure")
+        _assert_no_key_prefix(result)
