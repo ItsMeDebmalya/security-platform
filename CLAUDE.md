@@ -22,9 +22,9 @@ If a task seems to require rebuilding any of the above, STOP and ask me.
 
 ## Repository state
 
-**Phase 0 is implemented; Tools 1 (Email), 2 (TLS) and 3 (DomScout) have shipped and pass their gates.** The Scanner Contract is frozen, `core/` services exist, the CLI runs, and the corpus harness gates on real numbers.
+**Phase 0 is implemented; Tools 1 (Email), 2 (TLS), 3 (DomScout) and 4a (Website Scanner, Light) have shipped and pass their gates.** The Scanner Contract is frozen, `core/` services exist, the CLI runs, and the corpus harness gates on real numbers.
 
-Scanners: `example` (reference), `domscout` (Tool 3 — Light, live-verified; gate numbers in `SPEC.md`), `email` (Tool 1 — 17 checks, 1.000/1.000, 16-case corpus), `tls` (Tool 2 — v1.2.0, 19 checks, 1.000/1.000 over 220 corpus checks, cross-checked against testssl.sh; includes the first derived finding and a runtime testssl.sh wrap for legacy ciphers in Standard mode).
+Scanners: `example` (reference), `domscout` (Tool 3 — Light, live-verified; gate numbers in `SPEC.md`), `web` (Tool 4a — Light, live-verified; passive only; gate numbers in `SPEC.md`), `email` (Tool 1 — 17 checks, 1.000/1.000, 16-case corpus), `tls` (Tool 2 — v1.2.0, 19 checks, 1.000/1.000 over 220 corpus checks, cross-checked against testssl.sh; includes the first derived finding and a runtime testssl.sh wrap for legacy ciphers in Standard mode).
 
 Commands: `make install`, `make test`, `make lint`, `make typecheck`, `make licence-check`, `make corpus`, `make crosscheck`, `make targets-up`, and `scan run <tool> --target <t>`. Python 3.13.15, pinned in `.python-version`; dependencies via `uv`.
 

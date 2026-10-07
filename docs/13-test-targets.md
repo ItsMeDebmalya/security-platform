@@ -95,6 +95,38 @@ Add `certs/sets/test/gen/crt/ca-root.crt` to the trust store of whatever is scan
 
 ---
 
+### The web Light lab (Tool 4a)
+
+A separate, profile-gated lab for the `web` scanner's corpus. It is **not** part of `make targets-up`, and its make targets name only their own three services, so starting or stopping it never touches Juice Shop, DVWA or VAmPI.
+
+```bash
+make web-lab-up      # mints a throwaway CA + *.web.test leaf, starts nginx, Django and a traceback server
+uv run python -m corpus.generators.web record   # re-record the 11 frozen cases (only when a case is meant to change)
+make web-lab-down    # removes only the three web-lab containers
+```
+
+It listens on `127.0.0.1:18080` (HTTP) and `127.0.0.1:18443` (HTTPS), one virtual host per case (`<case>.web.test`), and is never exposed beyond loopback. The recorder routes `<case>.web.test` to it with the original Host and SNI, so replay needs no DNS and no lab. Images are pinned by digest — see `docker-compose.yml` and [`tools/registry.yaml`](../tools/registry.yaml) for the digests and the licence sign-off, which names them.
+
+| Case | What it proves |
+|---|---|
+| `known-good` | The negative: every header correct, robots and sitemap present. Must produce no claim at all. |
+| `bare` | No security headers, plain HTTP served, version exposed. The five confirmed header claims, with the HTTPS redirect missing. |
+| `hsts-weak` | A short HSTS `max-age`. Reports `web-hsts-weak` and nothing else. |
+| `csp-weak` | `'unsafe-inline'`/`'unsafe-eval'`, an unsafe Referrer-Policy and a wildcard CORS origin. |
+| `csp-meta` | A CSP set by `<meta>`, and clickjacking covered by `X-Frame-Options`. A negative for `csp-missing` and `clickjacking-unprotected`. |
+| `listing` | A real nginx `autoindex` directory. `web-directory-listing`. |
+| `mixed-sri` | A plain-HTTP script on an HTTPS page and a cross-origin script without an integrity hash (both `suspected`); a pinned script is the negative. |
+| `secret` | A planted AWS-style example key in a response (`suspected`), and a Google browser-key lookalike that must **not** fire. |
+| `eol` | `X-Powered-By: PHP/7.4.33` and a Drupal 7 generator tag: end-of-life components (`suspected`). |
+| `django-debug` | A real Django 5.2 `DEBUG=True` technical 404 page (`web-debug-mode`). |
+| `pytrace` | A real Python traceback served by the stdlib (`web-error-disclosure`). |
+
+Ten claims across the whole set; the gate numbers are in [SPEC.md A1](../SPEC.md), not here.
+
+**What it deliberately does not contain.** No anti-bot **challenge page** — a hand-written one would encode our assumptions; the real recording is owed (ledger D-W2). No **transport-failure cases** (timeout, TLS failure, DNS failure): a failed request writes no fixture and cannot be replayed, so those are unit tests. No PHP application (the PHP licence is not approved), hence the Python traceback and Django's debug page rather than Werkzeug's console.
+
+---
+
 ## 3. Authorisation
 
 All five targets have rows in [`config/authorised_scope.yaml`](../config/authorised_scope.yaml), `method: self_owned`, each citing a proof file in `corpus/authz/`.

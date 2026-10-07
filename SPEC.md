@@ -92,7 +92,7 @@ Two orthogonal fields, added at two scanners deliberately (before ten made it a 
 
 Content source: [docs/reference/product-spec.md](docs/reference/product-spec.md) (v2, corrected below where wrong). Gates and phase placement: [docs/03-roadmap.md](docs/03-roadmap.md). Corrections from v2 are called out inline as **[v2 said X → now Y]**.
 
-### A1. Website Scanner
+### A1. Website Scanner — Tool 4a (`web`, Light) **Shipped**; 4b (AI/agent exposure) next
 
 One-line: crawl and probe a site for header/cookie/config weaknesses (Light), injection and business-logic bugs (Standard), and — new in v3.4 — AI/agent exposure.
 
@@ -101,8 +101,10 @@ One-line: crawl and probe a site for header/cookie/config weaknesses (Light), in
 - **Deep** — validation engine confirms each Standard finding via an independent method; blind classes proven via OOB callback.
 - **New in v3.4**: AI and agent exposure — MCP servers, agent admin panels, unauthenticated model endpoints, **passive detection only**. Finding a server is passive; reading its admin panel is not, and the AI-exposure checks must each carry their own `passive` declaration under 0b.6 rather than inherit one from the mode.
 - Mechanism: crawler (ZAP's, Apache-2.0, to start — **[v2 said]** Nuclei for template checks; ZAP crawler as a stopgap → still the plan, unchanged), own injection engine, own content-discovery engine, web-archive APIs, OOB callback client.
-- **Status: Not built.** Blocked on: HTTP record/replay (**done**, 0b.4) and the OOB callback server (Phase 2a, not built).
-- **Gate:** precision ≥ 0.90 overall (`confirmed` ≥ 0.98), recall ≥ 0.75 on the benchmark tier, inconclusive ≤ 0.15, ≥ 0.95 of blind-class findings proven via OOB. Recall is **benchmark-true, corpus-relative elsewhere** — never publish it as absolute for Light.
+- **Status: Light shipped — Tool 4a (`web`) v1.0.1, live-verified** (ADR-017/ADR-024; build log and live-verification results in the [ledger](docs/14-progress-ledger.md#2026-10-07--tool-4a--website-scanner-light-web-v101)). 21 checks, all passive: transport and redirect, security headers, CSP, page content, error pages and directories. **Tool 4a is the passive half only. Tool 4b (AI/agent exposure) is the next tool and is not built;** its spec starts with the passivity ADR. **Standard and Deep: not built** — blocked on the OOB callback server (Phase 2a, not built); HTTP record/replay is done (0b.4).
+- **Deferred from Light:** cookie-flag checks and cookie-name fingerprints (ledger D-W1) — they need a core redaction change first (D21), so they are owed, not dropped.
+- **Gate, Light (Tool 4a):** precision ≥ 0.95, recall ≥ 0.85 (corpus-relative), inconclusive ≤ 0.15 ([roadmap](docs/03-roadmap.md), Phase 1 Tool 4). **Actual, from `make corpus` (2026-10-07, v1.0.1):** `precision 1.000, recall 1.000, susp% 3.4%, inconc% 0.9%, PASS` — 234 checks run, **10 claims** (`confirmed`/`highly_likely`) over an 11-case lab corpus. Read the claim count with the number: 1.000 rests on ten claims, not 234 checks, and the recall is **corpus-relative** (a corpus we wrote ourselves; "all header misconfigurations on a site we don't fully understand" is not a knowable set), never an absolute figure. Hand-verified live against 13 hosts with zero false positives — see the ledger. **Correction:** this entry previously said "No Light-mode gate is set in the roadmap"; it is — the roadmap's Phase 1 table has carried it since v3. Fixed here, not by adding a document (CLAUDE.md rule 4).
+- **Gate, Standard/Deep (not built):** precision ≥ 0.90 overall (`confirmed` ≥ 0.98), recall ≥ 0.75 on the benchmark tier, inconclusive ≤ 0.15, ≥ 0.95 of blind-class findings proven via OOB. Recall is **benchmark-true, corpus-relative elsewhere** — never publish it as absolute for Light.
 - Depends on: A4 (asset discovery), Phase 2a (OOB server), asset graph (0b.2, done).
 - Constraint: no Nuclei-as-embedded-scanner claim beyond template use; **[v2 said]** "import Burp findings" as an offset for not embedding Burp — still the plan (ADR-010).
 
@@ -391,11 +393,11 @@ Full text: [docs/06-guidelines.md](docs/06-guidelines.md), [docs/10-measurement.
 
 ## Status summary table
 
-Verified against the repo and `make corpus` (2026-09-03) — see the run at the end of this document.
+Verified against the repo and `make corpus` (2026-10-07) — see the run at the end of this document.
 
 | Tool / Feature | Status | Gate | Actual (where shipped) |
 |---|---|---|---|
-| A1 Website Scanner | Not built | **Standard mode:** precision ≥0.90 (`confirmed`≥0.98), recall ≥0.75 (benchmark tier). No Light-mode gate is set in the roadmap. | — |
+| A1 Website Scanner | **A1 Light (4a, `web` v1.0.1) shipped — live-verified; Standard not built; 4b (AI exposure) next** | **Light:** precision ≥0.95, recall ≥0.85 (corpus-relative), inconc ≤0.15. **Standard:** precision ≥0.90 (`confirmed`≥0.98), recall ≥0.75 (benchmark tier) | Light: 1.000 / 1.000 (recall corpus-relative), 234 checks, **10 claims**, 0.9% inconc, PASS |
 | A2 Network Scanner | Not built | not yet set | — |
 | A3 SSL/TLS Analyzer | **Shipped v1.2.0** | precision ≥0.98, recall ≥0.95, inconc ≤0.15 | 1.000 / 1.000, 220 checks, 5 claims, PASS |
 | A4 Domain & Subdomain Enum (`domscout`) | **Shipped (Light) v1.0.0 — live-verified; kinetrix+coverage owed** | precision ≥0.95, recall ≥0.80, inconc ≤0.15 | 1.000 / 1.000, 50 checks, **1 claim**, PASS |
@@ -428,7 +430,7 @@ Verified against the repo and `make corpus` (2026-09-03) — see the run at the 
 
 `example` scanner (reference, not a product tool): 1.000 / 1.000, 3 checks, 2 claims, PASS — not counted in the product catalogue above.
 
-**`make corpus` output used for this table (2026-09-03):**
+**`make corpus` output used for this table (2026-10-07):**
 
 ```
 scanner     checks   TP   FP   FN  precision   recall   susp%  inconc%  gate
@@ -438,4 +440,8 @@ domscout        50    1    0    0      1.000    1.000   4.0%    0.0%  PASS
 email          240   21    0    0      1.000    1.000   0.0%    0.8%  PASS
 example          3    2    0    0      1.000    1.000   0.0%    0.0%  PASS
 tls            220    5    0    0      1.000    1.000   7.7%   12.3%  PASS
+web            234   10    0    0      1.000    1.000   3.4%    0.9%  PASS
+           recall is corpus-relative only - never publish this as absolute
 ```
+
+Numbers are pasted from the live run; the per-scanner recall annotations for `domscout`, `email`, `example` and `tls` are kept from the previous block. **Known disagreement, not fixed here (docs only):** today's `make corpus` prints "recall is absolute" under `domscout`, but A4 above says its recall binds the security findings only and enumeration completeness is never published as a number. The harness's label, not A4, looks wrong; it is a code change owed to `cli/corpus.py`.

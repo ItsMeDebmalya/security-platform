@@ -113,8 +113,9 @@ claim was observed on (`"/"` for the root response), never `"$"` for an HTTP obs
   origin sends.
 - **No HTTPS.** If request 1 fails at the transport level, the HTTPS-dependent checks (`hsts-*`,
   `mixed-content`, and `https-redirect-missing`, whose control is the HTTPS response) are
-  `inconclusive` with `blocked_prerequisite`. We never report "missing HSTS" on a host that has no
-  HTTPS — that is the `tls` scanner's territory.
+  `inconclusive` — reason `timeout` when the failure was a timeout, `blocked_prerequisite` for any
+  other transport failure (§5.5), and the description names the cause. We never report "missing
+  HSTS" on a host that has no HTTPS — that is the `tls` scanner's territory.
 - **Never put words in a target's mouth.** Descriptions quote the header value or body excerpt
   actually received, never a reconstructed string (ledger standing observation).
 
@@ -249,7 +250,7 @@ An empty `control_rationale` is refused by the contract; none is left empty.
 | challenge page on root | dependent checks `inconclusive`, `waf_block` |
 | request timeout | dependent checks `inconclusive`, `timeout` |
 | 429 | dependent checks `inconclusive`, `rate_limited` |
-| HTTPS transport failure | HTTPS-dependent checks `inconclusive`, `blocked_prerequisite` |
+| HTTPS transport failure | HTTPS-dependent checks `inconclusive`: `timeout` if the failure was a timeout, otherwise `blocked_prerequisite`; the cause is named (certificate verification, handshake, timeout, DNS) |
 | 5xx on root | header checks `inconclusive`, `ambiguous_response` |
 | robots/sitemap/security.txt 404 | definite — "absent", not inconclusive |
 | off-scope redirect declined | reported as observed; checks judge the response we did get |
