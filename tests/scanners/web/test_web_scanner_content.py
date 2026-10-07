@@ -2,7 +2,7 @@ import json
 
 from scanners.web.checks import CHECKS
 from scanners.web.fetch import probe_path
-from tests.scanners.web.conftest import FakeSite
+from tests.scanners.web.conftest import ConnectTimeout, FakeSite
 from tests.scanners.web.test_web_scanner import HARDENED, PAGE, hardened, only, run
 
 PROBE = probe_path("x.test")
@@ -177,3 +177,69 @@ def test_non_html_root_does_not_crash(site):  # Review Focus 4
     )
     result = run(site)
     assert not by_id(result, "web-mixed-content") and not by_id(result, "web-sri-missing")
+
+
+def test_error_excerpt_never_stores_a_secret():
+    site = hardened(FakeSite())
+    trace = (
+        '<pre>Traceback (most recent call last):\n  File "/app/s.py", line 9\n'
+        "key = AKIAIOSFODNN7EXAMPLE</pre>"
+    )
+    site.serve(f"https://x.test{PROBE}", status=500, headers=HARDENED, body=trace)
+    result = run(site)
+    assert by_id(result, "web-error-disclosure")
+    assert "AKIAIOSFODNN7EXAMPLE" not in json.dumps(result.model_dump(mode="json"))
+
+
+def test_token_in_script_url_is_not_stored(site):
+    hardened(site)
+    token = "ghp_" + "a1B2c3D4e5" * 3
+    site.serve(
+        "https://x.test/",
+        headers=HARDENED,
+        body=f'<script src="https://cdn.y.test/a.js?k={token}"></script>',
+    )
+    result = run(site)
+    assert by_id(result, "web-sri-missing")
+    assert token not in json.dumps(result.model_dump(mode="json"))
+
+
+def test_security_txt_5xx_is_inconclusive(site):
+    hardened(site)
+    site.serve("https://x.test/.well-known/security.txt", status=503, body="down")
+    f = only(run(site), "web-security-txt-missing")
+    assert f.state == "inconclusive" and f.no_verdict_reason == "ambiguous_response"
+
+
+def test_robots_5xx_is_inconclusive(site):
+    hardened(site)
+    site.serve("https://x.test/robots.txt", status=500, body="err")
+    assert only(run(site), "web-robots-paths").state == "inconclusive"
+
+
+def test_directory_5xx_is_inconclusive(site):
+    hardened(site)
+    site.serve("https://x.test/", headers=HARDENED, body='<script src="/assets/app.js"></script>')
+    site.serve("https://x.test/assets/", status=500, headers=HARDENED, body="err")
+    f = only(run(site), "web-directory-listing")
+    assert f.state == "inconclusive" and f.location == "/assets/"
+
+
+def test_error_claim_needs_a_usable_root():
+    site = hardened(FakeSite())
+    trace = '<pre>Traceback (most recent call last):\n  File "/app/s.py", line 9</pre>'
+    site.raise_on("https://x.test/", ConnectTimeout("t"))
+    site.serve(f"https://x.test{PROBE}", status=500, headers=HARDENED, body=trace)
+    assert only(run(site), "web-error-disclosure").state == "inconclusive"
+
+
+def test_same_error_on_homepage_clears_debug_check():
+    site = hardened(FakeSite())
+    trace = '<pre>Traceback (most recent call last):\n  File "/app/s.py", line 9</pre>'
+    site.serve("https://x.test/", headers=HARDENED, body=trace)
+    site.serve(f"https://x.test{PROBE}", status=500, headers=HARDENED, body=trace)
+    result = run(site)
+    assert not by_id(result, "web-debug-mode")
+    assert any(
+        c.check_id == "web-debug-mode" and c.outcome == "clear" for c in result.telemetry.checks_run
+    )

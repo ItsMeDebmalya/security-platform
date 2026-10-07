@@ -21,7 +21,7 @@ from urllib.parse import unquote, urlsplit
 
 from core.confidence import ConfidenceEngine, Signal
 from core.context import ScanContext
-from core.evidence import capture_http_pair
+from core.evidence import capture_http_pair, redact_body
 from core.http import HttpClient
 from core.models import Asset, CheckRun, Finding, Mode, ScanResult, Telemetry
 from core.registry import register
@@ -599,7 +599,7 @@ class _Scan:
                 detection_methods=result.detection_methods,
                 validation=validation or {"attempted": False, "outcome": "not_applicable"},
                 evidence=evidence,
-                description=description + self._edge_note(check),
+                description=_redacted(description + self._edge_note(check)),
                 impact=check.impact,
                 remediation=check.remediation,
                 references=references or [],
@@ -655,7 +655,7 @@ class _Scan:
                 detection_methods=result.detection_methods,
                 validation={"attempted": False, "outcome": "unavailable"},
                 evidence=evidence,
-                description=description,
+                description=_redacted(description),
                 impact="Unknown until the request succeeds.",
                 remediation=(
                     "Re-run the scan. A persistent failure means the site is unreachable "
@@ -849,6 +849,18 @@ class _Scan:
             for c in (debug, error):
                 self._inconclusive(c, loc, probe, text + ".", reason=reason)
             return
+        if not root.usable or root.response is None or root.response.status_code >= 500:
+            reason, text = _why_unusable(root)
+            for c in (debug, error):
+                self._inconclusive(
+                    c,
+                    loc,
+                    root,
+                    f"The homepage, the control that shows a trace is not site-wide content, "
+                    f"could not be read: {text}.",
+                    reason=reason,
+                )
+            return
         sig = disclosure.error_signature(probe.response.text)
         if sig is None:
             self._clear(debug, loc)
@@ -857,7 +869,13 @@ class _Scan:
         if root.response is not None:
             on_root = disclosure.error_signature(root.response.text)
             if on_root is not None and on_root.name == sig.name:
-                for c in (debug, error):
+                if sig.kind == "error":
+                    self._clear(debug, loc)
+                    targets = (error,)
+                else:
+                    self._clear(error, loc)
+                    targets = (debug,)
+                for c in targets:
                     self._inconclusive(
                         c,
                         loc,
@@ -879,7 +897,7 @@ class _Scan:
             description=(
                 f"A request for a path that does not exist ({probe.url}) "
                 f"returned HTTP {probe.response.status_code} with a {sig.name}: "
-                f"{disclosure.excerpt(probe.response.text, sig)!r}"
+                f'"{_one_line(disclosure.excerpt(redact_body(probe.response.text)[0] or "", sig))}"'
             ),
         )
         self._clear(other, loc)
@@ -892,7 +910,7 @@ class _Scan:
         linked = html.linked_files(page, page_url) if page and page_url else {}
         for f in (root, *self.obs.directories):
             loc = f.path
-            if f.response is None or f.failure is not None:
+            if f.response is None or f.failure is not None or f.response.status_code >= 500:
                 reason, text = _why_unusable(f)
                 self._inconclusive(check, loc, f, text + ".", reason=reason)
                 continue
@@ -938,7 +956,7 @@ class _Scan:
 
     def _check_robots(self) -> None:
         check, f = CHECKS["web-robots-paths"], self.obs.robots
-        if f.response is None or f.failure is not None:
+        if f.response is None or f.failure is not None or f.response.status_code >= 500:
             reason, text = _why_unusable(f)
             self._inconclusive(check, f.path, f, text + ".", reason=reason)
             return
@@ -962,7 +980,7 @@ class _Scan:
 
     def _check_security_txt(self) -> None:
         check, f = CHECKS["web-security-txt-missing"], self.obs.security_txt
-        if f.response is None or f.failure is not None:
+        if f.response is None or f.failure is not None or f.response.status_code >= 500:
             reason, text = _why_unusable(f)
             self._inconclusive(check, f.path, f, text + ".", reason=reason)
             return
@@ -978,6 +996,15 @@ class _Scan:
                 f"{f.url} answered HTTP {f.response.status_code} without an RFC 9116 Contact field"
             ),
         )
+
+
+def _redacted(text: str) -> str:
+    """Descriptions are stored and shown; core redacts captured evidence but never them."""
+    return redact_body(text)[0] or ""
+
+
+def _one_line(text: str) -> str:
+    return " ".join(text.split())
 
 
 def _robots_entries(text: str) -> tuple[list[str], list[str]]:

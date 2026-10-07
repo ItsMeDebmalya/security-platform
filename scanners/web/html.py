@@ -88,7 +88,9 @@ def extract(body: str, base_url: str) -> PageFacts:
 def _origin(url: str) -> tuple[str, str, int | None] | None:
     try:
         parts = urlsplit(url)
-        return parts.scheme.lower(), (parts.hostname or "").lower(), parts.port
+        scheme = parts.scheme.lower()
+        port = parts.port or {"https": 443, "http": 80}.get(scheme)
+        return scheme, (parts.hostname or "").lower(), port
     except ValueError:
         return None
 

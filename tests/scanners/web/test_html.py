@@ -100,3 +100,9 @@ def test_non_numeric_port_never_raises():
     assert isinstance(dirs, list)
     files = html.linked_files(facts, BASE)
     assert isinstance(files, dict)
+
+
+def test_implicit_default_port_is_same_origin():
+    assert html.is_same_origin("https://x.test:443/a", "https://x.test/")
+    assert html.is_same_origin("http://x.test:80/a", "http://x.test/")
+    assert not html.is_same_origin("https://x.test:8443/a", "https://x.test/")
