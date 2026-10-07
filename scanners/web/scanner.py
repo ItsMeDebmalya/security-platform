@@ -85,39 +85,44 @@ Url = tuple[str, str, int, str, str]
 _PEM_LABEL = r"[A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?"
 _KEY_MARKER = f"{REDACTED}:private_key"
 _KEY_END = rf"-----END {_PEM_LABEL}-----"
-_LINE_BREAK = r"(?:\r?\n|\\r\\n|\\n)"  # a real newline, or one escaped in a JSON/JS string
-_KEY_LINE = (
-    r"[ \t]*(?:[A-Za-z0-9+/=]+|(?:Proc-Type|DEK-Info|Version|Comment|Hash|Charset):[^\r\n\\]*)"
-    r"[ \t]*(?=\r?\n|\\[rn]|[\"'<`]|\Z)"
-)
-"""One whole, non-empty line of a key block: base64, or an RFC 1421 / 4880 armour header."""
+_SEP_ATOM = r"(?:\r?\n|\r|\\r\\n|\\n|\\r|(?i:<br\s*/?>)|&#1[03];|(?i:&#x[ad];))"
+"""One line break of a key as a page may carry it: a real newline, one escaped in a
+JSON/JS string, an HTML <br>, or a newline character reference (&#10; &#xa; ...)."""
+_SEP = rf"{_SEP_ATOM}(?:[ \t]*{_SEP_ATOM})*"
+_B64CH = r"(?:[A-Za-z0-9+=]|\\?/)"  # base64, with "/" possibly JSON-escaped as "\/"
+_LINE_END = rf"(?={_SEP_ATOM}|[\"'<`]|\Z)"
+_LINE_START = r"(?:(?<=\n)|(?<=\r)|(?<=\\n)|(?<=\\r)|(?<=[>;\"'`])|\A)"
+
+
+def _b64_line(lookahead: str) -> str:
+    return rf"[ \t]*(?={lookahead})(?:{_B64CH})+[ \t]*{_LINE_END}"
+
+
+_B64_FULL = _b64_line(rf"(?:{_B64CH}){{40,100}}(?!{_B64CH})")
+_B64_ANY = _b64_line(rf"(?:{_B64CH}){{1,100}}(?!{_B64CH})")
+_B64_LAST = _b64_line(rf"(?:{_B64CH}){{16,100}}(?!{_B64CH})|(?:{_B64CH}){{0,99}}=")
+_AFTER_TRUNCATION = r"(?<=bytes truncated\] \.\.\.\n)"  # the gap marker core's truncation inserts
 _KEY_ANCHOR = re.compile(rf"-----BEGIN {_PEM_LABEL}-----|{re.escape(_KEY_MARKER)}")
 """A key block's start: its BEGIN line (live), or core's marker for it (replay: core's
 recording already turned BEGIN into the marker)."""
-_KEY_BODY = re.compile(rf"(?:{_KEY_LINE})?(?:(?:{_LINE_BREAK})+{_KEY_LINE})*")
-"""An unterminated block's body: whole lines of key material, and nothing after them."""
 _CORE_BEGIN = re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----")
 _KEY_END_LINE = re.compile(_KEY_END)
-_LINE_SPLIT = re.compile(f"({_LINE_BREAK})")
-_KEY_MATERIAL = re.compile(r"[ \t]*[A-Za-z0-9+/=]*[ \t]*")
-_LINE_END = r"(?=\r?\n|\\r\\n|\\n|[\"'<`]|\Z)"
-_LINE_START = r"(?:(?<=\n)|(?<=\\n)|(?<=[>\"'`])|\A)"
-_B64_FULL = (
-    r"[ \t]*(?=[A-Za-z0-9+/]{60,76}={0,2}(?![A-Za-z0-9+/=]))[A-Za-z0-9+/]+={0,2}[ \t]*" + _LINE_END
-)
-_B64_ANY = r"[ \t]*[A-Za-z0-9+/]{1,76}={0,2}[ \t]*" + _LINE_END
-_B64_LAST = r"[ \t]*(?:[A-Za-z0-9+/]{16,76}={0,2}|[A-Za-z0-9+/]{1,75}={1,2})[ \t]*" + _LINE_END
-_AFTER_TRUNCATION = r"(?<=bytes truncated\] \.\.\.\n)"  # the gap marker core's truncation inserts
 _BARE_KEY_RUN = re.compile(
-    rf"(?:{_AFTER_TRUNCATION}{_B64_ANY}(?:{_LINE_BREAK}{_B64_FULL})+"
-    rf"|{_LINE_START}{_B64_FULL}(?:{_LINE_BREAK}{_B64_FULL})+)"
-    rf"(?:{_LINE_BREAK}{_B64_LAST})?"
+    rf"(?:{_AFTER_TRUNCATION}{_B64_ANY}(?:{_SEP}{_B64_FULL})+"
+    rf"|{_LINE_START}{_B64_FULL}(?:{_SEP}{_B64_FULL})+)"
+    rf"(?:{_SEP}{_B64_LAST})?"
 )
-"""Two or more whole 60-76 column base64 lines with no anchor: a key body whose BEGIN
+"""Two or more whole 40-100 column base64 lines with no anchor: a key body whose BEGIN
 and END both fell into core's truncation gap. The line the gap cut (right after core's
 "bytes truncated" marker, any length) and a key's short last line (16+ characters, or
 padded) go with it; a short word beside a run does not. A single line - a data:
-URI, one hash - is never a run. Genuine 64-column base64 is over-redacted, which is safe."""
+URI, one hash - is never a run. Genuine base64 columns are over-redacted, which is safe."""
+_KEY_CHARS = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=")
+_BR_TAIL = re.compile(r"(?i)<br\s*/?>\Z")
+_ENTITY_BREAKS = frozenset({"&#10;", "&#13;", "&#xa;", "&#xd;"})
+_BOUNDARY = frozenset("\n\r>;\"'`")
+_LEADING_SEPS = re.compile(rf"(?:[ \t]|{_SEP_ATOM})*")
+_FIRST_SEP = re.compile(_SEP_ATOM)
 ROBOTS_LISTED = 20
 DESCRIPTION_CAP = 2000
 _TRUNCATED = " ... (truncated)"
@@ -646,7 +651,12 @@ class _Scan:
         version_only: bool = False,
         instance_key: str | None = None,
         references: list[str] | None = None,
+        pre_redacted: bool = False,
     ) -> None:
+        """`pre_redacted`: the description was built from text already passed through
+        `_redacted` (an excerpt, a capped list). Stripping keys again would read the
+        markers already in it as unterminated blocks and cut the rest of it away, so
+        only core's patterns are run again."""
         location = _safe_location(location)
         result = self.engine.combine(signals or [self._signal(check)], version_only=version_only)
         evidence = [
@@ -684,7 +694,10 @@ class _Scan:
                 detection_methods=result.detection_methods,
                 validation=validation or {"attempted": False, "outcome": "not_applicable"},
                 evidence=evidence,
-                description=_redacted(description + self._edge_note(check)),
+                description=(redact_body if pre_redacted else _redacted_pair)(
+                    description + self._edge_note(check)
+                )[0]
+                or "",
                 impact=check.impact,
                 remediation=check.remediation,
                 references=references or [],
@@ -1029,10 +1042,11 @@ class _Scan:
             control=root,
             references=[sig.source],
             description=(
-                f"A request for a path that does not exist ({probe.url}) "
+                f"A request for a path that does not exist ({_redacted(probe.url)}) "
                 f"returned HTTP {probe.response.status_code} with a {sig.name}: "
                 f'"{_one_line(disclosure.excerpt(_redacted(probe.response.text), sig))}"'
             ),
+            pre_redacted=True,
         )
         self._clear(other, loc)
 
@@ -1112,6 +1126,7 @@ class _Scan:
             test=f,
             control=self.obs.probe,
             description=_capped(listed, DESCRIPTION_CAP - len(tail)) + tail,
+            pre_redacted=True,
         )
 
     def _check_security_txt(self) -> None:
@@ -1138,6 +1153,10 @@ def _safe_location(location: str) -> str:
     return redact_body(location)[0] or location
 
 
+def _redacted_pair(text: str) -> tuple[str | None, list[str]]:
+    return redact_body(_strip_private_keys(text))
+
+
 def _redacted(text: str) -> str:
     """Descriptions are stored and shown; core redacts captured evidence but never them."""
     return redact_body(_strip_private_keys(text))[0] or ""
@@ -1151,10 +1170,12 @@ def _strip_private_keys(text: str) -> str:
     fixture with only that line redacted, so on replay the block starts with core's
     marker, not BEGIN. Both anchor a block. A BEGIN line core recognises is kept, so
     core still redacts it and records the `private_key` hit; any other anchor
-    becomes the marker. A block with no END line ends at the first line that is not
-    key material. Last, an END line left with no anchor (core's truncation of the
-    fixture swallowed its BEGIN) takes the key lines just above it with it, and a
-    run of bare base64 key lines whose BEGIN and END were both truncated away is cut.
+    becomes the marker. A block with no END line is cut to the end of the text: a
+    key has no safe partial boundary, so over-redaction is the price. Then an END
+    line left with no anchor (core's truncation of the fixture swallowed its BEGIN)
+    takes the key lines above it, and a run of bare base64 key lines whose BEGIN
+    and END were both truncated away is cut. Key lines may be separated by newlines,
+    escaped newlines, <br> or newline character references; "/" may be JSON-escaped.
     Remove once core redacts whole blocks."""
     if not text:
         return text
@@ -1168,8 +1189,8 @@ def _strip_private_keys(text: str) -> str:
 
 def _cut_key_blocks(text: str, ends: list[tuple[int, int]]) -> str:
     """Each block runs from its anchor to the first END line after it; with none, to
-    the end of its key-material lines. One pass: a lazy regex would rescan to the end
-    of the text for every unterminated anchor, quadratic on a hostile page."""
+    the end of the text. One pass: a lazy regex would rescan to the end of the text
+    for every unterminated anchor, quadratic on a hostile page."""
     starts = [start for start, _ in ends]
     out: list[str] = []
     pos = 0
@@ -1180,11 +1201,9 @@ def _cut_key_blocks(text: str, ends: list[tuple[int, int]]) -> str:
         out.append(text[pos : anchor.start()])
         out.append(kept if _CORE_BEGIN.fullmatch(kept) else _KEY_MARKER)
         i = bisect.bisect_left(starts, anchor.end())
-        if i < len(ends):
-            pos = ends[i][1]
-        else:
-            body = _KEY_BODY.match(text, anchor.end())
-            pos = body.end() if body else anchor.end()
+        if i >= len(ends):
+            return "".join(out)  # unterminated: everything after the anchor goes
+        pos = ends[i][1]
     out.append(text[pos:])
     return "".join(out)
 
@@ -1193,17 +1212,61 @@ def _strip_orphan_key_tails(text: str) -> str:
     out: list[str] = []
     pos = 0
     for end in _KEY_END_LINE.finditer(text):
-        # Pieces alternate text, line break, text, ...; walk back over key lines.
-        pieces = _LINE_SPLIT.split(text[pos : end.start()])
-        while pieces and _KEY_MATERIAL.fullmatch(pieces[-1]):
-            pieces.pop()  # a line of key material
-            if len(pieces) < 2 or not _KEY_MATERIAL.fullmatch(pieces[-2]):
-                break
-            pieces.pop()  # the line break above it
-        out.append("".join(pieces) + _KEY_MARKER)
+        start = _key_tail_start(text, pos, end.start())
+        out.append(text[pos:start] + _KEY_MARKER)
         pos = end.end()
     out.append(text[pos:])
     return "".join(out)
+
+
+def _ends_with_sep(text: str, lo: int, i: int) -> int:
+    """Length of the line break ending at text[i], or 0."""
+    if i <= lo:
+        return 0
+    ch = text[i - 1]
+    if ch in "\n\r":
+        return 1
+    if ch in "nr" and i - 2 >= lo and text[i - 2] == "\\":
+        return 2
+    if ch == ";" and text[max(lo, i - 5) : i].lower() in _ENTITY_BREAKS:
+        return 5
+    if ch == ">" and (br := _BR_TAIL.search(text, max(lo, i - 16), i)) is not None:
+        return i - br.start()
+    return 0
+
+
+def _key_tail_start(text: str, lo: int, hi: int) -> int:
+    """Where the key lines that end at text[hi] (an orphan END line) begin. Walks back
+    over base64, escaped "/", line breaks and indentation; linear in what it eats.
+    Never ends inside a line of ordinary text: a partial line is given back."""
+    i, after_sep = hi, True
+    while i > lo:
+        if n := _ends_with_sep(text, lo, i):
+            i, after_sep = i - n, True
+            continue
+        ch = text[i - 1]
+        if ch == "/" and i - 2 >= lo and text[i - 2] == "\\":
+            i, after_sep = i - 2, False
+        elif ch in _KEY_CHARS:
+            i, after_sep = i - 1, False
+        elif ch in " \t":
+            j = i
+            while j > lo and text[j - 1] in " \t":
+                j -= 1
+            if not (after_sep or j == lo or _ends_with_sep(text, lo, j)):
+                break  # spaces between words: ordinary text
+            i = j
+        else:
+            break
+    start = _LEADING_SEPS.match(text, i, hi)
+    i = start.end() if start else i
+    if i > lo and text[i - 1] not in _BOUNDARY and not _ends_with_sep(text, lo, i):
+        # stopped inside a line of ordinary text: give that line back
+        sep = _FIRST_SEP.search(text, i, hi)
+        if sep is not None:
+            rest = _LEADING_SEPS.match(text, sep.end(), hi)
+            i = rest.end() if rest else sep.end()
+    return i
 
 
 def _capped(text: str, cap: int) -> str:
@@ -1223,7 +1286,7 @@ def _capped(text: str, cap: int) -> str:
             if marker.start() < limit < marker.end():
                 limit = marker.start()
                 break
-        piece = _redacted(text[:limit].rstrip())
+        piece = redact_body(text[:limit].rstrip())[0] or ""  # keys already stripped
         if len(piece) <= room:
             return piece + _TRUNCATED
         limit -= len(piece) - room

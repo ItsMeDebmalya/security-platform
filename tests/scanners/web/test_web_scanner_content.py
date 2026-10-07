@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from core.models import Asset
 from scanners.web.checks import CHECKS
 from scanners.web.fetch import probe_path
@@ -452,7 +454,7 @@ def _fixture_bodies(directory):
     return [json.loads(p.read_text()).get("body") for p in directory.rglob("*.json")]
 
 
-def test_strip_keeps_a_clean_marker_and_does_not_eat_trailing_text():
+def test_strip_cuts_unterminated_blocks_to_the_end_and_keeps_text_after_end():
     from scanners.web.scanner import _redacted, _strip_private_keys
 
     # already clean: one marker, nothing after it
@@ -461,19 +463,20 @@ def test_strip_keeps_a_clean_marker_and_does_not_eat_trailing_text():
     # replayed, terminated: body and END line go, the text after END stays
     replayed = "[redacted]:private_key\nMIIabc\nMIIdef\n-----END PRIVATE KEY-----\nThe end."
     assert _redacted(replayed) == "[redacted]:private_key\nThe end."
-    # replayed, unterminated: base64 lines go, the first ordinary line stays
+    # unterminated (BEGIN or marker): cut to the end of the text - a key has no safe
+    # partial boundary, so the text after it is over-redacted on purpose
     bare = "a [redacted]:private_key\nMIIabc\nMIIdef\n</pre>\n<p>Contact us at the desk.</p>"
-    assert _redacted(bare) == "a [redacted]:private_key\n</pre>\n<p>Contact us at the desk.</p>"
-    # a bare marker inside prose eats nothing
-    prose = "found [redacted]:private_key in the page and more words here"
-    assert _redacted(prose) == prose
+    assert _redacted(bare) == "a [redacted]:private_key"
+    assert _redacted("a -----BEGIN PRIVATE KEY-----<br>\nMIIabc<br>\nrest") == (
+        "a [redacted]:private_key"
+    )
     # a JSON-escaped key (service-account file), terminated and unterminated
     escaped = (
         '{"k": "-----BEGIN PRIVATE KEY-----\\nMIIabc\\nMIIdef\\n-----END PRIVATE KEY-----\\n"}'
     )
     assert _redacted(escaped) == '{"k": "[redacted]:private_key\\n"}'
     escaped_cut = '{"k": "[redacted]:private_key\\nMIIabc\\nMIIdef", "n": 1}'
-    assert _redacted(escaped_cut) == '{"k": "[redacted]:private_key", "n": 1}'
+    assert _redacted(escaped_cut) == '{"k": "[redacted]:private_key'
     # an orphan END line (BEGIN lost to truncation): its key lines go, prose stays
     orphan = (
         "intro line here\n... [9 bytes truncated] ...\nIIabc\nMIIdef\n"
@@ -483,14 +486,15 @@ def test_strip_keeps_a_clean_marker_and_does_not_eat_trailing_text():
         _redacted(orphan)
         == "intro line here\n... [9 bytes truncated] ...\n[redacted]:private_key\nok, done."
     )
-    # by design, a lone base64-shaped word right after an unterminated block is taken
-    # as key material (over-redaction is safe; a key's last line can be that short)
-    assert _redacted("[redacted]:private_key\nuQ==\nThanks\nSee you soon.") == (
-        "[redacted]:private_key\nSee you soon."
-    )
-    # idempotent: a second pass changes nothing
-    for text in (replayed, bare, prose, escaped, escaped_cut, orphan):
-        assert _redacted(_redacted(text)) == _redacted(text)
+    # ... with <br>, entity and \/ encodings; a prose line above is given back whole
+    for sep in ("<br>\n", "<BR />", "&#10;", "&#xD;&#xA;", "\\n"):
+        text = f"<p>see below</p>{sep}ab\\/cd{sep}MIIdef{sep}-----END RSA PRIVATE KEY-----{sep}kept"
+        assert _redacted(text) == f"<p>see below</p>{sep}[redacted]:private_key{sep}kept", sep
+    words = "some prose words\nMIIabc\n-----END PRIVATE KEY-----\nkept"
+    assert _redacted(words) == "some prose words\n[redacted]:private_key\nkept"
+    # not idempotent by design: a second pass reads a marker as an unterminated block,
+    # so text already redacted is never stripped again (_emit's pre_redacted)
+    assert _redacted(_redacted(replayed)) == "[redacted]:private_key"
 
 
 def _robots_straddle_body():
@@ -606,8 +610,8 @@ def test_bare_base64_runs_are_stripped_but_single_lines_are_not():
     # one 64-character base64 line on its own is not a run
     single = f"<p>hash</p>\n{lines[0]}\n<p>more prose</p>"
     assert _strip_private_keys(single) == single
-    # lines outside 60-76 columns are not key lines
-    short_run = f"{lines[0][:40]}\n{lines[1][:40]}\n"
+    # lines outside 40-100 columns are not key lines
+    short_run = f"{lines[0][:30]}\n{lines[1][:30]}\n"
     assert _strip_private_keys(short_run) == short_run
 
 
@@ -626,3 +630,146 @@ def test_bare_run_stripping_is_linear():
         started = time.monotonic()
         _strip_private_keys(text)
         assert time.monotonic() - started < 1.0
+
+
+# --- Fix round 3: unterminated keys cut to the end; HTML/JSON-escaped separators --
+
+
+def _key_lines(n=30, width=64, seed=0):
+    import base64
+    import hashlib
+
+    raw = b"".join(
+        hashlib.sha256(bytes([seed]) + i.to_bytes(2, "big")).digest() for i in range(n * 2)
+    )
+    text = base64.b64encode(raw).decode()[: n * width - 20]
+    return [text[i : i + width] for i in range(0, len(text), width)]
+
+
+def _pem_with(lines, sep="\n", end=True, label="RSA PRIVATE KEY"):
+    text = f"-----BEGIN {label}-----" + sep + sep.join(lines)
+    return text + (sep + f"-----END {label}-----" if end else "")
+
+
+def _php_json(obj):
+    return json.dumps(obj).replace("/", "\\/")  # PHP json_encode escapes "/"
+
+
+def _assert_no_lines(result, lines):
+    dumped = _dump(result)
+    leaked = [line for line in lines if line in dumped or line[-24:] in dumped]
+    assert not leaked, f"{len(leaked)}/{len(lines)} key lines stored"
+    assert "PRIVATE KEY-----" not in dumped
+
+
+def _scan_both(tmp_path, body, *, path="/", status=200, **client_kwargs):
+    site = hardened(FakeSite())
+    site.serve(f"https://x.test{path}", status=status, headers=HARDENED, body=body)
+    return _record_then_replay(site, tmp_path, **client_kwargs)
+
+
+KEY = _key_lines()
+KEY_PHP = [line.replace("/", "\\/") for line in KEY]
+HALF = 262_144 // 2
+
+
+@pytest.mark.parametrize(
+    ("body", "lines"),
+    [
+        pytest.param(
+            "<pre>" + _pem_with(KEY, "<br>\n", end=False) + "</pre><p>x</p>", KEY, id="br"
+        ),
+        pytest.param(
+            '<input value="' + _pem_with(KEY, "&#10;", end=False) + '">', KEY, id="attr-entity"
+        ),
+        pytest.param(_php_json({"k": _pem_with(KEY, "\n", end=False)}), KEY_PHP, id="php-json"),
+        pytest.param(
+            "<pre>" + _pem_with(KEY, "<BR />", end=False) + "</pre>", KEY, id="br-upper-slash"
+        ),
+        pytest.param(
+            "<p>" + _pem_with(KEY, "&#xD;&#xA;", end=False) + "</p>", KEY, id="hex-entity"
+        ),
+    ],
+)
+def test_unterminated_key_in_any_encoding_is_never_stored(tmp_path, body, lines):
+    for result in _scan_both(tmp_path, body):
+        assert only(result, "web-secret-in-response").location == "/"
+        _assert_no_lines(result, lines)
+
+
+def test_unterminated_br_key_on_the_404_page_is_never_stored(tmp_path):
+    trace = (
+        f"<pre>{_pem_with(KEY, '<br>', end=False)}\nTraceback (most recent call last):\n"
+        '  File "/app/s.py", line 9\n</pre>'
+    )
+    for result in _scan_both(tmp_path, trace, path=PROBE, status=500):
+        assert by_id(result, "web-error-disclosure")
+        _assert_no_lines(result, KEY)
+
+
+@pytest.mark.parametrize("pad", [HALF - 1000, HALF - 500, HALF - 200])
+@pytest.mark.parametrize("encoding", ["br", "php-json"])
+def test_terminated_key_straddling_the_default_cap_gap_is_never_stored(tmp_path, pad, encoding):
+    if encoding == "br":
+        body = "x" * pad + "<pre>" + _pem_with(KEY, "<br>\n") + "</pre>" + "y" * 262_144
+        lines = KEY
+    else:
+        body = _php_json({"pad": "x" * pad, "k": _pem_with(KEY) + "\n", "z": "y" * 262_144})
+        lines = KEY_PHP
+    for result in _scan_both(tmp_path, body):
+        _assert_no_lines(result, lines)
+
+
+@pytest.mark.parametrize("cap", [400, 1000])
+@pytest.mark.parametrize("encoding", ["br", "php-json", "crlf"])
+def test_terminated_key_straddling_a_small_gap_is_never_stored(tmp_path, cap, encoding):
+    if encoding == "br":
+        body, lines = "x" * 900 + "<pre>" + _pem_with(KEY, "<br>\n") + "</pre>" + "y" * 40, KEY
+    elif encoding == "crlf":
+        body, lines = "x" * 900 + "\r\n" + _pem_with(KEY, "\r\n") + "\r\n" + "y" * 40, KEY
+    else:
+        body = _php_json({"pad": "x" * 900, "k": _pem_with(KEY) + "\n", "z": "y" * 40})
+        lines = KEY_PHP
+    for result in _scan_both(tmp_path, body, body_cap=cap):
+        _assert_no_lines(result, lines)
+
+
+@pytest.mark.parametrize("width", [58, 64, 76, 80])
+def test_headless_unterminated_run_of_any_common_width_is_never_stored(tmp_path, width):
+    lines = _key_lines(width=width)
+    body = "x" * 900 + "\n" + _pem_with(lines, end=False) + "\n<p>tail text</p>"
+    live, replayed = _scan_both(tmp_path, body, body_cap=1200)
+    fixture = " ".join(b or "" for b in _fixture_bodies(tmp_path))
+    assert "private_key" not in fixture and "BEGIN" not in fixture  # really headless
+    for result in (live, replayed):
+        _assert_no_lines(result, lines)
+
+
+def test_text_after_an_end_line_is_still_kept_in_every_encoding(tmp_path):
+    body = "<pre>" + _pem_with(KEY, "<br>\n") + "</pre><p>Keep this closing sentence.</p>"
+    for result in _scan_both(tmp_path, body):
+        f = only(result, "web-secret-in-response")
+        assert "Keep this closing sentence." in f.evidence[0].test.response.body
+        _assert_no_lines(result, KEY)
+
+
+def test_round_three_patterns_stay_linear():
+    import time
+
+    from scanners.web.scanner import _redacted
+
+    line = KEY[0]
+    hostile = (
+        (line + "<br>\n") * 3000 + "x",
+        (line + "&#10;" + "a b ") * 3000,
+        ("ab\\/" * 20 + "\\n") * 2000 + "-----END PRIVATE KEY-----",
+        "\n" + " " * 200_000 + "x",
+        ("a " * 100_000) + "-----END PRIVATE KEY-----",
+        ("<br>" * 50_000) + "-----END PRIVATE KEY-----",
+        ";" * 200_000,
+        ("-----END PRIVATE KEY-----\n" + "A" * 50 + " ") * 4000,
+    )
+    for text in hostile:
+        started = time.monotonic()
+        _redacted(text)
+        assert time.monotonic() - started < 1.5, text[:40]
