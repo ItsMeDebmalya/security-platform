@@ -4,19 +4,25 @@ import yaml
 
 from core.deprecation_calendar import STALE_AFTER_DAYS
 from scanners.web import eol, fingerprint
+from scanners.web.sources import parse_source
 
 
 def _raw(path):
     return yaml.safe_load(path.read_text())
 
 
-def test_every_entry_is_sourced_and_reviewed():
+def test_every_entry_has_a_tiered_source():
     for path in (fingerprint.DATA, eol.DATA):
         for entry in _raw(path):
-            src = entry["source"]
-            assert src.startswith("https://") or src.startswith("own observation:"), src
-            assert "verify" not in src.lower(), f"unverified source left in {path.name}: {src}"
+            source = parse_source(entry["source"])
             assert isinstance(entry["reviewed_on"], dt.date)
+            for obs in source.observations:
+                assert obs.date <= entry["reviewed_on"], (path.name, entry["source"])
+
+
+def test_eol_sources_are_vendor_tier():
+    for entry in _raw(eol.DATA):
+        assert parse_source(entry["source"]).tier == "vendor", entry
 
 
 def test_nothing_from_wappalyzer():  # ADR-003 / SPEC A1 guardrail

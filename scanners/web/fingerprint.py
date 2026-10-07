@@ -18,6 +18,7 @@ from typing import Any
 import yaml
 
 from scanners.web.headers import get
+from scanners.web.sources import Source, parse_source
 
 DATA = Path(__file__).parent / "data" / "fingerprints.yaml"
 
@@ -26,7 +27,7 @@ DATA = Path(__file__).parent / "data" / "fingerprints.yaml"
 class Fingerprint:
     name: str
     category: str
-    source: str
+    source: Source
     reviewed_on: date
     headers: tuple[tuple[str, re.Pattern[str]], ...]
     html: tuple[re.Pattern[str], ...]
@@ -52,11 +53,15 @@ def load(path: Path = DATA) -> tuple[Fingerprint, ...]:
     out = []
     for entry in raw:
         match = entry.get("match") or {}
+        try:
+            source = parse_source(entry.get("source"))
+        except ValueError as exc:
+            raise ValueError(f"{entry.get('name')}: {exc}") from exc
         out.append(
             Fingerprint(
                 name=entry["name"],
                 category=entry["category"],
-                source=entry["source"],
+                source=source,
                 reviewed_on=entry["reviewed_on"],
                 headers=tuple(
                     (k.lower(), re.compile(v, re.IGNORECASE))
@@ -103,5 +108,7 @@ def detect(
             if body and (m := pattern.search(body)):
                 hit(m, f"markup matching {pattern.pattern}")
         if evidence:
-            detections.append(Detection(fp.name, fp.category, version, evidence, fp.source))
+            detections.append(
+                Detection(fp.name, fp.category, version, evidence, fp.source.reference)
+            )
     return detections

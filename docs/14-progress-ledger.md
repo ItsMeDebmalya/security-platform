@@ -960,6 +960,18 @@ Run against operator infrastructure, cross-checked against `subfinder` + crt.sh.
 
 ---
 
+## 2026-10-07 · Tool 4a (`web`, Light) — checkpoint 1: fingerprint and EOL sources verified
+
+**In progress — the full Tool 4a entry follows when the tool ships.** Every source in `scanners/web/data/` was fetched and checked against the vendor's own page on 2026-10-07, before the data was trusted.
+
+- **Source tiers, enforced by test.** Every fingerprint and EOL entry now names a tier: `vendor` (a primary vendor page, URL required) or `observed` (our own live capture: host, UTC date and the exact header or markup string seen, all required). `tests/scanners/web/test_data.py` rejects an entry without one. EOL dates must be `vendor` tier.
+- **Confirmed against vendor pages:** 8 PHP, 3 Drupal and 2 Bootstrap end-of-life dates; 8 fingerprints (nginx, Apache, PHP, jQuery, AngularJS, Bootstrap, Fastly, Vercel).
+- **Corrected:** the three IIS end-of-life dates were each a day early (7.5 → 2020-01-15; 8.0 and 8.5 → 2023-10-11) and were sourced from the Windows Server pages, which never mention IIS; they now come from Microsoft's IIS lifecycle page. IIS 8.5 deliberately uses the Windows Server 2012 R2 date, not the earlier Windows 8.1 one — the reason is recorded in the data file.
+- **Observed, not documented:** IIS, ASP.NET, Next.js, WordPress, Drupal, Joomla, Cloudflare, CloudFront and Akamai, each with host, date and the exact string seen. Cloudflare and CloudFront were first marked confirmed and then reclassified: their docs describe `Cf-Ray` / `X-Amz-Cf-Id` as headers added to requests forwarded to the origin, not response headers.
+- **Gap — AngularJS 1.x end-of-life row dropped.** docs.angularjs.org states only "AngularJS support has officially ended as of January 2022": a month, no day. No day was substituted. The AngularJS fingerprint stays; a detected AngularJS 1.x is reported as inventory, not as end-of-life, until a vendor page gives a date.
+- **Gap — Express fingerprint dropped.** The Express docs confirm `X-Powered-By` is sent by default but never show its value, expressjs.com strips it, and no live example turned up in a sweep of ~120 hosts on 2026-10-07. Nothing depended on it.
+- **Evidence for D-W2 (challenge-page signatures, registered with the full Tool 4a entry):** `www.ox.ac.uk`, 2026-10-07 — HTTP 403, `cf-mitigated: challenge`, `server: cloudflare`, `<title>Just a moment...` — `scanners/web/challenge.detect` returned "Cloudflare challenge". `www.tesla.com`, `www.fda.gov`, `www.usda.gov`, 2026-10-07 — HTTP 403, `Server: AkamaiGHost`, `<TITLE>Access Denied` — the exact shape of the Akamai edge-block signature. Real-world evidence for both signatures; not yet frozen as corpus fixtures (third-party pages).
+
 ## Next
 
 **Finish Tool 3's owed items, then the PR:** the `service_hosts` ADR + changelog entry, the `kinetrix.in`/`kinetrix.co.in` live runs (D-DS2), removing the unused two-family measurement machinery, and the whole-branch review (Task 7 got inline review only). D-DS1 (single-source coverage, add certspotter/passive-DNS) is a genuine follow-up, not a blocker. Then the next tool per the roadmap.

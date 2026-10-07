@@ -11,9 +11,11 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import yaml
+
+from scanners.web.sources import parse_source
 
 DATA = Path(__file__).parent / "data" / "eol.yaml"
 
@@ -25,14 +27,30 @@ class EolEntry:
     eol_date: date
     source: str
     reviewed_on: date
+    source_note: str | None = None
+
+
+def _entry(e: dict[str, Any]) -> EolEntry:
+    label = f"{e['product']} {e['branch']}"
+    try:
+        source = parse_source(e.get("source"))
+    except ValueError as exc:
+        raise ValueError(f"{label}: {exc}") from exc
+    if source.tier != "vendor":
+        raise ValueError(f"{label}: an end-of-life date must come from a vendor-tier source")
+    return EolEntry(
+        e["product"],
+        str(e["branch"]),
+        e["eol_date"],
+        cast(str, source.url),
+        e["reviewed_on"],
+        source.note,
+    )
 
 
 def load(path: Path = DATA) -> tuple[EolEntry, ...]:
     raw: list[dict[str, Any]] = yaml.safe_load(path.read_text())
-    return tuple(
-        EolEntry(e["product"], str(e["branch"]), e["eol_date"], e["source"], e["reviewed_on"])
-        for e in raw
-    )
+    return tuple(_entry(e) for e in raw)
 
 
 def branch_matches(version: str, branch: str) -> bool:
