@@ -280,9 +280,7 @@ def test_validation_wording_and_control_is_the_probe(site):
     result = run(bare(site))
     f = only(result, "web-xcto-missing")
     assert "origin-wide" in f.description
-    assert f.evidence[0].control.request.url == f"https://x.test{PROBE}" or (
-        f.evidence[0].control.request.url == f"http://x.test{PROBE}"
-    )
+    assert f.evidence[0].control.request.url == f"https://x.test{PROBE}"
     assert "None" not in f.description
     hardened(site)
     no_hsts = {k: v for k, v in HARDENED.items() if k != "strict-transport-security"}
@@ -311,3 +309,29 @@ def test_csp_weak_quotes_received_header(site):
     }
     site.serve("https://x.test/", headers=weak, body=PAGE)
     assert "script-src 'unsafe-inline'" in only(run(site), "web-csp-weak").description
+
+
+def test_downgraded_https_probe_never_validates_hsts(site):
+    hardened(site)
+    no_hsts = {k: v for k, v in HARDENED.items() if k != "strict-transport-security"}
+    site.serve("https://x.test/", headers=no_hsts, body=PAGE)
+    site.serve(f"https://x.test{PROBE}", status=301, headers={"location": f"http://x.test{PROBE}"})
+    site.serve(f"http://x.test{PROBE}", status=404, body="nf")
+    f = only(run(site), "web-hsts-missing")
+    assert f.state == "suspected" and f.validation.outcome == "unavailable"
+
+
+def test_redirect_failed_validation_has_redirect_wording(site):
+    _plain(site)
+    site.serve("https://x.test/", headers=HARDENED, body=PAGE)
+    site.serve(f"http://x.test{PROBE}", status=301, headers={"location": f"https://x.test{PROBE}"})
+    f = only(run(site), "web-https-redirect-missing")
+    assert f.validation.outcome == "failed"
+    assert "specific to this path" in f.description and "header" not in f.description
+
+
+def test_downgraded_root_note_on_header_findings(site):
+    _plain(site)
+    site.serve("https://x.test/", status=301, headers={"location": "http://x.test/"})
+    f = only(run(site), "web-xcto-missing")
+    assert "redirected to plain HTTP" in f.description

@@ -45,6 +45,18 @@ VALIDATION_NOTES = {
     ),
     "unavailable": " The 404 control was unusable, so this could not be validated.",
 }
+REDIRECT_NOTES = {
+    "passed": (
+        " Validated on a second plain-HTTP request (the 404 control path), which was also "
+        "served without redirecting. Both responses came through the same edge, so this shows "
+        "the behaviour is host-wide, not that independent infrastructure agrees."
+    ),
+    "failed": (
+        " The plain-HTTP 404 control path does redirect to HTTPS, so the missing redirect "
+        "appears to be specific to this path; reported at reduced confidence."
+    ),
+    "unavailable": " The plain-HTTP 404 control was unusable, so this could not be validated.",
+}
 HEADER_FAMILY = frozenset(
     {
         "web-https-redirect-missing",
@@ -158,6 +170,7 @@ HEADER_POLICIES: tuple[tuple[str, Judge, bool], ...] = (
     ("web-cors-wildcard", _cors, True),
 )
 """(check_id, judge, validate on the 404 control?)"""
+POLICY_IDS = frozenset(c for c, _, _ in HEADER_POLICIES)
 
 
 def _why_unusable(f: Fetched) -> tuple[str, str]:
@@ -340,7 +353,11 @@ class _Scan:
             test=root,
             control=self.obs.https_probe,
             description=f"{root.response.url} is served with {observed}",
-            validation=self._validate_on_probe(judge, self.obs.https_probe),
+            validation=(
+                self._validate_on_probe(judge, self.obs.https_probe)
+                if self.obs.https_probe.final_scheme == "https"
+                else {"attempted": False, "outcome": "unavailable", "method": VALIDATION_METHOD}
+            ),
         )
         self._clear(other, loc)
 
@@ -424,12 +441,23 @@ class _Scan:
         )
 
     def _edge_note(self, check: Check) -> str:
+        note = ""
+        https = self.obs.https_root
+        if (
+            check.check_id in POLICY_IDS
+            and https.response is not None
+            and https.final_scheme != "https"
+        ):
+            note = (
+                " HTTPS redirected to plain HTTP, so this was judged on the plain-HTTP "
+                "response that was actually served."
+            )
         if self.edge and check.check_id in HEADER_FAMILY:
-            return (
+            note += (
                 f" Served through {self.edge}: the edge may add or strip headers, so this "
                 "describes what visitors receive, not necessarily what the origin sends."
             )
-        return ""
+        return note
 
     def _emit(
         self,
@@ -458,7 +486,12 @@ class _Scan:
         ]
         description = description.rstrip(".") + "."
         if validation and validation.get("method") == VALIDATION_METHOD:
-            description += VALIDATION_NOTES.get(str(validation.get("outcome")), "")
+            notes = (
+                REDIRECT_NOTES
+                if check.check_id == "web-https-redirect-missing"
+                else VALIDATION_NOTES
+            )
+            description += notes.get(str(validation.get("outcome")), "")
         now = datetime.now(UTC)
         self.findings.append(
             Finding.create(
