@@ -26,8 +26,8 @@ from core.http import HttpClient
 from core.models import Asset, CheckRun, Finding, Mode, ScanResult, Telemetry
 from core.registry import register
 from core.scanner import BaseScanner
-from scanners.web import csp, eol, fingerprint, headers, html
-from scanners.web.checks import CHECKS, Check
+from scanners.web import csp, disclosure, eol, fingerprint, headers, html, listing
+from scanners.web.checks import CHECKS, HTML_DOCUMENT, HTTP_HEADER, VERSION_STRING, Check
 from scanners.web.checks import requires_authorisation as _requires_authorisation
 from scanners.web.fetch import Fetched, gather
 
@@ -308,7 +308,14 @@ class _Scan:
         self._check_hsts()
         self.ctx.progress("judging security headers", 0.55)
         self._check_header_policies()
-        # Task 11 inserts the content, error-page, listing and inventory checks here.
+        self.ctx.progress("judging page content", 0.7)
+        self._check_page_content()
+        self._check_secrets()
+        self.ctx.progress("judging error pages and directories", 0.85)
+        self._check_error_pages()
+        self._check_listings()
+        self._check_robots()
+        self._check_security_txt()
         self.ctx.progress("done", 1.0)
         cost = self.ctx.cost.snapshot()
         return ScanResult(
@@ -669,3 +676,322 @@ class _Scan:
 
     def _clear(self, check: Check, location: str) -> None:
         self.checks.append(CheckRun(check_id=check.check_id, location=location, outcome="clear"))
+
+    # --- page content --------------------------------------------------------
+
+    def _check_page_content(self) -> None:
+        loc, root, probe = self.obs.root_path, self.obs.root, self.obs.probe
+        mixed = CHECKS["web-mixed-content"]
+        rest = [
+            CHECKS[c]
+            for c in (
+                "web-sri-missing",
+                "web-version-disclosure",
+                "web-technology",
+                "web-component-eol",
+            )
+        ]
+        https_ok = self._https_ok()
+        if not https_ok:
+            reason, text = self._https_problem()
+            self._inconclusive(
+                mixed,
+                loc,
+                self.obs.https_root,
+                f"HTTPS could not be read ({text}), so there is no HTTPS page "
+                "whose subresources could be mixed content.",
+                reason=reason,
+            )
+        if not self._usable(root, ([mixed] if https_ok else []) + rest):
+            return
+        assert root.response is not None
+        page, page_url = self.obs.page, self.obs.page_url
+
+        if https_ok:
+            insecure = (
+                []
+                if page is None
+                else (
+                    [s.src for s in page.scripts if s.src.lower().startswith("http://")]
+                    + [u for u in page.stylesheets if u.lower().startswith("http://")]
+                )
+            )
+            if insecure:
+                self._emit(
+                    mixed,
+                    loc,
+                    test=root,
+                    control=probe,
+                    description=(
+                        f"{root.response.url} is served over HTTPS but loads "
+                        f"{len(insecure)} script/stylesheet URL(s) over plain "
+                        f"HTTP: {', '.join(insecure)}"
+                    ),
+                )
+            else:
+                self._clear(mixed, loc)
+
+        sri = CHECKS["web-sri-missing"]
+        unpinned = (
+            []
+            if page is None or page_url is None
+            else [
+                s.src
+                for s in page.scripts
+                if not s.integrity and not html.is_same_origin(s.src, page_url)
+            ]
+        )
+        if unpinned:
+            self._emit(
+                sri,
+                loc,
+                test=root,
+                control=probe,
+                description=(
+                    f"{root.response.url} loads {len(unpinned)} cross-origin "
+                    f"script(s) with no integrity attribute: {', '.join(unpinned)}"
+                ),
+            )
+        else:
+            self._clear(sri, loc)
+
+        version = CHECKS["web-version-disclosure"]
+        found = disclosure.version_disclosures(
+            root.response.headers, page.generator if page else None
+        )
+        if found:
+            cls = HTTP_HEADER if any(src != "meta generator" for src, _ in found) else HTML_DOCUMENT
+            self._emit(
+                version,
+                loc,
+                test=root,
+                control=probe,
+                signals=[self._signal(version, cls)],
+                description="; ".join(f"{src}: {value}" for src, value in found),
+            )
+        else:
+            self._clear(version, loc)
+
+        tech = CHECKS["web-technology"]
+        if self.detections:
+            listed = "; ".join(
+                f"{d.name}{' ' + d.version if d.version else ''} ({d.category}, from {d.evidence})"
+                for d in self.detections
+            )
+            self._emit(tech, loc, test=root, control=probe, description=f"Identified: {listed}")
+        else:
+            self._clear(tech, loc)
+
+        eol_check = CHECKS["web-component-eol"]
+        matched = False
+        for d in self.detections:
+            entry = eol.match(self.eol_entries, d.name, d.version) if d.version else None
+            if entry is None:
+                continue
+            matched = True
+            self._emit(
+                eol_check,
+                loc,
+                test=root,
+                control=probe,
+                signals=[self._signal(eol_check, VERSION_STRING)],
+                version_only=True,
+                instance_key=f"{entry.product}:{entry.branch}",
+                references=[entry.source],
+                description=(
+                    f"{d.name} {d.version} was identified from {d.evidence}. The "
+                    f"{entry.product} {entry.branch} branch reached vendor end-of-life on "
+                    f"{entry.eol_date.isoformat()}. This rests on a version string "
+                    "alone: distributions backport fixes without changing the version, "
+                    "so this is a lead to verify, not proof of a vulnerability"
+                ),
+            )
+        if not matched:
+            self._clear(eol_check, loc)
+
+    def _check_secrets(self) -> None:
+        check = CHECKS["web-secret-in-response"]
+        fetched = self.obs.same_origin_fetches()
+        if not fetched:
+            reason, text = _why_unusable(self.obs.root)
+            self._inconclusive(check, self.obs.root_path, self.obs.root, text + ".", reason=reason)
+            return
+        any_found = False
+        for f in fetched:
+            assert f.response is not None
+            kinds = disclosure.secret_kinds(f.response.captured.get("redactions", []))
+            if not kinds:
+                continue
+            any_found = True
+            control = self.obs.probe if f is self.obs.root else self.obs.root
+            self._emit(
+                check,
+                f.path,
+                test=f,
+                control=control,
+                description=(
+                    f"The response for {f.url} contained text matching the "
+                    f"credential pattern(s) {', '.join(kinds)}. The value was "
+                    "redacted when captured and is not stored; the evidence "
+                    "shows where it was found"
+                ),
+            )
+        if not any_found:
+            self._clear(check, self.obs.root_path)
+
+    # --- error pages -----------------------------------------------------------
+
+    def _check_error_pages(self) -> None:
+        debug, error = CHECKS["web-debug-mode"], CHECKS["web-error-disclosure"]
+        probe, loc, root = self.obs.probe, self.obs.probe_path, self.obs.root
+        if probe.response is None or probe.failure is not None:
+            reason, text = _why_unusable(probe)
+            for c in (debug, error):
+                self._inconclusive(c, loc, probe, text + ".", reason=reason)
+            return
+        sig = disclosure.error_signature(probe.response.text)
+        if sig is None:
+            self._clear(debug, loc)
+            self._clear(error, loc)
+            return
+        if root.response is not None:
+            on_root = disclosure.error_signature(root.response.text)
+            if on_root is not None and on_root.name == sig.name:
+                for c in (debug, error):
+                    self._inconclusive(
+                        c,
+                        loc,
+                        probe,
+                        (
+                            f"The same {sig.name} signature appears on the homepage, so it may be "
+                            "ordinary site content rather than an error page."
+                        ),
+                        reason="ambiguous_response",
+                    )
+                return
+        fired, other = (debug, error) if sig.kind == "debug" else (error, debug)
+        self._emit(
+            fired,
+            loc,
+            test=probe,
+            control=root,
+            references=[sig.source],
+            description=(
+                f"A request for a path that does not exist ({probe.url}) "
+                f"returned HTTP {probe.response.status_code} with a {sig.name}: "
+                f"{disclosure.excerpt(probe.response.text, sig)!r}"
+            ),
+        )
+        self._clear(other, loc)
+
+    # --- directory listings ------------------------------------------------------
+
+    def _check_listings(self) -> None:
+        check = CHECKS["web-directory-listing"]
+        root, page, page_url = self.obs.root, self.obs.page, self.obs.page_url
+        linked = html.linked_files(page, page_url) if page and page_url else {}
+        for f in (root, *self.obs.directories):
+            loc = f.path
+            if f.response is None or f.failure is not None:
+                reason, text = _why_unusable(f)
+                self._inconclusive(check, loc, f, text + ".", reason=reason)
+                continue
+            found = listing.detect(f.response.text) if f.response.status_code == 200 else None
+            if found is None:
+                self._clear(check, loc)
+                continue
+            signals = [self._signal(check)]
+            corroborated = (
+                sorted(found.entries & linked.get(loc, frozenset())) if f is not root else []
+            )
+            if corroborated:
+                signals.append(
+                    self._signal(
+                        check,
+                        HTML_DOCUMENT,
+                        likelihood_ratio=5.0,
+                        justification=(
+                            "a file the homepage itself links appears in the listing - a "
+                            "second document agreeing with the first"
+                        ),
+                    )
+                )
+            note = (
+                f" It includes {', '.join(corroborated)}, which the homepage links to."
+                if corroborated
+                else ""
+            )
+            self._emit(
+                check,
+                loc,
+                test=f,
+                control=self.obs.probe,
+                signals=signals,
+                description=(
+                    f"{f.url} returns a generated directory listing "
+                    f"({found.kind}) of {len(found.entries)} entr"
+                    f"{'y' if len(found.entries) == 1 else 'ies'}.{note}"
+                ),
+            )
+
+    # --- inventory ---------------------------------------------------------------
+
+    def _check_robots(self) -> None:
+        check, f = CHECKS["web-robots-paths"], self.obs.robots
+        if f.response is None or f.failure is not None:
+            reason, text = _why_unusable(f)
+            self._inconclusive(check, f.path, f, text + ".", reason=reason)
+            return
+        if f.response.status_code != 200:
+            self._clear(check, f.path)
+            return
+        disallowed, sitemaps = _robots_entries(f.response.text)
+        if not disallowed and not sitemaps:
+            self._clear(check, f.path)
+            return
+        self._emit(
+            check,
+            f.path,
+            test=f,
+            control=self.obs.probe,
+            description=(
+                f"robots.txt disallows {disallowed or 'nothing'} and names "
+                f"sitemaps {sitemaps or 'none'}. These paths were not fetched"
+            ),
+        )
+
+    def _check_security_txt(self) -> None:
+        check, f = CHECKS["web-security-txt-missing"], self.obs.security_txt
+        if f.response is None or f.failure is not None:
+            reason, text = _why_unusable(f)
+            self._inconclusive(check, f.path, f, text + ".", reason=reason)
+            return
+        if f.response.status_code == 200 and re.search(r"(?im)^contact:", f.response.text):
+            self._clear(check, f.path)
+            return
+        self._emit(
+            check,
+            f.path,
+            test=f,
+            control=self.obs.root,
+            description=(
+                f"{f.url} answered HTTP {f.response.status_code} without an RFC 9116 Contact field"
+            ),
+        )
+
+
+def _robots_entries(text: str) -> tuple[list[str], list[str]]:
+    """Disallow paths and Sitemap URLs, in order, deduplicated. Split on the
+    first colon only, so a Sitemap URL keeps its own "https://"."""
+    disallowed: list[str] = []
+    sitemaps: list[str] = []
+    for line in text.splitlines():
+        key, _, value = line.partition(":")
+        key, value = key.strip().lower(), value.strip()
+        if key == "disallow":
+            value = value.split("#", 1)[0].strip()
+            if value and value not in disallowed:
+                disallowed.append(value)
+        elif key == "sitemap" and value and value not in sitemaps:
+            sitemaps.append(value)
+    return disallowed, sitemaps
