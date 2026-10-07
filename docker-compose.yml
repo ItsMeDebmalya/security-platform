@@ -71,7 +71,7 @@ services:
   # --- web (Tool 4a) corpus lab: `make web-lab-up`. Profile-gated, so
   # `make targets-up` never starts it. 127.0.0.1 only.
   web-lab-nginx:
-    image: nginx:1.27-alpine
+    image: nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10  # 1.27.5; pinned: fixtures + sign-off
     container_name: sp-web-lab-nginx
     profiles: ["web-lab"]
     command: ["nginx", "-c", "/etc/nginx/lab/nginx.conf", "-g", "daemon off;"]
@@ -83,15 +83,15 @@ services:
     depends_on: [web-lab-django, web-lab-pytrace]
     restart: "no"
   web-lab-django:
-    image: python:3.13-slim
+    image: python:3.13-slim@sha256:bf44cdfcb76cd3b41e879bc058fc37ec5872002ccfde7fcb765e218cde0cd79c  # Debian 13; pinned: licence sign-off digest
     container_name: sp-web-lab-django
     profiles: ["web-lab"]
     working_dir: /app
     volumes: ["./corpus/lab/web/django:/app:ro"]
-    command: ["sh", "-c", "pip install --no-cache-dir 'django==5.2.*' && python app.py runserver 0.0.0.0:8000 --noreload"]
+    command: ["sh", "-c", "pip install --no-cache-dir 'django==5.2.18' && python app.py runserver 0.0.0.0:8000 --noreload"]
     restart: "no"
   web-lab-pytrace:
-    image: python:3.13-slim
+    image: python:3.13-slim@sha256:bf44cdfcb76cd3b41e879bc058fc37ec5872002ccfde7fcb765e218cde0cd79c  # Debian 13; pinned: licence sign-off digest
     container_name: sp-web-lab-pytrace
     profiles: ["web-lab"]
     volumes: ["./corpus/lab/web/pytrace:/app:ro"]
