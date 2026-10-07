@@ -306,7 +306,7 @@ count, always.
 
 ### 6.4 Live verification (ADR-017) — before "done"
 
-Operator infrastructure (`codez.in`, `erp.codez.in`, `kinetrix.in`, `kinetrix.co.in`) plus a handful
+Operator infrastructure (`codez.in`, `kinetrix.in`, `kinetrix.co.in`) plus a handful
 of public sites (Light is passive — [13-test-targets.md](../../13-test-targets.md) §5). Every
 finding hand-verified with `curl -sI` / `curl -s`. A live finding that turns out wrong becomes a
 corpus case.

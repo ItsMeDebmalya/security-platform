@@ -1,6 +1,6 @@
 # web (Tool 4a) — live verification, 2026-10-07
 
-ADR-017 live run of `web` v1.0.0 (Light) against 13 hosts approved by the operator: three of the operator's own domains, three well-configured public references, and seven public test sites published by their owners for scanner testing. `erp.codez.in` was held by the operator (production; owner to be notified). No local lab target was used: they are ours, so circular, and Observatory cannot reach `127.0.0.1`.
+ADR-017 live run of `web` v1.0.0 (Light) against 13 hosts approved by the operator: three of the operator's own domains, three well-configured public references, and seven public test sites published by their owners for scanner testing. No local lab target was used: they are ours, so circular, and Observatory cannot reach `127.0.0.1`.
 
 Scans ran 2026-10-07T11:42:59Z–11:45:40Z UTC, one Light scan per host. **Every `confirmed` / `highly_likely` claim below was hand-verified** against an independent `curl` capture (headers of `https://H/`, `http://H/` and the scanner's own 404 probe path, plus the four codez.in directory URLs). The disagreement analysis against Mozilla Observatory is in [crosscheck.md](crosscheck.md).
 

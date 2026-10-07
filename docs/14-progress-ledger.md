@@ -985,7 +985,7 @@ Run against operator infrastructure, cross-checked against `subfinder` + crt.sh.
 
 Plan: [superpowers/plans/2026-10-06-web-light.md](superpowers/plans/2026-10-06-web-light.md). Spec: [superpowers/specs/2026-10-02-web-light-design.md](superpowers/specs/2026-10-02-web-light-design.md). Sources checked before the data was trusted: the checkpoint-1 section above.
 
-**Gate (`make corpus`, 2026-10-07):** `web 234 checks, TP 10, FP 0, FN 0, precision 1.000, recall 1.000, susp 3.4%, inconc 0.9%, PASS` — **10 claims** over 11 frozen lab cases. Recall is **corpus-relative** (a corpus we wrote; never an absolute number). 1.000 over ten claims is a regression result, not proof of correctness; the evidence for correctness is the live verification below. Full suite: 1096 tests pass. Numbers in their canonical home: [SPEC.md A1](../SPEC.md).
+**Gate (`make corpus`, 2026-10-07):** `web 234 checks, TP 10, FP 0, FN 0, precision 1.000, recall 1.000, susp 3.4%, inconc 0.9%, PASS` — **10 claims** over 11 frozen lab cases. Recall is **corpus-relative** (a corpus we wrote; never an absolute number). 1.000 over ten claims is a regression result, not proof of correctness; the evidence for correctness is the live verification below. Full suite: 1096 tests pass (1118 at v1.0.3). Numbers in their canonical home: [SPEC.md A1](../SPEC.md).
 
 ### Built
 
@@ -1009,14 +1009,23 @@ Each of these was a false-claim or secret-leak path **in the plan's own code**, 
 
 - A failed request said "could not be fetched (blocked_prerequisite)" with no cause. Version 1.0.1 names it: `TLS certificate verification failed (…)`, `TLS handshake failed (…)`, `connection timed out`, `DNS lookup failed`. Re-verified live against expired and self-signed badssl hosts and httpforever.com.
 
+### Found & fixed (final review and hard-constraint-5 leak fixes, v1.0.2–v1.0.3)
+
+- **v1.0.2 (14c4d9f):** private-key bodies were stored in evidence, because core's `private_key` pattern redacts only the BEGIN line (D21). `web` now cuts whole PEM private-key blocks itself. A 3xx root produced page-content claims about a redirect body; page checks are now `inconclusive` on a redirected root.
+- **v1.0.3 (e0b92e9, b43c638):** two leaks the operator ruled must close before merge.
+  - **Replay leaked key bodies.** A recorded fixture already carries core's `[redacted]:private_key` in place of the BEGIN line, so the BEGIN-anchored strip missed the body on `--replay` and corpus runs. The strip now also anchors on the marker. It also removes runs of 2+ bare 60–76-column base64 lines, for a key whose BEGIN and END both fell in core's truncation gap.
+  - **The robots description was capped before it was redacted,** so a secret straddling the cut escaped the pattern. It is now redacted first and then capped. Every other truncation site in `scanners/web/` was audited for the same order.
+  - Both are tested record-then-replay. No corpus number moved.
+  - **Still open in core (D21):** `RecordingHttpBackend` fixtures on disk still hold key bodies.
+
 ### Live verification and competitor parity (ADR-017, ADR-024)
 
-13 hosts, hand-verified claim by claim, **zero false positives**: [verification.md](../corpus/crosscheck/web-light/verification.md). The vulnweb hosts fired IIS 8.5 and PHP 7.1 end-of-life correctly, and ASP.NET 2.0.50727 and Apache 2.4 were correctly left alone. Disagreements with Mozilla Observatory, analysed one by one: [crosscheck.md](../corpus/crosscheck/web-light/crosscheck.md). Honest gaps: `testphp.vulnweb.com` was down on both attempts, so the PHP 5.x fingerprints and EOL entries were never exercised live; `securityheaders.com` refused automation (403), so that comparison was not made. The raw live traffic is not committed: the operator has yet to decide (see Next).
+13 hosts, hand-verified claim by claim, **zero false positives**: [verification.md](../corpus/crosscheck/web-light/verification.md). The vulnweb hosts fired IIS 8.5 and PHP 7.1 end-of-life correctly, and ASP.NET 2.0.50727 and Apache 2.4 were correctly left alone. Disagreements with Mozilla Observatory, analysed one by one: [crosscheck.md](../corpus/crosscheck/web-light/crosscheck.md). Honest gaps: `testphp.vulnweb.com` was down on both attempts, so the PHP 5.x fingerprints and EOL entries were never exercised live; `securityheaders.com` refused automation (403), so that comparison was not made. **The raw live traffic is not committed** (operator, 2026-10-08). It was scanned for every secret pattern, and cookie values were redacted. The rest is gitignored and kept locally. `corpus/crosscheck/web-light/raw-manifest.sha256` commits the SHA-256 of each file, so the evidence can be proven unchanged.
 
 ### Decided
 
 - **Validation on the 404 control states its limit** in the finding description: it is one origin-wide edge answering twice, not two independent observers.
-- **A declined off-scope 3xx probe still counts as a control** — a readable, distinct, same-origin response. Weaker evidence, and the whole-branch review is to weigh it.
+- **A declined off-scope 3xx probe still counts as a control** — a readable, distinct, same-origin response. Weaker evidence, and the whole-branch review is to weigh it. **The final review upheld it for the probe** (the root's own deficiency is the observed fact; the probe only rules out a per-route quirk) and fixed the root-side case. **Candidate for revisit (operator, 2026-10-07):** this is the only ruling whose stated cost is a potentially weaker claim — a `confirmed` header finding validated on a redirect response rather than a page — so it is kept visible here rather than treated as settled. Revisit with real-world data: how often a live scan's 404 probe ends on an off-scope 3xx, and whether those validated claims hold up.
 - **The request cap counts scanner-issued GETs.** Redirect hops are additional: see **D26 (required before beta)**.
 - **HTTPS transport-failure reason:** the more specific code (`timeout` for a timeout, `blocked_prerequisite` otherwise). The design spec's §3.1 and §5.5 disagreed about this; both now say it ([spec](superpowers/specs/2026-10-02-web-light-design.md)).
 - **An inconclusive finding pairs the failed request with itself** as its evidence pair — nothing was received to contrast it with — and the delta says so.
@@ -1040,6 +1049,8 @@ Each of these was a false-claim or secret-leak path **in the plan's own code**, 
 ---
 
 ## Next
+
+**Watch (no action now):** `tls` runs at **12.3% inconclusive** on its corpus — inside the 15% gate but the closest of any scanner to it (see the `make corpus` table in SPEC.md). A small rise would fail the gate; look at it before the next TLS change.
 
 **After Tool 4a (2026-10-07):**
 

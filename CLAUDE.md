@@ -16,7 +16,7 @@ core/cost.py, core/evidence.py, core/store.py, core/state.py, core/replay.py,
 core/measurement.py, core/registry.py, core/authz.py, core/ratelimit.py
 The 4 files in contracts/ are the FROZEN contract — change only via a deliberate,
 additive migration with an ADR, never ad hoc.
-The 3 validated scanners (domscout, email, tls) must not be regenerated.
+The 4 validated scanners (domscout, email, tls, web) must not be regenerated.
 The only NEW top-level dirs in this migration are api/ and web/.
 If a task seems to require rebuilding any of the above, STOP and ask me.
 
