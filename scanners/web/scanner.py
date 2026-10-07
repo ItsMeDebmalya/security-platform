@@ -123,6 +123,8 @@ _ENTITY_BREAKS = frozenset({"&#10;", "&#13;", "&#xa;", "&#xd;"})
 _BOUNDARY = frozenset("\n\r>;\"'`")
 _LEADING_SEPS = re.compile(rf"(?:[ \t]|{_SEP_ATOM})*")
 _FIRST_SEP = re.compile(_SEP_ATOM)
+_TRUNCATION_MARK = re.compile(r"\n\.\.\. \[\d+ bytes truncated\] \.\.\.\n")
+"""The gap note core's `truncate_body` inserts into a capped capture."""
 ROBOTS_LISTED = 20
 DESCRIPTION_CAP = 2000
 _TRUNCATED = " ... (truncated)"
@@ -1209,10 +1211,20 @@ def _cut_key_blocks(text: str, ends: list[tuple[int, int]]) -> str:
 
 
 def _strip_orphan_key_tails(text: str) -> str:
+    """An END line no anchor claimed. If core's truncation note comes before it with
+    no anchor in between, the BEGIN was lost to the gap: everything from the note to
+    the END line goes, whatever separates the key's lines (the note is kept, so the
+    cut stays visible). Otherwise walk back over the key lines above the END line."""
+    marks = [m.end() for m in _TRUNCATION_MARK.finditer(text)]
     out: list[str] = []
     pos = 0
     for end in _KEY_END_LINE.finditer(text):
-        start = _key_tail_start(text, pos, end.start())
+        i = bisect.bisect_right(marks, end.start()) - 1
+        mark = marks[i] if i >= 0 else -1
+        if mark >= pos and _KEY_ANCHOR.search(text, mark, end.start()) is None:
+            start = mark
+        else:
+            start = _key_tail_start(text, pos, end.start())
         out.append(text[pos:start] + _KEY_MARKER)
         pos = end.end()
     out.append(text[pos:])

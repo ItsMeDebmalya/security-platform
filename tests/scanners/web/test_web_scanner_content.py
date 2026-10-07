@@ -768,8 +768,63 @@ def test_round_three_patterns_stay_linear():
         ("<br>" * 50_000) + "-----END PRIVATE KEY-----",
         ";" * 200_000,
         ("-----END PRIVATE KEY-----\n" + "A" * 50 + " ") * 4000,
+        ("\n... [9 bytes truncated] ...\n" + "<b>x</b> " * 10) * 2000 + "-----END PRIVATE KEY-----",
+        ("\n... [9 bytes truncated] ...\nab -----END PRIVATE KEY-----") * 4000,
     )
     for text in hostile:
         started = time.monotonic()
         _redacted(text)
         assert time.monotonic() - started < 1.5, text[:40]
+
+
+# --- Fix round 4: an orphan END after core's truncation marker, any separator ----
+
+
+def _tail_straddle(keytext):
+    """BEGIN falls in core's gap at the default cap; the END line survives in the tail."""
+    return "x" * (HALF + 5000) + keytext + "y" * (HALF - len(keytext) // 2)
+
+
+_BEGIN, _END = "-----BEGIN RSA PRIVATE KEY-----", "-----END RSA PRIVATE KEY-----"
+
+
+@pytest.mark.parametrize(
+    "keytext",
+    [
+        pytest.param('<input value="' + _pem_with(KEY, "&#x0A;") + '">', id="hex-entity-0A"),
+        pytest.param('<input value="' + _pem_with(KEY, "&#X0D;&#X0A;") + '">', id="hex-0D0A"),
+        pytest.param(_BEGIN + '<BR class="x">' + '<BR class="x">'.join(KEY) + _END, id="br-attr"),
+        pytest.param("<p>KEY=" + _BEGIN + " " + " ".join(KEY) + " " + _END + "</p>", id="spaces"),
+        pytest.param(
+            "<pre>" + _BEGIN + "\n" + "".join(f"{x}<!---->\n" for x in KEY) + _END + "</pre>",
+            id="comment-each-line",
+        ),
+        pytest.param(
+            _BEGIN + "".join(f"<tr><td>{x}</td></tr>" for x in KEY) + _END, id="table-cells"
+        ),
+        pytest.param(
+            _BEGIN + "\n" + "".join(f"key: {x}\n" for x in KEY) + _END, id="prefixed-lines"
+        ),
+    ],
+)
+def test_orphan_end_after_the_truncation_marker_never_stores_key_lines(tmp_path, keytext):
+    live, replayed = _scan_both(tmp_path, _tail_straddle(keytext))
+    fixture = " ".join(b or "" for b in _fixture_bodies(tmp_path))
+    assert "bytes truncated" in fixture and "private_key" not in fixture  # BEGIN in the gap
+    assert "END RSA PRIVATE KEY" in fixture  # and END survives in the tail
+    for result in (live, replayed):
+        _assert_no_lines(result, KEY)
+    body = only(replayed, "web-secret-in-response").evidence[0].test.response.body
+    assert "bytes truncated] ...\n[redacted]:private_key" in body  # the cut stays visible
+    assert body.endswith("y" * 100)  # text after the END line is kept
+
+
+def test_truncation_marker_cut_needs_no_anchor_between():
+    from scanners.web.scanner import _strip_private_keys
+
+    gap = "\n... [123 bytes truncated] ...\n"
+    text = "head" + gap + "odd<x>MIIabc odd<x>MIIdef " + _END + " after"
+    assert _strip_private_keys(text) == "head" + gap + "[redacted]:private_key after"
+    # a complete block after the marker is cut on its own; the prose between stays
+    text = "head" + gap + "prose stays " + _BEGIN + "\nMIIabc\n" + _END + " after"
+    assert _strip_private_keys(text) == "head" + gap + "prose stays " + _BEGIN + " after"
