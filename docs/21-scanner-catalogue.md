@@ -87,7 +87,7 @@ Live basis: 13 real hosts, every claim hand-verified with `curl`, cross-checked 
 
 ---
 
-## email — Email Security Scanner (Tool 1, v1.2.0)
+## email — Email Security Scanner (Tool 1, v1.2.1)
 
 **Live basis (2026-10-08):** email live run 2, 45 domains, all 146 non-informational findings hand-verified, with checkdmarc as the external cross-check ([verification](../corpus/crosscheck/email-live/2026-10-08-run2/verification.md)). **A check that made a false claim on a live target is BROKEN until it is fixed.** DMARC claims are judged against RFC 9989, which obsoletes RFC 7489 (ledger D44).
 
@@ -106,7 +106,7 @@ Live basis: 13 real hosts, every claim hand-verified with `curl`, cross-checked 
 | `spf-lookup-limit` | SPF needs more than the 10 DNS lookups RFC 7208 allows, so receivers stop evaluating it and the policy fails | standard | high | `confirmed`: the **entire** include chain re-walked through the second resolver gives the same count. A chain that could not be finished gives `inconclusive` | WORKING (live run 2: 3 domains, confirmed by checkdmarc). The lookup counts it states differ from checkdmarc's (D46) |
 | `dmarc-missing` | No DMARC record, so receivers have no instruction for mail that fails SPF/DKIM | light | high | `confirmed`: a definite answer at `_dmarc` with no `v=DMARC1`, repeated through the second resolver | WORKING (live run 2: badssl.com, vulnweb.com) |
 | `dmarc-invalid` | A DMARC record that breaks RFC 7489. The finding says only what the RFC says a receiver does: no DMARC processing, or treat as `p=none` (no usable policy, §6.6.3), or discard the bad tag (§6.3) | light | high (medium when receivers treat it as `p=none`) | `confirmed` where RFC 7489 defines the receiver's handling: the parse failure reproduced from the second resolver's answer. **`suspected`** for a duplicated tag, a misplaced `p=` or a malformed optional tag, where it does not | WORKING verdict (live run 2: aajtak.in), but it cites RFC 7489, which is obsolete. Under RFC 9989 a misplaced `p=` is not an error (D44) |
-| `dmarc-policy-none` | DMARC policy `p=none`: monitoring only, so spoofed mail is still delivered | light | medium | `confirmed`: `p=none` read again through the second resolver | **BROKEN** (D45): a false claim live on about.com, whose `v=dmarc1` record must be ignored. True on 6 other domains |
+| `dmarc-policy-none` | DMARC policy `p=none`: monitoring only, so spoofed mail is still delivered | light | medium | `confirmed`: `p=none` read again through the second resolver | WORKING (live run 2: 6 domains). D45 is fixed in v1.2.1: about.com's `v=dmarc1` record is now reported as ignored, verified by replaying its live recording |
 | `dmarc-pct-partial` | DMARC applies to only part of the mail stream (`pct` below 100) | standard | medium | `confirmed`: `pct` read again through the second resolver | **BROKEN** (D44): `pct` is removed in RFC 9989, so both live positives are false under the current standard |
 | `dmarc-no-rua` | DMARC has no reporting address, so the owner never sees who is sending as them | standard | low | `confirmed`: absence of `rua=` repeated through the second resolver | WORKING (live run 2: 3 domains) |
 | `dmarc-alignment` | DMARC uses relaxed alignment (the RFC default). A legitimate choice, recorded as posture | standard | info | `informational` | UNDETERMINED (informational; not hand-verified) |

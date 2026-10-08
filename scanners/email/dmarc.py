@@ -7,8 +7,9 @@ What a receiver does with a broken record is a separate question, and RFC 7489
 answers it only for some errors. `receiver_handling` records which answer
 applies, so a finding says what the spec says and no more:
 
-- `ignored` - `v` is not first or not `DMARC1`: "the entire retrieved record
-  MUST be ignored" (section 6.3).
+- `ignored` - `v` is not first or not exactly `DMARC1` (case-sensitive): "the
+  entire retrieved record MUST be ignored" (RFC 7489 section 6.3, RFC 9989
+  section 4.7).
 - `no_processing` / `treat_as_none` - no valid `p`, or an invalid `sp`.
   Section 6.6.3 step 6: with a syntactically valid `rua` the receiver SHOULD act
   as if the record said `p=none`; without one it applies no DMARC processing.
@@ -126,8 +127,15 @@ def parse_dmarc(text: str) -> DmarcRecord:
         tags[name] = value
 
     names = [name for name, _ in pairs]
-    if not names or names[0] != "v" or tags.get("v", "").upper() != VERSION:
-        errors.append(f"record does not begin with v={VERSION}")
+    # Case-sensitive (D45): RFC 7489 6.3 "MUST match precisely", RFC 9989 4.7
+    # "the tag value is case sensitive". 'v=dmarc1' is a record receivers ignore.
+    if not names or names[0] != "v" or tags.get("v", "") != VERSION:
+        found = tags.get("v")
+        errors.append(
+            f"the version is {found!r}, not exactly {VERSION!r}"
+            if found is not None and names and names[0] == "v"
+            else f"record does not begin with v={VERSION}"
+        )
         return DmarcRecord(raw=raw, tags=tags, errors=errors, receiver_handling="ignored")
 
     policy_usable = True

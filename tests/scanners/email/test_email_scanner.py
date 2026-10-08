@@ -1059,3 +1059,22 @@ def test_spf_missing_does_not_say_forged_mail_passes_spf(findings_for):
 
     assert "passes SPF" not in found.impact
     assert "None" in found.impact
+
+
+# --- D45: the version tag is case-sensitive ---------------------------------
+
+
+def test_a_lower_case_dmarc_version_is_not_reported_as_a_policy(run_scan):
+    """about.com, live run 2: 'v=dmarc1; p=none' was reported as p=none. Under
+    both RFCs receivers MUST ignore the record, so the true finding is that."""
+    answers = zone("x.example", spf="v=spf1 -all", dmarc="v=dmarc1; p=none; rua=mailto:d@x.example")
+    result = run_scan("x.example", answers, mode="standard")
+    by_id = {f.check_id: f for f in result.findings}
+
+    assert "dmarc-policy-none" not in by_id
+    invalid = by_id["dmarc-invalid"]
+    assert invalid.state == "confirmed"
+    assert "ignored" in invalid.description and "RFC 9989" in invalid.description
+    spoof = by_id["spoofing-possible"]
+    assert "p=none" not in spoof.description
+    assert "ignore" in spoof.description

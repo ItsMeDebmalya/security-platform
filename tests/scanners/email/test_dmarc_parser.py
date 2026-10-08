@@ -136,3 +136,13 @@ def test_the_raw_record_and_parse_tree_are_kept_for_evidence():
 )
 def test_each_error_is_classified_by_what_rfc_7489_says_a_receiver_does(record, handling):
     assert parse_dmarc(record).receiver_handling == handling
+
+
+@pytest.mark.parametrize("version", ["dmarc1", "Dmarc1", "DMARc1"])
+def test_a_version_that_is_not_exactly_dmarc1_makes_the_record_ignored(version):
+    """D45. RFC 7489 6.3 ("MUST match precisely") and RFC 9989 4.7 ("case
+    sensitive ... the entire record MUST be ignored") agree."""
+    record = parse_dmarc(f"v={version}; p=none")
+
+    assert not record.valid
+    assert record.receiver_handling == "ignored"
