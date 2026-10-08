@@ -1078,3 +1078,41 @@ def test_a_lower_case_dmarc_version_is_not_reported_as_a_policy(run_scan):
     spoof = by_id["spoofing-possible"]
     assert "p=none" not in spoof.description
     assert "ignore" in spoof.description
+
+
+# --- D47: transport-security advice on domains that accept no mail ---------
+
+
+@pytest.mark.parametrize("check_id", ["mta-sts-missing", "tls-rpt-missing"])
+def test_a_null_mx_domain_gets_no_inbound_transport_advice(run_scan, check_id):
+    """RFC 7505: 'MX 0 .' says the domain accepts no mail. MTA-STS (RFC 8461)
+    and TLS-RPT (RFC 8460) protect inbound delivery, so there is nothing to
+    protect, and telling the owner to publish them is bad advice."""
+    answers = zone("nomail.example", mx=("0 .",), spf="v=spf1 -all", dmarc="v=DMARC1; p=reject")
+    result = run_scan("nomail.example", answers, mode="standard")
+
+    assert [f for f in result.findings if f.check_id == check_id] == []
+    assert check_id not in {c.check_id for c in result.telemetry.checks_run}
+
+
+@pytest.mark.parametrize("check_id", ["mta-sts-missing", "tls-rpt-missing"])
+def test_a_domain_with_no_mx_gets_informational_transport_findings_not_advice(run_scan, check_id):
+    """No MX is not 'no mail': senders fall back to the A record (RFC 5321
+    5.1). RFC 8461 is written in terms of MX hosts and does not say whether it
+    applies to that fallback, so we neither claim nor advise; mx-missing is
+    the finding to act on."""
+    answers = zone("nomx.example", mx=(), spf="v=spf1 -all", dmarc="v=DMARC1; p=reject")
+    result = run_scan("nomx.example", answers, mode="standard")
+    [found] = [f for f in result.findings if f.check_id == check_id]
+
+    assert found.state == "informational"
+    assert found.severity == "info"
+    assert "mx-missing" in found.description
+
+
+@pytest.mark.parametrize("check_id", ["mta-sts-missing", "tls-rpt-missing"])
+def test_a_domain_that_receives_mail_still_gets_the_transport_findings(run_scan, check_id):
+    result = run_scan("x.example", zone("x.example", spf="v=spf1 -all"), mode="standard")
+    [found] = [f for f in result.findings if f.check_id == check_id]
+
+    assert found.state == "confirmed" and found.severity == "low"

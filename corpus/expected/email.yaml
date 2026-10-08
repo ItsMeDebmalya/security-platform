@@ -10,12 +10,13 @@ null-mx: []
 # from the gate entirely - it is not a vulnerability claim.
 dmarc-relaxed-alignment: []
 
+# No MX records, so mta-sts-missing and tls-rpt-missing are informational, not
+# claims (D47, 2026-10-08): RFC 8461 is written in terms of MX hosts, and
+# advising MTA-STS for a domain that publishes none is bad advice.
 nothing-configured:
   - { check_id: spf-missing, location: "$" }
   - { check_id: dmarc-missing, location: "$" }
   - { check_id: mx-missing, location: "$" }
-  - { check_id: mta-sts-missing, location: "$" }
-  - { check_id: tls-rpt-missing, location: "$" }
   - { check_id: spoofing-possible, location: "$" }
 
 dmarc-monitoring-only:
