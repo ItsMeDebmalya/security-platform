@@ -415,6 +415,9 @@ Then restore the entry-point lines in `CLAUDE.md` and `SPEC.md`, and the revert 
 - Two recorded corpus cases (`disagree-stale-spf`, `disagree-stale-dkim`) come from `corpus/generators/email_recorded.py`.
 - `email` `spoofing-possible` validation re-reads SPF as well as DMARC.
 - Ruff excludes `corpus/crosscheck/email-live/`, which is checksummed evidence.
+- The email corpus fixtures were re-recorded. About 386 change their `resolver` field from `null` to the resolver asked, and the wildcard probe labels are new. No outcome changes.
+- `spoofing-possible` validation shows the SPF record it re-read in its evidence. A validation predicate may now return `None`, meaning "could not validate" (`unavailable`).
+- Runbook §10: a resolver reachability check before live runs.
 
 **Revert.** Restore the previous `SystemResolver` and `FakeResolver` from git, and drop the two cases and their fixtures. Not advised: it restores evidence that names a resolver which never answered.
 

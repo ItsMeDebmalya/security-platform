@@ -78,7 +78,7 @@ def test_a_named_resolver_that_fails_is_not_silently_replaced_by_another(wire):
     provenance defect in a different place. A failure stays a failure."""
     sent, answering = wire
     answering.add("8.8.8.8")
-    resolver = SystemResolver(["1.1.1.1", "8.8.8.8"])
+    resolver = SystemResolver(["1.1.1.1", "8.8.8.8"], timeout_s=0.1)
 
     response = resolver.resolve("example.com", "TXT", "1.1.1.1")
 
@@ -90,7 +90,7 @@ def test_a_named_resolver_that_fails_is_not_silently_replaced_by_another(wire):
 def test_an_unnamed_query_is_labelled_with_the_server_that_actually_answered(wire):
     sent, answering = wire
     answering.add("8.8.8.8")
-    resolver = SystemResolver(["1.1.1.1", "8.8.8.8"])
+    resolver = SystemResolver(["1.1.1.1", "8.8.8.8"], timeout_s=0.5)
 
     response = resolver.resolve("example.com", "TXT")
 
