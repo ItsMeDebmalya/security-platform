@@ -23,7 +23,7 @@
   spdx: MIT
   source: https://github.com/pydantic/pydantic
   purpose: typed models for the Scanner Contract
-  isolation: subprocess   # GPL: separate process, output parsed. Never imported.
+  isolation: library
   signed_off_by: satwik
   signed_off_at: 2026-08-22
 
@@ -33,7 +33,7 @@
   spdx: MIT
   source: https://github.com/python-jsonschema/jsonschema
   purpose: validating findings against contracts/*.schema.json
-  isolation: subprocess   # GPL: separate process, output parsed. Never imported.
+  isolation: library
   signed_off_by: satwik
   signed_off_at: 2026-08-22
 
@@ -43,7 +43,7 @@
   spdx: MIT
   source: https://github.com/yaml/pyyaml
   purpose: corpus definitions, authorised scope, this registry
-  isolation: subprocess   # GPL: separate process, output parsed. Never imported.
+  isolation: library
   signed_off_by: satwik
   signed_off_at: 2026-08-22
 
@@ -53,7 +53,7 @@
   spdx: MIT
   source: https://github.com/mdomke/python-ulid
   purpose: time-sortable scan_id
-  isolation: subprocess   # GPL: separate process, output parsed. Never imported.
+  isolation: library
   signed_off_by: satwik
   signed_off_at: 2026-08-22
 
@@ -63,7 +63,7 @@
   spdx: ISC
   source: https://github.com/rthalley/dnspython
   purpose: the live resolver behind core/dns.py
-  isolation: subprocess   # GPL: separate process, output parsed. Never imported.
+  isolation: library
   signed_off_by: satwik
   signed_off_at: 2026-08-22
 
@@ -73,7 +73,7 @@
   spdx: BSD-3-Clause
   source: https://github.com/encode/httpx
   purpose: the transport behind core/http.py
-  isolation: subprocess   # GPL: separate process, output parsed. Never imported.
+  isolation: library
   signed_off_by: satwik
   signed_off_at: 2026-08-22
 
@@ -83,7 +83,7 @@
   spdx: MIT
   source: https://github.com/fastapi/typer
   purpose: the scan CLI
-  isolation: subprocess   # GPL: separate process, output parsed. Never imported.
+  isolation: library
   signed_off_by: satwik
   signed_off_at: 2026-08-22
 
@@ -93,7 +93,7 @@
   spdx: Apache-2.0
   source: https://github.com/pyca/cryptography
   purpose: X.509 parsing for the TLS analyser, and minting the local corpus certificates
-  isolation: subprocess   # GPL: separate process, output parsed. Never imported.
+  isolation: library
   signed_off_by: satwik
   signed_off_at: 2026-08-24
 
@@ -122,7 +122,7 @@
   spdx: MIT
   source: https://github.com/pytest-dev/pytest
   purpose: test runner
-  isolation: subprocess   # GPL: separate process, output parsed. Never imported.
+  isolation: library
   signed_off_by: satwik
   signed_off_at: 2026-08-22
 
@@ -132,7 +132,7 @@
   spdx: MIT
   source: https://github.com/astral-sh/ruff
   purpose: lint and format
-  isolation: subprocess   # GPL: separate process, output parsed. Never imported.
+  isolation: subprocess   # run as a separate command; never imported
   signed_off_by: satwik
   signed_off_at: 2026-08-22
 
@@ -142,7 +142,7 @@
   spdx: MIT
   source: https://github.com/python/mypy
   purpose: strict type checking of core/
-  isolation: subprocess   # GPL: separate process, output parsed. Never imported.
+  isolation: subprocess   # run as a separate command; never imported
   signed_off_by: satwik
   signed_off_at: 2026-08-22
 
@@ -152,7 +152,7 @@
   spdx: MIT
   source: https://github.com/python-jsonschema/referencing
   purpose: cross-file $ref resolution in the contract drift test
-  isolation: subprocess   # GPL: separate process, output parsed. Never imported.
+  isolation: library
   signed_off_by: satwik
   signed_off_at: 2026-08-22
 
@@ -162,7 +162,7 @@
   spdx: Apache-2.0
   source: https://github.com/python/typeshed
   purpose: type stubs
-  isolation: subprocess   # GPL: separate process, output parsed. Never imported.
+  isolation: library
   signed_off_by: satwik
   signed_off_at: 2026-08-22
 
@@ -172,7 +172,7 @@
   spdx: Apache-2.0
   source: https://github.com/python/typeshed
   purpose: type stubs
-  isolation: subprocess   # GPL: separate process, output parsed. Never imported.
+  isolation: library
   signed_off_by: satwik
   signed_off_at: 2026-08-22
 
