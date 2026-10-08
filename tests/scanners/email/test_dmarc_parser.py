@@ -118,3 +118,21 @@ def test_the_raw_record_and_parse_tree_are_kept_for_evidence():
 
     assert record.to_dict()["raw"] == "v=DMARC1; p=none; pct=50"
     assert record.to_dict()["tags"]["pct"] == "50"
+
+
+@pytest.mark.parametrize(
+    ("record", "handling"),
+    [
+        ("v=DMARC1; p=reject", None),
+        ("v=DMARC1", "no_processing"),
+        ("v=DMARC1; p=bogus", "no_processing"),
+        ("v=DMARC1; rua=mailto:d@example.com", "treat_as_none"),
+        ("v=DMARC1; p=reject; sp=bogus; rua=mailto:d@example.com", "treat_as_none"),
+        ("v=DMARC1; p=reject; p=none", "undefined"),
+        ("v=DMARC1; rua=mailto:d@example.com; p=reject", "undefined"),
+        ("v=DMARC1; p=reject; pct=abc", "discard_tag"),
+        ("v=DMARC1; p=reject; adkim=x", "discard_tag"),
+    ],
+)
+def test_each_error_is_classified_by_what_rfc_7489_says_a_receiver_does(record, handling):
+    assert parse_dmarc(record).receiver_handling == handling

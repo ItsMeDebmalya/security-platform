@@ -1102,6 +1102,25 @@ Each of these was a false-claim or secret-leak path **in the plan's own code**, 
 
 ---
 
+## 2026-10-08 · Email v1.1.0 — three claim defects fixed before the live re-verification
+
+**Why.** The operator ruled that the three wording defects found while screening (D35) be fixed before the live run, so that hand-verification is done once, against a tool that does not already misstate things. Test-first: 23 new tests, 22 of which failed before the fix (the `+all` wording was already right). Rule applied throughout: **never assert what other people's software does unless a spec says it.** The RFC text was read from rfc-editor.org (RFC 7208, 7489, 6376, 8301), not recalled.
+
+| Check | Was | Now | Spec basis |
+|---|---|---|---|
+| `spf-too-permissive` (`?all`) | "tells receivers that mail from any server is acceptable"; title "permits any sender" | Says what Neutral is: an explicit non-assertion, which receivers MUST treat exactly like no SPF policy. Its own title. **Severity unchanged (high)** until the operator rules on the DMARC-dependent mapping | RFC 7208 §2.6.2, §8.2 |
+| `dkim-weak-key` | Medium; judged only the **first** selector found; an Ed25519 key (256 bits) would have been called weak | **Low** at 1024–2047 bits ("meets the RFC 8301 minimum of 1024 bits, below the recommended 2048"); medium below 1024. Every common selector read; the weakest is reported. Where stronger keys coexist, it names them and says we cannot tell which one signs. Ed25519 and revoked keys are not judged by size | RFC 8301 §3.1–3.2; RFC 6376 §6.1.2 (the signature's `s=` names the key) |
+| `dmarc-invalid` | "Receivers ignore a record like this entirely" for every error | Classified by what RFC 7489 says. **No usable policy:** no DMARC processing, or treat as `p=none` when a valid `rua` exists (§6.6.3 step 6), still `confirmed`. **Malformed optional tag:** RFC says discard the tag and keep the record (§6.3), `suspected`. **Duplicate tag or misplaced `p=`:** forbidden, but the RFC does not define receiver handling, so the finding says implementations vary, `suspected` | RFC 7489 §6.3, §6.6.3; RFC 6376 §3.2 (duplicate tags, adopted by 7489 §6.3) |
+
+**The duplicate-tag question was settled from the RFC text, not researched further.** RFC 7489 adopts DKIM's tag-value syntax, under which a duplicated tag makes the tag-list invalid, but it defines no receiver behaviour for that case. That one sentence decides the wording, so the check stays in the live run.
+
+**Gate effect.** `make corpus`: email 1.000 / 1.000, now **20 claims** (was 21). The `dmarc-malformed` case puts `p=` after `rua=`, so it is now `suspected`, which the gate excludes on both sides. Fixtures were re-recorded by the generator because the scanner now queries every selector. 1173 tests pass. The number stays unquotable until D35 closes.
+
+**Not changed, and proposed instead:**
+- `spoofing-possible` still treats `?all` as "accepts any sending server". It therefore fires on `?all` with `p=reject`, where RFC 7208 §8.2 plus enforced DMARC means forged mail fails.
+- `spoofing-possible` still says a malformed DMARC record is "ignored", including in the cases where the RFC does not say so.
+- `dmarc-invalid`'s treat-as-`p=none` case is still rated high, while `dmarc-policy-none` is rated medium.
+
 ## Next
 
 **Watch (no action now):** `tls` runs at **12.3% inconclusive** on its corpus — inside the 15% gate but the closest of any scanner to it (see the `make corpus` table in SPEC.md). A small rise would fail the gate; look at it before the next TLS change.

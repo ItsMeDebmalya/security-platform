@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "s1._domainkey.corpus-badspf.example",
+  "rcode": "NXDOMAIN",
+  "records": [],
+  "resolver": null,
+  "rrtype": "TXT",
+  "ttl": null
+}

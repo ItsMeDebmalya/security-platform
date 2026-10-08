@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "k2._domainkey.corpus-nomail.example",
+  "rcode": "NXDOMAIN",
+  "records": [],
+  "resolver": null,
+  "rrtype": "TXT",
+  "ttl": null
+}

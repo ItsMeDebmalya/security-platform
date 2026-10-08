@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "google._domainkey.corpus-pnone.example",
+  "rcode": "NXDOMAIN",
+  "records": [],
+  "resolver": null,
+  "rrtype": "TXT",
+  "ttl": null
+}

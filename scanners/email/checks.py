@@ -179,11 +179,13 @@ CHECKS: dict[str, Check] = {
         Check(
             check_id="dkim-weak-key",
             title="DKIM key is below 2048 bits",
-            severity="medium",
+            # low: at 1024 bits the key meets RFC 8301's minimum. A key below
+            # that minimum is raised to medium where it is reported.
+            severity="low",
             likelihood_ratio=30.0,
             justification=(
-                "the modulus length is measured from the key itself, but a domain may publish "
-                "several selectors and we only see the ones we found"
+                "the modulus length is measured from the key itself; every common selector is "
+                "read, but a domain may publish others we cannot find"
             ),
             passive=True,
             mode="standard",
