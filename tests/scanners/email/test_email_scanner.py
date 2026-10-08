@@ -923,3 +923,96 @@ def test_a_dmarc_error_with_undefined_handling_holds_spoofing_at_suspected(findi
 
     assert found.state == "suspected"
     assert "vary" in found.description
+
+
+# --- D39: the second resolver is real now, so it can disagree ---------------
+
+
+def test_a_stale_primary_answer_fails_validation_at_the_second_resolver():
+    """icicibank.com, 2026-10-08: one resolver served the TXT set without SPF."""
+    from core.context import ScanContext
+    from core.dns import DnsClient, FakeResolver
+    from core.models import Asset
+    from scanners.email import EmailScanner
+
+    answers = zone("x.example", spf="v=spf1 -all", dmarc="v=DMARC1; p=reject")
+    stale = {("x.example", "TXT"): answer("x.example", "TXT", "google-site-verification=abc")}
+    ctx = ScanContext(
+        dns=DnsClient(
+            resolver=FakeResolver(answers, by_resolver={"8.8.8.8": stale}),
+            resolvers=["8.8.8.8", "1.1.1.1"],
+        )
+    )
+    result = EmailScanner().run(Asset(type="domain", value="x.example"), "standard", ctx)
+    by_id = {f.check_id: f for f in result.findings}
+
+    assert by_id["spf-missing"].state == "suspected"
+    assert by_id["spf-missing"].validation.outcome == "failed"
+    assert "spoofing-possible" not in by_id or by_id["spoofing-possible"].state != "confirmed"
+
+
+def test_the_spoofing_validation_re_reads_spf_not_only_dmarc():
+    """Validation must re-observe every record the verdict rests on. It used to
+    re-read DMARC from the second resolver and reuse the first one's SPF."""
+    from core.context import ScanContext
+    from core.dns import DnsClient, FakeResolver
+    from core.models import Asset
+    from scanners.email import EmailScanner
+
+    answers = zone("x.example", spf="v=spf1 -all", dmarc="v=DMARC1; p=none")
+    stale = {("x.example", "TXT"): answer("x.example", "TXT", "v=spf1 +all")}
+    ctx = ScanContext(
+        dns=DnsClient(
+            resolver=FakeResolver(answers, by_resolver={"8.8.8.8": stale}),
+            resolvers=["8.8.8.8", "1.1.1.1"],
+        )
+    )
+    result = EmailScanner().run(Asset(type="domain", value="x.example"), "standard", ctx)
+    [spoof] = [f for f in result.findings if f.check_id == "spoofing-possible"]
+
+    # p=none is a reason at both resolvers, '+all' only at the stale one. The
+    # verdict still holds, but its stated reasons must survive re-reading.
+    assert spoof.validation.outcome == "failed"
+
+
+def test_the_spoofing_validation_shows_the_spf_record_it_re_read():
+    """D39 review: a validation outcome must be traceable to what was re-read."""
+    from core.context import ScanContext
+    from core.dns import DnsClient, FakeResolver
+    from core.models import Asset
+    from scanners.email import EmailScanner
+
+    answers = zone("x.example", spf="v=spf1 -all", dmarc="v=DMARC1; p=none")
+    stale = {("x.example", "TXT"): answer("x.example", "TXT", "v=spf1 +all")}
+    ctx = ScanContext(
+        dns=DnsClient(
+            resolver=FakeResolver(answers, by_resolver={"8.8.8.8": stale}),
+            resolvers=["8.8.8.8", "1.1.1.1"],
+        )
+    )
+    result = EmailScanner().run(Asset(type="domain", value="x.example"), "standard", ctx)
+    [spoof] = [f for f in result.findings if f.check_id == "spoofing-possible"]
+
+    labels = [e.label for e in spoof.evidence]
+    assert any("TXT at x.example" in label and "1.1.1.1" in label for label in labels)
+
+
+def test_a_second_resolver_that_cannot_answer_the_spf_re_read_leaves_validation_unavailable():
+    """A timeout is not a disagreement (D39 review)."""
+    from core.context import ScanContext
+    from core.dns import DnsClient, FakeResolver
+    from core.models import Asset
+    from scanners.email import EmailScanner
+
+    answers = zone("x.example", spf="v=spf1 -all", dmarc="v=DMARC1; p=none")
+    timeout = {("x.example", "TXT"): answer("x.example", "TXT", rcode="TIMEOUT")}
+    ctx = ScanContext(
+        dns=DnsClient(
+            resolver=FakeResolver(answers, by_resolver={"1.1.1.1": timeout}),
+            resolvers=["8.8.8.8", "1.1.1.1"],
+        )
+    )
+    result = EmailScanner().run(Asset(type="domain", value="x.example"), "standard", ctx)
+    [spoof] = [f for f in result.findings if f.check_id == "spoofing-possible"]
+
+    assert spoof.validation.outcome == "unavailable"

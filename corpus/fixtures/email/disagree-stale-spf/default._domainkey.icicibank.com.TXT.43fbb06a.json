@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "default._domainkey.icicibank.com",
+  "rcode": "NXDOMAIN",
+  "records": [],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": null
+}

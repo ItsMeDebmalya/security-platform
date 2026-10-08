@@ -130,3 +130,25 @@ cases:
     expect_inconclusive: true
     target: { type: domain, value: corpus-broken.example }
     fixtures: corpus/fixtures/email/servfail
+
+  # --- second-resolver disagreement, recorded from real resolvers (D39) -----
+  # corpus/generators/email_recorded.py, from email live run 1's archived
+  # three-resolver measurement. Ground truth hand-verified 2026-10-08 with dig
+  # through 1.1.1.1 and 8.8.8.8, and DKIM key sizes with openssl.
+
+  - id: disagree-stale-spf
+    tier: real_disagreement
+    source: recorded
+    mode: standard
+    resolvers: ["8.8.8.8", "1.1.1.1"]
+    target: { type: domain, value: icicibank.com }
+    fixtures: corpus/fixtures/email/disagree-stale-spf
+
+  - id: disagree-stale-dkim
+    tier: real_disagreement
+    source: recorded
+    mode: standard
+    resolvers: ["9.9.9.9", "1.1.1.1"]
+    target: { type: domain, value: flipkart.com }
+    fixtures: corpus/fixtures/email/disagree-stale-dkim
+

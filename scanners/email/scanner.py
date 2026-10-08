@@ -92,6 +92,7 @@ class _Scan:
         self.findings: list[Finding] = []
         self.checks: list[CheckRun] = []
         self.engine = ConfidenceEngine()
+        self._also_reread: list[DnsResponse] = []
 
     # --- orchestration ------------------------------------------------------
 
@@ -962,6 +963,7 @@ class _Scan:
             return
 
         reasons, only_hedge = _spoofing_reasons(self.dmarc, self.spf.record)
+        self._spoof_reasons = reasons
 
         if not reasons:
             self._clear("spoofing-possible")
@@ -1009,10 +1011,23 @@ class _Scan:
         again = resolve_spf_chain(self.domain, self.dns, resolver=second)
         return again.definite and again.exceeded
 
-    def _still_spoofable(self, answer: DnsResponse) -> bool:
-        """Re-run the receiver simulation on the second resolver's DMARC answer."""
-        reasons, _ = _spoofing_reasons(_parse_dmarc_answer(answer), self.spf.record)
-        return bool(reasons)
+    def _still_spoofable(self, answer: DnsResponse) -> bool | None:
+        """Re-run the receiver simulation on the second resolver's DMARC **and SPF**.
+
+        The verdict rests on both records, so both are re-read. Until D39 was
+        fixed this reused the first resolver's SPF record, which went unnoticed
+        because no "second" resolver was really asked. Once one was, a stale
+        SPF answer at the primary passed validation. Validation passes only
+        when the second resolver gives the same reasons. An SPF re-read that
+        does not come back definite leaves validation `unavailable`: a timeout
+        is not a disagreement.
+        """
+        spf_again = fetch_spf(self.domain, self.dns, resolver=self.dns.second_resolver())
+        self._also_reread.append(spf_again.answer)
+        if not spf_again.definite:
+            return None
+        reasons, _ = _spoofing_reasons(_parse_dmarc_answer(answer), spf_again.record)
+        return reasons == self._spoof_reasons
 
     # --- emitting -----------------------------------------------------------
 
@@ -1064,6 +1079,7 @@ class _Scan:
             state_confidence=result,
             validation=validation,
             second=second,
+            also_reread=self._also_reread,
             description=description,
             impact=impact,
             remediation=remediation,
@@ -1125,7 +1141,9 @@ class _Scan:
         remediation: str,
         analysis: dict[str, Any] | None,
         no_verdict_reason: str | None = None,
+        also_reread: list[DnsResponse] | None = None,
     ) -> None:
+        also_reread = also_reread or []
         evidence = [
             dns_evidence(
                 label=f"{answer.rrtype} at {answer.name}",
@@ -1149,6 +1167,23 @@ class _Scan:
                     control_rationale=(
                         "the control for this re-query is the first resolver's answer, "
                         "captured above"
+                    ),
+                )
+            )
+        for extra in also_reread:
+            # Every other record the validation re-read. Its outcome rests on
+            # these too, so the evidence shows them (D39 review).
+            evidence.append(
+                dns_evidence(
+                    label=(
+                        f"independent re-query via {extra.resolver} "
+                        f"({extra.rrtype} at {extra.name})"
+                    ),
+                    test=extra,
+                    control=None,
+                    control_rationale=(
+                        "re-read for the same validation; compare with the first resolver's "
+                        "answer for this name"
                     ),
                 )
             )
@@ -1197,6 +1232,7 @@ class _Scan:
         configured the outcome is `unavailable` - validation that could not
         run never pretends to have passed.
         """
+        self._also_reread = []
         second_resolver = self.dns.second_resolver()
         if second_resolver is None or predicate is None:
             return (
@@ -1210,7 +1246,15 @@ class _Scan:
                 {"attempted": True, "outcome": "unavailable", "method": "independent_resolver"},
                 confirmation,
             )
-        agreed = bool(predicate(confirmation))
+        # A predicate returns None when a further record it needed could not be
+        # read: that is "could not validate", never "the resolver disagreed".
+        verdict = predicate(confirmation)
+        if verdict is None:
+            return (
+                {"attempted": True, "outcome": "unavailable", "method": "independent_resolver"},
+                confirmation,
+            )
+        agreed = bool(verdict)
         return (
             {
                 "attempted": True,

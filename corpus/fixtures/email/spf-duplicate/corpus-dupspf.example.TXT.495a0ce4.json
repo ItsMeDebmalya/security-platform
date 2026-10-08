@@ -6,7 +6,7 @@
     "v=spf1 include:_spf.mailhost.example ~all",
     "v=spf1 ip4:192.0.2.0/24 -all"
   ],
-  "resolver": null,
+  "resolver": "1.1.1.1",
   "rrtype": "TXT",
   "ttl": 300
 }

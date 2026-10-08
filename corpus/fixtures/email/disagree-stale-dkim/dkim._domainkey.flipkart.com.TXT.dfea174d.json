@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "dkim._domainkey.flipkart.com",
+  "rcode": "NXDOMAIN",
+  "records": [],
+  "resolver": "9.9.9.9",
+  "rrtype": "TXT",
+  "ttl": null
+}

@@ -775,6 +775,16 @@ Working as intended for any check declared active (§5), whatever the mode. Sinc
 
 **`error: unknown mode 'aggressive'; expected light, standard or deep`** — exit 1.
 
+**Every `email` (or `domscout`) check is `inconclusive`, each saying `The TXT lookup for … returned TIMEOUT` (or `SERVFAIL`)**, and the scan exits 0.
+Since D39 was fixed (2026-10-08), a query goes **only** to the resolver it names: 1.1.1.1 for the primary lookup, 8.8.8.8 to validate. A blocked or filtered resolver now shows up as its own failure instead of being silently replaced by the other one. Each query to a dead resolver also waits the full 5 s. Before a live run, check that both are reachable from this network (WSL and corporate networks sometimes block one):
+
+```
+dig +time=2 +tries=1 @1.1.1.1 example.com A
+dig +time=2 +tries=1 @8.8.8.8 example.com A
+```
+
+If either times out, run from a network where both answer. Do not repoint the scanner at the system resolver: the evidence would then name a resolver that may not be the one that answered.
+
 **`no recorded answer for … (resolver 1.1.1.1) in ./fixtures. Record it with --record before replaying; a replay run never falls back to the wire.`** — exit 1.
 You are replaying fixtures that do not cover a query the scanner makes. Re-record them. This is common and expected after changing which names a scanner queries.
 

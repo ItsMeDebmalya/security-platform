@@ -3,7 +3,7 @@
   "name": "smtp._domainkey.corpus-bare.example",
   "rcode": "NXDOMAIN",
   "records": [],
-  "resolver": null,
+  "resolver": "1.1.1.1",
   "rrtype": "TXT",
   "ttl": null
 }

@@ -3,7 +3,7 @@
   "name": "selector2._domainkey.corpus-nomail.example",
   "rcode": "NXDOMAIN",
   "records": [],
-  "resolver": null,
+  "resolver": "1.1.1.1",
   "rrtype": "TXT",
   "ttl": null
 }

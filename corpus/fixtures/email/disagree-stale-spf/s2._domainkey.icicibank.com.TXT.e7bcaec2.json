@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "s2._domainkey.icicibank.com",
+  "rcode": "NOERROR",
+  "records": [
+    "k=rsa; t=s; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDIy9gBo94pACiQn43ZdHUMtEvHYfcfjLYXBumd8wPDrCaMeWHgokjd0kkvrO2BOIR7IvzXO/vF/jgasgYA3fbK6LYMcounVLVEe4tZHjrHy246jTInWhymzErw+O17XPSUQwXeSbiJVC3zKHmPYb/AVz3i/gjSgA0y5xjhEwUk6wIDAQAB"
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": null
+}

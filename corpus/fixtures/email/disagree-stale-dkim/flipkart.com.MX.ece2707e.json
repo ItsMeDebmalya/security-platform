@@ -1,0 +1,12 @@
+{
+  "flags": [],
+  "name": "flipkart.com",
+  "rcode": "NOERROR",
+  "records": [
+    "1 eu-smtp-inbound-1.mimecast.com.",
+    "1 eu-smtp-inbound-2.mimecast.com."
+  ],
+  "resolver": "9.9.9.9",
+  "rrtype": "MX",
+  "ttl": null
+}

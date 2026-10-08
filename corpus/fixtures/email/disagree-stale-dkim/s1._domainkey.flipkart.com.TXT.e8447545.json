@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "s1._domainkey.flipkart.com",
+  "rcode": "NOERROR",
+  "records": [
+    "k=rsa; t=s; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwfp+Utq42TpzP2JgEZr5yxmhU9y7XRiqT1bIlJ4e8yCQVBFi0z0aeQKoDzffHttx+UZaMifzqzHMV3mwBo7CvEL9l4AZSAe/DfrtygCczgqVgIWC6vL0o9iYRr+4tKRaS5R2OiBhdcfuSzy4luysgkrz8Mn5iYHeUFgkooyLcEoXC5Q5f9bb7yCYFCnQY9wOeMb0aJZQL8parGkbtsdRRBca9kTajjDz+eznAEgOSqQFKDZ8Kg81V+9q5KoTorDdx06LUpEmUnoxGRezHTlRXRqWzVyxQ0364L0G+zfEA1Hd7D7RhohU2O1FY4DioqkDK+vhu9mTr1jWsLz+gsINiwIDAQAB"
+  ],
+  "resolver": "9.9.9.9",
+  "rrtype": "TXT",
+  "ttl": null
+}
