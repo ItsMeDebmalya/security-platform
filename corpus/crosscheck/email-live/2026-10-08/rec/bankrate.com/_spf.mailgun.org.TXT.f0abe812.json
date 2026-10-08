@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_spf.mailgun.org",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 include:_spf1.mailgun.org include:_spf2.mailgun.org ~all"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 31
+}

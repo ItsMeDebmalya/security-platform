@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "selector1._domainkey.makemytrip.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCdapnnbpg0GDJipyv7r4IAyGGrvkPkPMIztx4os2RNRMp2AR3XF5ieQVBnaC1FYKPrM18yaKUpKBCUX2W12DfpIk9OKitIaJUnvyiGTSXuBoCZliIp6zpwGvdCW0vEioqHU4ioXBQb4HjMo9fX9hVW7fTKpRO9eJkRe94Du3CM+wIDAQAB;"
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": 3600
+}

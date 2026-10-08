@@ -1,0 +1,14 @@
+{
+  "flags": [],
+  "name": "md02.com",
+  "rcode": "NOERROR",
+  "records": [
+    "yahoo-verification-key=XCO5HGgAjvmMRDLlhjtLWc3EmRK+58nr1U9rY3DLLDk=",
+    "google-site-verification=kl_lF2BORQR8ZnmehZ1MJSukIUcplyftwDuE4-tfb-g",
+    "google-site-verification=42ZmuJ_zdVTltTPlcOrkQr44mNh8hT_NWLXu_-ncih4",
+    "v=spf1 ip4:70.38.100.0/24 ip4:209.172.40.80/28 ip4:209.172.40.192/26 -all"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 1800
+}

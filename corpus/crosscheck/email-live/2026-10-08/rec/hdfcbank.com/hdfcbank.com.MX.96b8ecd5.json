@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "hdfcbank.com",
+  "rcode": "NOERROR",
+  "records": [
+    "0 hdfcbank-com.mail.protection.outlook.com."
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "MX",
+  "ttl": 300
+}

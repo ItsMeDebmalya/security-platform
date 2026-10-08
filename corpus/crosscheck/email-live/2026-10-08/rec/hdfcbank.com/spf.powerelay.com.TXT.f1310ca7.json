@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "spf.powerelay.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 ip4:202.154.160.11 ip4:202.154.160.0/24 ip4:202.154.162.128/25 ip4:202.154.171.0/25 include:2-spf.powerelay.com include:3-spf.powerelay.com include:6-spf.powerelay.com  ip4:202.154.171.192/26 ip4:202.154.170.160/27 ip4:202.154.171.37 ip4:202.154.171.38 ip4:103.161.218.0/24 ip4:103.161.219.0/24 -all"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 60
+}

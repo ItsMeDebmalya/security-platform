@@ -1,0 +1,336 @@
+{
+  "scanner": "email",
+  "scanner_version": "1.1.0",
+  "target": {
+    "type": "domain",
+    "value": "google.com"
+  },
+  "mode": "standard",
+  "findings": [
+    {
+      "id": "sha256:243d9ab897a87792f41715a6dbd8ce615f4ff4c31b37672834c709c6231079f9",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "dkim-missing",
+      "renamed_from": [],
+      "title": "No DKIM key found",
+      "target": {
+        "type": "domain",
+        "value": "google.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "medium",
+      "confidence": 0.5,
+      "confidence_provisional": true,
+      "state": "inconclusive",
+      "no_verdict_reason": "blocked_prerequisite",
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 1.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the lookup produced no usable answer, so nothing moves the prior"
+        }
+      ],
+      "validation": {
+        "attempted": false,
+        "outcome": "unavailable",
+        "method": null
+      },
+      "evidence": [
+        {
+          "label": "TXT at sp-wildcard-probe-a4c9c0c7.google.com",
+          "captured_at": "2026-10-08T10:43:38.814536Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "sp-wildcard-probe-a4c9c0c7.google.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-a4c9c0c7.google.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "google.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "None of the 17 common DKIM selectors resolved for google.com. DKIM selector names are chosen freely by the sender and cannot be enumerated, so this does not show that the domain has no DKIM - only that we could not find a key.",
+      "impact": "Unknown: we could not determine whether DKIM is configured.",
+      "remediation": "If you know your selector, check it directly: the record lives at <selector>._domainkey.google.com. Your mail provider's documentation names the selector it uses.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc6376"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:38.814548Z",
+      "first_seen_scan_id": "01M4DHS3DWH5TY7SFDPCSB67AQ",
+      "last_seen": "2026-10-08T10:43:38.814548Z",
+      "last_seen_scan_id": "01M4DHS3DWH5TY7SFDPCSB67AQ",
+      "cost": {
+        "requests": 21,
+        "wall_ms": 257,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:b88769257ca7ec134b29fb7881d4517d46afc2c9d3c320b809ae94d73ef470a7",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "dmarc-alignment",
+      "renamed_from": [],
+      "title": "DMARC uses relaxed alignment",
+      "target": {
+        "type": "domain",
+        "value": "google.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "info",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "informational",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the adkim= and aspf= tags are read directly, and default to relaxed"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _dmarc.google.com",
+          "captured_at": "2026-10-08T10:43:38.831042Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.google.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=reject; rua=mailto:mailauth-reports@google.com"
+              ],
+              "ttl": 102,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-a4c9c0c7.google.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:43:38.831062Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.google.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=reject; rua=mailto:mailauth-reports@google.com"
+              ],
+              "ttl": 300,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "google.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "DMARC alignment is relaxed (adkim=r, aspf=r). Relaxed alignment accepts any subdomain of google.com in the authenticated identifier.",
+      "impact": "Relaxed alignment is the default and is appropriate for most senders. It does mean that anyone able to publish records under a subdomain can pass DMARC for the parent.",
+      "remediation": "If every legitimate sender signs and sends as the exact domain, set adkim=s and aspf=s. If subdomains send mail, relaxed is the correct setting and no change is needed.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7489#section-3.1"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:38.831066Z",
+      "first_seen_scan_id": "01M4DHS3DWH5TY7SFDPCSB67AQ",
+      "last_seen": "2026-10-08T10:43:38.831066Z",
+      "last_seen_scan_id": "01M4DHS3DWH5TY7SFDPCSB67AQ",
+      "cost": {
+        "requests": 23,
+        "wall_ms": 274,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    }
+  ],
+  "errors": [],
+  "telemetry": {
+    "checks_run": [
+      {
+        "check_id": "spf-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-multiple-records",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-invalid",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-invalid",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-policy-none",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "mx-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dkim-missing",
+        "outcome": "inconclusive",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-too-permissive",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-lookup-limit",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-pct-partial",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-no-rua",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-alignment",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "mta-sts-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "tls-rpt-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spoofing-possible",
+        "outcome": "clear",
+        "location": "$"
+      }
+    ],
+    "suppressed": [],
+    "requests": 25,
+    "wall_ms": 291,
+    "ai_tokens": 0
+  },
+  "started_at": null,
+  "finished_at": "2026-10-08T10:43:38.848703Z",
+  "killed": false,
+  "outcome": "succeeded"
+}

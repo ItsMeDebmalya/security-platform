@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "default._domainkey.microsoft.com",
+  "rcode": "NXDOMAIN",
+  "records": [],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": null
+}

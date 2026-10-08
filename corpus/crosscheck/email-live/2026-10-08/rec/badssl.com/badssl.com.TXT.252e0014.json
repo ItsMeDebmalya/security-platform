@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "badssl.com",
+  "rcode": "NOERROR",
+  "records": [
+    "_4wahjzefs6if6al9ai0ukockra7wb9c"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 300
+}

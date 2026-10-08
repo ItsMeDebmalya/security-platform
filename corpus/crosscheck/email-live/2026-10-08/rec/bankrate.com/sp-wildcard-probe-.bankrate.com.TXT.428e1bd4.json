@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "sp-wildcard-probe-d07503d3.bankrate.com",
+  "rcode": "NXDOMAIN",
+  "records": [],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": null
+}

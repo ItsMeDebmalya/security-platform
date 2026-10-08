@@ -1,0 +1,21 @@
+{
+  "flags": [],
+  "name": "aajtak.in",
+  "rcode": "NOERROR",
+  "records": [
+    "lg1n5xf4sdcghbvcpjqxtnqtnzjtmfzw",
+    "v=spf1 include:zoho.com ~all",
+    "tollbit-domain-verification=207032aee98c9bd00fa1573f2a79164b481865de279473cd0984ae0a0bb8c124",
+    "2bfg6kb60b686lqs7w0yxwyz653nv94l",
+    "mxrf1x1c0clr46r80mk12vpykfsjrzh4",
+    "google-site-verification=9a-2MvO80jhWU6lDApb4W1WjA1pAP3el6Q8_5dI83O4",
+    "cttj0z4m3csc4z54yhb8glpkh4f1g1sg",
+    "MS=ms80421740",
+    "zoho-verification=zb11657445.zmverify.zoho.com",
+    "google-site-verification=8tfwyktyr9aJj_CGPoWC5TDOwsgcNrUSHlvOcycEbEo",
+    "_eb0rur86vbpv7r0akb3q62eswt0mvti"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 60
+}

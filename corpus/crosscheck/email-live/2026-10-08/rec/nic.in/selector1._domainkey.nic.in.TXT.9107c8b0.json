@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "selector1._domainkey.nic.in",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0xv5v4L84mJkJW6pfQOD3pHVwMpv/XVFdFyANr8x9neL6TEjGKvTV7hRIod6PYX4f2IB5i9OfUdUp3yzts5itDrUh6KzqXW2b3qEtFyL/oGVvZxt0bDumf//GQtQey5EEVUXnZ72b6FcZ8a9air5YyjpZPq1zIXh6SJivPx9DVdRxadtIGjSIYOweSjqYmPfJ1+IfJRfbXGN66/h1Pc6q8NFTyvPcOhA+uKk430yLgsfXhi4K0bOGdKYuJkWZcf2qS+RKwhrhfgKSjJ9zmkMhv91NndaTI/QZjA4JBysUE7Fzl4WbTTxp8uKLgDin7RSAI0vVUKSpdW+ikWrD9foQQIDAQAB;"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 3600
+}

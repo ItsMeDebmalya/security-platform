@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_mta-sts.google.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=STSv1; id=20210803T010101;"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 204
+}

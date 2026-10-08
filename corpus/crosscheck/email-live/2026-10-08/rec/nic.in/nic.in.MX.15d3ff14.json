@@ -1,0 +1,13 @@
+{
+  "flags": [],
+  "name": "nic.in",
+  "rcode": "NOERROR",
+  "records": [
+    "10 mx.mgovcloud.in.",
+    "20 mx2.mgovcloud.in.",
+    "50 mx3.mgovcloud.in."
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "MX",
+  "ttl": 300
+}

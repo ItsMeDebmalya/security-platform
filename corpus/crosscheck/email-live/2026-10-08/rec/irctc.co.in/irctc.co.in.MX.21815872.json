@@ -1,0 +1,13 @@
+{
+  "flags": [],
+  "name": "irctc.co.in",
+  "rcode": "NOERROR",
+  "records": [
+    "5 mail.irctc.co.in.",
+    "5 mail1.irctc.co.in.",
+    "10 mail.nget.irctc.co.in."
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "MX",
+  "ttl": 86400
+}

@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_dmarc.infosys.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DMARC1; p=reject; sp=reject; aspf=r; rua=mailto:dmarc_Admin@infosys.com;"
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": 3600
+}

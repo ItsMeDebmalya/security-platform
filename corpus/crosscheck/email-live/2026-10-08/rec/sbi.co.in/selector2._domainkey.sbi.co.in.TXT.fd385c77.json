@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "selector2._domainkey.sbi.co.in",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAmrs1+lbPfihrTXd4FukaxEI+2uvn/SEIiqq6pURGDA3cZenP8lxlm4RUj7tAMGdgKsQRxc3642a5s0mk9nnKC+iHU+nxrIZKvIjkiL/iC5rPvaP9j8tXW0msrK6IafbyOILpsXCoHo4evMMD2sfMbxZJT7rq15n1Kia1HDfIUEDZ5ETl5ylaggkH1qVOWrSdncaO7cXCcm5e7jMl+9cLdUGOOzajm3aEAwB7klbxHzyY+I62PoAPC5uQthfSJSc15TavAAMiy5gAshZT82uEhn28I5HA+X2fioVp2LC9DteWWRA3/UJpvdlEYlQM3eZ0jAPX94cnqGrkudubZKsr9QIDAQAB;"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 3600
+}

@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "s1._domainkey.bankrate.com",
+  "rcode": "NOERROR",
+  "records": [
+    "k=rsa; t=s; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwgrQZCwqMEOXXpzYTHQN00+9Ncmu5l9ObxvshtuLIYV74AuC1DTR6UGKDqI9OWD/I0W66TXVUZQxQ0I+Ha211xLdsN0FoTLwdwfz26pcf0YZXsG9YkQ7RN3BNan3PYeGuP8xScYvTHEoXNTaEieq1X4yQPgC8VXceSs4pHsc7R3OHzLZ/p0/azxNZuSzfnlRpBR6t9ymYX6SA8OjNftcxfymtDUK5twmZMyDyz11ZmIOwnl0uzkEXZb5hCJK3mUavNA847jOyajQfOM/b2SEqAnPzu2ZNROIF2caEWYOFHO7mRDLIDBm3gAelvYxX/buljUln05yxLs9ayS9r2IjiwIDAQAB"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 1800
+}

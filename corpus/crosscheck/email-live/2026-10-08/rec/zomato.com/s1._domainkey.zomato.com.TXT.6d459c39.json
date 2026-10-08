@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "s1._domainkey.zomato.com",
+  "rcode": "NOERROR",
+  "records": [
+    "k=rsa; t=s; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAufzGPbCO9X8xiZFdPYyYo7QyQarhIqnWvNC4qayt1+d5ZH5KzXEGbfD5MCmcTzS9zSDZQfjSBgUfC8FnfdXCF4DymSI+g4iHshPLashPVhGhlBGEsK4ruqWeEehunReZ06FiZeMkHYkHfiwV5C7o5wjBvU3Ta27Fr/B16B0TJ9qWfgDjGu1BLGjOwflmull0aZuFEhF9Sg/8BONeEL7Dif7ohWdbhz08+pSYmmcZLA4G2smIk2slxt9XDWYzChrFif59P7vYOfNo9Zl47hp5zZhc+7y20o22koR4CGg9ZQ25zxtPArqjTUWBZrYb6Q1YBUtw6dyy4ttAQN+9PjjYMwIDAQAB"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 1800
+}

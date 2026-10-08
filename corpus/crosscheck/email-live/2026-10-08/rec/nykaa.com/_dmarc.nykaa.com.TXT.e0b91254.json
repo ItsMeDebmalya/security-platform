@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_dmarc.nykaa.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DMARC1; p=reject; rua=mailto:486cd14210f0815@rep.dmarcanalyzer.com,mailto:dmarc@nykaa.com; ruf=mailto:486cd14210f0815@for.dmarcanalyzer.com; fo=1"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 300
+}

@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "default._domainkey.dnssec-failed.org",
+  "rcode": "SERVFAIL",
+  "records": [],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": null
+}

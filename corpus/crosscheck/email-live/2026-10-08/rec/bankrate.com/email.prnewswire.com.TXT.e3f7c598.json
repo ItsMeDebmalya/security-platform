@@ -1,0 +1,22 @@
+{
+  "flags": [],
+  "name": "email.prnewswire.com",
+  "rcode": "NOERROR",
+  "records": [
+    "6ifgg010qg6mquqt5lodun8qds",
+    "google-site-verification=1UEf8ey-RibUjY6gnpqIZFjWNqMknmeyeHz1zTmj0DE",
+    "v=spf1 ip4:167.89.0.0/17 ip4:208.117.48.0/20 ip4:50.31.32.0/19 ip4:198.37.144.0/20 ip4:198.21.0.0/21 ip4:192.254.112.0/20 ip4:168.245.0.0/17 ip4:149.72.0.0/16 ip4:159.183.0.0/16 ip4:134.128.64.0/18 ip4:159.26.176.0/20 include:ab.sendgrid.net ~all",
+    "p8bnb2lp424dkl3c4io1aemiei",
+    "tdjhrpaflcikf52iqtn9rnggr9",
+    "i52uk89q4nfe1mpgqv5qsmsj3j.",
+    "l8bqrl0r33q4joeb79q8uuj009",
+    "cemmvnbghpsb500d7c19e35fgm",
+    "yahoo-verification-key=TrufSXS+dfythA5AIMbLUnkX38rjr1HR93gbqHUSY74=",
+    "5m3r13nvilmq8tgf5foh6ki1uv",
+    "utjqqjvmeadmlva41ectre9gd3",
+    "mailru-verification: 2e3995fa8a7d00e0"
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": 1800
+}

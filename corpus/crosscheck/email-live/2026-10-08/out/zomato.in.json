@@ -1,0 +1,971 @@
+{
+  "scanner": "email",
+  "scanner_version": "1.1.0",
+  "target": {
+    "type": "domain",
+    "value": "zomato.in"
+  },
+  "mode": "standard",
+  "findings": [
+    {
+      "id": "sha256:e5474c3f27eb1f7f9583839f28a723d4fe44fb5d2753b23428e9d907416b8e09",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "spf-missing",
+      "renamed_from": [],
+      "title": "No SPF record published",
+      "target": {
+        "type": "domain",
+        "value": "zomato.in"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "medium",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "a definite TXT answer containing no v=spf1 term is a direct observation; the failure modes are a broken resolver and a masked record, and both are checked"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at zomato.in",
+          "captured_at": "2026-10-08T10:43:41.968613Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "zomato.in",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NODATA",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-fafc79de.zomato.in",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:43:41.968649Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "zomato.in",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NODATA",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "zomato.in",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "zomato.in publishes 0 TXT record(s), none of which is an SPF policy.",
+      "impact": "Receiving mail servers have no list of hosts allowed to send mail for this domain, so a message forged from any server passes SPF by default.",
+      "remediation": "Publish a TXT record at zomato.in of the form 'v=spf1 include:<your mail provider> -all'. Start with ~all while you confirm every legitimate sender is covered, then move to -all.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7208"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:41.968653Z",
+      "first_seen_scan_id": "01M4DHS6CC2HNCV9KCQMTFTZRM",
+      "last_seen": "2026-10-08T10:43:41.968653Z",
+      "last_seen_scan_id": "01M4DHS6CC2HNCV9KCQMTFTZRM",
+      "cost": {
+        "requests": 22,
+        "wall_ms": 388,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:7e555c2f212faabaaf70e08294bd2d7b8fabac6e92f9680d5c2abe73bceb6856",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "mx-missing",
+      "renamed_from": [],
+      "title": "No MX records, and no explicit statement that the domain takes no mail",
+      "target": {
+        "type": "domain",
+        "value": "zomato.in"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "a definite empty MX answer is a direct observation"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "MX at zomato.in",
+          "captured_at": "2026-10-08T10:43:41.990815Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "zomato.in",
+              "rrtype": "MX",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NODATA",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-fafc79de.zomato.in",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:43:41.990839Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "zomato.in",
+              "rrtype": "MX",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NODATA",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "zomato.in",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "zomato.in publishes no MX records. Its published SPF record is 'no SPF record'. Its DMARC policy is p=reject, so email is clearly configured here deliberately; the domain appears to send mail without accepting any.",
+      "impact": "A sending server has to wait for the lookup to fail and then fall back to the A record before giving up, which delays the bounce and can leave mail queued for days.",
+      "remediation": "Publish the null MX record 'MX 0 .' (RFC 7505). It tells senders immediately and unambiguously that this domain accepts no mail, instead of leaving them to infer it.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7505"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:41.990848Z",
+      "first_seen_scan_id": "01M4DHS6CC2HNCV9KCQMTFTZRM",
+      "last_seen": "2026-10-08T10:43:41.990848Z",
+      "last_seen_scan_id": "01M4DHS6CC2HNCV9KCQMTFTZRM",
+      "cost": {
+        "requests": 23,
+        "wall_ms": 410,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:25cf9b76d1442b0152bcc1386cea1ff92b6e3347274030bc406366bc9c8923cb",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "dmarc-no-rua",
+      "renamed_from": [],
+      "title": "DMARC has no reporting address",
+      "target": {
+        "type": "domain",
+        "value": "zomato.in"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the absence of a rua= tag in a parsed record is unambiguous"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _dmarc.zomato.in",
+          "captured_at": "2026-10-08T10:43:42.003400Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.zomato.in",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=reject;"
+              ],
+              "ttl": 300,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-fafc79de.zomato.in",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:43:42.003417Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.zomato.in",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=reject;"
+              ],
+              "ttl": 300,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "zomato.in",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "The DMARC record has no rua= tag, so no aggregate reports are sent anywhere.",
+      "impact": "Without reports there is no way to see which senders are failing authentication, which makes moving to an enforcing policy guesswork.",
+      "remediation": "Add 'rua=mailto:dmarc-reports@zomato.in' to the record. Reports arrive daily as XML; a report analyser makes them readable.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7489#section-7"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:42.003422Z",
+      "first_seen_scan_id": "01M4DHS6CC2HNCV9KCQMTFTZRM",
+      "last_seen": "2026-10-08T10:43:42.003422Z",
+      "last_seen_scan_id": "01M4DHS6CC2HNCV9KCQMTFTZRM",
+      "cost": {
+        "requests": 24,
+        "wall_ms": 422,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:88b3a93a673712ed2a2c540c7df18d594101288a0d2571a7d35c358272d8a48f",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "dmarc-alignment",
+      "renamed_from": [],
+      "title": "DMARC uses relaxed alignment",
+      "target": {
+        "type": "domain",
+        "value": "zomato.in"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "info",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "informational",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the adkim= and aspf= tags are read directly, and default to relaxed"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _dmarc.zomato.in",
+          "captured_at": "2026-10-08T10:43:42.003574Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.zomato.in",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=reject;"
+              ],
+              "ttl": 300,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-fafc79de.zomato.in",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:43:42.003586Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.zomato.in",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=reject;"
+              ],
+              "ttl": 300,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "zomato.in",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "DMARC alignment is relaxed (adkim=r, aspf=r). Relaxed alignment accepts any subdomain of zomato.in in the authenticated identifier.",
+      "impact": "Relaxed alignment is the default and is appropriate for most senders. It does mean that anyone able to publish records under a subdomain can pass DMARC for the parent.",
+      "remediation": "If every legitimate sender signs and sends as the exact domain, set adkim=s and aspf=s. If subdomains send mail, relaxed is the correct setting and no change is needed.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7489#section-3.1"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:42.003590Z",
+      "first_seen_scan_id": "01M4DHS6CC2HNCV9KCQMTFTZRM",
+      "last_seen": "2026-10-08T10:43:42.003590Z",
+      "last_seen_scan_id": "01M4DHS6CC2HNCV9KCQMTFTZRM",
+      "cost": {
+        "requests": 24,
+        "wall_ms": 423,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:1682153b16da7989e642da5599e3942c71492f84682562d83bba1634da8070ba",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "mta-sts-missing",
+      "renamed_from": [],
+      "title": "No MTA-STS policy published",
+      "target": {
+        "type": "domain",
+        "value": "zomato.in"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "a definite TXT answer at _mta-sts with no v=STSv1 term is direct observation"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _mta-sts.zomato.in",
+          "captured_at": "2026-10-08T10:43:42.022457Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_mta-sts.zomato.in",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-fafc79de.zomato.in",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:43:42.022480Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_mta-sts.zomato.in",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "zomato.in",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "No MTA-STS policy record is published at _mta-sts.zomato.in.",
+      "impact": "Without MTA-STS a sending server that cannot negotiate TLS will deliver mail in plaintext rather than refusing, so an attacker positioned on the network can strip encryption and read the message.",
+      "remediation": "Publish a TXT record at _mta-sts.zomato.in of the form 'v=STSv1; id=<timestamp>', and serve the matching policy file at https://mta-sts.zomato.in/.well-known/mta-sts.txt. Start the policy in mode: testing, then move to mode: enforce.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc8461"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:42.022485Z",
+      "first_seen_scan_id": "01M4DHS6CC2HNCV9KCQMTFTZRM",
+      "last_seen": "2026-10-08T10:43:42.022485Z",
+      "last_seen_scan_id": "01M4DHS6CC2HNCV9KCQMTFTZRM",
+      "cost": {
+        "requests": 26,
+        "wall_ms": 441,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:7dbcc4d09a92c67c74b3f46c66ee3d85adbd50d4d8b98e1ab11360618e723050",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "tls-rpt-missing",
+      "renamed_from": [],
+      "title": "No SMTP TLS reporting configured",
+      "target": {
+        "type": "domain",
+        "value": "zomato.in"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "a definite TXT answer at _smtp._tls with no v=TLSRPTv1 term is direct observation"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _smtp._tls.zomato.in",
+          "captured_at": "2026-10-08T10:43:42.047807Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_smtp._tls.zomato.in",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-fafc79de.zomato.in",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:43:42.047828Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_smtp._tls.zomato.in",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "zomato.in",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "No SMTP TLS reporting record is published at _smtp._tls.zomato.in.",
+      "impact": "Nobody is told when a sending server fails to establish TLS to your mail servers, so a downgrade attack or a broken certificate goes unnoticed.",
+      "remediation": "Publish a TXT record at _smtp._tls.zomato.in of the form 'v=TLSRPTv1; rua=mailto:tls-reports@zomato.in'.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc8460"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:42.047832Z",
+      "first_seen_scan_id": "01M4DHS6CC2HNCV9KCQMTFTZRM",
+      "last_seen": "2026-10-08T10:43:42.047832Z",
+      "last_seen_scan_id": "01M4DHS6CC2HNCV9KCQMTFTZRM",
+      "cost": {
+        "requests": 28,
+        "wall_ms": 467,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:5b42df977c0121fcf08c86327de048ce4970e7a82c525093f75f211e5db17e22",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "spoofing-possible",
+      "renamed_from": [],
+      "title": "Mail can be sent as this domain",
+      "target": {
+        "type": "domain",
+        "value": "zomato.in"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "high",
+      "confidence": 0.9615,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 25.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "this is a simulation of a receiver's decision from records we read, not an observation of a receiver actually making it; the ratio is lower to say so"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _dmarc.zomato.in",
+          "captured_at": "2026-10-08T10:43:42.048040Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.zomato.in",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=reject;"
+              ],
+              "ttl": 300,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-fafc79de.zomato.in",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:43:42.048056Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.zomato.in",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=reject;"
+              ],
+              "ttl": 300,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "zomato.in",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "Simulating the decision a receiving mail server would make for a message forged from zomato.in: it would be delivered, because no SPF record identifies which servers may send for the domain.",
+      "impact": "Anyone can send mail that appears to come from this domain and expect it to reach the inbox. That is the mechanism behind invoice fraud and most credential phishing that targets a company's own staff.",
+      "remediation": "Publish an SPF record listing your senders and ending in -all, sign your mail with DKIM, then publish 'v=DMARC1; p=reject; rua=mailto:dmarc@zomato.in' at _dmarc.zomato.in. Move to p=reject only after the rua reports show every legitimate sender passing.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7489"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:42.048062Z",
+      "first_seen_scan_id": "01M4DHS6CC2HNCV9KCQMTFTZRM",
+      "last_seen": "2026-10-08T10:43:42.048062Z",
+      "last_seen_scan_id": "01M4DHS6CC2HNCV9KCQMTFTZRM",
+      "cost": {
+        "requests": 28,
+        "wall_ms": 467,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    }
+  ],
+  "errors": [],
+  "telemetry": {
+    "checks_run": [
+      {
+        "check_id": "spf-missing",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-invalid",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-policy-none",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "mx-missing",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "dkim-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-pct-partial",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-no-rua",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-alignment",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "mta-sts-missing",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "tls-rpt-missing",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "spoofing-possible",
+        "outcome": "reported",
+        "location": "$"
+      }
+    ],
+    "suppressed": [],
+    "requests": 28,
+    "wall_ms": 467,
+    "ai_tokens": 0
+  },
+  "started_at": null,
+  "finished_at": "2026-10-08T10:43:42.048139Z",
+  "killed": false,
+  "outcome": "succeeded"
+}

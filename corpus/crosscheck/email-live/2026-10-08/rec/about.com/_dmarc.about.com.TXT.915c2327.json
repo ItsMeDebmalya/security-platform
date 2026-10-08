@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_dmarc.about.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=dmarc1; p=none; fo=1; rua=mailto about@rua.agari.com; ruf=mailto about@ruf.agari.com"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 3600
+}

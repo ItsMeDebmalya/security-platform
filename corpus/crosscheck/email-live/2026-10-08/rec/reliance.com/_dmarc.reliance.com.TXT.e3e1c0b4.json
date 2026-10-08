@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_dmarc.reliance.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DMARC1; p=quarantine; sp=quarantine; rua=mailto:ysmrpuom@ag.us.dmarcian.com; ruf=mailto:ysmrpuom@fr.us.dmarcian.com;"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 300
+}

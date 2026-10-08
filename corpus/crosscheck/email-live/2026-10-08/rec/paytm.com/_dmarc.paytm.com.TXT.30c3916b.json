@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_dmarc.paytm.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DMARC1; p=reject; pct=100; rua=mailto:dmarc-report@paytm.com; ruf=mailto:dmarc-report@paytm.com"
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": 300
+}

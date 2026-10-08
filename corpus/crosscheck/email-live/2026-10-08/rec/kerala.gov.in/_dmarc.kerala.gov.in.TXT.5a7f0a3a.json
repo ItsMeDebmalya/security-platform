@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_dmarc.kerala.gov.in",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DMARC1; p=quarantine; fo=1;rua=mailto:pmaster-wlist@kerala.gov.in;ruf=mailto:pmaster-wlist@kerala.gov.in; fo=1;rua=mailto:intimations.sgst@kerala.gov.in;ruf=mailto:intimations.sgst@kerala.gov.in"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 60
+}

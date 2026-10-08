@@ -1,0 +1,679 @@
+{
+  "scanner": "email",
+  "scanner_version": "1.1.0",
+  "target": {
+    "type": "domain",
+    "value": "nykaa.com"
+  },
+  "mode": "standard",
+  "findings": [
+    {
+      "id": "sha256:dc555b43b022815cd47f0c404a501eb3dcd96a132791555915d43b835bd5c092",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "dmarc-alignment",
+      "renamed_from": [],
+      "title": "DMARC uses relaxed alignment",
+      "target": {
+        "type": "domain",
+        "value": "nykaa.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "info",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "informational",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the adkim= and aspf= tags are read directly, and default to relaxed"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _dmarc.nykaa.com",
+          "captured_at": "2026-10-08T10:43:44.207311Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.nykaa.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=reject; rua=mailto:486cd14210f0815@rep.dmarcanalyzer.com,mailto:dmarc@nykaa.com; ruf=mailto:486cd14210f0815@for.dmarcanalyzer.com; fo=1"
+              ],
+              "ttl": 300,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-0576a741.nykaa.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:43:44.207332Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.nykaa.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=reject; rua=mailto:486cd14210f0815@rep.dmarcanalyzer.com,mailto:dmarc@nykaa.com; ruf=mailto:486cd14210f0815@for.dmarcanalyzer.com; fo=1"
+              ],
+              "ttl": 300,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "nykaa.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "DMARC alignment is relaxed (adkim=r, aspf=r). Relaxed alignment accepts any subdomain of nykaa.com in the authenticated identifier.",
+      "impact": "Relaxed alignment is the default and is appropriate for most senders. It does mean that anyone able to publish records under a subdomain can pass DMARC for the parent.",
+      "remediation": "If every legitimate sender signs and sends as the exact domain, set adkim=s and aspf=s. If subdomains send mail, relaxed is the correct setting and no change is needed.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7489#section-3.1"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:44.207335Z",
+      "first_seen_scan_id": "01M4DHS8BRR6FS2E6SM05T0H6P",
+      "last_seen": "2026-10-08T10:43:44.207335Z",
+      "last_seen_scan_id": "01M4DHS8BRR6FS2E6SM05T0H6P",
+      "cost": {
+        "requests": 28,
+        "wall_ms": 598,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:7dd0333801730572a0757732d2ee02cfee3a395310c219626f8c0cfbdb8e9440",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "dkim-weak-key",
+      "renamed_from": [],
+      "title": "DKIM key is below 2048 bits",
+      "target": {
+        "type": "domain",
+        "value": "nykaa.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.9677,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 30.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the modulus length is measured from the key itself; every common selector is read, but a domain may publish others we cannot find"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at google._domainkey.nykaa.com",
+          "captured_at": "2026-10-08T10:43:44.244310Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "google._domainkey.nykaa.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCfR5vSgLbOyWe1y1RIpRq04jZ3NANaTOsfK55QM3+gM5ow9ry6PTy/kL/YaeUKsKqGPLiK/CdcuGkBSbis6SHPe8/oIQi4WWoDP2SvdybEGsiWBwACk+Vr4eYGRJNrH8AHucPxsRuEiUcNNb7FEV8fPJd00QHTQT4uYUUFQThA+wIDAQAB"
+              ],
+              "ttl": 1800,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-0576a741.nykaa.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": {
+            "dkim_keys": [
+              {
+                "selector": "google",
+                "raw": "v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCfR5vSgLbOyWe1y1RIpRq04jZ3NANaTOsfK55QM3+gM5ow9ry6PTy/kL/YaeUKsKqGPLiK/CdcuGkBSbis6SHPe8/oIQi4WWoDP2SvdybEGsiWBwACk+Vr4eYGRJNrH8AHucPxsRuEiUcNNb7FEV8fPJd00QHTQT4uYUUFQThA+wIDAQAB",
+                "valid": true,
+                "tags": {
+                  "v": "DKIM1",
+                  "k": "rsa",
+                  "p": "<216 base64 chars>"
+                },
+                "errors": [],
+                "key_type": "rsa",
+                "key_bits": 1024,
+                "revoked": false,
+                "testing": false
+              },
+              {
+                "selector": "s1",
+                "raw": "k=rsa; t=s; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2X5kh49BJFQGY5PM4r17wBdYeHJ0imj0N/f85O35WjbyhAndYx6gpoOVxxmMrHJaCJFj9+nXdYvwVRLYoA2W/Qa1Dd6WB/VHKFNXOlx/nbfDfqBEwkK2rLZmpRypjwt7ZIwpTt8xGamweZT2wR+XwyN0HO162/fnvx03Htg+2W9z3mb6OnN/z8G+WsYyah1UM0vbddtBeLRF0RCwbY0kaErAqRDKzM5vHLpj67xLInKE65rTw34LjrlIZwHIBxQgkYpFWLn55XxBTa12Cs7eqInUGb5Uin40/+VBhD6mjXJL5IPGcH5BuqpMbB28ssgnWBqgAikReDBdTm9ZcfbkwwIDAQAB",
+                "valid": true,
+                "tags": {
+                  "k": "rsa",
+                  "t": "s",
+                  "p": "<392 base64 chars>"
+                },
+                "errors": [],
+                "key_type": "rsa",
+                "key_bits": 2048,
+                "revoked": false,
+                "testing": false
+              },
+              {
+                "selector": "s2",
+                "raw": "k=rsa; t=s; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCdFFfd+rC8EIvPLaggxLOZ4D4KlhtkfameUyaQaNQ8qpDqAmlm5TSNBhgwBAeLVtDawpVTfy9ooc/UhlFoXbczuZ/FJcFjRp5QkAlabm00DdQTSJSv9YSj3M+oBwePqdgd7WpVBhdGsutyEW6FzjMyJUTEaxzCm3LTRPlNwrqIJwIDAQAB",
+                "valid": true,
+                "tags": {
+                  "k": "rsa",
+                  "t": "s",
+                  "p": "<216 base64 chars>"
+                },
+                "errors": [],
+                "key_type": "rsa",
+                "key_bits": 1024,
+                "revoked": false,
+                "testing": false
+              },
+              {
+                "selector": "mandrill",
+                "raw": "k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCrLHiExVd55zd/IQ/J/mRwSRMAocV/hMB3jXwaHH36d9NaVynQFYV8NaWi69c1veUtRzGt7yAioXqLj7Z4TeEUoOLgrKsn8YnckGs9i3B3tVFB+Ch/4mPhXWiNfNdynHWBcPcbJ8kjEQ2U8y78dHZj1YeRXXVvWob2OaKynO8/lQIDAQAB;",
+                "valid": true,
+                "tags": {
+                  "k": "rsa",
+                  "p": "<216 base64 chars>"
+                },
+                "errors": [],
+                "key_type": "rsa",
+                "key_bits": 1024,
+                "revoked": false,
+                "testing": false
+              }
+            ]
+          }
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:43:44.244337Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "google._domainkey.nykaa.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCfR5vSgLbOyWe1y1RIpRq04jZ3NANaTOsfK55QM3+gM5ow9ry6PTy/kL/YaeUKsKqGPLiK/CdcuGkBSbis6SHPe8/oIQi4WWoDP2SvdybEGsiWBwACk+Vr4eYGRJNrH8AHucPxsRuEiUcNNb7FEV8fPJd00QHTQT4uYUUFQThA+wIDAQAB"
+              ],
+              "ttl": 1800,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "nykaa.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "DKIM keys below 2048 bits are published at google._domainkey.nykaa.com (1024 bits) and s2._domainkey.nykaa.com (1024 bits) and mandrill._domainkey.nykaa.com (1024 bits). Each meets the RFC 8301 minimum of 1024 bits, below the recommended 2048. The domain also publishes s1._domainkey.nykaa.com. We cannot tell from DNS which selector it signs its mail with. RFC 6376 section 6.1.2 has a verifier fetch the key named by the signature's s= tag, so a signature may name any selector the domain publishes, the weaker one included.",
+      "impact": "This is a margin, not a break: RFC 8301 permits the key, and recommends 2048 bits for signers. Moving to 2048 bits brings the domain in line with that recommendation.",
+      "remediation": "If a weaker selector is no longer used for signing, remove its record. Otherwise generate a new 2048-bit key with your mail provider, publish it under a new selector, switch signing to it, and remove the old selector once no mail is signed with it.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc8301"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:44.244340Z",
+      "first_seen_scan_id": "01M4DHS8BRR6FS2E6SM05T0H6P",
+      "last_seen": "2026-10-08T10:43:44.244340Z",
+      "last_seen_scan_id": "01M4DHS8BRR6FS2E6SM05T0H6P",
+      "cost": {
+        "requests": 29,
+        "wall_ms": 635,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:4b4b6369370a48a97fcafd26d0a5b120b7ee028bb141acbe3c9d2966201ced47",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "mta-sts-missing",
+      "renamed_from": [],
+      "title": "No MTA-STS policy published",
+      "target": {
+        "type": "domain",
+        "value": "nykaa.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "a definite TXT answer at _mta-sts with no v=STSv1 term is direct observation"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _mta-sts.nykaa.com",
+          "captured_at": "2026-10-08T10:43:44.275221Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_mta-sts.nykaa.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-0576a741.nykaa.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:43:44.275238Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_mta-sts.nykaa.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "nykaa.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "No MTA-STS policy record is published at _mta-sts.nykaa.com.",
+      "impact": "Without MTA-STS a sending server that cannot negotiate TLS will deliver mail in plaintext rather than refusing, so an attacker positioned on the network can strip encryption and read the message.",
+      "remediation": "Publish a TXT record at _mta-sts.nykaa.com of the form 'v=STSv1; id=<timestamp>', and serve the matching policy file at https://mta-sts.nykaa.com/.well-known/mta-sts.txt. Start the policy in mode: testing, then move to mode: enforce.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc8461"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:44.275242Z",
+      "first_seen_scan_id": "01M4DHS8BRR6FS2E6SM05T0H6P",
+      "last_seen": "2026-10-08T10:43:44.275242Z",
+      "last_seen_scan_id": "01M4DHS8BRR6FS2E6SM05T0H6P",
+      "cost": {
+        "requests": 31,
+        "wall_ms": 666,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:23f284ea8aa680d1d4cfd8240afb6de4a783fc8a1e9fc6c673a55c43c221e1f9",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "tls-rpt-missing",
+      "renamed_from": [],
+      "title": "No SMTP TLS reporting configured",
+      "target": {
+        "type": "domain",
+        "value": "nykaa.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "a definite TXT answer at _smtp._tls with no v=TLSRPTv1 term is direct observation"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _smtp._tls.nykaa.com",
+          "captured_at": "2026-10-08T10:43:44.404299Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_smtp._tls.nykaa.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-0576a741.nykaa.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:43:44.404318Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_smtp._tls.nykaa.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "nykaa.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "No SMTP TLS reporting record is published at _smtp._tls.nykaa.com.",
+      "impact": "Nobody is told when a sending server fails to establish TLS to your mail servers, so a downgrade attack or a broken certificate goes unnoticed.",
+      "remediation": "Publish a TXT record at _smtp._tls.nykaa.com of the form 'v=TLSRPTv1; rua=mailto:tls-reports@nykaa.com'.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc8460"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:44.404321Z",
+      "first_seen_scan_id": "01M4DHS8BRR6FS2E6SM05T0H6P",
+      "last_seen": "2026-10-08T10:43:44.404321Z",
+      "last_seen_scan_id": "01M4DHS8BRR6FS2E6SM05T0H6P",
+      "cost": {
+        "requests": 33,
+        "wall_ms": 795,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    }
+  ],
+  "errors": [],
+  "telemetry": {
+    "checks_run": [
+      {
+        "check_id": "spf-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-multiple-records",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-invalid",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-invalid",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-policy-none",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "mx-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dkim-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-too-permissive",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-lookup-limit",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-pct-partial",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-no-rua",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-alignment",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "dkim-weak-key",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "mta-sts-missing",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "tls-rpt-missing",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "spoofing-possible",
+        "outcome": "clear",
+        "location": "$"
+      }
+    ],
+    "suppressed": [],
+    "requests": 33,
+    "wall_ms": 795,
+    "ai_tokens": 0
+  },
+  "started_at": null,
+  "finished_at": "2026-10-08T10:43:44.404454Z",
+  "killed": false,
+  "outcome": "succeeded"
+}

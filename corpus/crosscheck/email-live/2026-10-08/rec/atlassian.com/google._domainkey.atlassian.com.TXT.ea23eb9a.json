@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "google._domainkey.atlassian.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsKEkAUkiVp+FFIbxY5DDRhBFTLhpMXZP9jGXGzPr20Iapn6IJCGA6tqajxF0cXYqGseNC1fwBT8EbGhVzHhY6OjcCyGm/YG4cWztwnVxAAFO4WBKmGjp85EUznjvYRvOwlRyjCoQOySmdFphabxaU+TuVj2YoCA0ffhH5A0y/a+rD3ii+bKoYI3QHxU1ktUPpYzfkeinNH+89Lw12r8CFayOXTa3JDEoZksSJnB6mEym6tCOciBJXCZyMj2uZ+7wPN26nzKAz5wJtkjS6CQzFpJ8Zmaeek35BVmLiCUUkLn18T9Xwpn+kS8WtyVhjMA7zgCuO1OELaK08xsoZj7CZwIDAQAB"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 3600
+}

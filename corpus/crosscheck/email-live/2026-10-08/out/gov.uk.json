@@ -1,0 +1,609 @@
+{
+  "scanner": "email",
+  "scanner_version": "1.1.0",
+  "target": {
+    "type": "domain",
+    "value": "gov.uk"
+  },
+  "mode": "standard",
+  "findings": [
+    {
+      "id": "sha256:1c82fec0292ea0f4f8f8a9048e504c0e8174686616a12e5a93745bfe927a7fe9",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "mx-missing",
+      "renamed_from": [],
+      "title": "No MX records, and no explicit statement that the domain takes no mail",
+      "target": {
+        "type": "domain",
+        "value": "gov.uk"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "a definite empty MX answer is a direct observation"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "MX at gov.uk",
+          "captured_at": "2026-10-08T10:43:39.099294Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "gov.uk",
+              "rrtype": "MX",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NODATA",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-e71aeadc.gov.uk",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=spf1 ?all",
+                "v=DMARC1;p=reject;rua=mailto:govuk-rua@dmarc.service.gov.uk"
+              ],
+              "ttl": 1800,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:43:39.099320Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "gov.uk",
+              "rrtype": "MX",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NODATA",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "gov.uk",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "gov.uk publishes no MX records. Its published SPF record is 'v=spf1 -all'. Its SPF record authorises no senders at all, and its DMARC policy is p=reject, which together say this domain neither sends nor receives mail - so the absence of MX records looks deliberate rather than broken.",
+      "impact": "A sending server has to wait for the lookup to fail and then fall back to the A record before giving up, which delays the bounce and can leave mail queued for days.",
+      "remediation": "Publish the null MX record 'MX 0 .' (RFC 7505). It tells senders immediately and unambiguously that this domain accepts no mail, instead of leaving them to infer it.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7505"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:39.099325Z",
+      "first_seen_scan_id": "01M4DHS3DS3RH9QCJ8R1TP5MBM",
+      "last_seen": "2026-10-08T10:43:39.099325Z",
+      "last_seen_scan_id": "01M4DHS3DS3RH9QCJ8R1TP5MBM",
+      "cost": {
+        "requests": 22,
+        "wall_ms": 545,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:d047ea86d41f6de864f09ab2b444980b97a0abefa0df82425b12086c46c46d15",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "dkim-missing",
+      "renamed_from": [],
+      "title": "No DKIM key found",
+      "target": {
+        "type": "domain",
+        "value": "gov.uk"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "medium",
+      "confidence": 0.5,
+      "confidence_provisional": true,
+      "state": "inconclusive",
+      "no_verdict_reason": "blocked_prerequisite",
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 1.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the lookup produced no usable answer, so nothing moves the prior"
+        }
+      ],
+      "validation": {
+        "attempted": false,
+        "outcome": "unavailable",
+        "method": null
+      },
+      "evidence": [
+        {
+          "label": "TXT at sp-wildcard-probe-e71aeadc.gov.uk",
+          "captured_at": "2026-10-08T10:43:39.099688Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "sp-wildcard-probe-e71aeadc.gov.uk",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=spf1 ?all",
+                "v=DMARC1;p=reject;rua=mailto:govuk-rua@dmarc.service.gov.uk"
+              ],
+              "ttl": 1800,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-e71aeadc.gov.uk",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=spf1 ?all",
+                "v=DMARC1;p=reject;rua=mailto:govuk-rua@dmarc.service.gov.uk"
+              ],
+              "ttl": 1800,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "gov.uk",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "None of the 17 common DKIM selectors resolved for gov.uk. DKIM selector names are chosen freely by the sender and cannot be enumerated, so this does not show that the domain has no DKIM - only that we could not find a key. The zone also answers TXT lookups for names that do not exist (a wildcard), so a record appearing at a selector name would prove nothing either.",
+      "impact": "Unknown: we could not determine whether DKIM is configured.",
+      "remediation": "If you know your selector, check it directly: the record lives at <selector>._domainkey.gov.uk. Your mail provider's documentation names the selector it uses.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc6376"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:39.099700Z",
+      "first_seen_scan_id": "01M4DHS3DS3RH9QCJ8R1TP5MBM",
+      "last_seen": "2026-10-08T10:43:39.099700Z",
+      "last_seen_scan_id": "01M4DHS3DS3RH9QCJ8R1TP5MBM",
+      "cost": {
+        "requests": 22,
+        "wall_ms": 545,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:7a656e7fe3ee5839ddbba1208ddd786a4b46ea078a72659a367041b58eb6aee0",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "mta-sts-missing",
+      "renamed_from": [],
+      "title": "No MTA-STS policy published",
+      "target": {
+        "type": "domain",
+        "value": "gov.uk"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "a definite TXT answer at _mta-sts with no v=STSv1 term is direct observation"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _mta-sts.gov.uk",
+          "captured_at": "2026-10-08T10:43:39.225241Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_mta-sts.gov.uk",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=spf1 ?all",
+                "v=DMARC1;p=reject;rua=mailto:govuk-rua@dmarc.service.gov.uk"
+              ],
+              "ttl": 1800,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-e71aeadc.gov.uk",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=spf1 ?all",
+                "v=DMARC1;p=reject;rua=mailto:govuk-rua@dmarc.service.gov.uk"
+              ],
+              "ttl": 1800,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:43:39.225274Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_mta-sts.gov.uk",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=spf1 ?all",
+                "v=DMARC1;p=reject;rua=mailto:govuk-rua@dmarc.service.gov.uk"
+              ],
+              "ttl": 1800,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "gov.uk",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "No MTA-STS policy record is published at _mta-sts.gov.uk.",
+      "impact": "Without MTA-STS a sending server that cannot negotiate TLS will deliver mail in plaintext rather than refusing, so an attacker positioned on the network can strip encryption and read the message.",
+      "remediation": "Publish a TXT record at _mta-sts.gov.uk of the form 'v=STSv1; id=<timestamp>', and serve the matching policy file at https://mta-sts.gov.uk/.well-known/mta-sts.txt. Start the policy in mode: testing, then move to mode: enforce.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc8461"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:39.225282Z",
+      "first_seen_scan_id": "01M4DHS3DS3RH9QCJ8R1TP5MBM",
+      "last_seen": "2026-10-08T10:43:39.225282Z",
+      "last_seen_scan_id": "01M4DHS3DS3RH9QCJ8R1TP5MBM",
+      "cost": {
+        "requests": 24,
+        "wall_ms": 671,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:11ec19b71eed4f3923ce3f36615a12820896797bc5d6ec2d178444a5f892c641",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "tls-rpt-missing",
+      "renamed_from": [],
+      "title": "No SMTP TLS reporting configured",
+      "target": {
+        "type": "domain",
+        "value": "gov.uk"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "a definite TXT answer at _smtp._tls with no v=TLSRPTv1 term is direct observation"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _smtp._tls.gov.uk",
+          "captured_at": "2026-10-08T10:43:39.251389Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_smtp._tls.gov.uk",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=spf1 ?all",
+                "v=DMARC1;p=reject;rua=mailto:govuk-rua@dmarc.service.gov.uk"
+              ],
+              "ttl": 1800,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-e71aeadc.gov.uk",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=spf1 ?all",
+                "v=DMARC1;p=reject;rua=mailto:govuk-rua@dmarc.service.gov.uk"
+              ],
+              "ttl": 1800,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:43:39.251412Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_smtp._tls.gov.uk",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=spf1 ?all",
+                "v=DMARC1;p=reject;rua=mailto:govuk-rua@dmarc.service.gov.uk"
+              ],
+              "ttl": 1800,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "gov.uk",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "No SMTP TLS reporting record is published at _smtp._tls.gov.uk.",
+      "impact": "Nobody is told when a sending server fails to establish TLS to your mail servers, so a downgrade attack or a broken certificate goes unnoticed.",
+      "remediation": "Publish a TXT record at _smtp._tls.gov.uk of the form 'v=TLSRPTv1; rua=mailto:tls-reports@gov.uk'.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc8460"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:39.251416Z",
+      "first_seen_scan_id": "01M4DHS3DS3RH9QCJ8R1TP5MBM",
+      "last_seen": "2026-10-08T10:43:39.251416Z",
+      "last_seen_scan_id": "01M4DHS3DS3RH9QCJ8R1TP5MBM",
+      "cost": {
+        "requests": 26,
+        "wall_ms": 697,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    }
+  ],
+  "errors": [],
+  "telemetry": {
+    "checks_run": [
+      {
+        "check_id": "spf-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-multiple-records",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-invalid",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-invalid",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-policy-none",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "mx-missing",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "dkim-missing",
+        "outcome": "inconclusive",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-too-permissive",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-lookup-limit",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-pct-partial",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-no-rua",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-alignment",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "mta-sts-missing",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "tls-rpt-missing",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "spoofing-possible",
+        "outcome": "clear",
+        "location": "$"
+      }
+    ],
+    "suppressed": [],
+    "requests": 26,
+    "wall_ms": 697,
+    "ai_tokens": 0
+  },
+  "started_at": null,
+  "finished_at": "2026-10-08T10:43:39.251562Z",
+  "killed": false,
+  "outcome": "succeeded"
+}

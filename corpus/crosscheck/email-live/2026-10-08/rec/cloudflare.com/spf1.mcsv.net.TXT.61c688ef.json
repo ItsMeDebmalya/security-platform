@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "spf1.mcsv.net",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 ip4:205.201.128.0/20 ip4:198.2.128.0/18 ?all"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 15504
+}

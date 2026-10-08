@@ -1,0 +1,12 @@
+{
+  "flags": [],
+  "name": "caltech.edu",
+  "rcode": "NOERROR",
+  "records": [
+    "10 mx1.caltech.iphmx.com.",
+    "10 mx2.caltech.iphmx.com."
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "MX",
+  "ttl": 43200
+}

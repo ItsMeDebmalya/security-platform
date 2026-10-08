@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "spf.reliance.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 ip4:68.232.131.81 ip4:68.232.137.96 ip4:68.232.142.172 ip4:68.232.148.75 a:b.spf.service-now.com a:c.spf.service-now.com a:d.spf.service-now.com include:spf.boardbooks.com include:spf.protection.outlook.com -all"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 300
+}

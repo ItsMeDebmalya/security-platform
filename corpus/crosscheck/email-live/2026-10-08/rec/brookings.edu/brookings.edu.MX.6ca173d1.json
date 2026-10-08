@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "brookings.edu",
+  "rcode": "NOERROR",
+  "records": [
+    "5 brookings-edu.mail.protection.outlook.com."
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "MX",
+  "ttl": 604800
+}

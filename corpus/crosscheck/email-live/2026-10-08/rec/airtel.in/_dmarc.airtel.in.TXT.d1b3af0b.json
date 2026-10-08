@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_dmarc.airtel.in",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DMARC1; p=quarantine; rua=mailto:dmarc17@airtel.in; ruf=mailto:dmarc17@airtel.in; adkim=r; aspf=s; rf=afrf"
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": 28800
+}

@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "spf.zoho.in",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 ip4:103.117.158.0/24 ip4:103.89.74.0/24 ip4:169.148.146.0/23 ip4:169.148.134.0/24 -all"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 300
+}

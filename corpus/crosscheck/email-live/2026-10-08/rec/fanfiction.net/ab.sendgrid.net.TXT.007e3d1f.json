@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "ab.sendgrid.net",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 ip4:223.165.113.0/24 ip4:223.165.115.0/24 ip4:223.165.118.0/23 ip4:223.165.120.0/23 ~all"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 672
+}

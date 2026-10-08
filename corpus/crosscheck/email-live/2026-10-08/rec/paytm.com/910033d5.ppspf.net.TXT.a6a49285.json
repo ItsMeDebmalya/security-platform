@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "910033d5.ppspf.net",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 exists:%{ir}._spf.netcorecloud.net -all"
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": 86400
+}

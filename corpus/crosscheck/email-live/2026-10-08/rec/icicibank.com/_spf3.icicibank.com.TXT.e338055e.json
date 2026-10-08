@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_spf3.icicibank.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1  include:156586011.spf2.netcorecloud.net include:spf.mandrillapp.com include:spf.m3c.in ip4:167.89.0.0/17 ip4:149.72.0.0/16 -all"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 3600
+}

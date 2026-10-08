@@ -1,0 +1,414 @@
+{
+  "scanner": "email",
+  "scanner_version": "1.1.0",
+  "target": {
+    "type": "domain",
+    "value": "cloudflare.com"
+  },
+  "mode": "standard",
+  "findings": [
+    {
+      "id": "sha256:25b737720a45a840f471cf2f8f1e8bcb19fee2d9106b693f52c88e8a0324d746",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "dmarc-alignment",
+      "renamed_from": [],
+      "title": "DMARC uses relaxed alignment",
+      "target": {
+        "type": "domain",
+        "value": "cloudflare.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "info",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "informational",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the adkim= and aspf= tags are read directly, and default to relaxed"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _dmarc.cloudflare.com",
+          "captured_at": "2026-10-08T10:43:39.013926Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.cloudflare.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=reject; sp=reject; adkim=r; aspf=r; pct=100; rua=mailto:a1c47f179bc04efd8ee4dcd4d85dfc65@dmarc-reports.cloudflare.net,mailto:rua@cloudflare.com"
+              ],
+              "ttl": 300,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-c87aa611.cloudflare.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NODATA",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:43:39.013950Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.cloudflare.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=reject; sp=reject; adkim=r; aspf=r; pct=100; rua=mailto:a1c47f179bc04efd8ee4dcd4d85dfc65@dmarc-reports.cloudflare.net,mailto:rua@cloudflare.com"
+              ],
+              "ttl": 300,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "cloudflare.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "DMARC alignment is relaxed (adkim=r, aspf=r). Relaxed alignment accepts any subdomain of cloudflare.com in the authenticated identifier.",
+      "impact": "Relaxed alignment is the default and is appropriate for most senders. It does mean that anyone able to publish records under a subdomain can pass DMARC for the parent.",
+      "remediation": "If every legitimate sender signs and sends as the exact domain, set adkim=s and aspf=s. If subdomains send mail, relaxed is the correct setting and no change is needed.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7489#section-3.1"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:39.013958Z",
+      "first_seen_scan_id": "01M4DHS3D3RV3JXG02C1MCZ8CD",
+      "last_seen": "2026-10-08T10:43:39.013958Z",
+      "last_seen_scan_id": "01M4DHS3D3RV3JXG02C1MCZ8CD",
+      "cost": {
+        "requests": 28,
+        "wall_ms": 481,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:87081068ad2afec5c7e050e320b7aa6a92fcd797287f549027ca94d5ad79261a",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "dkim-weak-key",
+      "renamed_from": [],
+      "title": "DKIM key is below 2048 bits",
+      "target": {
+        "type": "domain",
+        "value": "cloudflare.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.9677,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 30.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the modulus length is measured from the key itself; every common selector is read, but a domain may publish others we cannot find"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at k1._domainkey.cloudflare.com",
+          "captured_at": "2026-10-08T10:43:39.025772Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "k1._domainkey.cloudflare.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDbNrX2cY/GUKIFx2G/1I00ftdAj713WP9AQ1xir85i89sA2guU0ta4UX1Xzm06XIU6iBP41VwmPwBGRNofhBVR+e6WHUoNyIR4Bn84LVcfZE20rmDeXQblIupNWBqLXM1Q+VieI/eZu/7k9/vOkLSaQQdml4Cv8lb3PcnluMVIhQIDAQAB;"
+              ],
+              "ttl": 86400,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-c87aa611.cloudflare.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NODATA",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": {
+            "dkim_keys": [
+              {
+                "selector": "k1",
+                "raw": "k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDbNrX2cY/GUKIFx2G/1I00ftdAj713WP9AQ1xir85i89sA2guU0ta4UX1Xzm06XIU6iBP41VwmPwBGRNofhBVR+e6WHUoNyIR4Bn84LVcfZE20rmDeXQblIupNWBqLXM1Q+VieI/eZu/7k9/vOkLSaQQdml4Cv8lb3PcnluMVIhQIDAQAB;",
+                "valid": true,
+                "tags": {
+                  "k": "rsa",
+                  "p": "<216 base64 chars>"
+                },
+                "errors": [],
+                "key_type": "rsa",
+                "key_bits": 1024,
+                "revoked": false,
+                "testing": false
+              },
+              {
+                "selector": "s1",
+                "raw": "k=rsa; t=s; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA1m74n5R+xcz+ICbNBWRIlQeHI65Hjp67+P59XSe71jItafrcJ4/5y/UvU+uNg7KNeOcEsotGo7QvLN87hqZSZqfzVyyGnQuEUXoKPdKokD6Pa5KmJSqbA5Y/f977HpikU9Xtd7Orc7ctRLK6H5QFvGwRi+oC9NRkgNB55UUnLbbkKK+LGeTw4Ghmr5gupw7iYzFXZ1qlFNqV6s9Pmgb+b7oDv+OfQxB/MJyUzQ5eWdKlJWfmW3s77J3fHFfysUbKKUBxEXPxNiMFRG1ClllZ4+AYRh1jrFpjbvZ5j43kqahKXeHDNkF+Gpptd7ufWIevAPTQDSVdKB9vyJQN6wfcQQIDAQAB",
+                "valid": true,
+                "tags": {
+                  "k": "rsa",
+                  "t": "s",
+                  "p": "<392 base64 chars>"
+                },
+                "errors": [],
+                "key_type": "rsa",
+                "key_bits": 2048,
+                "revoked": false,
+                "testing": false
+              },
+              {
+                "selector": "mandrill",
+                "raw": "v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCrLHiExVd55zd/IQ/J/mRwSRMAocV/hMB3jXwaHH36d9NaVynQFYV8NaWi69c1veUtRzGt7yAioXqLj7Z4TeEUoOLgrKsn8YnckGs9i3B3tVFB+Ch/4mPhXWiNfNdynHWBcPcbJ8kjEQ2U8y78dHZj1YeRXXVvWob2OaKynO8/lQIDAQAB",
+                "valid": true,
+                "tags": {
+                  "v": "DKIM1",
+                  "k": "rsa",
+                  "p": "<216 base64 chars>"
+                },
+                "errors": [],
+                "key_type": "rsa",
+                "key_bits": 1024,
+                "revoked": false,
+                "testing": false
+              }
+            ]
+          }
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:43:39.025799Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "k1._domainkey.cloudflare.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDbNrX2cY/GUKIFx2G/1I00ftdAj713WP9AQ1xir85i89sA2guU0ta4UX1Xzm06XIU6iBP41VwmPwBGRNofhBVR+e6WHUoNyIR4Bn84LVcfZE20rmDeXQblIupNWBqLXM1Q+VieI/eZu/7k9/vOkLSaQQdml4Cv8lb3PcnluMVIhQIDAQAB;"
+              ],
+              "ttl": 86400,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "cloudflare.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "DKIM keys below 2048 bits are published at k1._domainkey.cloudflare.com (1024 bits) and mandrill._domainkey.cloudflare.com (1024 bits). Each meets the RFC 8301 minimum of 1024 bits, below the recommended 2048. The domain also publishes s1._domainkey.cloudflare.com. We cannot tell from DNS which selector it signs its mail with. RFC 6376 section 6.1.2 has a verifier fetch the key named by the signature's s= tag, so a signature may name any selector the domain publishes, the weaker one included.",
+      "impact": "This is a margin, not a break: RFC 8301 permits the key, and recommends 2048 bits for signers. Moving to 2048 bits brings the domain in line with that recommendation.",
+      "remediation": "If a weaker selector is no longer used for signing, remove its record. Otherwise generate a new 2048-bit key with your mail provider, publish it under a new selector, switch signing to it, and remove the old selector once no mail is signed with it.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc8301"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:39.025804Z",
+      "first_seen_scan_id": "01M4DHS3D3RV3JXG02C1MCZ8CD",
+      "last_seen": "2026-10-08T10:43:39.025804Z",
+      "last_seen_scan_id": "01M4DHS3D3RV3JXG02C1MCZ8CD",
+      "cost": {
+        "requests": 29,
+        "wall_ms": 493,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    }
+  ],
+  "errors": [],
+  "telemetry": {
+    "checks_run": [
+      {
+        "check_id": "spf-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-multiple-records",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-invalid",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-invalid",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-policy-none",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "mx-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dkim-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-too-permissive",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-lookup-limit",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-pct-partial",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-no-rua",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-alignment",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "dkim-weak-key",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "mta-sts-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "tls-rpt-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spoofing-possible",
+        "outcome": "clear",
+        "location": "$"
+      }
+    ],
+    "suppressed": [],
+    "requests": 31,
+    "wall_ms": 516,
+    "ai_tokens": 0
+  },
+  "started_at": null,
+  "finished_at": "2026-10-08T10:43:39.048491Z",
+  "killed": false,
+  "outcome": "succeeded"
+}

@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "s2._domainkey.bookmyshow.com",
+  "rcode": "NOERROR",
+  "records": [
+    "k=rsa; t=s; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsEzZ6xDxVMLihyAQ3N7ETvWXYi3/zTO4YSGFRhDYF7qmarZqXClkTJZAkh1qrDIXzKfnOwfLQO6bqb+9H0CGL20E9Mp506AcXwcYX8cRdekYSVeVp9c3qt0hLLQvKijK0a7i8tWb2jJHWhQQORpv9Jpx6+Au+SmhCNNIhDIuoHiSZdk7jFT4yuKal0Bq7w8d567KZTLA8r21Dzbi1NS562lsQ9eZuhodmpSLsJ6Ic/Yz1GvbzrhMjEgdmoGTAnRZkEjjzU8yIxvavKePIZdneKlA4Fgch8Nj3EIHd0+M1Hs2p/tjx4H7Zv3cG9XAzDtt8PQqty/Xa2akuDHxa65v4QIDAQAB"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 1800
+}

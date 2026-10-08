@@ -1,0 +1,13 @@
+{
+  "flags": [],
+  "name": "sendclean.net",
+  "rcode": "NOERROR",
+  "records": [
+    "postman-domain-verification=ea03b718cb1af908c177278830373cd135b6babbc85aede7044e6961d7cf85e86da66763fd40338c8f671d45cf37148ccf0b583c1391bc5d73f8402a7913cf09",
+    "v=spf1 ip4:45.115.28.0/22 ip4:45.249.52.0/22 ip4:18.97.39.172/26 ip4:18.97.44.1/24 ip4:3.41.132.128/28 -all",
+    "yahoo-verification-key=mxOLaYXdblZ9+fTCz6zbOAfAm3ezWHKPTnNKU3KfmKs="
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 300
+}

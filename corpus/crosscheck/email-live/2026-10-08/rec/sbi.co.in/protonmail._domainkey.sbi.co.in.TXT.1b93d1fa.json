@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "protonmail._domainkey.sbi.co.in",
+  "rcode": "NXDOMAIN",
+  "records": [],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": null
+}

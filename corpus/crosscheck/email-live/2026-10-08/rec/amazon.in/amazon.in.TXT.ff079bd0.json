@@ -1,0 +1,29 @@
+{
+  "flags": [],
+  "name": "amazon.in",
+  "rcode": "NOERROR",
+  "records": [
+    "TS1760027",
+    "MS=ms27803002",
+    "MS=ms65650497",
+    "v=spf1 include:amazon.com -all",
+    "spf2.0/pra include:amazon.com -all",
+    "canva-site-verification=hbDzfqg-Yto5mQswKAEatA",
+    "google-gws-recovery-domain-verification=69979608",
+    "google-gws-recovery-domain-verification=70440648",
+    "bluebeam-verification=nbh9t8rjoaej9iluzr8knu56ehfv84",
+    "docker-verification=18325118-b0dc-40bd-81c5-d6aafedf278c",
+    "facebook-domain-verification=hgfnhz04meuxr62da6b00kwas2n4md",
+    "google-site-verification=ABRnURlPVtQRBIMqadgOhBTXsxY_HxEn04unYT9D0J4",
+    "google-site-verification=GsLI5kBVqu0oRPMAr-bFqvv3FRTlCiHyYQ2VUGDNwHM",
+    "google-site-verification=xTaP4clXFdYM8wMNQRgr5Ezb9b9STzHgq4tmVyZrDEI",
+    "google-site-verification=xibV-ooZgBwkpinWNuETXl-tasUI80Q4nxnNQVqE8cw",
+    "liveramp-site-verification=jZJKgMEQ_1mdjMhKj02iqNACZ-NJHRWhCEQdQ_OuCMo",
+    "kahoot-domain-verification=c1ef4a458d927fa9054ae24946b2228c246e07972ce6e8a8ad017acf06c434f4",
+    "adobe-idp-site-verification=b6bcd3e5aaffc63607c8bf75744d9a0d1febc50dd7f389428e2ae476c9ba8814",
+    "atlassian-domain-verification=ZT4AapXgobCpXIWoNcd7gtMjZyOUdr4EDFMnFUWrqqqgdaQVbDvoGpRaIwj/tgPH"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 900
+}

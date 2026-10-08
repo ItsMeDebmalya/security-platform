@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "sp-wildcard-probe-a4c9c0c7.google.com",
+  "rcode": "NXDOMAIN",
+  "records": [],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": null
+}

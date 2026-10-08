@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_dmarc.jpmorganchase.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DMARC1; p=reject; pct=100; rua=mailto:d@rua.agari.com; ruf=mailto:d@ruf.agari.com; fo=1"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 3600
+}

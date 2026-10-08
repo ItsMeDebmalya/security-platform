@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "s2._domainkey.tcs.com",
+  "rcode": "NOERROR",
+  "records": [
+    "k=rsa; t=s; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQD1cgP9tWaI8dKFYzeR25y3K3lmh7s83LpXpT4H0yi6Vu20hbgM27/+Y8vSm6oTK+qpPZWI3AlmkOzq6PVAc/2+9/98sg1hiwNUtifKe+ZI1tbE/bcCpf4DfZAcTir5DVj2ZlJa0goj1nhh8OelLLU6p2E3evclYb4lV+BrZKiuBQIDAQAB"
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": 1800
+}

@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_dmarc.cloudflare.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DMARC1; p=reject; sp=reject; adkim=r; aspf=r; pct=100; rua=mailto:a1c47f179bc04efd8ee4dcd4d85dfc65@dmarc-reports.cloudflare.net,mailto:rua@cloudflare.com"
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": 300
+}

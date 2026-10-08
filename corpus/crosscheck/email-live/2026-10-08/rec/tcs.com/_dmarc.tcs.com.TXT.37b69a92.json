@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_dmarc.tcs.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DMARC1; p=reject; pct=100; rua=mailto:f22ff518@mxtoolbox.dmarc-report.com,mailto:rua.dmarc@tcs.com; ruf=mailto:f22ff518@forensics.dmarc-report.com,mailto:ruf.dmarc@tcs.com; fo=1"
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": 79996
+}

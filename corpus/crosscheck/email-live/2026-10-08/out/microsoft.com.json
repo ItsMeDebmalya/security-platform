@@ -1,0 +1,385 @@
+{
+  "scanner": "email",
+  "scanner_version": "1.1.0",
+  "target": {
+    "type": "domain",
+    "value": "microsoft.com"
+  },
+  "mode": "standard",
+  "findings": [
+    {
+      "id": "sha256:7d2d9e0397c0b8cfc985dd1bd8b231cd48537e99b6812f7802bc6959c8fa405c",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "dmarc-alignment",
+      "renamed_from": [],
+      "title": "DMARC uses relaxed alignment",
+      "target": {
+        "type": "domain",
+        "value": "microsoft.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "info",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "informational",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the adkim= and aspf= tags are read directly, and default to relaxed"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _dmarc.microsoft.com",
+          "captured_at": "2026-10-08T10:43:38.876237Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.microsoft.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=reject; pct=100; rua=mailto:itex-rua@microsoft.com; ruf=mailto:itex-ruf@microsoft.com; fo=1"
+              ],
+              "ttl": 2330,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-1408ef01.microsoft.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:43:38.876261Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.microsoft.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=reject; pct=100; rua=mailto:itex-rua@microsoft.com; ruf=mailto:itex-ruf@microsoft.com; fo=1"
+              ],
+              "ttl": 1397,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "microsoft.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "DMARC alignment is relaxed (adkim=r, aspf=r). Relaxed alignment accepts any subdomain of microsoft.com in the authenticated identifier.",
+      "impact": "Relaxed alignment is the default and is appropriate for most senders. It does mean that anyone able to publish records under a subdomain can pass DMARC for the parent.",
+      "remediation": "If every legitimate sender signs and sends as the exact domain, set adkim=s and aspf=s. If subdomains send mail, relaxed is the correct setting and no change is needed.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7489#section-3.1"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:38.876269Z",
+      "first_seen_scan_id": "01M4DHS3CY3ZR30WYEE8H1ZX8Q",
+      "last_seen": "2026-10-08T10:43:38.876269Z",
+      "last_seen_scan_id": "01M4DHS3CY3ZR30WYEE8H1ZX8Q",
+      "cost": {
+        "requests": 29,
+        "wall_ms": 349,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:e659cff71d0350841af1dca8e881683ea647e0f73a34cbf19e8b26b25c151438",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "dkim-weak-key",
+      "renamed_from": [],
+      "title": "DKIM key is below 2048 bits",
+      "target": {
+        "type": "domain",
+        "value": "microsoft.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.9677,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 30.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the modulus length is measured from the key itself; every common selector is read, but a domain may publish others we cannot find"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at selector2._domainkey.microsoft.com",
+          "captured_at": "2026-10-08T10:43:38.885332Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "selector2._domainkey.microsoft.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCPkb8bu8RGWeJGk3hJrouZXIdZ+HTp/azRp8IUOHp5wKvPUAi/54PwuLscUjRk4Rh3hjIkMpKRfJJXPxWbrT7eMLric7f/S0h+qF4aqIiQqHFCDAYfMnN6V3Wbke2U5EGm0H/cAUYkaf2AtuHJ/rdY/EXaldAm00PgT9QQMez66QIDAQAB;"
+              ],
+              "ttl": 3600,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-1408ef01.microsoft.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": {
+            "dkim_keys": [
+              {
+                "selector": "selector2",
+                "raw": "v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCPkb8bu8RGWeJGk3hJrouZXIdZ+HTp/azRp8IUOHp5wKvPUAi/54PwuLscUjRk4Rh3hjIkMpKRfJJXPxWbrT7eMLric7f/S0h+qF4aqIiQqHFCDAYfMnN6V3Wbke2U5EGm0H/cAUYkaf2AtuHJ/rdY/EXaldAm00PgT9QQMez66QIDAQAB;",
+                "valid": true,
+                "tags": {
+                  "v": "DKIM1",
+                  "k": "rsa",
+                  "p": "<216 base64 chars>"
+                },
+                "errors": [],
+                "key_type": "rsa",
+                "key_bits": 1024,
+                "revoked": false,
+                "testing": false
+              }
+            ]
+          }
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:43:38.885358Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "selector2._domainkey.microsoft.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCPkb8bu8RGWeJGk3hJrouZXIdZ+HTp/azRp8IUOHp5wKvPUAi/54PwuLscUjRk4Rh3hjIkMpKRfJJXPxWbrT7eMLric7f/S0h+qF4aqIiQqHFCDAYfMnN6V3Wbke2U5EGm0H/cAUYkaf2AtuHJ/rdY/EXaldAm00PgT9QQMez66QIDAQAB;"
+              ],
+              "ttl": 2830,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "microsoft.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "The DKIM key published at selector2._domainkey.microsoft.com is 1024 bits. It meets the RFC 8301 minimum of 1024 bits, below the recommended 2048.",
+      "impact": "This is a margin, not a break: RFC 8301 permits the key, and recommends 2048 bits for signers. Moving to 2048 bits brings the domain in line with that recommendation.",
+      "remediation": "If a weaker selector is no longer used for signing, remove its record. Otherwise generate a new 2048-bit key with your mail provider, publish it under a new selector, switch signing to it, and remove the old selector once no mail is signed with it.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc8301"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:38.885363Z",
+      "first_seen_scan_id": "01M4DHS3CY3ZR30WYEE8H1ZX8Q",
+      "last_seen": "2026-10-08T10:43:38.885363Z",
+      "last_seen_scan_id": "01M4DHS3CY3ZR30WYEE8H1ZX8Q",
+      "cost": {
+        "requests": 30,
+        "wall_ms": 358,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    }
+  ],
+  "errors": [],
+  "telemetry": {
+    "checks_run": [
+      {
+        "check_id": "spf-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-multiple-records",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-invalid",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-invalid",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-policy-none",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "mx-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dkim-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-too-permissive",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-lookup-limit",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-pct-partial",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-no-rua",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-alignment",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "dkim-weak-key",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "mta-sts-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "tls-rpt-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spoofing-possible",
+        "outcome": "clear",
+        "location": "$"
+      }
+    ],
+    "suppressed": [],
+    "requests": 32,
+    "wall_ms": 387,
+    "ai_tokens": 0
+  },
+  "started_at": null,
+  "finished_at": "2026-10-08T10:43:38.914487Z",
+  "killed": false,
+  "outcome": "succeeded"
+}

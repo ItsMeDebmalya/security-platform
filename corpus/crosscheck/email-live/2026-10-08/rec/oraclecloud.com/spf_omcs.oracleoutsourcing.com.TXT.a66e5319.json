@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "spf_omcs.oracleoutsourcing.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 include:spf_omcs1.oracleoutsourcing.com include:spf_omcsoci.oracleoutsourcing.com include:spf_omcsoci1.oracleoutsourcing.com include:spf_omcsoci2.oracleoutsourcing.com -all"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 10800
+}

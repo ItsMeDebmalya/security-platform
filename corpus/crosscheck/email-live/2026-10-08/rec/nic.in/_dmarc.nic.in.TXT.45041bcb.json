@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_dmarc.nic.in",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DMARC1; p=reject; fo=1;rua=mailto:pmaster-rua@nic.in;ruf=mailto:pmaster-ruf@nic.in"
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": 119
+}

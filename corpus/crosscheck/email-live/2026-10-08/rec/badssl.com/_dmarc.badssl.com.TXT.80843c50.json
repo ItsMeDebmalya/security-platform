@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "_dmarc.badssl.com",
+  "rcode": "NODATA",
+  "records": [],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": null
+}

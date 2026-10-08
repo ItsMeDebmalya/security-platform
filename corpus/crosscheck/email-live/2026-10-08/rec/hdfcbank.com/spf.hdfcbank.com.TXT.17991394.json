@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "spf.hdfcbank.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 ip4:202.154.164.115 ip4:202.154.160.154/29 ip4:202.154.164.100 ip4:202.154.164.102 ip4:202.154.164.119 ip4:202.154.164.120 -all"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 300
+}

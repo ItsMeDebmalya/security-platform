@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "sp-wildcard-probe-b1d47516.tcs.com",
+  "rcode": "NXDOMAIN",
+  "records": [],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": null
+}

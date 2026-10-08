@@ -1,0 +1,665 @@
+{
+  "scanner": "email",
+  "scanner_version": "1.1.0",
+  "target": {
+    "type": "domain",
+    "value": "tcs.com"
+  },
+  "mode": "standard",
+  "findings": [
+    {
+      "id": "sha256:bafa851ffca8a621523a0f675db92c87dd703b1780d2e433367f6547d9504512",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "dmarc-alignment",
+      "renamed_from": [],
+      "title": "DMARC uses relaxed alignment",
+      "target": {
+        "type": "domain",
+        "value": "tcs.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "info",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "informational",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the adkim= and aspf= tags are read directly, and default to relaxed"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _dmarc.tcs.com",
+          "captured_at": "2026-10-08T10:43:41.169981Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.tcs.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=reject; pct=100; rua=mailto:f22ff518@mxtoolbox.dmarc-report.com,mailto:rua.dmarc@tcs.com; ruf=mailto:f22ff518@forensics.dmarc-report.com,mailto:ruf.dmarc@tcs.com; fo=1"
+              ],
+              "ttl": 86400,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-b1d47516.tcs.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:43:41.170006Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.tcs.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=reject; pct=100; rua=mailto:f22ff518@mxtoolbox.dmarc-report.com,mailto:rua.dmarc@tcs.com; ruf=mailto:f22ff518@forensics.dmarc-report.com,mailto:ruf.dmarc@tcs.com; fo=1"
+              ],
+              "ttl": 79996,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "tcs.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "DMARC alignment is relaxed (adkim=r, aspf=r). Relaxed alignment accepts any subdomain of tcs.com in the authenticated identifier.",
+      "impact": "Relaxed alignment is the default and is appropriate for most senders. It does mean that anyone able to publish records under a subdomain can pass DMARC for the parent.",
+      "remediation": "If every legitimate sender signs and sends as the exact domain, set adkim=s and aspf=s. If subdomains send mail, relaxed is the correct setting and no change is needed.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7489#section-3.1"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:41.170010Z",
+      "first_seen_scan_id": "01M4DHS4AA6R596NCXPJ3F26ZN",
+      "last_seen": "2026-10-08T10:43:41.170010Z",
+      "last_seen_scan_id": "01M4DHS4AA6R596NCXPJ3F26ZN",
+      "cost": {
+        "requests": 27,
+        "wall_ms": 1703,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:6a4bb4c2c1cf1e81882974e0992665404570d066d3bbb0498fb718d7c4fda1e5",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "dkim-weak-key",
+      "renamed_from": [],
+      "title": "DKIM key is below 2048 bits",
+      "target": {
+        "type": "domain",
+        "value": "tcs.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.9677,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 30.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the modulus length is measured from the key itself; every common selector is read, but a domain may publish others we cannot find"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at s2._domainkey.tcs.com",
+          "captured_at": "2026-10-08T10:43:41.200589Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "s2._domainkey.tcs.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "k=rsa; t=s; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQD1cgP9tWaI8dKFYzeR25y3K3lmh7s83LpXpT4H0yi6Vu20hbgM27/+Y8vSm6oTK+qpPZWI3AlmkOzq6PVAc/2+9/98sg1hiwNUtifKe+ZI1tbE/bcCpf4DfZAcTir5DVj2ZlJa0goj1nhh8OelLLU6p2E3evclYb4lV+BrZKiuBQIDAQAB"
+              ],
+              "ttl": 1800,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-b1d47516.tcs.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": {
+            "dkim_keys": [
+              {
+                "selector": "google",
+                "raw": "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAp+Lg4pG+qHbW6LG3RWwd7vNy5/uS9MIgmoHR9m+kYt+0+nQq8/nu9OwwnJVqUDCuWEKJJvpmuHAb7NUrL9J/kVfYY+7Vf32lHc7QJ/HqEfedeoymIfG2s1Mpgp9qSAXqFrt72+aQVMorqEgAVu3Jf9T6L6SJGLT4K5E7GTVdjM666u+v2UTdcs1M4K82E0FLp0nNcPWqtJzF5oYeT9BruXZlWTtH3J/1z3AEa5fEYn3A+fxxILcBPvSLGjKGFC+k5x1fl7Cq83getCzsKmTN327OZ0Dzp1bL7oqw+6mK8OSPKBDP/gugVYbiiLUfJOgxqdUabmbSeGJXSHj7MezfrQIDAQAB",
+                "valid": true,
+                "tags": {
+                  "v": "DKIM1",
+                  "k": "rsa",
+                  "p": "<392 base64 chars>"
+                },
+                "errors": [],
+                "key_type": "rsa",
+                "key_bits": 2048,
+                "revoked": false,
+                "testing": false
+              },
+              {
+                "selector": "s1",
+                "raw": "k=rsa; t=s; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA+Ei6/+U3h676t9paQqV/BbB/v27El7qoDODribt6VC2TImfWk4tjVwtBPEighWt5WCt5wJHLqPHCEcusnUT3O3C404Z9zi4Qa2G/dHLMjEWoxd0ThetSWLPhZdFpfMRpXfjPRdQo7dUqbkTkKXr/k8cWysz5rh+Us/NO+FpcLlXtpuv3RNnaebL4XFn7585f3skuFoE+M2Xyx77JO2sx/gAag7uK6fAhY1Wiq8cD5ZieURTsAhFtnePV5UXUi8pERr3jdJnbhQLNaK828Pusr9DFsD35oTFLtTRey32E1vGLNMq5KDaGPDiI0dQwEgU2J176TPWd2J5G1VmA1EtPJQIDAQAB",
+                "valid": true,
+                "tags": {
+                  "k": "rsa",
+                  "t": "s",
+                  "p": "<392 base64 chars>"
+                },
+                "errors": [],
+                "key_type": "rsa",
+                "key_bits": 2048,
+                "revoked": false,
+                "testing": false
+              },
+              {
+                "selector": "s2",
+                "raw": "k=rsa; t=s; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQD1cgP9tWaI8dKFYzeR25y3K3lmh7s83LpXpT4H0yi6Vu20hbgM27/+Y8vSm6oTK+qpPZWI3AlmkOzq6PVAc/2+9/98sg1hiwNUtifKe+ZI1tbE/bcCpf4DfZAcTir5DVj2ZlJa0goj1nhh8OelLLU6p2E3evclYb4lV+BrZKiuBQIDAQAB",
+                "valid": true,
+                "tags": {
+                  "k": "rsa",
+                  "t": "s",
+                  "p": "<216 base64 chars>"
+                },
+                "errors": [],
+                "key_type": "rsa",
+                "key_bits": 1024,
+                "revoked": false,
+                "testing": false
+              }
+            ]
+          }
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:43:41.200608Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "s2._domainkey.tcs.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "k=rsa; t=s; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQD1cgP9tWaI8dKFYzeR25y3K3lmh7s83LpXpT4H0yi6Vu20hbgM27/+Y8vSm6oTK+qpPZWI3AlmkOzq6PVAc/2+9/98sg1hiwNUtifKe+ZI1tbE/bcCpf4DfZAcTir5DVj2ZlJa0goj1nhh8OelLLU6p2E3evclYb4lV+BrZKiuBQIDAQAB"
+              ],
+              "ttl": 1800,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "tcs.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "The DKIM key published at s2._domainkey.tcs.com is 1024 bits. It meets the RFC 8301 minimum of 1024 bits, below the recommended 2048. The domain also publishes google._domainkey.tcs.com, s1._domainkey.tcs.com. We cannot tell from DNS which selector it signs its mail with. RFC 6376 section 6.1.2 has a verifier fetch the key named by the signature's s= tag, so a signature may name any selector the domain publishes, the weaker one included.",
+      "impact": "This is a margin, not a break: RFC 8301 permits the key, and recommends 2048 bits for signers. Moving to 2048 bits brings the domain in line with that recommendation.",
+      "remediation": "If a weaker selector is no longer used for signing, remove its record. Otherwise generate a new 2048-bit key with your mail provider, publish it under a new selector, switch signing to it, and remove the old selector once no mail is signed with it.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc8301"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:41.200616Z",
+      "first_seen_scan_id": "01M4DHS4AA6R596NCXPJ3F26ZN",
+      "last_seen": "2026-10-08T10:43:41.200616Z",
+      "last_seen_scan_id": "01M4DHS4AA6R596NCXPJ3F26ZN",
+      "cost": {
+        "requests": 28,
+        "wall_ms": 1734,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:d819698e0764b0140031c42b2cd9e0b54996055b440e4f330b59a95eff818031",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "mta-sts-missing",
+      "renamed_from": [],
+      "title": "No MTA-STS policy published",
+      "target": {
+        "type": "domain",
+        "value": "tcs.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "a definite TXT answer at _mta-sts with no v=STSv1 term is direct observation"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _mta-sts.tcs.com",
+          "captured_at": "2026-10-08T10:43:41.256378Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_mta-sts.tcs.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-b1d47516.tcs.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:43:41.256396Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_mta-sts.tcs.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "tcs.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "No MTA-STS policy record is published at _mta-sts.tcs.com.",
+      "impact": "Without MTA-STS a sending server that cannot negotiate TLS will deliver mail in plaintext rather than refusing, so an attacker positioned on the network can strip encryption and read the message.",
+      "remediation": "Publish a TXT record at _mta-sts.tcs.com of the form 'v=STSv1; id=<timestamp>', and serve the matching policy file at https://mta-sts.tcs.com/.well-known/mta-sts.txt. Start the policy in mode: testing, then move to mode: enforce.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc8461"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:41.256399Z",
+      "first_seen_scan_id": "01M4DHS4AA6R596NCXPJ3F26ZN",
+      "last_seen": "2026-10-08T10:43:41.256399Z",
+      "last_seen_scan_id": "01M4DHS4AA6R596NCXPJ3F26ZN",
+      "cost": {
+        "requests": 30,
+        "wall_ms": 1789,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:f6b9ce56d648ff23f06edcffbbd80e0452426bddd23704c4765cf1da09aee464",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "tls-rpt-missing",
+      "renamed_from": [],
+      "title": "No SMTP TLS reporting configured",
+      "target": {
+        "type": "domain",
+        "value": "tcs.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "a definite TXT answer at _smtp._tls with no v=TLSRPTv1 term is direct observation"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _smtp._tls.tcs.com",
+          "captured_at": "2026-10-08T10:43:41.330444Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_smtp._tls.tcs.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-b1d47516.tcs.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:43:41.330467Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_smtp._tls.tcs.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "tcs.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "No SMTP TLS reporting record is published at _smtp._tls.tcs.com.",
+      "impact": "Nobody is told when a sending server fails to establish TLS to your mail servers, so a downgrade attack or a broken certificate goes unnoticed.",
+      "remediation": "Publish a TXT record at _smtp._tls.tcs.com of the form 'v=TLSRPTv1; rua=mailto:tls-reports@tcs.com'.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc8460"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:41.330472Z",
+      "first_seen_scan_id": "01M4DHS4AA6R596NCXPJ3F26ZN",
+      "last_seen": "2026-10-08T10:43:41.330472Z",
+      "last_seen_scan_id": "01M4DHS4AA6R596NCXPJ3F26ZN",
+      "cost": {
+        "requests": 32,
+        "wall_ms": 1863,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    }
+  ],
+  "errors": [],
+  "telemetry": {
+    "checks_run": [
+      {
+        "check_id": "spf-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-multiple-records",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-invalid",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-invalid",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-policy-none",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "mx-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dkim-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-too-permissive",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-lookup-limit",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-pct-partial",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-no-rua",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-alignment",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "dkim-weak-key",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "mta-sts-missing",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "tls-rpt-missing",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "spoofing-possible",
+        "outcome": "clear",
+        "location": "$"
+      }
+    ],
+    "suppressed": [],
+    "requests": 32,
+    "wall_ms": 1864,
+    "ai_tokens": 0
+  },
+  "started_at": null,
+  "finished_at": "2026-10-08T10:43:41.330638Z",
+  "killed": false,
+  "outcome": "succeeded"
+}

@@ -1,0 +1,14 @@
+{
+  "flags": [],
+  "name": "nic.in",
+  "rcode": "NOERROR",
+  "records": [
+    "MS=ms63029334",
+    "zoho-verification=zb70328933.zmverify.mgovcloud.in",
+    "google-site-verification=zAGOlQ7cKdTU_TmdKuS3xT6vHVQHrsY8fj5EGBho8uI",
+    "v=spf1 mx ip4:164.100.14.0/24 ip4:164.100.2.0/24 ip4:164.100.10.0/24 ip4:164.100.13.0/24 ip4:164.100.17.0/24 ip4:103.70.97.0/24 ip4:164.100.172.0/24  ip4:164.100.13.0/24  include:zoho.in include:mgovcloud.in include:spf.mailcloud.in -all"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 900
+}

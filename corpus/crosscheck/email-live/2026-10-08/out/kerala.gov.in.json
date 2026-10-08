@@ -1,0 +1,721 @@
+{
+  "scanner": "email",
+  "scanner_version": "1.1.0",
+  "target": {
+    "type": "domain",
+    "value": "kerala.gov.in"
+  },
+  "mode": "standard",
+  "findings": [
+    {
+      "id": "sha256:1c94cdefb136daf3375c6b0811c4990c56e390b258cbdfb62881656f7ca4bfb7",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "dmarc-invalid",
+      "renamed_from": [],
+      "title": "DMARC record breaks RFC 7489, and receivers may handle it differently",
+      "target": {
+        "type": "domain",
+        "value": "kerala.gov.in"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "high",
+      "confidence": 0.8,
+      "confidence_provisional": true,
+      "state": "suspected",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 4.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the error is read directly from the record, but no spec defines how a receiver handles it, so the consequence this finding is about is uncertain"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _dmarc.kerala.gov.in",
+          "captured_at": "2026-10-08T10:44:03.858549Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.kerala.gov.in",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=quarantine; fo=1;rua=mailto:pmaster-wlist@kerala.gov.in;ruf=mailto:pmaster-wlist@kerala.gov.in; fo=1;rua=mailto:intimations.sgst@kerala.gov.in;ruf=mailto:intimations.sgst@kerala.gov.in"
+              ],
+              "ttl": 60,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-5cfc3b41.kerala.gov.in",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": {
+            "dmarc": {
+              "raw": "v=DMARC1; p=quarantine; fo=1;rua=mailto:pmaster-wlist@kerala.gov.in;ruf=mailto:pmaster-wlist@kerala.gov.in; fo=1;rua=mailto:intimations.sgst@kerala.gov.in;ruf=mailto:intimations.sgst@kerala.gov.in",
+              "valid": false,
+              "tags": {
+                "v": "DMARC1",
+                "p": "quarantine",
+                "fo": "1",
+                "rua": "mailto:pmaster-wlist@kerala.gov.in",
+                "ruf": "mailto:pmaster-wlist@kerala.gov.in"
+              },
+              "errors": [
+                "tag fo= appears more than once",
+                "tag rua= appears more than once",
+                "tag ruf= appears more than once"
+              ],
+              "receiver_handling": "undefined",
+              "policy": "quarantine",
+              "effective_subdomain_policy": "quarantine",
+              "pct": 100,
+              "adkim": "r",
+              "aspf": "r",
+              "rua": [
+                "mailto:pmaster-wlist@kerala.gov.in"
+              ]
+            }
+          }
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:44:03.858573Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.kerala.gov.in",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=quarantine; fo=1;rua=mailto:pmaster-wlist@kerala.gov.in;ruf=mailto:pmaster-wlist@kerala.gov.in; fo=1;rua=mailto:intimations.sgst@kerala.gov.in;ruf=mailto:intimations.sgst@kerala.gov.in"
+              ],
+              "ttl": 60,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "kerala.gov.in",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "The DMARC record at _dmarc.kerala.gov.in is not valid: tag fo= appears more than once; tag rua= appears more than once; tag ruf= appears more than once. RFC 7489 forbids this, but does not define what a receiver does with such a record. Implementations vary: some may ignore the record, others may apply the policy they can read. We cannot tell which happens at any given receiver.",
+      "impact": "Some receivers may give this domain no DMARC protection at all. Which ones cannot be known from the record.",
+      "remediation": "Rewrite the record so it begins 'v=DMARC1; p=<policy>;' - the version tag must come first and the policy tag must immediately follow it. Give each tag once. Other tags may follow in any order.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7489#section-6.3"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:44:03.858577Z",
+      "first_seen_scan_id": "01M4DHSFXY9YFE9RHQK32C6TVR",
+      "last_seen": "2026-10-08T10:44:03.858577Z",
+      "last_seen_scan_id": "01M4DHSFXY9YFE9RHQK32C6TVR",
+      "cost": {
+        "requests": 22,
+        "wall_ms": 12499,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:68c2649be8290800b9f0e68e475091b8b719daac3110ca3ed3bb1af10149c28c",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "dkim-missing",
+      "renamed_from": [],
+      "title": "No DKIM key found",
+      "target": {
+        "type": "domain",
+        "value": "kerala.gov.in"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "medium",
+      "confidence": 0.5,
+      "confidence_provisional": true,
+      "state": "inconclusive",
+      "no_verdict_reason": "blocked_prerequisite",
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 1.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the lookup produced no usable answer, so nothing moves the prior"
+        }
+      ],
+      "validation": {
+        "attempted": false,
+        "outcome": "unavailable",
+        "method": null
+      },
+      "evidence": [
+        {
+          "label": "TXT at sp-wildcard-probe-5cfc3b41.kerala.gov.in",
+          "captured_at": "2026-10-08T10:44:03.858945Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "sp-wildcard-probe-5cfc3b41.kerala.gov.in",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-5cfc3b41.kerala.gov.in",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "kerala.gov.in",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "None of the 17 common DKIM selectors resolved for kerala.gov.in. DKIM selector names are chosen freely by the sender and cannot be enumerated, so this does not show that the domain has no DKIM - only that we could not find a key.",
+      "impact": "Unknown: we could not determine whether DKIM is configured.",
+      "remediation": "If you know your selector, check it directly: the record lives at <selector>._domainkey.kerala.gov.in. Your mail provider's documentation names the selector it uses.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc6376"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:44:03.858952Z",
+      "first_seen_scan_id": "01M4DHSFXY9YFE9RHQK32C6TVR",
+      "last_seen": "2026-10-08T10:44:03.858952Z",
+      "last_seen_scan_id": "01M4DHSFXY9YFE9RHQK32C6TVR",
+      "cost": {
+        "requests": 22,
+        "wall_ms": 12500,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:0f98be3d91bc4e08b8e1faf929df207a1a85c07e366e4537de4948b877c11f99",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "mta-sts-missing",
+      "renamed_from": [],
+      "title": "No MTA-STS policy published",
+      "target": {
+        "type": "domain",
+        "value": "kerala.gov.in"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "a definite TXT answer at _mta-sts with no v=STSv1 term is direct observation"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _mta-sts.kerala.gov.in",
+          "captured_at": "2026-10-08T10:44:04.575213Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_mta-sts.kerala.gov.in",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-5cfc3b41.kerala.gov.in",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:44:04.575230Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_mta-sts.kerala.gov.in",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "kerala.gov.in",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "No MTA-STS policy record is published at _mta-sts.kerala.gov.in.",
+      "impact": "Without MTA-STS a sending server that cannot negotiate TLS will deliver mail in plaintext rather than refusing, so an attacker positioned on the network can strip encryption and read the message.",
+      "remediation": "Publish a TXT record at _mta-sts.kerala.gov.in of the form 'v=STSv1; id=<timestamp>', and serve the matching policy file at https://mta-sts.kerala.gov.in/.well-known/mta-sts.txt. Start the policy in mode: testing, then move to mode: enforce.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc8461"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:44:04.575234Z",
+      "first_seen_scan_id": "01M4DHSFXY9YFE9RHQK32C6TVR",
+      "last_seen": "2026-10-08T10:44:04.575234Z",
+      "last_seen_scan_id": "01M4DHSFXY9YFE9RHQK32C6TVR",
+      "cost": {
+        "requests": 27,
+        "wall_ms": 13216,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:6663ff8766cf3402b4ea53db52a88db07a92ead8f76b7aa74ba8f54120ebeb2d",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "tls-rpt-missing",
+      "renamed_from": [],
+      "title": "No SMTP TLS reporting configured",
+      "target": {
+        "type": "domain",
+        "value": "kerala.gov.in"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "a definite TXT answer at _smtp._tls with no v=TLSRPTv1 term is direct observation"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _smtp._tls.kerala.gov.in",
+          "captured_at": "2026-10-08T10:44:05.848015Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_smtp._tls.kerala.gov.in",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-5cfc3b41.kerala.gov.in",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:44:05.848044Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_smtp._tls.kerala.gov.in",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "kerala.gov.in",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "No SMTP TLS reporting record is published at _smtp._tls.kerala.gov.in.",
+      "impact": "Nobody is told when a sending server fails to establish TLS to your mail servers, so a downgrade attack or a broken certificate goes unnoticed.",
+      "remediation": "Publish a TXT record at _smtp._tls.kerala.gov.in of the form 'v=TLSRPTv1; rua=mailto:tls-reports@kerala.gov.in'.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc8460"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:44:05.848048Z",
+      "first_seen_scan_id": "01M4DHSFXY9YFE9RHQK32C6TVR",
+      "last_seen": "2026-10-08T10:44:05.848048Z",
+      "last_seen_scan_id": "01M4DHSFXY9YFE9RHQK32C6TVR",
+      "cost": {
+        "requests": 29,
+        "wall_ms": 14489,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:d233c509ccf329619b8c73584e44a269d26495d07b02ea996b435d0db508d440",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "spoofing-possible",
+      "renamed_from": [],
+      "title": "Mail can be sent as this domain",
+      "target": {
+        "type": "domain",
+        "value": "kerala.gov.in"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "high",
+      "confidence": 0.8,
+      "confidence_provisional": true,
+      "state": "suspected",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 4.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the only reason is a DMARC error no spec gives receiver handling for, so whether a receiver applies the record is uncertain"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _dmarc.kerala.gov.in",
+          "captured_at": "2026-10-08T10:44:05.848273Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.kerala.gov.in",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=quarantine; fo=1;rua=mailto:pmaster-wlist@kerala.gov.in;ruf=mailto:pmaster-wlist@kerala.gov.in; fo=1;rua=mailto:intimations.sgst@kerala.gov.in;ruf=mailto:intimations.sgst@kerala.gov.in"
+              ],
+              "ttl": 60,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-5cfc3b41.kerala.gov.in",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:44:05.848285Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.kerala.gov.in",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=quarantine; fo=1;rua=mailto:pmaster-wlist@kerala.gov.in;ruf=mailto:pmaster-wlist@kerala.gov.in; fo=1;rua=mailto:intimations.sgst@kerala.gov.in;ruf=mailto:intimations.sgst@kerala.gov.in"
+              ],
+              "ttl": 60,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "kerala.gov.in",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "Simulating the decision a receiving mail server would make for a message forged from kerala.gov.in: it may be delivered at some receivers, because the DMARC record breaks RFC 7489 in a way the RFC gives no receiver handling for, and implementations vary, so some receivers may not apply it.",
+      "impact": "Anyone can send mail that appears to come from this domain and expect it to reach the inbox. That is the mechanism behind invoice fraud and most credential phishing that targets a company's own staff.",
+      "remediation": "Publish an SPF record listing your senders and ending in -all, sign your mail with DKIM, then publish 'v=DMARC1; p=reject; rua=mailto:dmarc@kerala.gov.in' at _dmarc.kerala.gov.in. Move to p=reject only after the rua reports show every legitimate sender passing.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7489"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:44:05.848292Z",
+      "first_seen_scan_id": "01M4DHSFXY9YFE9RHQK32C6TVR",
+      "last_seen": "2026-10-08T10:44:05.848292Z",
+      "last_seen_scan_id": "01M4DHSFXY9YFE9RHQK32C6TVR",
+      "cost": {
+        "requests": 29,
+        "wall_ms": 14489,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    }
+  ],
+  "errors": [],
+  "telemetry": {
+    "checks_run": [
+      {
+        "check_id": "spf-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-multiple-records",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-invalid",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-invalid",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "mx-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dkim-missing",
+        "outcome": "inconclusive",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-too-permissive",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-lookup-limit",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "mta-sts-missing",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "tls-rpt-missing",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "spoofing-possible",
+        "outcome": "reported",
+        "location": "$"
+      }
+    ],
+    "suppressed": [],
+    "requests": 29,
+    "wall_ms": 14489,
+    "ai_tokens": 0
+  },
+  "started_at": null,
+  "finished_at": "2026-10-08T10:44:05.848372Z",
+  "killed": false,
+  "outcome": "succeeded"
+}

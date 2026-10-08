@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "wipro.com",
+  "rcode": "NOERROR",
+  "records": [
+    "0 wipro-com.mail.protection.outlook.com."
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "MX",
+  "ttl": 86400
+}

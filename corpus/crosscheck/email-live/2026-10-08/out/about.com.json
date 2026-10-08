@@ -1,0 +1,1082 @@
+{
+  "scanner": "email",
+  "scanner_version": "1.1.0",
+  "target": {
+    "type": "domain",
+    "value": "about.com"
+  },
+  "mode": "standard",
+  "findings": [
+    {
+      "id": "sha256:fb1ac1f4e568a027e9419e4b630ad3eb195a49cf2ff902d444fd18f249310f3b",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "spf-invalid",
+      "renamed_from": [],
+      "title": "SPF record is not valid",
+      "target": {
+        "type": "domain",
+        "value": "about.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "medium",
+      "confidence": 0.9677,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 30.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "RFC 7208 syntax is unambiguous, but real-world records use extensions we may not know, so the ratio is below that of a plain absence"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at about.com",
+          "captured_at": "2026-10-08T10:43:51.039014Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "about.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "_globalsign-domain-verification=ojigih5w0ef57wjvnpzdo5a4culsziquhumcdqksj2",
+                "adobe-idp-site-verification=4d443bb146b2a60fc0c0216c899a6ef9baa971cc3c36ac4b3020b4719b5c2e82",
+                "airtable-verification=7f23bd05102c5a2c073b0d0689ecaf71",
+                "atlassian-domain-verification=uutqhyge655rxaicqp-iayc/q7ggtojzidouyp0rb7n8oudp4q8wfsgllr1iajvr",
+                "facebook-domain-verification=rf8ocdhxrznl039sodxk5mul9of8l7",
+                "globalsign-domain-verification=w4_cm6jggwq8dxcwhkis6ltg0lzij1oizfjnoapv_d",
+                "google-site-verification=nabvdaatpqecskkkchqujsdsjagdkyi4dg5-vj-bcrw",
+                "openai-domain-verification=dv-7ma37immfvwqj1fwgsn676a6",
+                "slack-domain-verification=op2dusosy3seuyxvj1tjafq1nwifizeevpkitpnr",
+                "v=spf1 ip4 64.125.213.247 ip4 216.223.13.247 ip4 34.194.76.185 ip4 35.164.185.216 ip4 34.194.69.219  include _spf.salesforce.com include _spf.google.com include spf.protection.outlook.com include amazonses.com ~all"
+              ],
+              "ttl": 3600,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-bc709be1.about.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": {
+            "spf": {
+              "raw": "v=spf1 ip4 64.125.213.247 ip4 216.223.13.247 ip4 34.194.76.185 ip4 35.164.185.216 ip4 34.194.69.219  include _spf.salesforce.com include _spf.google.com include spf.protection.outlook.com include amazonses.com ~all",
+              "valid": false,
+              "terms": [
+                {
+                  "mechanism": "ip4",
+                  "qualifier": "+",
+                  "value": null,
+                  "raw": "ip4",
+                  "costs_lookup": false
+                },
+                {
+                  "mechanism": "ip4",
+                  "qualifier": "+",
+                  "value": null,
+                  "raw": "ip4",
+                  "costs_lookup": false
+                },
+                {
+                  "mechanism": "ip4",
+                  "qualifier": "+",
+                  "value": null,
+                  "raw": "ip4",
+                  "costs_lookup": false
+                },
+                {
+                  "mechanism": "ip4",
+                  "qualifier": "+",
+                  "value": null,
+                  "raw": "ip4",
+                  "costs_lookup": false
+                },
+                {
+                  "mechanism": "ip4",
+                  "qualifier": "+",
+                  "value": null,
+                  "raw": "ip4",
+                  "costs_lookup": false
+                },
+                {
+                  "mechanism": "include",
+                  "qualifier": "+",
+                  "value": null,
+                  "raw": "include",
+                  "costs_lookup": true
+                },
+                {
+                  "mechanism": "include",
+                  "qualifier": "+",
+                  "value": null,
+                  "raw": "include",
+                  "costs_lookup": true
+                },
+                {
+                  "mechanism": "include",
+                  "qualifier": "+",
+                  "value": null,
+                  "raw": "include",
+                  "costs_lookup": true
+                },
+                {
+                  "mechanism": "include",
+                  "qualifier": "+",
+                  "value": null,
+                  "raw": "include",
+                  "costs_lookup": true
+                },
+                {
+                  "mechanism": "all",
+                  "qualifier": "~",
+                  "value": null,
+                  "raw": "~all",
+                  "costs_lookup": false
+                }
+              ],
+              "modifiers": {},
+              "errors": [
+                "cannot parse term '64.125.213.247'",
+                "cannot parse term '216.223.13.247'",
+                "cannot parse term '34.194.76.185'",
+                "cannot parse term '35.164.185.216'",
+                "cannot parse term '34.194.69.219'",
+                "cannot parse term '_spf.salesforce.com'",
+                "cannot parse term '_spf.google.com'",
+                "unknown mechanism 'spf.protection.outlook.com'",
+                "unknown mechanism 'amazonses.com'"
+              ],
+              "all_qualifier": "~",
+              "direct_lookup_count": 4
+            }
+          }
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:43:51.039047Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "about.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "_globalsign-domain-verification=ojigih5w0ef57wjvnpzdo5a4culsziquhumcdqksj2",
+                "adobe-idp-site-verification=4d443bb146b2a60fc0c0216c899a6ef9baa971cc3c36ac4b3020b4719b5c2e82",
+                "airtable-verification=7f23bd05102c5a2c073b0d0689ecaf71",
+                "atlassian-domain-verification=uutqhyge655rxaicqp-iayc/q7ggtojzidouyp0rb7n8oudp4q8wfsgllr1iajvr",
+                "facebook-domain-verification=rf8ocdhxrznl039sodxk5mul9of8l7",
+                "globalsign-domain-verification=w4_cm6jggwq8dxcwhkis6ltg0lzij1oizfjnoapv_d",
+                "google-site-verification=nabvdaatpqecskkkchqujsdsjagdkyi4dg5-vj-bcrw",
+                "openai-domain-verification=dv-7ma37immfvwqj1fwgsn676a6",
+                "slack-domain-verification=op2dusosy3seuyxvj1tjafq1nwifizeevpkitpnr",
+                "v=spf1 ip4 64.125.213.247 ip4 216.223.13.247 ip4 34.194.76.185 ip4 35.164.185.216 ip4 34.194.69.219  include _spf.salesforce.com include _spf.google.com include spf.protection.outlook.com include amazonses.com ~all"
+              ],
+              "ttl": 3600,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "about.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "The SPF record at about.com does not parse: cannot parse term '64.125.213.247'; cannot parse term '216.223.13.247'; cannot parse term '34.194.76.185'; cannot parse term '35.164.185.216'; cannot parse term '34.194.69.219'; cannot parse term '_spf.salesforce.com'; cannot parse term '_spf.google.com'; unknown mechanism 'spf.protection.outlook.com'; unknown mechanism 'amazonses.com'.",
+      "impact": "A record receivers cannot parse is treated as permerror, which means SPF gives no protection and may cause legitimate mail to be rejected.",
+      "remediation": "Fix the terms listed above. Every mechanism must be one of all, include, a, mx, ptr, ip4, ip6 or exists, optionally prefixed with +, -, ~ or ?.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7208"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:51.039052Z",
+      "first_seen_scan_id": "01M4DHSF6GNJF88WGN4K5SNJMR",
+      "last_seen": "2026-10-08T10:43:51.039052Z",
+      "last_seen_scan_id": "01M4DHSF6GNJF88WGN4K5SNJMR",
+      "cost": {
+        "requests": 22,
+        "wall_ms": 430,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:3073fcf98dfa1a01213cb55b75e042fef50a369e03588f5c64f9dc660d8d09e0",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "dmarc-policy-none",
+      "renamed_from": [],
+      "title": "DMARC policy is set to 'none'",
+      "target": {
+        "type": "domain",
+        "value": "about.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "medium",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the p= tag is read directly from a record that parsed"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _dmarc.about.com",
+          "captured_at": "2026-10-08T10:43:51.048581Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.about.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=dmarc1; p=none; fo=1; rua=mailto about@rua.agari.com; ruf=mailto about@ruf.agari.com"
+              ],
+              "ttl": 3600,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-bc709be1.about.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:43:51.048603Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.about.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=dmarc1; p=none; fo=1; rua=mailto about@rua.agari.com; ruf=mailto about@ruf.agari.com"
+              ],
+              "ttl": 3600,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "about.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "The DMARC policy for about.com is p=none, which asks receivers to take no action on mail that fails authentication.",
+      "impact": "Mail forged as this domain is still delivered. p=none is a monitoring posture, useful while you find your legitimate senders, but it stops nothing.",
+      "remediation": "Once your rua reports show every legitimate sender passing, change p=none to p=quarantine, then to p=reject. Move in that order and watch the reports at each step.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7489#section-6.3"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:51.048611Z",
+      "first_seen_scan_id": "01M4DHSF6GNJF88WGN4K5SNJMR",
+      "last_seen": "2026-10-08T10:43:51.048611Z",
+      "last_seen_scan_id": "01M4DHSF6GNJF88WGN4K5SNJMR",
+      "cost": {
+        "requests": 23,
+        "wall_ms": 439,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:6a85bf98ecfed0309782a5ea2fda822934d98e6184d9bee511a8848a92488604",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "dkim-missing",
+      "renamed_from": [],
+      "title": "No DKIM key found",
+      "target": {
+        "type": "domain",
+        "value": "about.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "medium",
+      "confidence": 0.5,
+      "confidence_provisional": true,
+      "state": "inconclusive",
+      "no_verdict_reason": "blocked_prerequisite",
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 1.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the lookup produced no usable answer, so nothing moves the prior"
+        }
+      ],
+      "validation": {
+        "attempted": false,
+        "outcome": "unavailable",
+        "method": null
+      },
+      "evidence": [
+        {
+          "label": "TXT at sp-wildcard-probe-bc709be1.about.com",
+          "captured_at": "2026-10-08T10:43:51.048821Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "sp-wildcard-probe-bc709be1.about.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-bc709be1.about.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "about.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "None of the 17 common DKIM selectors resolved for about.com. DKIM selector names are chosen freely by the sender and cannot be enumerated, so this does not show that the domain has no DKIM - only that we could not find a key.",
+      "impact": "Unknown: we could not determine whether DKIM is configured.",
+      "remediation": "If you know your selector, check it directly: the record lives at <selector>._domainkey.about.com. Your mail provider's documentation names the selector it uses.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc6376"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:51.048826Z",
+      "first_seen_scan_id": "01M4DHSF6GNJF88WGN4K5SNJMR",
+      "last_seen": "2026-10-08T10:43:51.048826Z",
+      "last_seen_scan_id": "01M4DHSF6GNJF88WGN4K5SNJMR",
+      "cost": {
+        "requests": 23,
+        "wall_ms": 440,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:c37865cf4fc3effde6bbd5664ff1c9a5f24315472dfb40cccee83410c2ea52b9",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "dmarc-alignment",
+      "renamed_from": [],
+      "title": "DMARC uses relaxed alignment",
+      "target": {
+        "type": "domain",
+        "value": "about.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "info",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "informational",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the adkim= and aspf= tags are read directly, and default to relaxed"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _dmarc.about.com",
+          "captured_at": "2026-10-08T10:43:51.049013Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.about.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=dmarc1; p=none; fo=1; rua=mailto about@rua.agari.com; ruf=mailto about@ruf.agari.com"
+              ],
+              "ttl": 3600,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-bc709be1.about.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:43:51.049024Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.about.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=dmarc1; p=none; fo=1; rua=mailto about@rua.agari.com; ruf=mailto about@ruf.agari.com"
+              ],
+              "ttl": 3600,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "about.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "DMARC alignment is relaxed (adkim=r, aspf=r). Relaxed alignment accepts any subdomain of about.com in the authenticated identifier.",
+      "impact": "Relaxed alignment is the default and is appropriate for most senders. It does mean that anyone able to publish records under a subdomain can pass DMARC for the parent.",
+      "remediation": "If every legitimate sender signs and sends as the exact domain, set adkim=s and aspf=s. If subdomains send mail, relaxed is the correct setting and no change is needed.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7489#section-3.1"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:51.049032Z",
+      "first_seen_scan_id": "01M4DHSF6GNJF88WGN4K5SNJMR",
+      "last_seen": "2026-10-08T10:43:51.049032Z",
+      "last_seen_scan_id": "01M4DHSF6GNJF88WGN4K5SNJMR",
+      "cost": {
+        "requests": 23,
+        "wall_ms": 440,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:0c813b716c65c72e44c1f530a17c3e4891c6503131af551e891f129a4949ec50",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "mta-sts-missing",
+      "renamed_from": [],
+      "title": "No MTA-STS policy published",
+      "target": {
+        "type": "domain",
+        "value": "about.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "a definite TXT answer at _mta-sts with no v=STSv1 term is direct observation"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _mta-sts.about.com",
+          "captured_at": "2026-10-08T10:43:51.066404Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_mta-sts.about.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-bc709be1.about.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:43:51.066421Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_mta-sts.about.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "about.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "No MTA-STS policy record is published at _mta-sts.about.com.",
+      "impact": "Without MTA-STS a sending server that cannot negotiate TLS will deliver mail in plaintext rather than refusing, so an attacker positioned on the network can strip encryption and read the message.",
+      "remediation": "Publish a TXT record at _mta-sts.about.com of the form 'v=STSv1; id=<timestamp>', and serve the matching policy file at https://mta-sts.about.com/.well-known/mta-sts.txt. Start the policy in mode: testing, then move to mode: enforce.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc8461"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:51.066429Z",
+      "first_seen_scan_id": "01M4DHSF6GNJF88WGN4K5SNJMR",
+      "last_seen": "2026-10-08T10:43:51.066429Z",
+      "last_seen_scan_id": "01M4DHSF6GNJF88WGN4K5SNJMR",
+      "cost": {
+        "requests": 25,
+        "wall_ms": 457,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:0cbb6a47ffeec1d2cbc4102910806e8af8553dc6474569e865f112f320bc7a8b",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "tls-rpt-missing",
+      "renamed_from": [],
+      "title": "No SMTP TLS reporting configured",
+      "target": {
+        "type": "domain",
+        "value": "about.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "a definite TXT answer at _smtp._tls with no v=TLSRPTv1 term is direct observation"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _smtp._tls.about.com",
+          "captured_at": "2026-10-08T10:43:51.098610Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_smtp._tls.about.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-bc709be1.about.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:43:51.098631Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_smtp._tls.about.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "about.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "No SMTP TLS reporting record is published at _smtp._tls.about.com.",
+      "impact": "Nobody is told when a sending server fails to establish TLS to your mail servers, so a downgrade attack or a broken certificate goes unnoticed.",
+      "remediation": "Publish a TXT record at _smtp._tls.about.com of the form 'v=TLSRPTv1; rua=mailto:tls-reports@about.com'.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc8460"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:51.098634Z",
+      "first_seen_scan_id": "01M4DHSF6GNJF88WGN4K5SNJMR",
+      "last_seen": "2026-10-08T10:43:51.098634Z",
+      "last_seen_scan_id": "01M4DHSF6GNJF88WGN4K5SNJMR",
+      "cost": {
+        "requests": 27,
+        "wall_ms": 489,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:a45050df6e6b2fbcaa883c8a13caeaa75ecaf4b61fd922d4f4914ad72179a6ed",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "spoofing-possible",
+      "renamed_from": [],
+      "title": "Mail can be sent as this domain",
+      "target": {
+        "type": "domain",
+        "value": "about.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "high",
+      "confidence": 0.9615,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 25.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "this is a simulation of a receiver's decision from records we read, not an observation of a receiver actually making it; the ratio is lower to say so"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _dmarc.about.com",
+          "captured_at": "2026-10-08T10:43:51.098809Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.about.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=dmarc1; p=none; fo=1; rua=mailto about@rua.agari.com; ruf=mailto about@ruf.agari.com"
+              ],
+              "ttl": 3600,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-bc709be1.about.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:43:51.098818Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.about.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=dmarc1; p=none; fo=1; rua=mailto about@rua.agari.com; ruf=mailto about@ruf.agari.com"
+              ],
+              "ttl": 3600,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "about.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "Simulating the decision a receiving mail server would make for a message forged from about.com: it would be delivered, because the DMARC policy is p=none, which asks receivers to take no action.",
+      "impact": "Anyone can send mail that appears to come from this domain and expect it to reach the inbox. That is the mechanism behind invoice fraud and most credential phishing that targets a company's own staff.",
+      "remediation": "Publish an SPF record listing your senders and ending in -all, sign your mail with DKIM, then publish 'v=DMARC1; p=reject; rua=mailto:dmarc@about.com' at _dmarc.about.com. Move to p=reject only after the rua reports show every legitimate sender passing.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7489"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:51.098821Z",
+      "first_seen_scan_id": "01M4DHSF6GNJF88WGN4K5SNJMR",
+      "last_seen": "2026-10-08T10:43:51.098821Z",
+      "last_seen_scan_id": "01M4DHSF6GNJF88WGN4K5SNJMR",
+      "cost": {
+        "requests": 27,
+        "wall_ms": 490,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    }
+  ],
+  "errors": [],
+  "telemetry": {
+    "checks_run": [
+      {
+        "check_id": "spf-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-multiple-records",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-invalid",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-invalid",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-policy-none",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "mx-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dkim-missing",
+        "outcome": "inconclusive",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-too-permissive",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-lookup-limit",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-pct-partial",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-no-rua",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-alignment",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "mta-sts-missing",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "tls-rpt-missing",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "spoofing-possible",
+        "outcome": "reported",
+        "location": "$"
+      }
+    ],
+    "suppressed": [],
+    "requests": 27,
+    "wall_ms": 490,
+    "ai_tokens": 0
+  },
+  "started_at": null,
+  "finished_at": "2026-10-08T10:43:51.098880Z",
+  "killed": false,
+  "outcome": "succeeded"
+}

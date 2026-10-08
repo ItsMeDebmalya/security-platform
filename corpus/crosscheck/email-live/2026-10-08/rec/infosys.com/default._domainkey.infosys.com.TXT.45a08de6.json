@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "default._domainkey.infosys.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DKIM1; k=rsa;p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzXNvaqJq2DJEKMF6/QrVQimUbyM1sIoUOK/WjlggO6Bv7wcQ/7p6xvxBdd+9J2cGntwdUyX876A9dVfJVyW5BLDwZ5Ieor0DevEOEajKPxSvTiZBikcsCHBLYEfWh8DTZLFS8C68jLTo4d4M30yKGxuLm0MgyobzTMWs2id3hKBtlTBhWzRAOKt7xKXrga3rJklVvF8i1SbM3J+FBKxOSifS5LLsWBORb80rMe4VCnvF0vNLqRfBfhvNgI8062OgQnEY8NCsvrcYlQj8OFLZmfmwUg25ris2wFZMfgJw6ciE6esKKxLYeSLP2OkAddDH6QUPJzk5jpiEp1HCyYeeJQIDAQAB"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 3600
+}

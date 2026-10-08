@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_spf.one97.net",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 ip4:125.21.245.156/32 include:_spf.google.com -all"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 300
+}
