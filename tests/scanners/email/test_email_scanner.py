@@ -766,15 +766,18 @@ def _neutral(domain, dmarc):
     [
         ("v=DMARC1; p=reject; rua=mailto:d@x.example", "low"),
         ("v=DMARC1; p=quarantine; rua=mailto:d@x.example", "low"),
-        ("v=DMARC1; p=none; rua=mailto:d@x.example", "medium"),
-        ("v=DMARC1; p=reject; pct=50; rua=mailto:d@x.example", "medium"),
-        ("v=DMARC1; rua=mailto:d@x.example", "medium"),
-        ("v=DMARC1", "medium"),
-        (None, "medium"),
+        ("v=DMARC1; p=none; rua=mailto:d@x.example", "low"),
+        ("v=DMARC1; p=reject; pct=50; rua=mailto:d@x.example", "low"),
+        ("v=DMARC1; rua=mailto:d@x.example", "low"),
+        ("v=DMARC1", "low"),
+        (None, "low"),
     ],
     ids=["reject", "quarantine", "none", "partial", "treated-as-none", "unusable", "missing"],
 )
-def test_neutral_all_severity_follows_the_dmarc_posture(findings_for, dmarc, severity):
+def test_neutral_all_is_low_in_every_dmarc_posture(findings_for, dmarc, severity):
+    """Operator ruling 2026-10-08: each finding carries its own marginal risk.
+    Enforcing DMARC drops '?all' to low, so low is its own share; the policy
+    risk belongs to the DMARC finding, which names it."""
     [found] = findings_for(
         "x.example", _neutral("x.example", dmarc), "spf-too-permissive", "standard"
     )
@@ -782,13 +785,13 @@ def test_neutral_all_severity_follows_the_dmarc_posture(findings_for, dmarc, sev
     assert found.severity == severity
 
 
-def test_neutral_all_is_medium_when_the_dmarc_lookup_failed(findings_for):
+def test_neutral_all_is_low_when_the_dmarc_lookup_failed(findings_for):
     answers = _neutral("x.example", None)
     answers[("_dmarc.x.example", "TXT")] = answer("_dmarc.x.example", "TXT", rcode="SERVFAIL")
 
     [found] = findings_for("x.example", answers, "spf-too-permissive", "standard")
 
-    assert found.severity == "medium"
+    assert found.severity == "low"
 
 
 def test_an_explicit_pass_all_is_high_even_under_p_reject(findings_for):
@@ -1016,3 +1019,43 @@ def test_a_second_resolver_that_cannot_answer_the_spf_re_read_leaves_validation_
     [spoof] = [f for f in result.findings if f.check_id == "spoofing-possible"]
 
     assert spoof.validation.outcome == "unavailable"
+
+
+# --- false claims fixed before verification (2026-10-08) --------------------
+
+
+@pytest.mark.parametrize("policy", ["reject", "quarantine"])
+def test_a_domain_with_no_spf_under_an_enforced_dmarc_policy_is_not_spoofable(findings_for, policy):
+    """zomato.in, live run 1: no SPF means SPF returns None, which is not an
+    aligned pass, so DMARC fails and the enforced policy applies (RFC 7208
+    2.6.1; RFC 7489 3.1.2, 6.6.2). 'No SPF' is a reason only when DMARC is
+    not enforced."""
+    answers = zone("x.example", spf=None, dmarc=f"v=DMARC1; p={policy}")
+
+    assert findings_for("x.example", answers, "spoofing-possible") == []
+
+
+def test_no_spf_is_still_given_as_a_reason_when_dmarc_does_not_enforce(findings_for):
+    answers = zone("x.example", spf=None, dmarc="v=DMARC1; p=none")
+
+    [found] = findings_for("x.example", answers, "spoofing-possible")
+
+    assert "no SPF record" in found.description
+
+
+def test_no_spf_beside_an_undefined_dmarc_error_stays_a_hedge(findings_for):
+    """'No SPF' only matters if DMARC is not applied, so it cannot turn a
+    hedged DMARC reason into a claim."""
+    answers = zone("x.example", spf=None, dmarc="v=DMARC1; p=reject; p=none")
+
+    [found] = findings_for("x.example", answers, "spoofing-possible")
+
+    assert found.state == "suspected"
+
+
+def test_spf_missing_does_not_say_forged_mail_passes_spf(findings_for):
+    """RFC 7208 2.6.1: with no SPF record the result is None, not Pass."""
+    [found] = findings_for("x.example", zone("x.example", spf=None), "spf-missing")
+
+    assert "passes SPF" not in found.impact
+    assert "None" in found.impact

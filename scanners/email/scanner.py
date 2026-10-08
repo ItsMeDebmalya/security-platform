@@ -168,7 +168,9 @@ class _Scan:
                 ),
                 impact=(
                     "Receiving mail servers have no list of hosts allowed to send mail for this "
-                    "domain, so a message forged from any server passes SPF by default."
+                    "domain. SPF returns None for every sending server (RFC 7208 section 2.6.1): "
+                    "it neither passes nor fails forged mail, so whether forged mail is stopped "
+                    "rests on DMARC, with DKIM."
                 ),
                 remediation=(
                     "Publish a TXT record at "
@@ -241,14 +243,16 @@ class _Scan:
     def _neutral_all_posture(self) -> tuple[str, str]:
         """Severity for '?all', and the sentence that says why, from DMARC.
 
-        Approved mapping (2026-10-08): low under an enforced policy, medium
-        otherwise. Never above spf-missing's medium, because for unlisted
-        senders '?all' is the same as publishing no SPF policy.
+        Operator ruling (2026-10-08): low in every posture. Each finding
+        carries its own marginal risk. Enforcing DMARC drops '?all' to low, so
+        low is its share; when DMARC does not enforce, the policy risk belongs
+        to the DMARC finding, which this one names. The sentence still says
+        what the posture means.
         """
         if not self.dmarc_answer.is_definite():
-            return "medium", (
-                " The DMARC lookup did not return a definite answer, so its policy is unknown, "
-                "and this is rated as if DMARC were not enforced."
+            return "low", (
+                " The DMARC lookup did not return a definite answer, so whether DMARC stops "
+                "forged mail here is unknown."
             )
         posture = _dmarc_posture(self.dmarc)
         if posture == "reject":
@@ -265,7 +269,7 @@ class _Scan:
                 "delivered, to a spam folder or flagged, where a person may read and act on it."
             )
         other = self._dmarc_finding_for_posture()
-        return "medium", (
+        return "low", (
             " DMARC does not enforce a policy here, so nothing stops forged mail. That "
             f"exposure is reported as {other}. This finding is the same weakness seen from "
             "the SPF side: count the two as one."
@@ -1379,9 +1383,13 @@ def _spoofing_reasons(dmarc: DmarcRecord | None, spf: SpfRecord | None) -> tuple
             f"roughly {100 - dmarc.pct}% of forged messages are delivered anyway"
         )
 
-    if spf is None:
+    plus_all = spf is not None and spf.all_qualifier == "+"
+    if spf is None and posture not in ENFORCED:
+        # No SPF gives None, never an aligned pass, so under an enforced
+        # policy forged mail fails DMARC (RFC 7489 3.1.2, 6.6.2). It adds to
+        # a DMARC reason; it is never one on its own.
         reasons.append("no SPF record identifies which servers may send for the domain")
-    elif spf.all_qualifier == "+":
+    elif plus_all:
         # '+all' is the one SPF setting that defeats an enforced DMARC policy:
         # a forger who uses this domain in the envelope gets an aligned pass.
         # '?all' (Neutral) and '~all' (SoftFail) are not passes, so they add
@@ -1390,7 +1398,9 @@ def _spoofing_reasons(dmarc: DmarcRecord | None, spf: SpfRecord | None) -> tuple
             "the SPF policy ends in '+all', an explicit pass for any sending server, which "
             "DMARC counts as authentication"
         )
-    only_hedge = hedged and len(reasons) == 1
+    # Only '+all' defeats DMARC by itself. Every other reason depends on the
+    # DMARC record not being applied, so it cannot firm up a hedged one.
+    only_hedge = hedged and not plus_all
     return reasons, only_hedge
 
 
