@@ -63,7 +63,7 @@ NO_VERDICT_FOR_RCODE = {
 @register
 class EmailScanner(BaseScanner):
     name = "email"
-    version = "1.2.1"
+    version = "1.2.2"
     supported_modes = frozenset({"light", "standard"})
     target_types = frozenset({"domain"})
 
@@ -889,10 +889,22 @@ class _Scan:
     # --- transport security -------------------------------------------------
 
     def _check_transport_security(self) -> None:
+        # D47. MTA-STS (RFC 8461) and TLS-RPT (RFC 8460) protect inbound
+        # delivery. A null MX (RFC 7505) says the domain accepts no mail, so
+        # there is nothing to protect and the checks do not apply. With no MX
+        # at all, senders fall back to the A record (RFC 5321 5.1), and RFC 8461
+        # is written in terms of MX hosts without saying whether it covers that
+        # fallback, so the finding is informational, never advice.
+        if self.mx_answer.is_definite() and _is_null_mx(self.mx_answer):
+            self._not_applicable("mta-sts-missing")
+            self._not_applicable("tls-rpt-missing")
+            return
+        no_mx = self.mx_answer.is_definite() and not self.mx_answer.records
         self._presence_check(
             "mta-sts-missing",
             f"_mta-sts.{self.domain}",
             "v=STSv1",
+            no_mx=no_mx,
             description=(f"No MTA-STS policy record is published at _mta-sts.{self.domain}."),
             impact=(
                 "Without MTA-STS a sending server that cannot negotiate TLS will deliver mail "
@@ -910,6 +922,7 @@ class _Scan:
             "tls-rpt-missing",
             f"_smtp._tls.{self.domain}",
             "v=TLSRPTv1",
+            no_mx=no_mx,
             description=f"No SMTP TLS reporting record is published at _smtp._tls.{self.domain}.",
             impact=(
                 "Nobody is told when a sending server fails to establish TLS to your mail "
@@ -930,6 +943,7 @@ class _Scan:
         description: str,
         impact: str,
         remediation: str,
+        no_mx: bool = False,
     ) -> None:
         answer = self.dns.query(name, "TXT")
         if not answer.is_definite():
@@ -941,9 +955,23 @@ class _Scan:
         if present:
             self._clear(check_id)
             return
+        if no_mx:
+            description += (
+                f" {self.domain} also publishes no MX records (reported as mx-missing). Mail "
+                "can still arrive through the A record, but this protection is defined in "
+                "terms of MX hosts, and the RFC does not say whether it applies to that "
+                "fallback. So this is recorded for information, not as advice."
+            )
+            impact = "None that we can state while the domain publishes no MX records."
+            remediation = (
+                "Nothing to do here first. If the domain should receive mail, publish MX "
+                "records (see mx-missing); this protection then applies to them. If it "
+                "should not, publish a null MX ('MX 0 .', RFC 7505)."
+            )
         self._report(
             check_id,
             answer,
+            severity="info" if no_mx else None,
             description=description,
             impact=impact,
             remediation=remediation,
