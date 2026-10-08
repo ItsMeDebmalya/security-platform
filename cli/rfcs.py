@@ -35,7 +35,7 @@ def cited_rfcs(root: Path = ROOT / "scanners") -> dict[int, set[str]]:
 
 def obsoleted_by(number: int) -> list[str]:
     url = f"https://www.rfc-editor.org/rfc/rfc{number}.json"
-    with urllib.request.urlopen(url, timeout=20) as response:  # noqa: S310 - fixed host
+    with urllib.request.urlopen(url, timeout=20) as response:
         return list(json.load(response).get("obsoleted_by") or [])
 
 
@@ -45,7 +45,9 @@ def main() -> int:
         successors = obsoleted_by(number)
         if successors:
             stale += 1
-            print(f"RFC {number} is obsoleted by {', '.join(successors)}: {', '.join(sorted(files))}")
+            print(
+                f"RFC {number} is obsoleted by {', '.join(successors)}: {', '.join(sorted(files))}"
+            )
     print(f"rfc check: {len(cited_rfcs())} cited RFCs, {stale} obsoleted")
     return 1 if stale else 0
 
