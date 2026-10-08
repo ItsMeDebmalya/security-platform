@@ -157,6 +157,7 @@ Then `make corpus`. Then `uv run python -m cli.corpus --update-baseline` once th
 - [ ] `make corpus` shows no precision regression
 - [ ] new detections have a positive *and* a negative corpus case
 - [ ] every new check has **fired against a real positive**: a live target or a recording of one, hand-verified and cited here. A corpus positive we wrote does not count. With no real positive, it ships marked UNDETERMINED with the reason, or not at all ([ADR-017](02-decisions.md#adr-017--live-verification-is-part-of-a-tools-definition-of-done), ledger D37)
+- [ ] every RFC the check cites is **current**: confirmed against the RFC Editor's "Obsoleted by" field, and `make rfc-check` passes for it. If an RFC has been obsoleted, implement the successor and say which one the check follows ([ADR-017](02-decisions.md#adr-017--live-verification-is-part-of-a-tools-definition-of-done), ledger D44)
 - [ ] any new dependency is in `tools/registry.yaml` with a licence
 - [ ] `scanner_version` bumped if results changed
 - [ ] `state` is derived, not hand-set

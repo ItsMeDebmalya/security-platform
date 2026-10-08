@@ -421,3 +421,12 @@ Then restore the entry-point lines in `CLAUDE.md` and `SPEC.md`, and the revert 
 
 **Revert.** Restore the previous `SystemResolver` and `FakeResolver` from git, and drop the two cases and their fixtures. Not advised: it restores evidence that names a resolver which never answered.
 
+## v4.0-pre.4 — ADR-017 amended: cited RFCs must be current (2026-10-08)
+
+**What changed.**
+- ADR-017 gained a clause: every RFC a check cites is confirmed current against the RFC Editor's "Obsoleted by" field, with the same weight as the must-fire rule. how-to-add-a-scanner §7 has the matching checklist item.
+- `cli/rfcs.py` and `make rfc-check` check every `rfc-editor.org` citation in `scanners/` against the RFC Editor's metadata. The check needs the network and is not in `make test`.
+- The ledger records the primary-source confirmation of RFC 9989 (D44), and D48 (four obsoleted RFCs in `tls`).
+
+**Revert.** Delete the clause, the checklist item, `cli/rfcs.py` and the Makefile target.
+
