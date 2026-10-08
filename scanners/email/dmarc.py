@@ -62,11 +62,12 @@ class DmarcRecord:
 
     @property
     def pct(self) -> int:
-        """RFC 7489: pct defaults to 100."""
+        """RFC 7489: pct defaults to 100, and a malformed one is discarded for it (6.3)."""
         try:
-            return int(self.tags.get("pct", "100"))
+            pct = int(self.tags.get("pct", "100"))
         except ValueError:
             return 100
+        return pct if 0 <= pct <= 100 else 100
 
     @property
     def adkim(self) -> str:

@@ -750,3 +750,176 @@ def test_a_malformed_optional_tag_cites_the_rfc_rule_to_discard_it(findings_for)
     assert found.state == "suspected"
     assert "discard" in found.description
     assert "ignore a record like this entirely" not in found.description
+
+
+# --- ?all severity by DMARC posture, and the spoofing simulation (2026-10-08)
+
+NEUTRAL_SPF = "v=spf1 ip4:192.0.2.0/24 ?all"
+
+
+def _neutral(domain, dmarc):
+    return zone(domain, spf=NEUTRAL_SPF, dmarc=dmarc)
+
+
+@pytest.mark.parametrize(
+    ("dmarc", "severity"),
+    [
+        ("v=DMARC1; p=reject; rua=mailto:d@x.example", "low"),
+        ("v=DMARC1; p=quarantine; rua=mailto:d@x.example", "low"),
+        ("v=DMARC1; p=none; rua=mailto:d@x.example", "medium"),
+        ("v=DMARC1; p=reject; pct=50; rua=mailto:d@x.example", "medium"),
+        ("v=DMARC1; rua=mailto:d@x.example", "medium"),
+        ("v=DMARC1", "medium"),
+        (None, "medium"),
+    ],
+    ids=["reject", "quarantine", "none", "partial", "treated-as-none", "unusable", "missing"],
+)
+def test_neutral_all_severity_follows_the_dmarc_posture(findings_for, dmarc, severity):
+    [found] = findings_for(
+        "x.example", _neutral("x.example", dmarc), "spf-too-permissive", "standard"
+    )
+
+    assert found.severity == severity
+
+
+def test_neutral_all_is_medium_when_the_dmarc_lookup_failed(findings_for):
+    answers = _neutral("x.example", None)
+    answers[("_dmarc.x.example", "TXT")] = answer("_dmarc.x.example", "TXT", rcode="SERVFAIL")
+
+    [found] = findings_for("x.example", answers, "spf-too-permissive", "standard")
+
+    assert found.severity == "medium"
+
+
+def test_an_explicit_pass_all_is_high_even_under_p_reject(findings_for):
+    answers = zone("x.example", spf="v=spf1 +all", dmarc="v=DMARC1; p=reject")
+
+    [found] = findings_for("x.example", answers, "spf-too-permissive", "standard")
+
+    assert found.severity == "high"
+
+
+def test_quarantine_is_not_described_as_blocking_the_forgery(findings_for):
+    """RFC 7489 6.3: quarantine means 'treated as suspicious', e.g. a spam
+    folder. The message is still delivered somewhere a person may read it."""
+    answers = _neutral("x.example", "v=DMARC1; p=quarantine")
+
+    [found] = findings_for("x.example", answers, "spf-too-permissive", "standard")
+
+    text = found.description + " " + found.impact
+    assert "spam folder" in text
+    assert "still" in text
+    assert "blocked" not in text and "rejected" not in text
+
+
+def test_reject_says_failing_mail_is_asked_to_be_rejected(findings_for):
+    answers = _neutral("x.example", "v=DMARC1; p=reject")
+
+    [found] = findings_for("x.example", answers, "spf-too-permissive", "standard")
+
+    assert "p=reject" in found.description and "reject" in found.description
+
+
+@pytest.mark.parametrize(
+    ("dmarc", "other"),
+    [
+        ("v=DMARC1; p=none; rua=mailto:d@x.example", "dmarc-policy-none"),
+        ("v=DMARC1; p=reject; pct=50; rua=mailto:d@x.example", "dmarc-pct-partial"),
+        (None, "dmarc-missing"),
+        ("v=DMARC1", "dmarc-invalid"),
+    ],
+)
+def test_neutral_all_and_the_dmarc_weakness_name_each_other(run_scan, dmarc, other):
+    """One exposure, two settings: each finding says the other exists, so a
+    reader does not count it twice."""
+    result = run_scan("x.example", _neutral("x.example", dmarc), mode="standard")
+    by_id = {f.check_id: f for f in result.findings}
+
+    assert other in by_id["spf-too-permissive"].description
+    assert "spf-too-permissive" in by_id[other].description
+
+
+def test_light_mode_does_not_point_at_a_finding_it_never_runs(run_scan):
+    result = run_scan("x.example", _neutral("x.example", "v=DMARC1; p=none"), mode="light")
+    [policy_none] = [f for f in result.findings if f.check_id == "dmarc-policy-none"]
+
+    assert "spf-too-permissive" not in policy_none.description
+
+
+def test_softfail_all_is_a_declared_non_finding_even_without_dmarc(findings_for):
+    """~all is SoftFail (RFC 7208 2.6.5), not a pass. Without DMARC the
+    exposure is dmarc-missing's to report, not this check's."""
+    answers = zone("x.example", spf="v=spf1 ip4:192.0.2.0/24 ~all", dmarc=None)
+
+    assert findings_for("x.example", answers, "spf-too-permissive", "standard") == []
+
+
+def test_dmarc_treated_as_none_is_medium_and_says_the_operator_is_misled(findings_for):
+    answers = zone("x.example", dmarc="v=DMARC1; rua=mailto:d@x.example")
+
+    [found] = findings_for("x.example", answers, "dmarc-invalid")
+
+    assert found.severity == "medium"
+    assert "believes" in found.description
+
+
+def test_neutral_all_under_p_reject_is_not_spoofable(findings_for):
+    answers = _neutral("x.example", "v=DMARC1; p=reject; rua=mailto:d@x.example")
+
+    assert findings_for("x.example", answers, "spoofing-possible") == []
+
+
+def test_neutral_all_is_not_given_as_a_spoofing_reason(findings_for):
+    [found] = findings_for("x.example", _neutral("x.example", None), "spoofing-possible")
+
+    assert "?all" not in found.description
+    assert "accepts any" not in found.description
+
+
+def test_explicit_pass_all_is_spoofable_even_under_p_reject(findings_for):
+    answers = zone("x.example", spf="v=spf1 +all", dmarc="v=DMARC1; p=reject")
+
+    [found] = findings_for("x.example", answers, "spoofing-possible")
+
+    assert found.state == "confirmed"
+    assert "+all" in found.description
+
+
+def test_a_dmarc_record_with_no_usable_policy_is_a_spoofing_reason_citing_the_rfc(findings_for):
+    answers = zone("x.example", spf="v=spf1 -all", dmarc="v=DMARC1")
+
+    [found] = findings_for("x.example", answers, "spoofing-possible")
+
+    assert found.state == "confirmed"
+    assert "6.6.3" in found.description
+    assert "receivers ignore it" not in found.description
+
+
+def test_a_record_treated_as_none_gives_the_p_none_reason(findings_for):
+    answers = zone("x.example", spf="v=spf1 -all", dmarc="v=DMARC1; rua=mailto:d@x.example")
+
+    [found] = findings_for("x.example", answers, "spoofing-possible")
+
+    assert "p=none" in found.description
+
+
+def test_a_malformed_optional_tag_is_simulated_with_its_default(findings_for):
+    """RFC 7489 6.3: discard the bad tag, keep the record. pct defaults to
+    100, so p=reject still applies to all failing mail."""
+    answers = zone("x.example", spf="v=spf1 -all", dmarc="v=DMARC1; p=reject; pct=abc")
+
+    assert findings_for("x.example", answers, "spoofing-possible") == []
+
+
+@pytest.mark.parametrize(
+    "dmarc",
+    ["v=DMARC1; p=reject; p=none", "v=DMARC1; rua=mailto:d@x.example; p=reject"],
+    ids=["duplicate-p", "p-not-second"],
+)
+def test_a_dmarc_error_with_undefined_handling_holds_spoofing_at_suspected(findings_for, dmarc):
+    answers = zone("x.example", spf="v=spf1 -all", dmarc=dmarc)
+
+    [found] = findings_for("x.example", answers, "spoofing-possible")
+
+    assert found.state == "suspected"
+    assert "vary" in found.description

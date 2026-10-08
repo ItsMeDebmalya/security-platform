@@ -50,6 +50,7 @@ from scanners.email.spf import (
     resolve_spf_chain,
 )
 
+ENFORCED = frozenset({"quarantine", "reject"})
 MIN_DKIM_BITS = 2048  # RFC 8301 3.1: signers SHOULD use at least this
 RFC8301_MIN_BITS = 1024  # RFC 8301 3.1: signers MUST use at least this
 NO_VERDICT_FOR_RCODE = {
@@ -225,6 +226,62 @@ class _Scan:
         else:
             self._clear("spf-invalid")
 
+    def _dmarc_finding_for_posture(self) -> str | None:
+        """The DMARC finding that already reports an unenforced policy, if any."""
+        if not self.dmarc_answer.is_definite():
+            return None
+        if self.dmarc is None:
+            return "dmarc-missing"
+        if not self.dmarc.valid:
+            return None if _dmarc_posture(self.dmarc) in ENFORCED else "dmarc-invalid"
+        posture = _dmarc_posture(self.dmarc)
+        return {"none": "dmarc-policy-none", "partial": "dmarc-pct-partial"}.get(posture)
+
+    def _neutral_all_posture(self) -> tuple[str, str]:
+        """Severity for '?all', and the sentence that says why, from DMARC.
+
+        Approved mapping (2026-10-08): low under an enforced policy, medium
+        otherwise. Never above spf-missing's medium, because for unlisted
+        senders '?all' is the same as publishing no SPF policy.
+        """
+        if not self.dmarc_answer.is_definite():
+            return "medium", (
+                " The DMARC lookup did not return a definite answer, so its policy is unknown, "
+                "and this is rated as if DMARC were not enforced."
+            )
+        posture = _dmarc_posture(self.dmarc)
+        if posture == "reject":
+            return "low", (
+                " DMARC is p=reject, which asks receivers to reject mail that fails DMARC, so "
+                "a message forged from an unlisted server is asked to be rejected unless it "
+                "carries a valid DKIM signature for this domain."
+            )
+        if posture == "quarantine":
+            return "low", (
+                " DMARC is p=quarantine, which RFC 7489 section 6.3 defines as asking "
+                "receivers to treat failing mail as suspicious, for example by placing it in a "
+                "spam folder. Forged mail from an unlisted server is therefore still "
+                "delivered, to a spam folder or flagged, where a person may read and act on it."
+            )
+        other = self._dmarc_finding_for_posture()
+        return "medium", (
+            " DMARC does not enforce a policy here, so nothing stops forged mail. That "
+            f"exposure is reported as {other}. This finding is the same weakness seen from "
+            "the SPF side: count the two as one."
+        )
+
+    def _neutral_all_note(self) -> str:
+        """For the DMARC findings: point at spf-too-permissive when it reports the same gap."""
+        record = self.spf.record
+        if self.mode == "light" or record is None or record.all_qualifier != "?":
+            return ""
+        if self._dmarc_finding_for_posture() is None:
+            return ""
+        return (
+            " The SPF record also ends in '?all', reported separately as spf-too-permissive. "
+            "It describes the same exposure from the SPF side: count the two as one."
+        )
+
     def _check_spf_standard(self) -> None:
         record = self.spf.record
         if record is None or self.chain is None:
@@ -256,9 +313,12 @@ class _Scan:
             # RFC 7208 2.6.2 and 8.2. Neutral is an explicit non-assertion, and
             # receivers MUST treat it exactly like "none". Saying it "accepts
             # any server" asserted a receiver behaviour the spec rules out.
+            # How much it matters depends on DMARC, so severity does too.
+            severity, posture_note = self._neutral_all_posture()
             self._report(
                 "spf-too-permissive",
                 self.spf.answer,
+                severity=severity,
                 title="SPF policy is neutral for senders it does not list",
                 description=(
                     "The SPF record ends in '?all' (Neutral). RFC 7208 section 2.6.2 defines "
@@ -266,7 +326,7 @@ class _Scan:
                     "authorised, and section 8.2 requires receivers to treat it exactly like "
                     "the result for a domain with no SPF policy. Servers the record lists still "
                     "pass; for every other server, SPF gives the same answer as having no SPF "
-                    "policy."
+                    "policy." + posture_note
                 ),
                 impact=(
                     "For senders the record does not list, SPF gives receivers nothing to act "
@@ -277,6 +337,10 @@ class _Scan:
                 validates=lambda answer: _parse_first_spf(answer).all_qualifier == "?",
             )
         else:
+            # '-all' and '~all' are a declared non-finding, not a gap. SoftFail
+            # (RFC 7208 2.6.5) says the sender is probably not authorised, and
+            # DMARC treats it as an SPF failure. Without DMARC the exposure is
+            # dmarc-missing's, and reporting it here again would count it twice.
             self._clear("spf-too-permissive")
 
         if not self.chain.definite:
@@ -331,7 +395,10 @@ class _Scan:
             self._report(
                 "dmarc-missing",
                 self.dmarc_answer,
-                description=f"No DMARC record is published at _dmarc.{self.domain}.",
+                description=(
+                    f"No DMARC record is published at _dmarc.{self.domain}."
+                    + self._neutral_all_note()
+                ),
                 impact=(
                     "Receiving mail servers are given no instruction about what to do with mail "
                     "that fails authentication, so forged mail claiming to be from this domain "
@@ -364,7 +431,7 @@ class _Scan:
                 self.dmarc_answer,
                 description=(
                     f"The DMARC policy for {self.domain} is p=none, which asks receivers to "
-                    "take no action on mail that fails authentication."
+                    "take no action on mail that fails authentication." + self._neutral_all_note()
                 ),
                 impact=(
                     "Mail forged as this domain is still delivered. p=none is a monitoring "
@@ -393,6 +460,7 @@ class _Scan:
         """
         errors = "; ".join(dmarc.errors)
         lead = f"The DMARC record at _dmarc.{self.domain} is not valid: {errors}."
+        note = self._neutral_all_note()
         remediation = (
             "Rewrite the record so it begins 'v=DMARC1; p=<policy>;' - the version tag must "
             "come first and the policy tag must immediately follow it. Give each tag once. "
@@ -408,11 +476,14 @@ class _Scan:
             self._report(
                 "dmarc-invalid",
                 self.dmarc_answer,
+                severity="medium",
                 title="DMARC record would be treated as p=none by receivers",
                 description=(
                     f"{lead} The record has no usable policy but does carry a valid rua "
                     "address, and RFC 7489 section 6.6.3 says receivers SHOULD then act as if "
-                    "it said p=none: reports are sent, and failing mail is not blocked."
+                    "it said p=none: reports are sent, and failing mail is not blocked. An "
+                    "operator with this record believes the domain is protected, and it is not."
+                    + note
                 ),
                 impact=(
                     "Whatever policy was intended, receivers following the RFC treat the domain "
@@ -434,6 +505,7 @@ class _Scan:
                 self.dmarc_answer,
                 description=(
                     f"{lead} {rule}, so the domain is unprotected despite appearing configured."
+                    + note
                 ),
                 impact=(
                     "The domain has the appearance of DMARC protection and none of the effect."
@@ -451,7 +523,7 @@ class _Scan:
                     f"{lead} RFC 7489 section 6.3 says receivers SHOULD discard a malformed tag "
                     "in favour of its default value, or ignore it, rather than the whole record. "
                     "That is a SHOULD, not a MUST, so implementations may vary, and a receiver "
-                    "applying the default may not do what the record intended."
+                    "applying the default may not do what the record intended." + note
                 ),
                 impact=(
                     "The policy most receivers apply may differ from the one written, and some "
@@ -472,7 +544,7 @@ class _Scan:
                     f"{lead} RFC 7489 forbids this, but does not define what a receiver does "
                     "with such a record. Implementations vary: some may ignore the record, "
                     "others may apply the policy they can read. We cannot tell which happens "
-                    "at any given receiver."
+                    "at any given receiver." + note
                 ),
                 impact=(
                     "Some receivers may give this domain no DMARC protection at all. Which ones "
@@ -498,7 +570,7 @@ class _Scan:
                 description=(
                     f"The DMARC policy applies to {self.dmarc.pct}% of failing mail (pct="
                     f"{self.dmarc.pct}). The other {100 - self.dmarc.pct}% is delivered as if "
-                    "the policy were p=none."
+                    "the policy were p=none." + self._neutral_all_note()
                 ),
                 impact=(
                     "An attacker sending repeatedly gets through on the unprotected fraction. "
@@ -889,20 +961,19 @@ class _Scan:
             )
             return
 
-        reasons = _spoofing_reasons(self.dmarc, self.spf.record)
+        reasons, only_hedge = _spoofing_reasons(self.dmarc, self.spf.record)
 
         if not reasons:
             self._clear("spoofing-possible")
             return
 
+        verdict = "it may be delivered at some receivers" if only_hedge else "it would be delivered"
         self._report(
             "spoofing-possible",
             self.dmarc_answer,
             description=(
                 "Simulating the decision a receiving mail server would make for a message "
-                f"forged from {self.domain}: it would be delivered, because "
-                + "; and ".join(reasons)
-                + "."
+                f"forged from {self.domain}: {verdict}, because " + "; and ".join(reasons) + "."
             ),
             impact=(
                 "Anyone can send mail that appears to come from this domain and expect it to "
@@ -916,6 +987,13 @@ class _Scan:
                 "every legitimate sender passing."
             ),
             validates=self._still_spoofable,
+            likelihood_ratio=4.0 if only_hedge else None,
+            justification=(
+                "the only reason is a DMARC error no spec gives receiver handling for, so "
+                "whether a receiver applies the record is uncertain"
+                if only_hedge
+                else None
+            ),
         )
 
     def _rewalk_chain_exceeds(self, _answer: DnsResponse) -> bool:
@@ -933,7 +1011,8 @@ class _Scan:
 
     def _still_spoofable(self, answer: DnsResponse) -> bool:
         """Re-run the receiver simulation on the second resolver's DMARC answer."""
-        return bool(_spoofing_reasons(_parse_dmarc_answer(answer), self.spf.record))
+        reasons, _ = _spoofing_reasons(_parse_dmarc_answer(answer), self.spf.record)
+        return bool(reasons)
 
     # --- emitting -----------------------------------------------------------
 
@@ -1178,26 +1257,79 @@ _REFERENCES = {
 }
 
 
-def _spoofing_reasons(dmarc: DmarcRecord | None, spf: SpfRecord | None) -> list[str]:
+def _dmarc_posture(dmarc: DmarcRecord | None) -> str:
+    """What a receiver following RFC 7489 does with this domain's DMARC record.
+
+    The single place this question is answered. Two checks once each carried
+    their own copy of a wrong premise ("?all accepts any sender", "receivers
+    ignore a malformed record"); everything that needs the answer now reads it
+    from here.
+
+    - `missing` - no record.
+    - `unusable` - no DMARC processing (no valid p and no valid rua, 6.6.3
+      step 6), or the record is ignored outright (v not first, 6.3).
+    - `undefined` - forbidden, but no spec says what a receiver does.
+    - `none` - p=none, or no valid p but a valid rua (6.6.3 step 6: SHOULD act
+      as if p=none).
+    - `partial` - an enforcing policy applied to under 100% of failing mail.
+    - `quarantine` / `reject` - enforced. A malformed optional tag is
+      discarded in favour of its default (6.3), so it is read with the default.
+    """
+    if dmarc is None:
+        return "missing"
+    handling = dmarc.receiver_handling
+    if handling in ("no_processing", "ignored"):
+        return "unusable"
+    if handling == "undefined":
+        return "undefined"
+    if handling == "treat_as_none" or dmarc.policy == "none":
+        return "none"
+    if dmarc.pct < 100:
+        return "partial"
+    return "reject" if dmarc.policy == "reject" else "quarantine"
+
+
+def _spoofing_reasons(dmarc: DmarcRecord | None, spf: SpfRecord | None) -> tuple[list[str], bool]:
     """Why a receiving mail server would deliver a forged message.
+
+    Returns the reasons and whether they are only a hedge: a DMARC record whose
+    handling no spec defines may or may not be applied, so it is a reason to
+    suspect, not to claim.
 
     Extracted so that validation can re-run exactly the same reasoning against
     an independently fetched record, rather than re-checking a weaker proxy.
     """
     reasons: list[str] = []
-    if dmarc is None:
+    hedged = False
+    posture = _dmarc_posture(dmarc)
+    if posture == "missing":
         reasons.append(
             "there is no DMARC record, so a receiver has no instruction to reject mail "
             "that fails authentication"
         )
-    elif not dmarc.valid:
+    elif posture == "unusable":
         reasons.append(
-            "the DMARC record is malformed and receivers ignore it, which leaves the "
-            "domain in the same position as having none"
+            "the DMARC record has no usable policy, and RFC 7489 says a receiver then "
+            + (
+                "ignores the record entirely (section 6.3)"
+                if dmarc is not None and dmarc.receiver_handling == "ignored"
+                else "applies no DMARC processing (section 6.6.3)"
+            )
         )
-    elif dmarc.policy == "none":
-        reasons.append("the DMARC policy is p=none, which asks receivers to take no action")
-    elif dmarc.pct < 100:
+    elif posture == "undefined":
+        hedged = True
+        reasons.append(
+            "the DMARC record breaks RFC 7489 in a way the RFC gives no receiver handling "
+            "for, and implementations vary, so some receivers may not apply it"
+        )
+    elif posture == "none":
+        reasons.append(
+            "the DMARC record has no usable policy but a valid rua, so RFC 7489 section "
+            "6.6.3 has receivers act as if it said p=none, which asks them to take no action"
+            if dmarc is not None and dmarc.receiver_handling == "treat_as_none"
+            else "the DMARC policy is p=none, which asks receivers to take no action"
+        )
+    elif posture == "partial" and dmarc is not None:
         reasons.append(
             f"the DMARC policy is applied to only {dmarc.pct}% of failing mail, so "
             f"roughly {100 - dmarc.pct}% of forged messages are delivered anyway"
@@ -1205,11 +1337,17 @@ def _spoofing_reasons(dmarc: DmarcRecord | None, spf: SpfRecord | None) -> list[
 
     if spf is None:
         reasons.append("no SPF record identifies which servers may send for the domain")
-    elif spf.all_qualifier in ("+", "?"):
+    elif spf.all_qualifier == "+":
+        # '+all' is the one SPF setting that defeats an enforced DMARC policy:
+        # a forger who uses this domain in the envelope gets an aligned pass.
+        # '?all' (Neutral) and '~all' (SoftFail) are not passes, so they add
+        # nothing a missing or unenforced DMARC policy has not already said.
         reasons.append(
-            f"the SPF policy ends in '{spf.all_qualifier}all', which accepts any sending server"
+            "the SPF policy ends in '+all', an explicit pass for any sending server, which "
+            "DMARC counts as authentication"
         )
-    return reasons
+    only_hedge = hedged and len(reasons) == 1
+    return reasons, only_hedge
 
 
 def _dmarc_is_invalid(answer: DnsResponse) -> bool:
