@@ -63,7 +63,7 @@ NO_VERDICT_FOR_RCODE = {
 @register
 class EmailScanner(BaseScanner):
     name = "email"
-    version = "1.2.0"
+    version = "1.2.1"
     supported_modes = frozenset({"light", "standard"})
     target_types = frozenset({"domain"})
 
@@ -503,7 +503,10 @@ class _Scan:
                 "RFC 7489 section 6.6.3 says a receiver given a record with no valid policy and "
                 "no valid reporting address applies no DMARC processing"
                 if handling == "no_processing"
-                else "RFC 7489 section 6.3 says the entire record MUST then be ignored"
+                else (
+                    "RFC 7489 section 6.3 and RFC 9989 section 4.7 both say the entire "
+                    "record MUST then be ignored"
+                )
             )
             self._report(
                 "dmarc-invalid",
@@ -1357,12 +1360,12 @@ def _spoofing_reasons(dmarc: DmarcRecord | None, spf: SpfRecord | None) -> tuple
         )
     elif posture == "unusable":
         reasons.append(
-            "the DMARC record has no usable policy, and RFC 7489 says a receiver then "
-            + (
-                "ignores the record entirely (section 6.3)"
-                if dmarc is not None and dmarc.receiver_handling == "ignored"
-                else "applies no DMARC processing (section 6.6.3)"
-            )
+            "the DMARC record does not begin with exactly 'v=DMARC1', and RFC 7489 "
+            "section 6.3 and RFC 9989 section 4.7 both say receivers ignore such a record "
+            "entirely"
+            if dmarc is not None and dmarc.receiver_handling == "ignored"
+            else "the DMARC record has no usable policy, and RFC 7489 says a receiver then "
+            "applies no DMARC processing (section 6.6.3)"
         )
     elif posture == "undefined":
         hedged = True
