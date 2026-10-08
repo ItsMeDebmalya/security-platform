@@ -452,32 +452,41 @@ https://httpforever.com/ could not be fetched: TLS handshake failed (ssl/tls ale
   17 check(s) ran, 0% inconclusive, 8 request(s)
   ```
 
-- **TLS's Light checks, and three of its six Standard checks, read only the certificate an ordinary handshake already presents** — the same bytes any browser gets. So TLS still needs **no authorisation in Light mode**, unchanged from before this task and consistent with docs/00-context.md's product-wide contract that Light "may be pointed at anything" (docs/13-test-targets.md):
-
-  ```bash
-  $ uv run scan run tls --target https://localhost:14400 --mode light \
-      --replay corpus/fixtures/tls/healthy
-  [  20%] connecting to localhost:14400
-  [  50%] checking the certificate
-  [ 100%] done
-
-  tls 1.0.0 light https://localhost:14400 -> succeeded
-  no findings
-
-  8 check(s) ran, 0% inconclusive, 1 request(s)
-  ```
-
-- **TLS's other three Standard checks force deliberately abnormal input.** `tls-protocol-obsolete` opens separate handshakes pinned to obsolete protocol versions; `tls-weak-cipher` and `tls-no-forward-secrecy` read the cipher negotiated when the client offered a deliberately permissive, weak-inclusive cipher list (`core.tls.PERMISSIVE_CIPHERS`) specifically to see whether the server would pick something weak. So **Standard mode does need authorisation for TLS**, even against the same target that just ran unauthorised in Light mode:
+- **TLS is passive in every mode too ([ADR-023](02-decisions.md#adr-023--passive-is-ordinary-negotiation-only-malformed-input-is-active)).** Completing a handshake at an obsolete protocol version or with a legacy cipher list is an ordinary negotiation the server freely accepts or refuses. It is not the malformed input ADR-004 forbids. So `tls-protocol-obsolete`, `tls-weak-cipher` and `tls-no-forward-secrecy` are `passive=True` like every other TLS check, and **TLS Standard mode needs no authorisation record**:
 
   ```bash
   $ uv run scan run tls --target https://localhost:14400 --mode standard \
       --replay corpus/fixtures/tls/healthy
-  authorisation denied: no authorisation record for localhost in config/authorised_scope.yaml
+  [  20%] connecting to localhost:14400
+  [  50%] checking the certificate
+  [  75%] enumerating protocols
+  [  90%] checking for legacy ciphers (testssl.sh)
+  [ 100%] done
+
+  tls 1.2.0 standard https://localhost:14400 -> succeeded
+
+  severity  conf   state          check                            location
+  critical  0.50   inconclusive   tls-vuln-freak                   localhost:14400
+  critical  0.50   inconclusive   tls-vuln-logjam                  localhost:14400
+  high      0.50   inconclusive   tls-vuln-rc4                     localhost:14400
+  medium    0.50   inconclusive   tls-vuln-sweet32                 localhost:14400
+  info      0.97   informational  tls-no-certificate-transparency  localhost:14400
+
+  19 check(s) ran, 21% inconclusive, 5 request(s)
+  $ echo $?
+  0
+  ```
+
+  This section said the opposite until 2026-10-08: it showed this command being refused (exit 1). That was true under the 0b.6 first cut, which ADR-023 reversed. The four `inconclusive` rows are the testssl.sh legacy-cipher wrap, which has nothing to replay against in this fixture.
+
+- **No shipped scanner has an active check today.** `email`, `tls`, `domscout` and `web` declare every check `passive=True`, so **no real scan reaches the deny path of the gate yet**. The gate is built and unit-tested (synthetic active checks in `tests/core/test_authz_passivity.py`), but it has not yet had to stop anything real. Its first production consumer is the first active check, the Website Scanner's Standard-mode payload checks (ledger: the authz coverage gap). To watch it refuse today, use the reference `example` scanner. It has no `Check` catalogue, so it falls back to the mode rule, and Standard is gated:
+
+  ```bash
+  $ uv run scan run example --target example.com --mode standard
+  authorisation denied: no authorisation record for example.com in config/authorised_scope.yaml
   $ echo $?
   1
   ```
-
-  Some Standard checks needing no authorisation while others in the same mode do is 0b.6 working as intended, not a bug — the same shape as email's Standard checks all being passive.
 
 A scanner that has not migrated to a `Check` catalogue with `passive` declarations (only the reference `example` scanner, today) falls back unchanged to the old mode-based rule: Light exempt, Standard/Deep gated. `BaseScanner.requires_authorisation()` returns `None` for it, and `None` is never read as "passive" — the only way to skip the gate is an explicit `passive=True` on a specific check.
 
@@ -490,39 +499,49 @@ That denial is the correct outcome. **Do not add an allowlist entry for a domain
 1. Prove control. For a domain, publish a TXT record containing a nonce at `_scanverify.<domain>` and save the DNS answer as a file.
 2. Add a row to `config/authorised_scope.yaml` **with its proof file committed alongside**. `core/authz.py` refuses to load a row that does not name an `evidence_file` at all. It does **not** currently check that the file exists on disk — that is enforced by review, and by the test on the worked example.
 
-A fully annotated, runnable example of all five row shapes — verified, self-owned, TLS-lab, expired, revoked — is committed at `config/authorised_scope.example.yaml`. Try it without touching the live file, authorising the TLS lab's Standard-mode scan from §5 above:
+A fully annotated, runnable example of every row shape (verified, self-owned, expired, revoked) is committed at `config/authorised_scope.example.yaml`. Try it without touching the live file. The reference `example` scanner's Standard mode is gated, so the same scan is refused without a row and runs with one:
 
 ```bash
-$ uv run scan run tls --target https://localhost:14400 --mode standard \
-    --replay corpus/fixtures/tls/healthy \
+$ uv run scan run example --target corpus-good.example --mode standard \
+    --replay corpus/fixtures/example/resolves
+authorisation denied: no authorisation record for corpus-good.example in config/authorised_scope.yaml
+
+$ uv run scan run example --target corpus-good.example --mode standard \
+    --replay corpus/fixtures/example/resolves \
     --scope-file config/authorised_scope.example.yaml
-[  20%] connecting to localhost:14400
-[  50%] checking the certificate
-[  75%] enumerating protocols
-[ 100%] done
 
-tls 1.0.0 standard https://localhost:14400 -> succeeded
+example 1.0.0 standard corpus-good.example -> succeeded
+no findings
 
-severity  conf   state          check                            location
-info      0.97   informational  tls-no-certificate-transparency  localhost:14400
-
-14 check(s) ran, 0% inconclusive, 5 request(s)
+1 check(s) ran, 0% inconclusive, 2 request(s)
 ```
 
-The row that authorises it:
+The same file shows the two other refusals. A row past its `expires_at`, and a revoked row, are denied even though they exist:
+
+```bash
+$ uv run scan run example --target lapsed.example --mode standard \
+    --scope-file config/authorised_scope.example.yaml
+authorisation denied: authorisation authz_2026-01-10-003 expired on 2026-04-10
+
+$ uv run scan run example --target former-client.example --mode standard \
+    --scope-file config/authorised_scope.example.yaml
+authorisation denied: authorisation authz_2026-08-02-004 was revoked on 2026-08-10
+```
+
+The row that authorises `corpus-good.example`:
 
 ```yaml
-- authz_id: authz_2026-08-28-005
+- authz_id: authz_2026-10-08-006
   org_id: org_internal
-  target: { type: domain, value: localhost, wildcard: false }
+  target: { type: domain, value: corpus-good.example, wildcard: false }
   method: self_owned
   proof:
-    observed: 'local TLS lab started by corpus/generators/tls.py on this machine'
-    observed_at: 2026-08-28T00:00:00Z
-    evidence_file: corpus/authz/localhost-2026-08-28.txt
-  verified_at: 2026-08-28
-  expires_at: 2026-11-26        # 90 days. Domains change hands.
-  verified_by: operator:satwik
+    observed: 'synthetic corpus zone for the reference scanner, frozen in corpus/fixtures/example/resolves'
+    observed_at: 2026-10-08T00:00:00Z
+    evidence_file: corpus/authz/corpus-good.example-2026-10-08.txt
+  verified_at: 2026-10-08
+  expires_at: 2026-11-07
+  verified_by: operator:debmalya
   attestation_ref: null
 ```
 
@@ -752,7 +771,7 @@ Every message below is real output.
 Typo, or the scanner package is not registered. Scanners register on import of `scanners/<name>/__init__.py`; check the `@register` decorator is on the class.
 
 **`authorisation denied: no authorisation record for X in config/authorised_scope.yaml`** — exit 1.
-Working as intended for any check declared active (§5) — which, since 0b.6, is not simply "Standard or Deep": TLS's `tls-protocol-obsolete`, `tls-weak-cipher` and `tls-no-forward-secrecy` are active and gated in Standard mode, but TLS's Light mode and its other three Standard checks are passive and need no authorisation at all. `--mode light` still works with no scope file for TLS. Authorise a target you actually control instead.
+Working as intended for any check declared active (§5), whatever the mode. Since [ADR-023](02-decisions.md#adr-023--passive-is-ordinary-negotiation-only-malformed-input-is-active), no check in `email`, `tls`, `domscout` or `web` is active, so today you will see this only from the reference `example` scanner (no `Check` catalogue: Standard is gated by mode). Authorise a target you actually control instead.
 
 **`error: unknown mode 'aggressive'; expected light, standard or deep`** — exit 1.
 
