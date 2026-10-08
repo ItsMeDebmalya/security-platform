@@ -1,3 +1,4 @@
+# PRE-D39. Every 'second resolver' answer in this archive came from 1.1.1.1; resolver labels are incorrect. Retained as evidence for D39 and the disagreement-rate measurement.
 81ec5ead9724d00f2370aad0f6a783536a2e2a2420752f1635365952b960c6c5  disagreement.json
 8a51a1f3bef23adcbd900662303caff6c20d6fd2f9953beaf18da335b5414d14  disagree.py
 c14a2ce0be3506550d0e9f2cd93ceff9afb6b35d8c25a3e2856a97fc446e7ae4  domains.txt

@@ -1,5 +1,7 @@
 # Email live run 1, 2026-10-08 (email v1.1.0, Standard mode)
 
+> **PRE-D39. Every 'second resolver' answer in this archive came from 1.1.1.1; resolver labels are incorrect. Retained as evidence for D39 and the disagreement-rate measurement.**
+
 45 operator-approved domains (`domains.txt`; tiers A, B, C, D, S = screened positives, P = path tests). No operator domains.
 
 - `out/<domain>.json`: the ScanResult, from `scan run email --mode standard --format json --record`.
