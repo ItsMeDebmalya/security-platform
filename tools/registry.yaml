@@ -114,6 +114,21 @@
   signed_off_by: satwik
   signed_off_at: 2026-08-24
 
+- name: checkdmarc
+  version: "6.0.3"
+  licence: Apache-2.0
+  spdx: Apache-2.0
+  source: https://github.com/domainaware/checkdmarc
+  purpose: >-
+    the independent second opinion in the email live re-verification (ledger
+    D35) - SPF, DMARC, MX, MTA-STS and TLS-RPT posture from code we did not
+    write. Output only, the testssl.sh cross-check precedent: run as its own
+    CLI from a separate virtualenv, never a dependency of ours, never imported.
+  isolation: subprocess   # run as a separate command from its own venv; never imported
+  note: "Licence read from the installed package metadata on 2026-10-08 (License-Expression: Apache-2.0; classifier Apache Software License; bundled LICENSE is Apache 2.0). Its own dependencies include certifi and publicsuffixlist (MPL-2.0); they live only in checkdmarc's separate venv."
+  signed_off_by: Debmalya Dey
+  signed_off_at: 2026-10-08
+
 # --- Development dependencies ----------------------------------------------
 
 - name: pytest
