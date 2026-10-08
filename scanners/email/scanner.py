@@ -26,7 +26,7 @@ finding, and reporting it would be padding.
 
 from __future__ import annotations
 
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from typing import Any
 
@@ -50,7 +50,9 @@ from scanners.email.spf import (
     resolve_spf_chain,
 )
 
-MIN_DKIM_BITS = 2048
+ENFORCED = frozenset({"quarantine", "reject"})
+MIN_DKIM_BITS = 2048  # RFC 8301 3.1: signers SHOULD use at least this
+RFC8301_MIN_BITS = 1024  # RFC 8301 3.1: signers MUST use at least this
 NO_VERDICT_FOR_RCODE = {
     "SERVFAIL": "servfail",
     "TIMEOUT": "timeout",
@@ -61,7 +63,7 @@ NO_VERDICT_FOR_RCODE = {
 @register
 class EmailScanner(BaseScanner):
     name = "email"
-    version = "1.0.0"
+    version = "1.1.0"
     supported_modes = frozenset({"light", "standard"})
     target_types = frozenset({"domain"})
 
@@ -108,7 +110,7 @@ class _Scan:
 
         self.ctx.progress("looking for DKIM selectors", 0.5)
         self.ctx.check_alive()
-        self.dkim_selector, self.dkim_answer, self.dkim = self._find_dkim()
+        self.dkim_keys = self._find_dkim()
 
         self._check_spf()
         self._check_dmarc()
@@ -224,6 +226,62 @@ class _Scan:
         else:
             self._clear("spf-invalid")
 
+    def _dmarc_finding_for_posture(self) -> str | None:
+        """The DMARC finding that already reports an unenforced policy, if any."""
+        if not self.dmarc_answer.is_definite():
+            return None
+        if self.dmarc is None:
+            return "dmarc-missing"
+        if not self.dmarc.valid:
+            return None if _dmarc_posture(self.dmarc) in ENFORCED else "dmarc-invalid"
+        posture = _dmarc_posture(self.dmarc)
+        return {"none": "dmarc-policy-none", "partial": "dmarc-pct-partial"}.get(posture)
+
+    def _neutral_all_posture(self) -> tuple[str, str]:
+        """Severity for '?all', and the sentence that says why, from DMARC.
+
+        Approved mapping (2026-10-08): low under an enforced policy, medium
+        otherwise. Never above spf-missing's medium, because for unlisted
+        senders '?all' is the same as publishing no SPF policy.
+        """
+        if not self.dmarc_answer.is_definite():
+            return "medium", (
+                " The DMARC lookup did not return a definite answer, so its policy is unknown, "
+                "and this is rated as if DMARC were not enforced."
+            )
+        posture = _dmarc_posture(self.dmarc)
+        if posture == "reject":
+            return "low", (
+                " DMARC is p=reject, which asks receivers to reject mail that fails DMARC, so "
+                "a message forged from an unlisted server is asked to be rejected unless it "
+                "carries a valid DKIM signature for this domain."
+            )
+        if posture == "quarantine":
+            return "low", (
+                " DMARC is p=quarantine, which RFC 7489 section 6.3 defines as asking "
+                "receivers to treat failing mail as suspicious, for example by placing it in a "
+                "spam folder. Forged mail from an unlisted server is therefore still "
+                "delivered, to a spam folder or flagged, where a person may read and act on it."
+            )
+        other = self._dmarc_finding_for_posture()
+        return "medium", (
+            " DMARC does not enforce a policy here, so nothing stops forged mail. That "
+            f"exposure is reported as {other}. This finding is the same weakness seen from "
+            "the SPF side: count the two as one."
+        )
+
+    def _neutral_all_note(self) -> str:
+        """For the DMARC findings: point at spf-too-permissive when it reports the same gap."""
+        record = self.spf.record
+        if self.mode == "light" or record is None or record.all_qualifier != "?":
+            return ""
+        if self._dmarc_finding_for_posture() is None:
+            return ""
+        return (
+            " The SPF record also ends in '?all', reported separately as spf-too-permissive. "
+            "It describes the same exposure from the SPF side: count the two as one."
+        )
+
     def _check_spf_standard(self) -> None:
         record = self.spf.record
         if record is None or self.chain is None:
@@ -232,26 +290,57 @@ class _Scan:
             return
 
         qualifier = record.all_qualifier
-        if qualifier in ("+", "?"):
+        remediation = (
+            f"Change '{qualifier}all' to '-all' once every legitimate sender is listed, "
+            "or to '~all' while you are still confirming that."
+        )
+        if qualifier == "+":
             self._report(
                 "spf-too-permissive",
                 self.spf.answer,
                 description=(
-                    f"The SPF record ends in '{qualifier}all', which tells receivers that mail "
-                    "from any server is acceptable"
-                    + (" (neutral)." if qualifier == "?" else " (explicit pass).")
+                    "The SPF record ends in '+all', which tells receivers that mail from any "
+                    "server is acceptable (explicit pass)."
                 ),
                 impact=(
                     "SPF passes for every sender on the internet, so the record provides no "
                     "protection while appearing to."
                 ),
-                remediation=(
-                    f"Change '{qualifier}all' to '-all' once every legitimate sender is listed, "
-                    "or to '~all' while you are still confirming that."
+                remediation=remediation,
+                validates=lambda answer: _parse_first_spf(answer).all_qualifier == "+",
+            )
+        elif qualifier == "?":
+            # RFC 7208 2.6.2 and 8.2. Neutral is an explicit non-assertion, and
+            # receivers MUST treat it exactly like "none". Saying it "accepts
+            # any server" asserted a receiver behaviour the spec rules out.
+            # How much it matters depends on DMARC, so severity does too.
+            severity, posture_note = self._neutral_all_posture()
+            self._report(
+                "spf-too-permissive",
+                self.spf.answer,
+                severity=severity,
+                title="SPF policy is neutral for senders it does not list",
+                description=(
+                    "The SPF record ends in '?all' (Neutral). RFC 7208 section 2.6.2 defines "
+                    "Neutral as the domain explicitly not asserting whether a sending server is "
+                    "authorised, and section 8.2 requires receivers to treat it exactly like "
+                    "the result for a domain with no SPF policy. Servers the record lists still "
+                    "pass; for every other server, SPF gives the same answer as having no SPF "
+                    "policy." + posture_note
                 ),
-                validates=lambda answer: _parse_first_spf(answer).all_qualifier in ("+", "?"),
+                impact=(
+                    "For senders the record does not list, SPF gives receivers nothing to act "
+                    "on. Whether forged mail is stopped then rests on DMARC, with DKIM, and on "
+                    "each receiver's own policy."
+                ),
+                remediation=remediation,
+                validates=lambda answer: _parse_first_spf(answer).all_qualifier == "?",
             )
         else:
+            # '-all' and '~all' are a declared non-finding, not a gap. SoftFail
+            # (RFC 7208 2.6.5) says the sender is probably not authorised, and
+            # DMARC treats it as an SPF failure. Without DMARC the exposure is
+            # dmarc-missing's, and reporting it here again would count it twice.
             self._clear("spf-too-permissive")
 
         if not self.chain.definite:
@@ -306,7 +395,10 @@ class _Scan:
             self._report(
                 "dmarc-missing",
                 self.dmarc_answer,
-                description=f"No DMARC record is published at _dmarc.{self.domain}.",
+                description=(
+                    f"No DMARC record is published at _dmarc.{self.domain}."
+                    + self._neutral_all_note()
+                ),
                 impact=(
                     "Receiving mail servers are given no instruction about what to do with mail "
                     "that fails authentication, so forged mail claiming to be from this domain "
@@ -327,25 +419,7 @@ class _Scan:
         self._clear("dmarc-missing")
 
         if not self.dmarc.valid:
-            self._report(
-                "dmarc-invalid",
-                self.dmarc_answer,
-                description=(
-                    f"The DMARC record at _dmarc.{self.domain} is not valid: "
-                    f"{'; '.join(self.dmarc.errors)}. Receivers ignore a record like this "
-                    "entirely, so the domain is unprotected despite appearing configured."
-                ),
-                impact=(
-                    "The domain has the appearance of DMARC protection and none of the effect."
-                ),
-                remediation=(
-                    "Rewrite the record so it begins 'v=DMARC1; p=<policy>;' - the version tag "
-                    "must come first and the policy tag must immediately follow it. Other tags "
-                    "may follow in any order."
-                ),
-                analysis={"dmarc": self.dmarc.to_dict()},
-                validates=lambda answer: _dmarc_is_invalid(answer),
-            )
+            self._report_invalid_dmarc(self.dmarc)
             self._not_applicable("dmarc-policy-none")
             return
 
@@ -357,7 +431,7 @@ class _Scan:
                 self.dmarc_answer,
                 description=(
                     f"The DMARC policy for {self.domain} is p=none, which asks receivers to "
-                    "take no action on mail that fails authentication."
+                    "take no action on mail that fails authentication." + self._neutral_all_note()
                 ),
                 impact=(
                     "Mail forged as this domain is still delivered. p=none is a monitoring "
@@ -374,6 +448,115 @@ class _Scan:
         else:
             self._clear("dmarc-policy-none")
 
+    def _report_invalid_dmarc(self, dmarc: DmarcRecord) -> None:
+        """Say what RFC 7489 says a receiver does with this record, and no more.
+
+        The finding used to say "receivers ignore a record like this entirely"
+        for every error. The spec says that for some errors, says the opposite
+        for others (discard the bad tag, keep the record), and says nothing at
+        all for duplicated tags or a misplaced p=. Where it says nothing, so do
+        we: the finding is worded as implementations varying and held at
+        `suspected`.
+        """
+        errors = "; ".join(dmarc.errors)
+        lead = f"The DMARC record at _dmarc.{self.domain} is not valid: {errors}."
+        note = self._neutral_all_note()
+        remediation = (
+            "Rewrite the record so it begins 'v=DMARC1; p=<policy>;' - the version tag must "
+            "come first and the policy tag must immediately follow it. Give each tag once. "
+            "Other tags may follow in any order."
+        )
+        hedge_ratio = 4.0
+        hedge_reason = (
+            "the error is read directly from the record, but no spec defines how a receiver "
+            "handles it, so the consequence this finding is about is uncertain"
+        )
+        handling = dmarc.receiver_handling
+        if handling == "treat_as_none":
+            self._report(
+                "dmarc-invalid",
+                self.dmarc_answer,
+                severity="medium",
+                title="DMARC record would be treated as p=none by receivers",
+                description=(
+                    f"{lead} The record has no usable policy but does carry a valid rua "
+                    "address, and RFC 7489 section 6.6.3 says receivers SHOULD then act as if "
+                    "it said p=none: reports are sent, and failing mail is not blocked. An "
+                    "operator with this record believes the domain is protected, and it is not."
+                    + note
+                ),
+                impact=(
+                    "Whatever policy was intended, receivers following the RFC treat the domain "
+                    "as monitoring only, so mail forged as this domain is still delivered."
+                ),
+                remediation=remediation,
+                analysis={"dmarc": dmarc.to_dict()},
+                validates=_dmarc_is_invalid,
+            )
+        elif handling in ("no_processing", "ignored"):
+            rule = (
+                "RFC 7489 section 6.6.3 says a receiver given a record with no valid policy and "
+                "no valid reporting address applies no DMARC processing"
+                if handling == "no_processing"
+                else "RFC 7489 section 6.3 says the entire record MUST then be ignored"
+            )
+            self._report(
+                "dmarc-invalid",
+                self.dmarc_answer,
+                description=(
+                    f"{lead} {rule}, so the domain is unprotected despite appearing configured."
+                    + note
+                ),
+                impact=(
+                    "The domain has the appearance of DMARC protection and none of the effect."
+                ),
+                remediation=remediation,
+                analysis={"dmarc": dmarc.to_dict()},
+                validates=_dmarc_is_invalid,
+            )
+        elif handling == "discard_tag":
+            self._report(
+                "dmarc-invalid",
+                self.dmarc_answer,
+                title="DMARC record has a malformed tag",
+                description=(
+                    f"{lead} RFC 7489 section 6.3 says receivers SHOULD discard a malformed tag "
+                    "in favour of its default value, or ignore it, rather than the whole record. "
+                    "That is a SHOULD, not a MUST, so implementations may vary, and a receiver "
+                    "applying the default may not do what the record intended." + note
+                ),
+                impact=(
+                    "The policy most receivers apply may differ from the one written, and some "
+                    "receivers may treat the record differently from others."
+                ),
+                remediation=remediation,
+                analysis={"dmarc": dmarc.to_dict()},
+                validates=_dmarc_is_invalid,
+                likelihood_ratio=hedge_ratio,
+                justification=hedge_reason,
+            )
+        else:
+            self._report(
+                "dmarc-invalid",
+                self.dmarc_answer,
+                title="DMARC record breaks RFC 7489, and receivers may handle it differently",
+                description=(
+                    f"{lead} RFC 7489 forbids this, but does not define what a receiver does "
+                    "with such a record. Implementations vary: some may ignore the record, "
+                    "others may apply the policy they can read. We cannot tell which happens "
+                    "at any given receiver." + note
+                ),
+                impact=(
+                    "Some receivers may give this domain no DMARC protection at all. Which ones "
+                    "cannot be known from the record."
+                ),
+                remediation=remediation,
+                analysis={"dmarc": dmarc.to_dict()},
+                validates=_dmarc_is_invalid,
+                likelihood_ratio=hedge_ratio,
+                justification=hedge_reason,
+            )
+
     def _check_dmarc_standard(self) -> None:
         if self.dmarc is None or not self.dmarc.valid:
             for check_id in ("dmarc-pct-partial", "dmarc-no-rua", "dmarc-alignment"):
@@ -387,7 +570,7 @@ class _Scan:
                 description=(
                     f"The DMARC policy applies to {self.dmarc.pct}% of failing mail (pct="
                     f"{self.dmarc.pct}). The other {100 - self.dmarc.pct}% is delivered as if "
-                    "the policy were p=none."
+                    "the policy were p=none." + self._neutral_all_note()
                 ),
                 impact=(
                     "An attacker sending repeatedly gets through on the unprotected fraction. "
@@ -553,7 +736,14 @@ class _Scan:
 
     # --- DKIM ---------------------------------------------------------------
 
-    def _find_dkim(self) -> tuple[str | None, DnsResponse | None, DkimKeyRecord | None]:
+    def _find_dkim(self) -> list[_DkimKey]:
+        """Every key published under the common selectors, not just the first.
+
+        Stopping at the first answer let a legacy key under a later selector go
+        unseen. All 17 names were already queried whenever no key was found, so
+        this costs at most 16 more lookups on a domain that has one.
+        """
+        keys: list[_DkimKey] = []
         for selector in COMMON_SELECTORS:
             self.ctx.check_alive()
             answer = self.dns.query(f"{selector}._domainkey.{self.domain}", "TXT")
@@ -561,11 +751,12 @@ class _Scan:
                 continue
             for record in answer.records:
                 if ("p=" in record and "k=" in record) or record.lower().startswith("v=dkim1"):
-                    return selector, answer, parse_dkim_key(record)
-        return None, None, None
+                    keys.append(_DkimKey(selector, answer, parse_dkim_key(record)))
+                    break
+        return keys
 
     def _check_dkim(self) -> None:
-        if self.dkim is not None:
+        if self.dkim_keys:
             self._clear("dkim-missing")
             return
 
@@ -593,44 +784,99 @@ class _Scan:
         )
 
     def _check_dkim_standard(self) -> None:
-        if self.dkim is None or self.dkim_answer is None:
+        live = [k for k in self.dkim_keys if not k.record.revoked]
+        if not live:
             self._not_applicable("dkim-weak-key")
             return
 
-        bits = self.dkim.key_bits
-        if bits is None:
-            self._inconclusive(
-                "dkim-weak-key",
-                self.dkim_answer,
-                f"The DKIM key at {self.dkim_selector}._domainkey.{self.domain} could not be "
-                "decoded, so its strength could not be measured. We do not report an "
-                "unmeasurable key as a weak one.",
-            )
+        # Key size is an RSA measure. An Ed25519 key is 256 bits by
+        # construction and is not weak for it.
+        rsa = [k for k in live if k.record.key_type == "rsa"]
+        weak = sorted(
+            (k for k in rsa if k.record.key_bits is not None and k.record.key_bits < MIN_DKIM_BITS),
+            key=lambda k: k.record.key_bits or 0,
+        )
+        unmeasured = [k for k in rsa if k.record.key_bits is None]
+        others = [k for k in live if k not in weak and k not in unmeasured]
+
+        if not weak:
+            if unmeasured:
+                self._inconclusive(
+                    "dkim-weak-key",
+                    unmeasured[0].answer,
+                    f"The DKIM key at {_names(unmeasured, self.domain)} could not be decoded, so "
+                    "its strength could not be measured. We do not report an unmeasurable key "
+                    "as a weak one.",
+                    analysis={"dkim_keys": [k.to_dict() for k in self.dkim_keys]},
+                )
+            else:
+                self._clear("dkim-weak-key")
             return
 
-        if bits < MIN_DKIM_BITS:
-            self._report(
-                "dkim-weak-key",
-                self.dkim_answer,
-                description=(
-                    f"The DKIM key published at {self.dkim_selector}._domainkey.{self.domain} "
-                    f"is {bits} bits. RFC 8301 requires signers to use at least 1024 bits and "
-                    f"recommends {MIN_DKIM_BITS}."
-                ),
-                impact=(
-                    "A key this size is within reach of a well-resourced attacker, who could "
-                    "then forge signed mail that passes DKIM and DMARC."
-                ),
-                remediation=(
-                    f"Generate a new {MIN_DKIM_BITS}-bit key with your mail provider, publish "
-                    "it under a new selector, switch signing to it, and remove the old selector "
-                    "once no mail is signed with it."
-                ),
-                analysis={"dkim": self.dkim.to_dict()},
-                validates=lambda answer: _dkim_bits_below(answer, MIN_DKIM_BITS),
+        weakest = weak[0]
+        bits = weakest.record.key_bits or 0
+        sizes = " and ".join(
+            f"{k.selector}._domainkey.{self.domain} ({k.record.key_bits} bits)" for k in weak
+        )
+        if len(weak) == 1:
+            name = f"{weakest.selector}._domainkey.{self.domain}"
+            lead = f"The DKIM key published at {name} is {bits} bits."
+        else:
+            lead = f"DKIM keys below {MIN_DKIM_BITS} bits are published at {sizes}."
+
+        if bits >= RFC8301_MIN_BITS:
+            severity = "low"
+            rule = (
+                f" {'It' if len(weak) == 1 else 'Each'} meets the RFC 8301 minimum of "
+                f"{RFC8301_MIN_BITS} bits, below the recommended {MIN_DKIM_BITS}."
+            )
+            impact = (
+                "This is a margin, not a break: RFC 8301 permits the key, and recommends "
+                f"{MIN_DKIM_BITS} bits for signers. Moving to {MIN_DKIM_BITS} bits brings the "
+                "domain in line with that recommendation."
             )
         else:
-            self._clear("dkim-weak-key")
+            severity = "medium"
+            rule = (
+                f" {'It is' if len(weak) == 1 else f'The smallest, {bits} bits, is'} below the "
+                f"RFC 8301 minimum of {RFC8301_MIN_BITS} bits, and RFC 8301 section 3.2 says "
+                "verifiers MUST NOT treat signatures from such a key as valid."
+            )
+            impact = (
+                "Verifiers that follow RFC 8301 treat signatures from this key as failing, so "
+                "mail signed with it gets no DKIM credit and may fail DMARC. A verifier that "
+                "still accepts it relies on a key far below the standard's minimum."
+            )
+
+        context = ""
+        if others:
+            context = (
+                f" The domain also publishes {_names(others, self.domain)}. We cannot tell from "
+                "DNS which selector it signs its mail with. RFC 6376 section 6.1.2 has a "
+                "verifier fetch the key named by the signature's s= tag, so a signature may "
+                "name any selector the domain publishes, the weaker one included."
+            )
+        if unmeasured:
+            context += (
+                f" The key at {_names(unmeasured, self.domain)} could not be decoded and is not "
+                "counted either way."
+            )
+
+        self._report(
+            "dkim-weak-key",
+            weakest.answer,
+            severity=severity,
+            description=lead + rule + context,
+            impact=impact,
+            remediation=(
+                "If a weaker selector is no longer used for signing, remove its record. "
+                f"Otherwise generate a new {MIN_DKIM_BITS}-bit key with your mail provider, "
+                "publish it under a new selector, switch signing to it, and remove the old "
+                "selector once no mail is signed with it."
+            ),
+            analysis={"dkim_keys": [k.to_dict() for k in self.dkim_keys]},
+            validates=lambda answer: _dkim_bits_below(answer, MIN_DKIM_BITS),
+        )
 
     # --- transport security -------------------------------------------------
 
@@ -715,20 +961,19 @@ class _Scan:
             )
             return
 
-        reasons = _spoofing_reasons(self.dmarc, self.spf.record)
+        reasons, only_hedge = _spoofing_reasons(self.dmarc, self.spf.record)
 
         if not reasons:
             self._clear("spoofing-possible")
             return
 
+        verdict = "it may be delivered at some receivers" if only_hedge else "it would be delivered"
         self._report(
             "spoofing-possible",
             self.dmarc_answer,
             description=(
                 "Simulating the decision a receiving mail server would make for a message "
-                f"forged from {self.domain}: it would be delivered, because "
-                + "; and ".join(reasons)
-                + "."
+                f"forged from {self.domain}: {verdict}, because " + "; and ".join(reasons) + "."
             ),
             impact=(
                 "Anyone can send mail that appears to come from this domain and expect it to "
@@ -742,6 +987,13 @@ class _Scan:
                 "every legitimate sender passing."
             ),
             validates=self._still_spoofable,
+            likelihood_ratio=4.0 if only_hedge else None,
+            justification=(
+                "the only reason is a DMARC error no spec gives receiver handling for, so "
+                "whether a receiver applies the record is uncertain"
+                if only_hedge
+                else None
+            ),
         )
 
     def _rewalk_chain_exceeds(self, _answer: DnsResponse) -> bool:
@@ -759,7 +1011,8 @@ class _Scan:
 
     def _still_spoofable(self, answer: DnsResponse) -> bool:
         """Re-run the receiver simulation on the second resolver's DMARC answer."""
-        return bool(_spoofing_reasons(_parse_dmarc_answer(answer), self.spf.record))
+        reasons, _ = _spoofing_reasons(_parse_dmarc_answer(answer), self.spf.record)
+        return bool(reasons)
 
     # --- emitting -----------------------------------------------------------
 
@@ -775,6 +1028,8 @@ class _Scan:
         validates: Any = None,
         severity: str | None = None,
         title: str | None = None,
+        likelihood_ratio: float | None = None,
+        justification: str | None = None,
     ) -> None:
         check = CHECKS[check_id]
         if severity is not None or title is not None:
@@ -782,6 +1037,15 @@ class _Scan:
             # context for some checks. Overriding it here keeps the reasoning
             # next to the evidence for it rather than in a lookup table.
             check = replace(check, severity=severity or check.severity, title=title or check.title)
+        if likelihood_ratio is not None:
+            # A weaker claim from the same check, e.g. a DMARC error whose
+            # effect on receivers no spec defines. Its justification travels
+            # with it, so the prior is never stated without its reason.
+            check = replace(
+                check,
+                likelihood_ratio=likelihood_ratio,
+                justification=justification or check.justification,
+            )
         result = self.engine.combine(
             [
                 Signal(
@@ -993,26 +1257,79 @@ _REFERENCES = {
 }
 
 
-def _spoofing_reasons(dmarc: DmarcRecord | None, spf: SpfRecord | None) -> list[str]:
+def _dmarc_posture(dmarc: DmarcRecord | None) -> str:
+    """What a receiver following RFC 7489 does with this domain's DMARC record.
+
+    The single place this question is answered. Two checks once each carried
+    their own copy of a wrong premise ("?all accepts any sender", "receivers
+    ignore a malformed record"); everything that needs the answer now reads it
+    from here.
+
+    - `missing` - no record.
+    - `unusable` - no DMARC processing (no valid p and no valid rua, 6.6.3
+      step 6), or the record is ignored outright (v not first, 6.3).
+    - `undefined` - forbidden, but no spec says what a receiver does.
+    - `none` - p=none, or no valid p but a valid rua (6.6.3 step 6: SHOULD act
+      as if p=none).
+    - `partial` - an enforcing policy applied to under 100% of failing mail.
+    - `quarantine` / `reject` - enforced. A malformed optional tag is
+      discarded in favour of its default (6.3), so it is read with the default.
+    """
+    if dmarc is None:
+        return "missing"
+    handling = dmarc.receiver_handling
+    if handling in ("no_processing", "ignored"):
+        return "unusable"
+    if handling == "undefined":
+        return "undefined"
+    if handling == "treat_as_none" or dmarc.policy == "none":
+        return "none"
+    if dmarc.pct < 100:
+        return "partial"
+    return "reject" if dmarc.policy == "reject" else "quarantine"
+
+
+def _spoofing_reasons(dmarc: DmarcRecord | None, spf: SpfRecord | None) -> tuple[list[str], bool]:
     """Why a receiving mail server would deliver a forged message.
+
+    Returns the reasons and whether they are only a hedge: a DMARC record whose
+    handling no spec defines may or may not be applied, so it is a reason to
+    suspect, not to claim.
 
     Extracted so that validation can re-run exactly the same reasoning against
     an independently fetched record, rather than re-checking a weaker proxy.
     """
     reasons: list[str] = []
-    if dmarc is None:
+    hedged = False
+    posture = _dmarc_posture(dmarc)
+    if posture == "missing":
         reasons.append(
             "there is no DMARC record, so a receiver has no instruction to reject mail "
             "that fails authentication"
         )
-    elif not dmarc.valid:
+    elif posture == "unusable":
         reasons.append(
-            "the DMARC record is malformed and receivers ignore it, which leaves the "
-            "domain in the same position as having none"
+            "the DMARC record has no usable policy, and RFC 7489 says a receiver then "
+            + (
+                "ignores the record entirely (section 6.3)"
+                if dmarc is not None and dmarc.receiver_handling == "ignored"
+                else "applies no DMARC processing (section 6.6.3)"
+            )
         )
-    elif dmarc.policy == "none":
-        reasons.append("the DMARC policy is p=none, which asks receivers to take no action")
-    elif dmarc.pct < 100:
+    elif posture == "undefined":
+        hedged = True
+        reasons.append(
+            "the DMARC record breaks RFC 7489 in a way the RFC gives no receiver handling "
+            "for, and implementations vary, so some receivers may not apply it"
+        )
+    elif posture == "none":
+        reasons.append(
+            "the DMARC record has no usable policy but a valid rua, so RFC 7489 section "
+            "6.6.3 has receivers act as if it said p=none, which asks them to take no action"
+            if dmarc is not None and dmarc.receiver_handling == "treat_as_none"
+            else "the DMARC policy is p=none, which asks receivers to take no action"
+        )
+    elif posture == "partial" and dmarc is not None:
         reasons.append(
             f"the DMARC policy is applied to only {dmarc.pct}% of failing mail, so "
             f"roughly {100 - dmarc.pct}% of forged messages are delivered anyway"
@@ -1020,11 +1337,17 @@ def _spoofing_reasons(dmarc: DmarcRecord | None, spf: SpfRecord | None) -> list[
 
     if spf is None:
         reasons.append("no SPF record identifies which servers may send for the domain")
-    elif spf.all_qualifier in ("+", "?"):
+    elif spf.all_qualifier == "+":
+        # '+all' is the one SPF setting that defeats an enforced DMARC policy:
+        # a forger who uses this domain in the envelope gets an aligned pass.
+        # '?all' (Neutral) and '~all' (SoftFail) are not passes, so they add
+        # nothing a missing or unenforced DMARC policy has not already said.
         reasons.append(
-            f"the SPF policy ends in '{spf.all_qualifier}all', which accepts any sending server"
+            "the SPF policy ends in '+all', an explicit pass for any sending server, which "
+            "DMARC counts as authentication"
         )
-    return reasons
+    only_hedge = hedged and len(reasons) == 1
+    return reasons, only_hedge
 
 
 def _dmarc_is_invalid(answer: DnsResponse) -> bool:
@@ -1050,9 +1373,23 @@ def _dmarc_relaxed(answer: DnsResponse) -> bool:
 def _dkim_bits_below(answer: DnsResponse, minimum: int) -> bool:
     for record in answer.records:
         parsed = parse_dkim_key(record)
-        if parsed.key_bits is not None:
+        if parsed.key_type == "rsa" and parsed.key_bits is not None:
             return parsed.key_bits < minimum
     return False
+
+
+@dataclass(frozen=True)
+class _DkimKey:
+    selector: str
+    answer: DnsResponse
+    record: DkimKeyRecord
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"selector": self.selector, **self.record.to_dict()}
+
+
+def _names(keys: list[_DkimKey], domain: str) -> str:
+    return ", ".join(f"{k.selector}._domainkey.{domain}" for k in keys)
 
 
 def _spf_records(answer: DnsResponse) -> list[str]:

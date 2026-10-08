@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "mail._domainkey.corpus-good.example",
+  "rcode": "NXDOMAIN",
+  "records": [],
+  "resolver": null,
+  "rrtype": "TXT",
+  "ttl": null
+}

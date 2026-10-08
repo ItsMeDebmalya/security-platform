@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "fm1._domainkey.corpus-norua.example",
+  "rcode": "NXDOMAIN",
+  "records": [],
+  "resolver": null,
+  "rrtype": "TXT",
+  "ttl": null
+}

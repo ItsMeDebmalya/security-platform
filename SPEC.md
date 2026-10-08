@@ -178,9 +178,9 @@ One-line: SPF/DKIM/DMARC configuration and spoofing risk.
 - **Light** — SPF present/valid, DKIM detection, DMARC policy, MX listing, spoofing-risk verdict.
 - **Standard** — SPF syntax + DNS-lookup-count analysis, SPF too-permissive check, DKIM key strength, DMARC alignment mode, DMARC reporting addresses, BIMI, MTA-STS/TLS-RPT, open-relay test, mail-server TLS, blacklist status, look-alike domain detection.
 - **Not built from v2 scope:** open-relay test and mail-TLS check (D4 — need SMTP connections, active not passive, deferred without blocking the gate) and look-alike domain detection (D5 — needs RDAP + a permutation engine, larger than the rest of Tool 1 combined).
-- **Status: Shipped.** 17 checks, gate met.
+- **Status: Shipped, v1.1.0** (2026-10-08: three claim defects fixed before the live re-verification, see the ledger). 17 checks, gate met.
 - **Corpus-validated, live-unverified (2026-10-08, [ledger D35](docs/14-progress-ledger.md#d-deferred-register)).** Every one of the 21 claims reached `confirmed` by second-resolver agreement, which the corpus cannot make fail. The earlier live sweep was not archived. **Do not quote the gate number** until the live re-verification closes.
-- **Gate:** precision ≥ 0.99, recall ≥ 0.95, inconclusive ≤ 0.15. **Actual, from `make corpus` (2026-09-01):** `precision 1.000, recall 1.000, susp% 0.0%, inconc% 0.8%, PASS` — 240 checks run, **21 claims**.
+- **Gate:** precision ≥ 0.99, recall ≥ 0.95, inconclusive ≤ 0.15. **Actual, from `make corpus` (2026-09-01):** `precision 1.000, recall 1.000, susp% 0.0%, inconc% 0.8%, PASS` — 240 checks run, **21 claims**. **v1.1.0 (2026-10-08): 240 checks, 20 claims**, since `dmarc-malformed` is now `suspected`.
 - **Caveats:** 16-case corpus of **synthetic zones we wrote ourselves** — proves the checks do what was intended, not that intent matches the world (D6: ~50 real domains as a frozen tier is owed, not built). Six real defects across Tools 1 and 2 survived corpora at precision 1.000; live verification against real domains is part of a tool's definition of done (ADR-017), not optional polish.
 - Depends on: nothing further; passes without D4/D5.
 
@@ -409,7 +409,7 @@ Verified against the repo and `make corpus` (2026-10-07) — see the run at the 
 | A4 Domain & Subdomain Enum (`domscout`) | **Shipped (Light) v1.0.0 — live-verified; kinetrix+coverage owed** | precision ≥0.95, recall ≥0.80, inconc ≤0.15 | 1.000 / 1.000, 50 checks, **1 claim**, PASS |
 | A5 Deface Monitoring | Not built | not yet set | — |
 | A6 API Scanner | Not built | not yet set | — |
-| A7 Email Security | **Shipped** | precision ≥0.99, recall ≥0.95, inconc ≤0.15 | 1.000 / 1.000, 240 checks, 21 claims, 0.8% inconc, PASS |
+| A7 Email Security | **Shipped** | precision ≥0.99, recall ≥0.95, inconc ≤0.15 | 1.000 / 1.000, 240 checks, 20 claims (v1.1.0), 0.8% inconc, PASS. **Not quotable: corpus-validated, live-unverified (D35)** |
 | A8 Container Scanner | Not built | not yet set | — |
 | A9 Supply Chain Scanner | Not built | not yet set | — |
 | A10 Cloud CSPM | Not built | not yet set | — |

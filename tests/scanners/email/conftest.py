@@ -21,6 +21,13 @@ RSA_1024_P = (
     "cEzch8jRI4zqiOwvW2PDQGxHesiUr7LU3xonJCBNP0oQk9CkcwIDAQAB"
 )
 
+# Generated for these tests with `openssl genrsa 512`. Below RFC 8301's floor.
+RSA_512_P = (
+    "MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAM5TW2fasDxKfamMgVaUFYr/6Y0ryQPQi80R30F6s+W266lu"
+    "Av1D4017twuXuFBxJ0NpuHvdeONRrkp1jBbzJmsCAwEAAQ=="
+)
+ED25519_P = "4k4Ut5zN75JPVjByayxfNhIzzFLWOppHG8FjDatyawc="
+
 
 def answer(name, rrtype, *records, rcode="NOERROR", ttl=300):
     return DnsResponse(name=name, rrtype=rrtype, rcode=rcode, records=list(records), ttl=ttl)
