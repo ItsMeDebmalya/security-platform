@@ -1,0 +1,17 @@
+# Proof of control for corpus-good.example
+# Method: self_owned (docs/09-ownership-verification.md)
+# Recorded: 2026-10-08 by operator:debmalya
+#
+# This is not a real domain. `.example` is reserved by RFC 2606 and can never
+# be registered by anyone, so there is no third party to harm and no zone to
+# prove control of.
+#
+# It is the reference `example` scanner's synthetic corpus zone, frozen at:
+#     corpus/fixtures/example/resolves/
+#
+# It exists in config/authorised_scope.example.yaml (row 6) only, to
+# demonstrate the authorisation gate in docs/12-cli-runbook.md section 5.
+# Since ADR-023 no check in a shipped scanner is active, so the reference
+# scanner's mode-gated Standard run is the one real scan that reaches the
+# deny path. Listed explicitly rather than exempted implicitly, because
+# docs/09 allows no implicit exemptions.

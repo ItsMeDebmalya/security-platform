@@ -4,30 +4,24 @@
 # row you need into that file, replace every value with your own, and commit
 # the proof alongside it.
 #
-# To try it without touching the live file:
+# To try it without touching the live file (row 6 authorises it):
 #
-#   uv run scan run tls --target https://localhost:14400 --mode standard \
-#     --replay corpus/fixtures/tls/healthy \
+#   uv run scan run example --target corpus-good.example --mode standard \
+#     --replay corpus/fixtures/example/resolves \
 #     --scope-file config/authorised_scope.example.yaml
 #
 # Every domain below uses the `.example` TLD, which RFC 2606 reserves and
 # nobody can ever register. An example that pointed at a real domain would be
 # an invitation to scan it.
 #
-# docs/03-roadmap.md 0b.6: authorisation is gated per check, not per mode.
-# Passive is what an ordinary client does; active is deliberately abnormal
-# input - offering obsolete protocols or weak/legacy ciphers to see what a
-# server will accept, not what it ordinarily negotiates. TLS's eight Light
-# checks and three of its six Standard checks read only what an ordinary
-# handshake already shows (the same certificate a browser gets) and need no
-# row in any mode - `--mode light` above needs no `--scope-file` at all.
-# TLS's other three Standard checks (tls-protocol-obsolete, tls-weak-cipher,
-# tls-no-forward-secrecy) force that abnormal input, so *Standard* mode
-# needs a row - which is what the command above demonstrates. Every email
-# check reads only public DNS in every mode, so email needs no row in any
-# mode, Standard included - the row below for corpus-pnone.example is kept
-# as a worked example of `method: self_owned`, not because a Standard email
-# scan requires it any more.
+# Authorisation is gated per check, not per mode (docs/03-roadmap.md 0b.6).
+# Passive is what an ordinary client does, ordinary negotiation included;
+# active is malformed or exploit-adjacent input (ADR-023). Every check in
+# email, tls, domscout and web is passive, so none of them needs a row in any
+# mode. The reference `example` scanner has no Check catalogue, so it falls
+# back to the mode rule: Light free, Standard gated. That is why the command
+# above uses it. (Until ADR-023 this file demonstrated the gate with a TLS
+# Standard scan; that scan no longer needs a row.)
 #
 # The dates are illustrative and some of them are deliberately in the past.
 # Regenerate them; do not copy them.
@@ -116,11 +110,10 @@
   attestation_ref: null
 
 # ---------------------------------------------------------------------------
-# 5. The TLS corpus lab, authorising the command at the top of this file.
-#    docs/03-roadmap.md 0b.6: TLS's three protocol/cipher-probing Standard
-#    checks force deliberately abnormal input, so this row is required for
-#    the Standard-mode command above. It would not be needed to run the
-#    same target in Light mode - every Light check is an ordinary handshake.
+# 5. A self-owned loopback service: the local TLS lab.
+#    Kept as a worked example of a `localhost` row. Since ADR-023 no TLS
+#    check is active, so a TLS scan of this lab no longer needs it in any
+#    mode; an active check against a loopback service would.
 # ---------------------------------------------------------------------------
 
 - authz_id: authz_2026-08-28-005
@@ -155,3 +148,23 @@
   attestation_ref: null
   revoked_at: 2026-08-10
   revocation_reason: engagement ended at the customer's request
+
+# ---------------------------------------------------------------------------
+# 6. The reference scanner's synthetic corpus zone, authorising the command
+#    at the top of this file. `example` has no Check catalogue, so its
+#    Standard mode is gated by the mode rule - today the only real scan
+#    that reaches core/authz.py's deny path.
+# ---------------------------------------------------------------------------
+
+- authz_id: authz_2026-10-08-006
+  org_id: org_internal
+  target: { type: domain, value: corpus-good.example, wildcard: false }
+  method: self_owned
+  proof:
+    observed: 'synthetic corpus zone for the reference scanner, frozen in corpus/fixtures/example/resolves'
+    observed_at: 2026-10-08T00:00:00Z
+    evidence_file: corpus/authz/corpus-good.example-2026-10-08.txt
+  verified_at: 2026-10-08
+  expires_at: 2026-11-07
+  verified_by: operator:debmalya
+  attestation_ref: null

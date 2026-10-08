@@ -119,8 +119,7 @@ def test_every_example_row_uses_a_reserved_domain():
 
     `localhost` (bare, no TLD) is the one exception: RFC 6761 reserves it
     outright, unregistrable by construction, and it is the literal target of
-    the local TLS lab used to demonstrate docs/03-roadmap.md 0b.6 - TLS
-    needing authorisation in Light mode - in docs/12-cli-runbook.md §5.
+    the local TLS lab, kept as the worked example of a loopback row.
     """
     rows = yaml.safe_load(EXAMPLE.read_text())
 
