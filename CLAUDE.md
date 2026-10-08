@@ -48,6 +48,7 @@ Read `docs/14-progress-ledger.md` for where things stand — including **standin
 - `docs/17-testing-runbook.md` — **how to prove the scanners are correct**: the test layers, the corpus, the labs, live verification, CI. Copy-pasteable
 - `docs/16-learning-map.md` — **what the developer needs to learn**, dev and security, tiered by when it is needed
 - `docs/how-to-add-a-scanner.md` — the practical guide, written by building the reference scanner
+- `docs/21-scanner-catalogue.md` — **every shipped check**: what it finds, mode, highest state and its evidence, working/broken. Derived from code; regenerate it, don't hand-edit. Status defers to `SPEC.md` and the ledger
 - `docs/08-changelog.md` — v2→v3, v3→v3.1, and the v3.2 additive contract changes made during Phase 0, with revert notes
 - `docs/09-ownership-verification.md` — the legal gate on active scans; methods per target type, audit record, interim allowlist schema
 - `docs/10-measurement.md` — **how precision/recall/inconclusive-rate are computed**; read before touching the corpus harness
