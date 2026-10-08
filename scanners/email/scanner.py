@@ -962,6 +962,7 @@ class _Scan:
             return
 
         reasons, only_hedge = _spoofing_reasons(self.dmarc, self.spf.record)
+        self._spoof_reasons = reasons
 
         if not reasons:
             self._clear("spoofing-possible")
@@ -1010,9 +1011,21 @@ class _Scan:
         return again.definite and again.exceeded
 
     def _still_spoofable(self, answer: DnsResponse) -> bool:
-        """Re-run the receiver simulation on the second resolver's DMARC answer."""
-        reasons, _ = _spoofing_reasons(_parse_dmarc_answer(answer), self.spf.record)
-        return bool(reasons)
+        """Re-run the receiver simulation on the second resolver's DMARC **and SPF**.
+
+        The verdict rests on both records, so both are re-read. Until D39 was
+        fixed this reused the first resolver's SPF record, which went unnoticed
+        because no "second" resolver was really asked. Once one was, a stale
+        SPF answer at the primary passed validation. Validation passes only
+        when the second resolver gives the same reasons. An SPF re-read that
+        does not come back definite cannot confirm anything, so it counts as
+        a failure.
+        """
+        spf_again = fetch_spf(self.domain, self.dns, resolver=self.dns.second_resolver())
+        if not spf_again.definite:
+            return False
+        reasons, _ = _spoofing_reasons(_parse_dmarc_answer(answer), spf_again.record)
+        return reasons == self._spoof_reasons
 
     # --- emitting -----------------------------------------------------------
 

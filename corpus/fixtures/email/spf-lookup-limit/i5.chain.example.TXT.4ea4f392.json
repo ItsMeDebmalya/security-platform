@@ -5,7 +5,7 @@
   "records": [
     "v=spf1 a -all"
   ],
-  "resolver": null,
+  "resolver": "1.1.1.1",
   "rrtype": "TXT",
   "ttl": 300
 }

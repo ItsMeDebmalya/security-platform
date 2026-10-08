@@ -3,7 +3,7 @@
   "name": "_mta-sts.corpus-bare.example",
   "rcode": "NOERROR",
   "records": [],
-  "resolver": null,
+  "resolver": "8.8.8.8",
   "rrtype": "TXT",
   "ttl": 300
 }

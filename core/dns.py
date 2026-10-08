@@ -25,7 +25,7 @@ from __future__ import annotations
 import re
 import secrets
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -130,19 +130,40 @@ def _fixture_name(name: str, rrtype: str, resolver: str | None = None) -> str:
 
 
 class FakeResolver:
-    """An in-memory resolver for tests. Unknown names are NXDOMAIN."""
+    """An in-memory resolver for tests. Unknown names are NXDOMAIN.
 
-    def __init__(self, answers: dict[tuple[str, str], DnsResponse]) -> None:
+    `by_resolver` overrides answers for one named resolver, so a test or a
+    corpus case can make two resolvers disagree. Until D39 this resolver
+    ignored which resolver was asked, so no corpus case could ever exercise a
+    failed second-resolver validation. Answers are labelled with the resolver
+    that was asked, as a real one's are.
+    """
+
+    def __init__(
+        self,
+        answers: dict[tuple[str, str], DnsResponse],
+        *,
+        by_resolver: dict[str, dict[tuple[str, str], DnsResponse]] | None = None,
+    ) -> None:
         self._answers = {(n.lower(), t.upper()): r for (n, t), r in answers.items()}
+        self._by_resolver = {
+            upstream: {(n.lower(), t.upper()): r for (n, t), r in table.items()}
+            for upstream, table in (by_resolver or {}).items()
+        }
         self.calls: list[tuple[str, str]] = []
+        self.routed: list[tuple[str, str, str | None]] = []
 
     def resolve(self, name: str, rrtype: str, resolver: str | None = None) -> DnsResponse:
         key = (name.lower(), rrtype.upper())
-        self.calls.append((name.lower(), rrtype.upper()))
-        found = self._answers.get(key)
+        self.calls.append(key)
+        self.routed.append((*key, resolver))
+        override = self._by_resolver.get(resolver or "", {})
+        found = override.get(key, self._answers.get(key))
         if found is None:
-            return DnsResponse(name=name, rrtype=rrtype.upper(), rcode="NXDOMAIN", records=[])
-        return found
+            return DnsResponse(
+                name=name, rrtype=rrtype.upper(), rcode="NXDOMAIN", records=[], resolver=resolver
+            )
+        return replace(found, resolver=resolver)
 
 
 class RecordingResolver:
@@ -178,16 +199,42 @@ class ReplayResolver:
 
 
 class SystemResolver:
-    """The live resolver, via dnspython. Constructed by the CLI, never by a scanner."""
+    """The live resolver, via dnspython. Constructed by the CLI, never by a scanner.
+
+    **A query directed at a resolver is sent to that resolver and no other**
+    (D39). Each named upstream gets its own dnspython `Resolver` holding only
+    that server, so there is no silent fallback to a different one either. A
+    named resolver that fails returns its failure, labelled with its own name.
+    Until 2026-10-08 one shared `Resolver` answered everything and the
+    `resolver` argument only labelled the result, so the "independent
+    re-query via 8.8.8.8" was asked of 1.1.1.1.
+
+    An unnamed query uses the full list (or the system configuration) with
+    dnspython's ordinary fallback, and is labelled with the server that
+    actually answered, or nothing when no server did.
+    """
 
     def __init__(self, resolvers: list[str] | None = None, timeout_s: float = 5.0) -> None:
+        self._timeout_s = timeout_s
+        self._default = self._build(list(resolvers or []))
+        self._pinned: dict[str, Any] = {}
+
+    def _build(self, nameservers: list[str]) -> Any:
         import dns.resolver
 
-        self._resolver = dns.resolver.Resolver(configure=not resolvers)
-        if resolvers:
-            self._resolver.nameservers = resolvers
-        self._resolver.timeout = timeout_s
-        self._resolver.lifetime = timeout_s
+        built = dns.resolver.Resolver(configure=not nameservers)
+        if nameservers:
+            built.nameservers = nameservers
+        built.timeout = self._timeout_s
+        built.lifetime = self._timeout_s
+        return built
+
+    def _for(self, upstream: str | None) -> Any:
+        if upstream is None:
+            return self._default
+        if upstream not in self._pinned:
+            self._pinned[upstream] = self._build([upstream])
+        return self._pinned[upstream]
 
     def resolve(self, name: str, rrtype: str, resolver: str | None = None) -> DnsResponse:
         import dns.exception
@@ -197,7 +244,7 @@ class SystemResolver:
         rrtype = rrtype.upper()
         started = time.monotonic()
         try:
-            answer = self._resolver.resolve(name, rrtype, raise_on_no_answer=False)
+            answer = self._for(resolver).resolve(name, rrtype, raise_on_no_answer=False)
         except dns.resolver.NXDOMAIN:
             return self._empty(name, rrtype, "NXDOMAIN", started, resolver)
         except dns.resolver.NoNameservers:
@@ -214,7 +261,8 @@ class SystemResolver:
             rcode="NOERROR" if records else "NODATA",
             records=records,
             ttl=int(answer.rrset.ttl) if answer.rrset is not None else None,
-            resolver=resolver,
+            # The server that answered, never the one we hoped would.
+            resolver=resolver or getattr(answer, "nameserver", None),
             elapsed_ms=int((time.monotonic() - started) * 1000),
         )
 

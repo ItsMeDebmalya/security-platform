@@ -5,7 +5,7 @@
   "records": [
     "v=TLSRPTv1; rua=mailto:tls@corpus-plusall.example"
   ],
-  "resolver": null,
+  "resolver": "1.1.1.1",
   "rrtype": "TXT",
   "ttl": 300
 }

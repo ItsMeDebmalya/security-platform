@@ -3,7 +3,7 @@
   "name": "zoho._domainkey.corpus-nodkim.example",
   "rcode": "NXDOMAIN",
   "records": [],
-  "resolver": null,
+  "resolver": "1.1.1.1",
   "rrtype": "TXT",
   "ttl": null
 }

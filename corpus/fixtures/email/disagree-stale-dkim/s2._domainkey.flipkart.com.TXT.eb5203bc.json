@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "s2._domainkey.flipkart.com",
+  "rcode": "NODATA",
+  "records": [],
+  "resolver": "9.9.9.9",
+  "rrtype": "TXT",
+  "ttl": null
+}

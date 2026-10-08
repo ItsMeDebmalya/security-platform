@@ -81,7 +81,13 @@ def _run_case(scanner_name: str, case: dict[str, Any]) -> ScanResult:
     # a scanner that makes no HTTP request (email/tls) never exercises it.
     http_scope = Scope(frozenset(Scope.for_target(target).hosts | scanner.service_hosts))
     ctx = ScanContext(
-        dns=DnsClient(resolver=ReplayResolver(fixtures), resolvers=["1.1.1.1", "8.8.8.8"]),
+        # A case may name its resolver order (primary first). Cases recorded
+        # from real resolvers that disagreed use it to choose which answer is
+        # primary and which validates (corpus/generators/email_recorded.py).
+        dns=DnsClient(
+            resolver=ReplayResolver(fixtures),
+            resolvers=list(case.get("resolvers") or ["1.1.1.1", "8.8.8.8"]),
+        ),
         http=HttpClient(scope=http_scope, backend=ReplayHttpBackend(fixtures)),
         tls=TlsClient(scope=Scope.for_target(target), backend=ReplayTlsBackend(fixtures)),
         # D20: only cases that record legacy-cipher fixtures (`testssl_fixtures`

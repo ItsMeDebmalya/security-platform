@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_dmarc.flipkart.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DMARC1; p=quarantine; rua=mailto:2e945089eaf4697@rep.dmarcanalyzer.com; ruf=mailto:2e945089eaf4697@for.dmarcanalyzer.com; fo=1;"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": null
+}

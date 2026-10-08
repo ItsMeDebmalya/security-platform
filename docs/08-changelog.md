@@ -405,3 +405,16 @@ Then restore the entry-point lines in `CLAUDE.md` and `SPEC.md`, and the revert 
 - No code, fixture or contract changed.
 
 **Revert.** Delete the "Amended 2026-10-08" paragraph from ADR-017, the §7 checklist item, and the two `SPEC.md` additions.
+
+## v4.0-pre.3 — D39: DNS queries go to the resolver they name (2026-10-08)
+
+**What changed.**
+- `core/dns.py` `SystemResolver` routes each query to the named resolver, with one dnspython `Resolver` per upstream. It labels each answer with the server that answered. A failing named resolver is no longer replaced silently by another.
+- `FakeResolver` honours the `resolver` argument (`by_resolver`) and labels its answers, so the corpus can express disagreement.
+- `cli/corpus.py`: a case may set `resolvers:` (its primary first).
+- Two recorded corpus cases (`disagree-stale-spf`, `disagree-stale-dkim`) come from `corpus/generators/email_recorded.py`.
+- `email` `spoofing-possible` validation re-reads SPF as well as DMARC.
+- Ruff excludes `corpus/crosscheck/email-live/`, which is checksummed evidence.
+
+**Revert.** Restore the previous `SystemResolver` and `FakeResolver` from git, and drop the two cases and their fixtures. Not advised: it restores evidence that names a resolver which never answered.
+

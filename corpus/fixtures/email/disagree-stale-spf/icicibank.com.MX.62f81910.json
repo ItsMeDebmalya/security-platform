@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "icicibank.com",
+  "rcode": "NOERROR",
+  "records": [
+    "0 icicibank-com.mail.protection.outlook.com."
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "MX",
+  "ttl": null
+}

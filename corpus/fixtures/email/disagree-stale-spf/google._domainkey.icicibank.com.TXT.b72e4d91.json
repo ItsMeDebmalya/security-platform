@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "google._domainkey.icicibank.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAgUOGi8P448iJRSlwMwAqtCumdrPk+AnnlURhQuugVGHekQBHFbpA+ZQHAKw3WGPCLq1rFXoRSWyohwzv2xRdcoX2JwCrhCbALX6WzubbWxniECuJMAIyfCf9+cG/bpCZs3CZVI4iN2hBzUnmSzXlAJt78EVws23ybYGI4aaS3cGFO/ddhUONOSwkc+xfdqXcGJLsWAXQfpn622XreldOtp2Vh7NUF+TVO4OUv9iYvZFgY5Dp4FMn0aUhX/CKKRhDrnLj9If19XGp16o+1bU6lf2VyNDjwLbpDvz9GqIw3ERXrJyLV+B2i/38nFO8fz4059rX9Q67RAte9zbC/WYB+wIDAQAB"
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": null
+}

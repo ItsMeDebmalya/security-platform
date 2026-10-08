@@ -58,3 +58,21 @@ no-transport-security:
 dkim-not-discoverable: []
 
 servfail: []
+
+# icicibank.com: 8.8.8.8 (primary here) served the TXT set without SPF. The SPF
+# record exists (1.1.1.1, 9.9.9.9, and 8.8.8.8 on retry), and DMARC is p=reject,
+# so spf-missing and spoofing-possible are false and must not be claimed. The
+# true claims: a 1024-bit key at k1 and s2, no MTA-STS, no TLS-RPT.
+disagree-stale-spf:
+  - { check_id: dkim-weak-key, location: "$" }
+  - { check_id: mta-sts-missing, location: "$" }
+  - { check_id: tls-rpt-missing, location: "$" }
+
+# flipkart.com: 9.9.9.9 (primary here) still served a 2048-bit key at s1 that
+# no longer exists. The weak-key claim rests on mandrill (1024 bits, every
+# resolver agrees). DMARC is p=quarantine.
+disagree-stale-dkim:
+  - { check_id: dkim-weak-key, location: "$" }
+  - { check_id: mta-sts-missing, location: "$" }
+  - { check_id: tls-rpt-missing, location: "$" }
+

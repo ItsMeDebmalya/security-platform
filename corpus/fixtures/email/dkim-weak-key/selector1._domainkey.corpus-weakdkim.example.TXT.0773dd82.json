@@ -5,7 +5,7 @@
   "records": [
     "v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCxntLCj4ULaZcJl5J7HXYk0ANV4ZXEi2D6IZMpEhJ3H7ntz5ANAY/JQki9S6ZvTQB546YA1ShEXqc5f/r1HtJXQTi6lBkTIWYq1Go3e8vm+uWFT+Hjyv394AqBcEzch8jRI4zqiOwvW2PDQGxHesiUr7LU3xonJCBNP0oQk9CkcwIDAQAB"
   ],
-  "resolver": null,
+  "resolver": "8.8.8.8",
   "rrtype": "TXT",
   "ttl": 300
 }

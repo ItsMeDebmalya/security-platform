@@ -5,7 +5,7 @@
   "records": [
     "v=spf1 include:i0.chain.example include:i1.chain.example include:i2.chain.example include:i3.chain.example include:i4.chain.example include:i5.chain.example -all"
   ],
-  "resolver": null,
+  "resolver": "1.1.1.1",
   "rrtype": "TXT",
   "ttl": 300
 }

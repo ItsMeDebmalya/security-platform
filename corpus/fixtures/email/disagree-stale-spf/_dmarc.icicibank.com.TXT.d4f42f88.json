@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_dmarc.icicibank.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DMARC1; p=reject;fo=1; rua=mailto:rua.icici@progist.in;ruf=mailto:rug.icici@progist.in"
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": null
+}
