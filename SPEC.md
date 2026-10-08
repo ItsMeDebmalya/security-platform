@@ -178,7 +178,7 @@ One-line: SPF/DKIM/DMARC configuration and spoofing risk.
 - **Light** — SPF present/valid, DKIM detection, DMARC policy, MX listing, spoofing-risk verdict.
 - **Standard** — SPF syntax + DNS-lookup-count analysis, SPF too-permissive check, DKIM key strength, DMARC alignment mode, DMARC reporting addresses, BIMI, MTA-STS/TLS-RPT, open-relay test, mail-server TLS, blacklist status, look-alike domain detection.
 - **Not built from v2 scope:** open-relay test and mail-TLS check (D4 — need SMTP connections, active not passive, deferred without blocking the gate) and look-alike domain detection (D5 — needs RDAP + a permutation engine, larger than the rest of Tool 1 combined).
-- **Status: Shipped, v1.1.0** (2026-10-08: three claim defects fixed before the live re-verification, see the ledger). 17 checks, gate met.
+- **Status: Shipped, v1.2.0** (2026-10-08: claim defects fixed before the live re-verification, and second-resolver validation made real by D39; see the ledger). 17 checks, gate met.
 - **Corpus-validated, live-unverified (2026-10-08, [ledger D35](docs/14-progress-ledger.md#d-deferred-register)).** Every one of the 21 claims reached `confirmed` by second-resolver agreement, which the corpus cannot make fail. The earlier live sweep was not archived. **Do not quote the gate number** until the live re-verification closes.
 - **Until 2026-10-08, production `confirmed` was never validated by a second resolver ([ledger D39](docs/14-progress-ledger.md#d-deferred-register)): the re-query labelled 8.8.8.8 was sent to 1.1.1.1. Fixed that day.** Evidence produced before the fix that names a second resolver is misattributed and is not two-resolver confirmation. The live disagreement rate is measured in [the ledger](docs/14-progress-ledger.md).
 - **Gate:** precision ≥ 0.99, recall ≥ 0.95, inconclusive ≤ 0.15. **Actual, from `make corpus` (2026-09-01):** `precision 1.000, recall 1.000, susp% 0.0%, inconc% 0.8%, PASS` — 240 checks run, **21 claims**. **v1.1.0 (2026-10-08): 240 checks, 20 claims**, since `dmarc-malformed` is now `suspected`.
@@ -410,7 +410,7 @@ Verified against the repo and `make corpus` (2026-10-07) — see the run at the 
 | A4 Domain & Subdomain Enum (`domscout`) | **Shipped (Light) v1.0.0 — live-verified; kinetrix+coverage owed** | precision ≥0.95, recall ≥0.80, inconc ≤0.15 | 1.000 / 1.000, 50 checks, **1 claim**, PASS |
 | A5 Deface Monitoring | Not built | not yet set | — |
 | A6 API Scanner | Not built | not yet set | — |
-| A7 Email Security | **Shipped** | precision ≥0.99, recall ≥0.95, inconc ≤0.15 | 1.000 / 1.000, 240 checks, 20 claims (v1.1.0), 0.8% inconc, PASS. **Not quotable: corpus-validated, live-unverified (D35)** |
+| A7 Email Security | **Shipped** | precision ≥0.99, recall ≥0.95, inconc ≤0.15 | 1.000 / 1.000, 270 checks, 25 claims (v1.2.0), 0.7% inconc, PASS. **Not quotable: corpus-validated, live-unverified (D35)** |
 | A8 Container Scanner | Not built | not yet set | — |
 | A9 Supply Chain Scanner | Not built | not yet set | — |
 | A10 Cloud CSPM | Not built | not yet set | — |
