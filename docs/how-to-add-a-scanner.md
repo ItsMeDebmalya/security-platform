@@ -156,6 +156,7 @@ Then `make corpus`. Then `uv run python -m cli.corpus --update-baseline` once th
 - [ ] `make lint`, `make typecheck`, `make test` green
 - [ ] `make corpus` shows no precision regression
 - [ ] new detections have a positive *and* a negative corpus case
+- [ ] every new check has **fired against a real positive**: a live target or a recording of one, hand-verified and cited here. A corpus positive we wrote does not count. With no real positive, it ships marked UNDETERMINED with the reason, or not at all ([ADR-017](02-decisions.md#adr-017--live-verification-is-part-of-a-tools-definition-of-done), ledger D37)
 - [ ] any new dependency is in `tools/registry.yaml` with a licence
 - [ ] `scanner_version` bumped if results changed
 - [ ] `state` is derived, not hand-set

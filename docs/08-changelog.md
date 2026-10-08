@@ -395,3 +395,13 @@ Then restore the entry-point lines in `CLAUDE.md` and `SPEC.md`, and the revert 
 - No code, fixture or contract changed.
 
 **Revert.** Delete the ADR-027 section from `docs/02-decisions.md`, restore "001–026" in `CLAUDE.md`, and remove the two `SPEC.md` notes. The contract test it calls for does not exist yet, so there is nothing to remove from code.
+
+## v4.0-pre.2 — ADR-017 amended: a check must fire against a real positive before it ships (2026-10-08)
+
+**What changed.**
+- [ADR-017](02-decisions.md#adr-017--live-verification-is-part-of-a-tools-definition-of-done) gained a clause: every new check must be shown to fire against a real positive (live, hand-verified, cited) before it ships. A corpus positive does not count. It was prompted by the fourth advertised check found that cannot fire in production (ledger D37, after D28 and D31).
+- `docs/how-to-add-a-scanner.md` §7 has the matching checklist item.
+- `SPEC.md` now states the catalogue's standing figure (63 checks: 23 WORKING, 3 BROKEN, 37 UNDETERMINED) and declares that no `tls` check can reach `confirmed`.
+- No code, fixture or contract changed.
+
+**Revert.** Delete the "Amended 2026-10-08" paragraph from ADR-017, the §7 checklist item, and the two `SPEC.md` additions.
