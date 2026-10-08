@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_spf.tilc.in",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 ip4:203.55.102.0/24 ip4:219.65.85.0/24 ip4:202.41.30.0/24 ip4:223.165.30.0/24 -all"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 300
+}

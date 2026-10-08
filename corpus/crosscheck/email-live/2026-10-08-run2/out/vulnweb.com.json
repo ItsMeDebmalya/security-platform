@@ -1,0 +1,707 @@
+{
+  "scanner": "email",
+  "scanner_version": "1.2.0",
+  "target": {
+    "type": "domain",
+    "value": "vulnweb.com"
+  },
+  "mode": "standard",
+  "findings": [
+    {
+      "id": "sha256:9c6b2500eccbaef15c984ddccb5cb3cd0048452ee58b9417727d1931656b247d",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.2.0",
+      "check_id": "dmarc-missing",
+      "renamed_from": [],
+      "title": "No DMARC record published",
+      "target": {
+        "type": "domain",
+        "value": "vulnweb.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "high",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "a definite TXT answer at _dmarc with no v=DMARC1 term is a direct observation"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _dmarc.vulnweb.com",
+          "captured_at": "2026-10-08T11:46:25.881162Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.vulnweb.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-6c54dee6.vulnweb.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T11:46:25.881182Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.vulnweb.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "vulnweb.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "No DMARC record is published at _dmarc.vulnweb.com.",
+      "impact": "Receiving mail servers are given no instruction about what to do with mail that fails authentication, so forged mail claiming to be from this domain is generally delivered.",
+      "remediation": "Publish a TXT record at _dmarc.vulnweb.com of the form 'v=DMARC1; p=none; rua=mailto:dmarc-reports@vulnweb.com'. Start at p=none to collect reports, confirm every legitimate sender passes, then move to p=quarantine and p=reject.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7489"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T11:46:25.881186Z",
+      "first_seen_scan_id": "01M4DNC1Z414XZ87Y3VZ5QXX4S",
+      "last_seen": "2026-10-08T11:46:25.881186Z",
+      "last_seen_scan_id": "01M4DNC1Z414XZ87Y3VZ5QXX4S",
+      "cost": {
+        "requests": 22,
+        "wall_ms": 500,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:5ac133920ef2a073aa469973d546ba72e615ea42c0ac6edd877fe11f9536cb12",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.2.0",
+      "check_id": "dkim-missing",
+      "renamed_from": [],
+      "title": "No DKIM key found",
+      "target": {
+        "type": "domain",
+        "value": "vulnweb.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "medium",
+      "confidence": 0.5,
+      "confidence_provisional": true,
+      "state": "inconclusive",
+      "no_verdict_reason": "blocked_prerequisite",
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 1.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the lookup produced no usable answer, so nothing moves the prior"
+        }
+      ],
+      "validation": {
+        "attempted": false,
+        "outcome": "unavailable",
+        "method": null
+      },
+      "evidence": [
+        {
+          "label": "TXT at sp-wildcard-probe-6c54dee6.vulnweb.com",
+          "captured_at": "2026-10-08T11:46:25.881454Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "sp-wildcard-probe-6c54dee6.vulnweb.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-6c54dee6.vulnweb.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "vulnweb.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "None of the 17 common DKIM selectors resolved for vulnweb.com. DKIM selector names are chosen freely by the sender and cannot be enumerated, so this does not show that the domain has no DKIM - only that we could not find a key.",
+      "impact": "Unknown: we could not determine whether DKIM is configured.",
+      "remediation": "If you know your selector, check it directly: the record lives at <selector>._domainkey.vulnweb.com. Your mail provider's documentation names the selector it uses.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc6376"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T11:46:25.881459Z",
+      "first_seen_scan_id": "01M4DNC1Z414XZ87Y3VZ5QXX4S",
+      "last_seen": "2026-10-08T11:46:25.881459Z",
+      "last_seen_scan_id": "01M4DNC1Z414XZ87Y3VZ5QXX4S",
+      "cost": {
+        "requests": 22,
+        "wall_ms": 500,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:a049a68c41f0d51b03d5c147c56486cbf939ff08510ea6be7e021a9809e9f12e",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.2.0",
+      "check_id": "mta-sts-missing",
+      "renamed_from": [],
+      "title": "No MTA-STS policy published",
+      "target": {
+        "type": "domain",
+        "value": "vulnweb.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "a definite TXT answer at _mta-sts with no v=STSv1 term is direct observation"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _mta-sts.vulnweb.com",
+          "captured_at": "2026-10-08T11:46:25.900770Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_mta-sts.vulnweb.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-6c54dee6.vulnweb.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T11:46:25.900792Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_mta-sts.vulnweb.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "vulnweb.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "No MTA-STS policy record is published at _mta-sts.vulnweb.com.",
+      "impact": "Without MTA-STS a sending server that cannot negotiate TLS will deliver mail in plaintext rather than refusing, so an attacker positioned on the network can strip encryption and read the message.",
+      "remediation": "Publish a TXT record at _mta-sts.vulnweb.com of the form 'v=STSv1; id=<timestamp>', and serve the matching policy file at https://mta-sts.vulnweb.com/.well-known/mta-sts.txt. Start the policy in mode: testing, then move to mode: enforce.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc8461"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T11:46:25.900795Z",
+      "first_seen_scan_id": "01M4DNC1Z414XZ87Y3VZ5QXX4S",
+      "last_seen": "2026-10-08T11:46:25.900795Z",
+      "last_seen_scan_id": "01M4DNC1Z414XZ87Y3VZ5QXX4S",
+      "cost": {
+        "requests": 24,
+        "wall_ms": 519,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:87e66840751ecb4936548bf7cc7bdd820c0cd50170d6bc50cea300c2829171da",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.2.0",
+      "check_id": "tls-rpt-missing",
+      "renamed_from": [],
+      "title": "No SMTP TLS reporting configured",
+      "target": {
+        "type": "domain",
+        "value": "vulnweb.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "a definite TXT answer at _smtp._tls with no v=TLSRPTv1 term is direct observation"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _smtp._tls.vulnweb.com",
+          "captured_at": "2026-10-08T11:46:25.927185Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_smtp._tls.vulnweb.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-6c54dee6.vulnweb.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T11:46:25.927209Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_smtp._tls.vulnweb.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "vulnweb.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "No SMTP TLS reporting record is published at _smtp._tls.vulnweb.com.",
+      "impact": "Nobody is told when a sending server fails to establish TLS to your mail servers, so a downgrade attack or a broken certificate goes unnoticed.",
+      "remediation": "Publish a TXT record at _smtp._tls.vulnweb.com of the form 'v=TLSRPTv1; rua=mailto:tls-reports@vulnweb.com'.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc8460"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T11:46:25.927214Z",
+      "first_seen_scan_id": "01M4DNC1Z414XZ87Y3VZ5QXX4S",
+      "last_seen": "2026-10-08T11:46:25.927214Z",
+      "last_seen_scan_id": "01M4DNC1Z414XZ87Y3VZ5QXX4S",
+      "cost": {
+        "requests": 26,
+        "wall_ms": 546,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:d0b583cafe8b2bdaa428b5112481947c427f92e830b29cdf391762d890b14862",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.2.0",
+      "check_id": "spoofing-possible",
+      "renamed_from": [],
+      "title": "Mail can be sent as this domain",
+      "target": {
+        "type": "domain",
+        "value": "vulnweb.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "high",
+      "confidence": 0.9615,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 25.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "this is a simulation of a receiver's decision from records we read, not an observation of a receiver actually making it; the ratio is lower to say so"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _dmarc.vulnweb.com",
+          "captured_at": "2026-10-08T11:46:25.938506Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.vulnweb.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-6c54dee6.vulnweb.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T11:46:25.938813Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.vulnweb.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8 (TXT at vulnweb.com)",
+          "captured_at": "2026-10-08T11:46:25.938828Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "vulnweb.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "google-site-verification=4LQORV-lTi-d4GPxtBEQWmFnwff7UAazQc9gZvHukbw",
+                "v=spf1 ~all"
+              ],
+              "ttl": 10800,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "re-read for the same validation; compare with the first resolver's answer for this name",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "vulnweb.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "Simulating the decision a receiving mail server would make for a message forged from vulnweb.com: it would be delivered, because there is no DMARC record, so a receiver has no instruction to reject mail that fails authentication.",
+      "impact": "Anyone can send mail that appears to come from this domain and expect it to reach the inbox. That is the mechanism behind invoice fraud and most credential phishing that targets a company's own staff.",
+      "remediation": "Publish an SPF record listing your senders and ending in -all, sign your mail with DKIM, then publish 'v=DMARC1; p=reject; rua=mailto:dmarc@vulnweb.com' at _dmarc.vulnweb.com. Move to p=reject only after the rua reports show every legitimate sender passing.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7489"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T11:46:25.938843Z",
+      "first_seen_scan_id": "01M4DNC1Z414XZ87Y3VZ5QXX4S",
+      "last_seen": "2026-10-08T11:46:25.938843Z",
+      "last_seen_scan_id": "01M4DNC1Z414XZ87Y3VZ5QXX4S",
+      "cost": {
+        "requests": 27,
+        "wall_ms": 557,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    }
+  ],
+  "errors": [],
+  "telemetry": {
+    "checks_run": [
+      {
+        "check_id": "spf-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-multiple-records",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-invalid",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-missing",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "mx-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dkim-missing",
+        "outcome": "inconclusive",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-too-permissive",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-lookup-limit",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "mta-sts-missing",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "tls-rpt-missing",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "spoofing-possible",
+        "outcome": "reported",
+        "location": "$"
+      }
+    ],
+    "suppressed": [],
+    "requests": 27,
+    "wall_ms": 558,
+    "ai_tokens": 0
+  },
+  "started_at": null,
+  "finished_at": "2026-10-08T11:46:25.939078Z",
+  "killed": false,
+  "outcome": "succeeded"
+}

@@ -1,0 +1,12 @@
+{
+  "flags": [],
+  "name": "mail.dms.unileverservices.com",
+  "rcode": "NOERROR",
+  "records": [
+    "google-site-verification=LytmqhNUAMHOc-RG02GMo343Shm9SfF4AdyaTvgcPTM",
+    "v=spf1 a mx ip4:3.212.160.81 ip4:66.189.46.252 include:_spf.google.com include:spf.protection.outlook.com ip4:20.115.101.171 -all"
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": 300
+}

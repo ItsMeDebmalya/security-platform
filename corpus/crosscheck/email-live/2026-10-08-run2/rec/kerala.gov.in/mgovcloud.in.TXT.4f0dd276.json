@@ -1,0 +1,16 @@
+{
+  "flags": [],
+  "name": "mgovcloud.in",
+  "rcode": "NOERROR",
+  "records": [
+    "_9azv019352xxyg8u35ou6vxxquhkno9",
+    "_fc1ekwve5dy4ine5reg6ea5b505zade",
+    "_lkqltlipu0v0vcq930pp6svwwdz07tf",
+    "dkvwpm3mrfgthkk3p5kl8cpxw6hj4m1b",
+    "site24x7-signals-domain-verification=c6be92f6d9c39894d799b8dc91dd324b",
+    "v=spf1 include:spf.mgovcloud.in ip4:43.239.212.33/32 ip4:169.148.178.33/32 ip4:43.239.214.20/32 ip4:169.148.178.10/32 -all"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 600
+}

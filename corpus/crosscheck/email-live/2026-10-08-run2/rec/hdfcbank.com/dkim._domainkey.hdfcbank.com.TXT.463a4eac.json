@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "dkim._domainkey.hdfcbank.com",
+  "rcode": "NODATA",
+  "records": [],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": null
+}

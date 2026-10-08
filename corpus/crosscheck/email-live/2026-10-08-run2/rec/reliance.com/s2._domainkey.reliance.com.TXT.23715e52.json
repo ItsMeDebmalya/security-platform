@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "s2._domainkey.reliance.com",
+  "rcode": "NOERROR",
+  "records": [
+    "k=rsa; t=s; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAt6Zq28KX/1dc3AH8e5zPDk8bYq7KZKdC1XJUuLcWmjAv1msjdug7hgOck6jvIuHT0XtqabKhRiYsJ2ZQDmyo2h/hoXOLm1uFZsF4j+REVmxE5fGhLhRVHLHVHrSNrtu0XQSLPI0uNk+1W9Dlvrogsc48fyBQqyX1IMEdTdQyUIuja9ZKT/TqlEDIQnIwh2hsKRgzI/F2VerrtEEvFaoTfQIaVBlFjbfnIVepYU2Q8ZZuqKxcn6m4xBd0SMaVu+bqlR4lrZPhxiPC/cMKFxILkmG3h6o6UapPXCS8b6Lmzar5C+HHv93A65uLTQEzhfBStQPIWPM4xixIWexrJk58SQIDAQAB"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 1800
+}

@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_dmarc.irctc.co.in",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DMARC1; p=quarantine; pct=100; rua=mailto:dmarcreport@irctc.co.in"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 344029
+}

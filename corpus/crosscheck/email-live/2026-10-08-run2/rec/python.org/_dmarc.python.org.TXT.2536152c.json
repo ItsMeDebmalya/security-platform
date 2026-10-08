@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_dmarc.python.org",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DMARC1; p=none; pct=100; rua=mailto:re+shb8ybr70a3@dmarc.postmarkapp.com; sp=none; aspf=r;"
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": 3600
+}

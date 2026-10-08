@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "s2._domainkey.nykaa.com",
+  "rcode": "NOERROR",
+  "records": [
+    "k=rsa; t=s; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCdFFfd+rC8EIvPLaggxLOZ4D4KlhtkfameUyaQaNQ8qpDqAmlm5TSNBhgwBAeLVtDawpVTfy9ooc/UhlFoXbczuZ/FJcFjRp5QkAlabm00DdQTSJSv9YSj3M+oBwePqdgd7WpVBhdGsutyEW6FzjMyJUTEaxzCm3LTRPlNwrqIJwIDAQAB"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 1800
+}

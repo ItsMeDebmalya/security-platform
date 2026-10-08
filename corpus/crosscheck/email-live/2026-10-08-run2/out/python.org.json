@@ -1,0 +1,944 @@
+{
+  "scanner": "email",
+  "scanner_version": "1.2.0",
+  "target": {
+    "type": "domain",
+    "value": "python.org"
+  },
+  "mode": "standard",
+  "findings": [
+    {
+      "id": "sha256:7becbf08e2d82eaa9f1db82646973cd1fffe05d8a5561acadbd61d60884f17e1",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.2.0",
+      "check_id": "dmarc-policy-none",
+      "renamed_from": [],
+      "title": "DMARC policy is set to 'none'",
+      "target": {
+        "type": "domain",
+        "value": "python.org"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "medium",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the p= tag is read directly from a record that parsed"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _dmarc.python.org",
+          "captured_at": "2026-10-08T11:46:25.419957Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.python.org",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=none; pct=100; rua=mailto:re+shb8ybr70a3@dmarc.postmarkapp.com; sp=none; aspf=r;"
+              ],
+              "ttl": 3600,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-37c00bb7.python.org",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T11:46:25.419976Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.python.org",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=none; pct=100; rua=mailto:re+shb8ybr70a3@dmarc.postmarkapp.com; sp=none; aspf=r;"
+              ],
+              "ttl": 3600,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "python.org",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "The DMARC policy for python.org is p=none, which asks receivers to take no action on mail that fails authentication.",
+      "impact": "Mail forged as this domain is still delivered. p=none is a monitoring posture, useful while you find your legitimate senders, but it stops nothing.",
+      "remediation": "Once your rua reports show every legitimate sender passing, change p=none to p=quarantine, then to p=reject. Move in that order and watch the reports at each step.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7489#section-6.3"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T11:46:25.419984Z",
+      "first_seen_scan_id": "01M4DNC1PN6RTQ8XCCMV0H0T6A",
+      "last_seen": "2026-10-08T11:46:25.419984Z",
+      "last_seen_scan_id": "01M4DNC1PN6RTQ8XCCMV0H0T6A",
+      "cost": {
+        "requests": 22,
+        "wall_ms": 310,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:5f2c50e35ecf10bff1bf5a80455954aa3ed56fb3ba57bdbae2828ab476061e9a",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.2.0",
+      "check_id": "dmarc-alignment",
+      "renamed_from": [],
+      "title": "DMARC uses relaxed alignment",
+      "target": {
+        "type": "domain",
+        "value": "python.org"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "info",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "informational",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the adkim= and aspf= tags are read directly, and default to relaxed"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _dmarc.python.org",
+          "captured_at": "2026-10-08T11:46:25.522592Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.python.org",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=none; pct=100; rua=mailto:re+shb8ybr70a3@dmarc.postmarkapp.com; sp=none; aspf=r;"
+              ],
+              "ttl": 3600,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-37c00bb7.python.org",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T11:46:25.522623Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.python.org",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=none; pct=100; rua=mailto:re+shb8ybr70a3@dmarc.postmarkapp.com; sp=none; aspf=r;"
+              ],
+              "ttl": 3600,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "python.org",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "DMARC alignment is relaxed (adkim=r, aspf=r). Relaxed alignment accepts any subdomain of python.org in the authenticated identifier.",
+      "impact": "Relaxed alignment is the default and is appropriate for most senders. It does mean that anyone able to publish records under a subdomain can pass DMARC for the parent.",
+      "remediation": "If every legitimate sender signs and sends as the exact domain, set adkim=s and aspf=s. If subdomains send mail, relaxed is the correct setting and no change is needed.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7489#section-3.1"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T11:46:25.522635Z",
+      "first_seen_scan_id": "01M4DNC1PN6RTQ8XCCMV0H0T6A",
+      "last_seen": "2026-10-08T11:46:25.522635Z",
+      "last_seen_scan_id": "01M4DNC1PN6RTQ8XCCMV0H0T6A",
+      "cost": {
+        "requests": 29,
+        "wall_ms": 412,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:cdacf04297ea23c5f05213bb3b7b1d96f0200e9f7ef3d37ed3abf639da4bc817",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.2.0",
+      "check_id": "dkim-weak-key",
+      "renamed_from": [],
+      "title": "DKIM key is below 2048 bits",
+      "target": {
+        "type": "domain",
+        "value": "python.org"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.9677,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 30.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the modulus length is measured from the key itself; every common selector is read, but a domain may publish others we cannot find"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at google._domainkey.python.org",
+          "captured_at": "2026-10-08T11:46:25.533504Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "google._domainkey.python.org",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCOu1HEs6/+K8nD1TgxnDYPE0Pdsj/eLUEEZYbgBzuMGc9G/kdx5RpOhCiEAhju96049GMcWtrYz4xiRSCkHgtsUXKRpC+uMbOzHywr92QM/y7t+UyV59n9w3l73oIoOYa9TvmJ7VDoShtwd8fb2cyaiKybeXIcf6tzOS9WJsugWQIDAQAB"
+              ],
+              "ttl": 300,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-37c00bb7.python.org",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": {
+            "dkim_keys": [
+              {
+                "selector": "google",
+                "raw": "v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCOu1HEs6/+K8nD1TgxnDYPE0Pdsj/eLUEEZYbgBzuMGc9G/kdx5RpOhCiEAhju96049GMcWtrYz4xiRSCkHgtsUXKRpC+uMbOzHywr92QM/y7t+UyV59n9w3l73oIoOYa9TvmJ7VDoShtwd8fb2cyaiKybeXIcf6tzOS9WJsugWQIDAQAB",
+                "valid": true,
+                "tags": {
+                  "v": "DKIM1",
+                  "k": "rsa",
+                  "p": "<216 base64 chars>"
+                },
+                "errors": [],
+                "key_type": "rsa",
+                "key_bits": 1024,
+                "revoked": false,
+                "testing": false
+              },
+              {
+                "selector": "k2",
+                "raw": "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAv2aC2KjGKLOwTweBY5A9RpjsxaBXR9r7OAU6U8/zn92ivImI75naUujWbItRI/QmL1jy5PWGqLwoUA0b90ObWaLDc+i9MtTNmGeWO009hr20fIxhGg6XBT2kjZ1DTThopSe1nAndsupmcBwlQ5Q6LJ+ZAxLcujnPIxM0ZBLmgpkv8u6RfY4eFP8OLvdAW3oSuB0DyLDigQX4Sj8wBO4YIdQH6AAmBeOsidsKAFNFUCpc3vCxtBDR12U+cBg724l3sBkMQ8evnz6idnqxq9QAVYh8k4kJ+RP+6cqTdy7LjIm8xY/bQNpQIpGUAuDo2DjLcCDun9DAI4Q/3z+Q0o9QuQIDAQAB;",
+                "valid": true,
+                "tags": {
+                  "v": "DKIM1",
+                  "k": "rsa",
+                  "p": "<392 base64 chars>"
+                },
+                "errors": [],
+                "key_type": "rsa",
+                "key_bits": 2048,
+                "revoked": false,
+                "testing": false
+              }
+            ]
+          }
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T11:46:25.533528Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "google._domainkey.python.org",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCOu1HEs6/+K8nD1TgxnDYPE0Pdsj/eLUEEZYbgBzuMGc9G/kdx5RpOhCiEAhju96049GMcWtrYz4xiRSCkHgtsUXKRpC+uMbOzHywr92QM/y7t+UyV59n9w3l73oIoOYa9TvmJ7VDoShtwd8fb2cyaiKybeXIcf6tzOS9WJsugWQIDAQAB"
+              ],
+              "ttl": 300,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "python.org",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "The DKIM key published at google._domainkey.python.org is 1024 bits. It meets the RFC 8301 minimum of 1024 bits, below the recommended 2048. The domain also publishes k2._domainkey.python.org. We cannot tell from DNS which selector it signs its mail with. RFC 6376 section 6.1.2 has a verifier fetch the key named by the signature's s= tag, so a signature may name any selector the domain publishes, the weaker one included.",
+      "impact": "This is a margin, not a break: RFC 8301 permits the key, and recommends 2048 bits for signers. Moving to 2048 bits brings the domain in line with that recommendation.",
+      "remediation": "If a weaker selector is no longer used for signing, remove its record. Otherwise generate a new 2048-bit key with your mail provider, publish it under a new selector, switch signing to it, and remove the old selector once no mail is signed with it.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc8301"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T11:46:25.533532Z",
+      "first_seen_scan_id": "01M4DNC1PN6RTQ8XCCMV0H0T6A",
+      "last_seen": "2026-10-08T11:46:25.533532Z",
+      "last_seen_scan_id": "01M4DNC1PN6RTQ8XCCMV0H0T6A",
+      "cost": {
+        "requests": 30,
+        "wall_ms": 423,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:02e2a8c9b2e10ec43b31ada28fcf737557d1f3f83c64c1da5bb955529efbd6d1",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.2.0",
+      "check_id": "mta-sts-missing",
+      "renamed_from": [],
+      "title": "No MTA-STS policy published",
+      "target": {
+        "type": "domain",
+        "value": "python.org"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "a definite TXT answer at _mta-sts with no v=STSv1 term is direct observation"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _mta-sts.python.org",
+          "captured_at": "2026-10-08T11:46:25.553859Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_mta-sts.python.org",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-37c00bb7.python.org",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T11:46:25.553879Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_mta-sts.python.org",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "python.org",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "No MTA-STS policy record is published at _mta-sts.python.org.",
+      "impact": "Without MTA-STS a sending server that cannot negotiate TLS will deliver mail in plaintext rather than refusing, so an attacker positioned on the network can strip encryption and read the message.",
+      "remediation": "Publish a TXT record at _mta-sts.python.org of the form 'v=STSv1; id=<timestamp>', and serve the matching policy file at https://mta-sts.python.org/.well-known/mta-sts.txt. Start the policy in mode: testing, then move to mode: enforce.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc8461"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T11:46:25.553883Z",
+      "first_seen_scan_id": "01M4DNC1PN6RTQ8XCCMV0H0T6A",
+      "last_seen": "2026-10-08T11:46:25.553883Z",
+      "last_seen_scan_id": "01M4DNC1PN6RTQ8XCCMV0H0T6A",
+      "cost": {
+        "requests": 32,
+        "wall_ms": 444,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:81f6545f9e170899210544e5a98d403fc22f4223d96a79528b3db2473ace55cb",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.2.0",
+      "check_id": "tls-rpt-missing",
+      "renamed_from": [],
+      "title": "No SMTP TLS reporting configured",
+      "target": {
+        "type": "domain",
+        "value": "python.org"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "a definite TXT answer at _smtp._tls with no v=TLSRPTv1 term is direct observation"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _smtp._tls.python.org",
+          "captured_at": "2026-10-08T11:46:25.574647Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_smtp._tls.python.org",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-37c00bb7.python.org",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T11:46:25.574667Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_smtp._tls.python.org",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "python.org",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "No SMTP TLS reporting record is published at _smtp._tls.python.org.",
+      "impact": "Nobody is told when a sending server fails to establish TLS to your mail servers, so a downgrade attack or a broken certificate goes unnoticed.",
+      "remediation": "Publish a TXT record at _smtp._tls.python.org of the form 'v=TLSRPTv1; rua=mailto:tls-reports@python.org'.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc8460"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T11:46:25.574671Z",
+      "first_seen_scan_id": "01M4DNC1PN6RTQ8XCCMV0H0T6A",
+      "last_seen": "2026-10-08T11:46:25.574671Z",
+      "last_seen_scan_id": "01M4DNC1PN6RTQ8XCCMV0H0T6A",
+      "cost": {
+        "requests": 34,
+        "wall_ms": 464,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:c5168714a4bb3c50b93262dd8d92520a70f8d8df56ed2e82a638cdec8701d4b8",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.2.0",
+      "check_id": "spoofing-possible",
+      "renamed_from": [],
+      "title": "Mail can be sent as this domain",
+      "target": {
+        "type": "domain",
+        "value": "python.org"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "high",
+      "confidence": 0.9615,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 25.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "this is a simulation of a receiver's decision from records we read, not an observation of a receiver actually making it; the ratio is lower to say so"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _dmarc.python.org",
+          "captured_at": "2026-10-08T11:46:25.600866Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.python.org",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=none; pct=100; rua=mailto:re+shb8ybr70a3@dmarc.postmarkapp.com; sp=none; aspf=r;"
+              ],
+              "ttl": 3600,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-37c00bb7.python.org",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T11:46:25.600885Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.python.org",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=none; pct=100; rua=mailto:re+shb8ybr70a3@dmarc.postmarkapp.com; sp=none; aspf=r;"
+              ],
+              "ttl": 3600,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8 (TXT at python.org)",
+          "captured_at": "2026-10-08T11:46:25.600894Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "python.org",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "openai-domain-verification=dv-VgeNijVDgW7g56UZyGIVyKNr",
+                "twilio-domain-verification=1c295667813cc0aaae819ed7657818f8",
+                "google-site-verification=9852CbTRhQ51-9gCUayPbGYqJeBle_MXLb6E4AL_qQk",
+                "status-page-domain-verification=9y2klhzbxsgk",
+                "_globalsign-domain-verification=B57sRQpmte4G4w-gavZbVNmmNsMxGp5kcL19UP2599",
+                "libera-1298aas",
+                "anthropic-domain-verification-x3xt87=cFLP3aL71pAYPZLQR7JKvRhcF",
+                "MS=73147F1EC0843C399CF17F586EC6B8EAF8C57961",
+                "888acb5757da46ad83b7e341ec544c64",
+                "google-site-verification=dqhMiMzpbkSyEhgjGKyEOMlEg2tF0MSHD7UN-MYfD-M",
+                "google-site-verification=w3b8mU3wU6cZ8uSrj3E_5f1frPejJskDpSp_nMWJ99o",
+                "google-site-verification=QALZObrGl2OVG8lWUE40uVSMCAka316yADn9ZfCU5OA",
+                "v=spf1 mx ip4:188.166.95.178/32 ip6:2a03:b0c0:2:d0::71:1 include:stspg-customer.com include:_spf.google.com include:mailgun.org ~all"
+              ],
+              "ttl": 300,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "re-read for the same validation; compare with the first resolver's answer for this name",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "python.org",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "Simulating the decision a receiving mail server would make for a message forged from python.org: it would be delivered, because the DMARC policy is p=none, which asks receivers to take no action.",
+      "impact": "Anyone can send mail that appears to come from this domain and expect it to reach the inbox. That is the mechanism behind invoice fraud and most credential phishing that targets a company's own staff.",
+      "remediation": "Publish an SPF record listing your senders and ending in -all, sign your mail with DKIM, then publish 'v=DMARC1; p=reject; rua=mailto:dmarc@python.org' at _dmarc.python.org. Move to p=reject only after the rua reports show every legitimate sender passing.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7489"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T11:46:25.600897Z",
+      "first_seen_scan_id": "01M4DNC1PN6RTQ8XCCMV0H0T6A",
+      "last_seen": "2026-10-08T11:46:25.600897Z",
+      "last_seen_scan_id": "01M4DNC1PN6RTQ8XCCMV0H0T6A",
+      "cost": {
+        "requests": 35,
+        "wall_ms": 491,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    }
+  ],
+  "errors": [],
+  "telemetry": {
+    "checks_run": [
+      {
+        "check_id": "spf-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-multiple-records",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-invalid",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-invalid",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-policy-none",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "mx-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dkim-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-too-permissive",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-lookup-limit",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-pct-partial",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-no-rua",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-alignment",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "dkim-weak-key",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "mta-sts-missing",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "tls-rpt-missing",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "spoofing-possible",
+        "outcome": "reported",
+        "location": "$"
+      }
+    ],
+    "suppressed": [],
+    "requests": 35,
+    "wall_ms": 491,
+    "ai_tokens": 0
+  },
+  "started_at": null,
+  "finished_at": "2026-10-08T11:46:25.601002Z",
+  "killed": false,
+  "outcome": "succeeded"
+}

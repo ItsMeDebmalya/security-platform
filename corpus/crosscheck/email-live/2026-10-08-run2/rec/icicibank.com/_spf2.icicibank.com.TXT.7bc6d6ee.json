@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_spf2.icicibank.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 ip4:103.87.41.236 ip4:103.87.41.237 ip4:103.87.43.236 ip4:103.87.43.237 ip4:203.27.235.120 ip4:203.27.235.122 ip4:203.189.92.169  include:_spf3.icicibank.com -all"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 3600
+}

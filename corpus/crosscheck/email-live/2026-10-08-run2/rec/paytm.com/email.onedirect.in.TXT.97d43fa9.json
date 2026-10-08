@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "email.onedirect.in",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 ip4:167.89.96.67 ip4:168.245.22.115 ip4:50.31.55.210 -all"
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": 1800
+}

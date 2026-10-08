@@ -1,0 +1,22 @@
+{
+  "flags": [],
+  "name": "kerala.gov.in",
+  "rcode": "NOERROR",
+  "records": [
+    "b7fc6vvq37htnck6mjn326wn5b6bm91h",
+    "qln8ep8hqcg69nlqrbpf4ls5ht",
+    "78AE025A2EDCDEBB301EE6E0C9F33333",
+    "7C490B03B86AE2F3090132E2C7D75448",
+    "jksr1qo0fiea9aa6ntk9eq3o3t",
+    "google-site-verification=h8oRHOEombbcYhat93l-mbrlOJmLOhZohboKRyDbhgw",
+    "google-site-verification=9FtLyaZR3JBAJeCB4V-5UxYHXzHQlEyajKICe-QnDSY",
+    "google-site-verification=zJJ1tFf8lEMqFJCOXVDa4ZvEy6Q2thXbHixVct5b-VI",
+    "odnvgcum51eh9vs094hq3bv1s2",
+    "v=spf1 include:mgovcloud.in mx ip4:164.100.14.0/24 ip4:164.100.2.0/24 ip4:164.100.10.0/24 ip4:164.100.15.0/24 ip4:164.100.13.0/24 ip4:164.100.172.0/24 include:spf.protection.outlook.com -all",
+    "jksr1qo0fiea9aa6ntk9eq3o3",
+    "0jcD1vFk5q8ZppbHLUTIGCoo0KxdiKB2yb/W3UdLFGY="
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": 60
+}

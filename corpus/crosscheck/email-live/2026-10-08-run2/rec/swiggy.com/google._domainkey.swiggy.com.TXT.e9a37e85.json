@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "google._domainkey.swiggy.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCxpzvC/whVWsrmIlERihwoFfTxl+D6wAgZ0CDJ1lX6T/SnPQZ4/xPIjnUrqmVPgXCfHlk08QNCN+SywoQdqfLPTaEwYTlC50MsQuOujNReh3kn2LvkKY2/57NEaVieD9VTLL3qUl00WmsQ2jx2clGhBpCYHyuwvkmFoMR8QYpnJQIDAQAB"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 300
+}

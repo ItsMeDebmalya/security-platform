@@ -1,0 +1,28 @@
+{
+  "flags": [],
+  "name": "tcs.com",
+  "rcode": "NOERROR",
+  "records": [
+    "",
+    "MS=ms45524606",
+    "EE2C-4383-73B4-149E-352A-9FD0-A070-19D4",
+    "apple-domain-verification=TbsJeWZcPNPWncXU",
+    "MS=FB973537E0B451756257ED3A4605B1ACEE0A9488",
+    "jamf-site-verification=URyCd5Pt2yLRnv033HGe0w",
+    "openai-domain-verification=dv-AlVqlGpCYT4bxi0PFNJKSZX6",
+    "knowbe4-site-verification=33e29214bb3d71505a751be27d46186c",
+    "anthropic-domain-verification-tfn5n0=9GXTtZrfN5Um8FTf2LIV4xKo9",
+    "vmware-cloud-verification-de2ee9e3-5e26-4447-9b26-8a107dc3298a",
+    "slack-domain-verification=gJPx5KSyFWppNhT2UPPsKSl6j21ZXjAV2gVtsL9l",
+    "MQNFD2BSo2byT0Kju8LmoaiKjM3IPm1Br5e2+8c6z9t1ucfBMHRlAx5acE3jh1oHU4eYufqZRDRg2JGcEWJ2/w==",
+    "wiz-domain-verification=8ddbd6d698540cdb8a3aa0c04fa87feba7048c6e930f79b12f7bd33b015f9e76",
+    "adobe-idp-site-verification=47703c1f53b23dfa3e31097050b545ab091495f205b154bd5a8d6cfd1b85a674",
+    "cisco-ci-domain-verification=60247f24d2e754b3ef07e9bb4dd209ff541579fc73640ca2f6f0f67603a45224",
+    "v=spf1 include:_spf1.tcs.com include:_spf2.tcs.com include:_spf3.tcs.com include:_spf4.tcs.com include:mktomail.com -all",
+    "v=DKIM1; p=MHwwDQYJKoZIhvcNAQEBBQADawAwaAJhAMeGkE34XPTIZbdC9oFq7DQMxp1AP1K0Wz7H8+PYGes3WYV78Bh2xyveU+95RNnaA5OtTYXiUnoiTgi0KjiMdHgAWgGQf9FDHAywInYQnqAS0trZYXfPCzX9scywT07bCwIDAQAB",
+    "k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDFUlNZvtGDlIGDRtzyRQydM9yRInD5YMx86QpgZ3v7pT+Mx4tGbjUxY41TXbsp7UH9hTREaKKGQKNM/B3FzcFVv4zafZ09lUaXcbSdtD70iXyH0OXEGXLZI5gG0ZwjK5ptgQ18d+pUP9s8xMkJnZlubTk9MLvQnv3ZBzoL9FHFDQIDAQAB"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 86400
+}

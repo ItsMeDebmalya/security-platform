@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_dmarc.microsoft.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DMARC1; p=reject; pct=100; rua=mailto:itex-rua@microsoft.com; ruf=mailto:itex-ruf@microsoft.com; fo=1"
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": 763
+}

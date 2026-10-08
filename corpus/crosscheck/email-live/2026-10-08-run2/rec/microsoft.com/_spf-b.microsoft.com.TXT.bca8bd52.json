@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_spf-b.microsoft.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 include:_spf-mdm.microsoft.com ip4:207.46.22.35 ip4:207.46.22.98/29 ip4:217.77.141.52 ip4:217.77.141.59 ip4:203.32.4.25 ip4:23.103.224.0/19 ip4:206.191.224.0/19 ip4:65.52.80.137/32 ~all"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 1928
+}

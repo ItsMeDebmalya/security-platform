@@ -1,0 +1,19 @@
+{
+  "flags": [],
+  "name": "indiatimes.com",
+  "rcode": "NOERROR",
+  "records": [
+    "kgtpgmprbsnc9zrjqzkphdlkpdjslx97",
+    "google-site-verification=gS_4EO6y4tS3tWXaVsVsXuJZLQ_LMIhrbT9jFVb7Ge8",
+    "v=spf1 include:_rng3.indiatimes.com include:_rng2.indiatimes.com include:tilc.in -all",
+    "v=spf1 include:tilc.in -all",
+    "google-site-verification=y9c59jMZUV2_mIpNBzMIp_Y_OphR1s7XBXF",
+    "_1hxzw3ua6b8lslhbxqe7v2ommpzqeh7",
+    "kc1sjp3t0szkcng64gxlfy7rh5yr1rjj",
+    "ckm2dcmtgb0sfndy095nyw42gcfcgrmq",
+    "_9zy0ue8xyf79j4p4zbyykbw897xaj7w"
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": 60
+}

@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_dmarc.swiggy.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DMARC1; p=none; fo=1; rua=mailto:dmarc_rua@emaildefense.proofpoint.com; ruf=mailto:dmarc_ruf@emaildefense.proofpoint.com"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 300
+}

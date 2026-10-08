@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "cust-spf.cashnet.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 ip4:104.45.175.206 ip4:52.224.142.128 ip4:52.180.90.234 ip4:208.117.61.155 -all"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 300
+}

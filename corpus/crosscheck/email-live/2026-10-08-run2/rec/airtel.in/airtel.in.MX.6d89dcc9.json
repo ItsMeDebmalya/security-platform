@@ -1,0 +1,25 @@
+{
+  "flags": [],
+  "name": "airtel.in",
+  "rcode": "NOERROR",
+  "records": [
+    "5 mx-mail36.airtel.com.",
+    "5 mx-mail35.airtel.com.",
+    "5 mx-mail34.airtel.com.",
+    "5 mx-mail3.airtel.com.",
+    "0 airtel-in.mail.protection.outlook.com.",
+    "15 mx-mail2.airtel.com.",
+    "15 mx-mail1.airtel.com.",
+    "5 mx-mail6.airtel.com.",
+    "5 mx-mail5.airtel.com.",
+    "5 mx-mail41.airtel.com.",
+    "5 mx-mail40.airtel.com.",
+    "5 mx-mail4.airtel.com.",
+    "5 mx-mail39.airtel.com.",
+    "5 mx-mail38.airtel.com.",
+    "5 mx-mail37.airtel.com."
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "MX",
+  "ttl": 3600
+}

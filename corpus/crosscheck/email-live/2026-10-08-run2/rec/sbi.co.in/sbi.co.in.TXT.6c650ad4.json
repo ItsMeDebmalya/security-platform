@@ -1,0 +1,15 @@
+{
+  "flags": [],
+  "name": "sbi.co.in",
+  "rcode": "NOERROR",
+  "records": [
+    "vy1x5v25pd2zmlv0mxtsfzbs3nqm5cdc",
+    "rgydvg3pg85ty3g98qhjtb8wmszw2j2t",
+    "v=spf1 ip4:175.158.69.0/19 ip4:175.158.69.32/29 ip4:175.158.67.62/29 ip4:202.162.236.62/29 include:spf.protection.outlook.com -all",
+    "_iewjs2n44zlvvs9nnadkla47bze09np",
+    "globalsign-domain-verification=a98oyH6DSrjzd3D6k6-b1P_sQexakPB5KlsCeN5H-L"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 1800
+}

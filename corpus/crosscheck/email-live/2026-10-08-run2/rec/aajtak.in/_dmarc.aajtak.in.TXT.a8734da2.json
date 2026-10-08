@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_dmarc.aajtak.in",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DMARC1"
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": 1800
+}

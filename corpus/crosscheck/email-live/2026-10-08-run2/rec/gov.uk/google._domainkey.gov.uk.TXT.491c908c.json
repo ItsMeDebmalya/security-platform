@@ -1,0 +1,12 @@
+{
+  "flags": [],
+  "name": "google._domainkey.gov.uk",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 ?all",
+    "v=DMARC1;p=reject;rua=mailto:govuk-rua@dmarc.service.gov.uk"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 1800
+}

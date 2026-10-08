@@ -1,0 +1,12 @@
+{
+  "flags": [],
+  "name": "vulnweb.com",
+  "rcode": "NOERROR",
+  "records": [
+    "google-site-verification=4LQORV-lTi-d4GPxtBEQWmFnwff7UAazQc9gZvHukbw",
+    "v=spf1 ~all"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 10800
+}

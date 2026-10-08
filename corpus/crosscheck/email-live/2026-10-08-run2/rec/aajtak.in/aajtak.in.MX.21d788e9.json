@@ -1,0 +1,13 @@
+{
+  "flags": [],
+  "name": "aajtak.in",
+  "rcode": "NOERROR",
+  "records": [
+    "20 mx2.zoho.com.",
+    "30 mx3.zoho.com.",
+    "10 mx.zoho.com."
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "MX",
+  "ttl": 1800
+}

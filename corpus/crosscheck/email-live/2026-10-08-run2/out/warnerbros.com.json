@@ -1,0 +1,943 @@
+{
+  "scanner": "email",
+  "scanner_version": "1.2.0",
+  "target": {
+    "type": "domain",
+    "value": "warnerbros.com"
+  },
+  "mode": "standard",
+  "findings": [
+    {
+      "id": "sha256:b4ef4a1d71a9bc2ad7a0844ec94d1cf6cc1bad3e1aa91c4c30372afce59a1853",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.2.0",
+      "check_id": "spf-multiple-records",
+      "renamed_from": [],
+      "title": "More than one SPF record published",
+      "target": {
+        "type": "domain",
+        "value": "warnerbros.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "medium",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "counting records at one name leaves no room for interpretation"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at warnerbros.com",
+          "captured_at": "2026-10-08T11:46:36.094531Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "warnerbros.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "0ed1fe018aae5dd81c652344dcb065ca2312180b80",
+                "72EkDFeGXhc+VgC0bi2v/tnHpJl1GUnzEhlLOzmp+9sDEZkSYHbcmgzLvlVnqTAz6NEY1TBGWUffTB0SZJN3MQ==",
+                "MS=ms59831392",
+                "MS=ms59919946",
+                "MS=ms96313732",
+                "Sendinblue-code:622c1be246bc8d827b30011e51c82bdf",
+                "V+uwsvGdUArar7eHH7GbotE5D2kLstpQV8gEUjz1KFs=",
+                "ZOOM_verify_rc0H6SLsRCSDRFw5qXv3Hw",
+                "_globalsign-domain-verification=6CDdLtVwHrk066tD4Xbq29yhJjTS4_unPsALufFonv",
+                "_globalsign-domain-verification=ADZUnVKw98p4DPmug8W_KRaEPago48owN9LVPwpg5z",
+                "_globalsign-domain-verification=Af31nqoVYyI7PGblwhQ6dJqMsF8OBK4_yXd30aBRPW",
+                "_globalsign-domain-verification=EGEhXwtg05w4nGO-Rxy0CvNpYCh4KoOeX_AS-6rEb4",
+                "_globalsign-domain-verification=ITMkvaf4p5GuAk7L76Q1TEVy8xgl26mOFWAjAXN_hz",
+                "_globalsign-domain-verification=Y9D5MQXc5KY3jPX7w5T9Tr3CQVSbvjE6qeB726wKft",
+                "_globalsign-domain-verification=aPr7i88XPLxj1-MhUNFQGJqsqtpL2_9oDusQ4y-zFF",
+                "_globalsign-domain-verification=x1QfA3tVurxFx35XbJEbQ_caRemU9O58jHc80Tqs2D",
+                "adobe-idp-site-verification=b3224707-0342-4a07-8079-73642e727982",
+                "amazonses:+b7py5LNC8H1iw8OCX39EKNCTLLHSmZciUSSBZPRpOE=",
+                "amazonses:HQmmtAosT1aZ/xZ96CsCg4mh3DAJUIo3rz5o58ac37k=",
+                "amazonses:kM9IhS5dne3/LFzSUma/cRNetVRve3pDt9/pU4gXPfs=",
+                "amazonses:w2U+furZRKJN3ynyffQYTQJeTqASSRHvuzKC/W8J9uM=",
+                "anthropic-domain-verification-sswk6t=vtFElBAyHGlq0l5tBX1uEilAW",
+                "apple-domain-verification=ja75pc5TZ0c2wTRS",
+                "apple-domain-verification=l9lPi6DEMaNQYGNY",
+                "atlassian-domain-verification=joqe6L8dNi+aisGbB1XHQa0pDc53V2l0GQQRUtLEcr2997x0+rtrAA5Zw+UgQw3u",
+                "cisco-ci-domain-verification=c3ad9d7580211f001c2b386c9c02fd2ad2c93344307fc4a70eebbc9fcb68e0c",
+                "cloudhealth=2f774d15-daf8-4557-9950-8c87cda17343",
+                "docker-verification=0ff35b43-9b0d-4381-bf15-25ec5253a8c2",
+                "docusign=baaef1e3-5860-4821-8f16-7c3d353a1468",
+                "docusign=e9e2f975-35c7-40c8-9205-78bab5277445",
+                "extensis-domain-verification=79d2b9bb-7b5f-4ae2-a930-373e740a7fc4",
+                "facebook-domain-verification=8k2003yb5y3vbi0esj7bae5xlztz13",
+                "flexera-domain-verification-lztnotcdbwguwgkf",
+                "globalsign-domain-verification=1D64C4179C09901CA4CA6D5A873C611A",
+                "globalsign-domain-verification=44CE846DB1A020711981F84C702E49DA",
+                "globalsign-domain-verification=8A4A4E07A0F0F43CCD1EFE5C4DE585B2",
+                "google-site-verification=BuC7LlG9McdtJjYoGT7YFBebO2ab0xoL154k4WPfBNY",
+                "google-site-verification=DWhz0yMAJZCSVpTmE2-LIf-pX5mt_VsVizm5E9ci528",
+                "google-site-verification=R46z8Qva5MgO_-4PR1y-NDOUlG8wUFs-iOeFR9gxvN8",
+                "google-site-verification=ZZfH6ahWHlyFeGJgai2ecZle6CAdiKdqrrJeDIB2hts",
+                "google-site-verification=bgeerL9owPTmHHqbCgvXoXiobYhb_XeYen5-L-G33_E",
+                "google-site-verification=fryTmCHWRt9FQl9niLBxUU8a-_7hPvXbh9auWJ96VmI",
+                "miro-verification=1e01f8da769be1241fceefd9abf2c317dcd68323",
+                "mongodb-site-verification=Ha5xl2z9Plb3g8XipqMOLmzZIKDqhiSg",
+                "postman-domain-verification=33c1fb762fe64a2edca785b9dd3c03813b8b81357f54e97177b8975566b4420838b42ef6c429020ce8cf8844e612ef3295781699bbe3b5f3bb940e18035cf659",
+                "postman-domain-verification=aca557d966b0c1c3e4fd781e98abf5f5059f8644dfc034de428d14a834b3f4af10b11ca781e88fd5369c3355f375bd53b03c6f8e01bbf4a00055b9324c300e5e",
+                "segment-site-verification=yewofkMKLsoHWbvTypmgnEAy17sybBys",
+                "shopify-verification-code=KbRDGfHKrT5FUhBG0Knelto4hGfl22",
+                "smartsheet-site-validation=7lJ8CGecMtM4eJfHqvLdTNW2GoqUoPKf",
+                "smartsheet-site-validation=A3ikdCy5MN_-JUR4IUwVglUCnwHRfM4D",
+                "smartsheet-site-validation=LVtXGDmXTtP4YqrUFy_FEKK8xB5E0xc4",
+                "v=spf1 include:%{i}._ip.%{h}._ehlo.%{d}._spf.vali.email ~all",
+                "v=spf1 include:warnerbros.com._nspf.vali.email include:%{i}._ip.%{h}._ehlo.%{d}._spf.vali.email ~all",
+                "wiz-domain-verification=f169b3087fa1100232f46d958e368d3fe5cf9fec6285c6a12b9d1693b7ca272f"
+              ],
+              "ttl": 300,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-a76f1260.warnerbros.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NODATA",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T11:46:36.094550Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "warnerbros.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "wiz-domain-verification=f169b3087fa1100232f46d958e368d3fe5cf9fec6285c6a12b9d1693b7ca272f",
+                "_globalsign-domain-verification=aPr7i88XPLxj1-MhUNFQGJqsqtpL2_9oDusQ4y-zFF",
+                "_globalsign-domain-verification=EGEhXwtg05w4nGO-Rxy0CvNpYCh4KoOeX_AS-6rEb4",
+                "google-site-verification=BuC7LlG9McdtJjYoGT7YFBebO2ab0xoL154k4WPfBNY",
+                "smartsheet-site-validation=7lJ8CGecMtM4eJfHqvLdTNW2GoqUoPKf",
+                "72EkDFeGXhc+VgC0bi2v/tnHpJl1GUnzEhlLOzmp+9sDEZkSYHbcmgzLvlVnqTAz6NEY1TBGWUffTB0SZJN3MQ==",
+                "MS=ms59831392",
+                "_globalsign-domain-verification=ADZUnVKw98p4DPmug8W_KRaEPago48owN9LVPwpg5z",
+                "globalsign-domain-verification=8A4A4E07A0F0F43CCD1EFE5C4DE585B2",
+                "extensis-domain-verification=79d2b9bb-7b5f-4ae2-a930-373e740a7fc4",
+                "docusign=e9e2f975-35c7-40c8-9205-78bab5277445",
+                "flexera-domain-verification-lztnotcdbwguwgkf",
+                "0ed1fe018aae5dd81c652344dcb065ca2312180b80",
+                "amazonses:kM9IhS5dne3/LFzSUma/cRNetVRve3pDt9/pU4gXPfs=",
+                "amazonses:w2U+furZRKJN3ynyffQYTQJeTqASSRHvuzKC/W8J9uM=",
+                "smartsheet-site-validation=A3ikdCy5MN_-JUR4IUwVglUCnwHRfM4D",
+                "docker-verification=0ff35b43-9b0d-4381-bf15-25ec5253a8c2",
+                "V+uwsvGdUArar7eHH7GbotE5D2kLstpQV8gEUjz1KFs=",
+                "shopify-verification-code=KbRDGfHKrT5FUhBG0Knelto4hGfl22",
+                "google-site-verification=bgeerL9owPTmHHqbCgvXoXiobYhb_XeYen5-L-G33_E",
+                "anthropic-domain-verification-sswk6t=vtFElBAyHGlq0l5tBX1uEilAW",
+                "postman-domain-verification=33c1fb762fe64a2edca785b9dd3c03813b8b81357f54e97177b8975566b4420838b42ef6c429020ce8cf8844e612ef3295781699bbe3b5f3bb940e18035cf659",
+                "miro-verification=1e01f8da769be1241fceefd9abf2c317dcd68323",
+                "_globalsign-domain-verification=x1QfA3tVurxFx35XbJEbQ_caRemU9O58jHc80Tqs2D",
+                "globalsign-domain-verification=1D64C4179C09901CA4CA6D5A873C611A",
+                "v=spf1 include:warnerbros.com._nspf.vali.email include:%{i}._ip.%{h}._ehlo.%{d}._spf.vali.email ~all",
+                "smartsheet-site-validation=LVtXGDmXTtP4YqrUFy_FEKK8xB5E0xc4",
+                "adobe-idp-site-verification=b3224707-0342-4a07-8079-73642e727982",
+                "_globalsign-domain-verification=Y9D5MQXc5KY3jPX7w5T9Tr3CQVSbvjE6qeB726wKft",
+                "MS=ms96313732",
+                "google-site-verification=fryTmCHWRt9FQl9niLBxUU8a-_7hPvXbh9auWJ96VmI",
+                "google-site-verification=DWhz0yMAJZCSVpTmE2-LIf-pX5mt_VsVizm5E9ci528",
+                "ZOOM_verify_rc0H6SLsRCSDRFw5qXv3Hw",
+                "Sendinblue-code:622c1be246bc8d827b30011e51c82bdf",
+                "mongodb-site-verification=Ha5xl2z9Plb3g8XipqMOLmzZIKDqhiSg",
+                "apple-domain-verification=l9lPi6DEMaNQYGNY",
+                "google-site-verification=R46z8Qva5MgO_-4PR1y-NDOUlG8wUFs-iOeFR9gxvN8",
+                "amazonses:+b7py5LNC8H1iw8OCX39EKNCTLLHSmZciUSSBZPRpOE=",
+                "_globalsign-domain-verification=Af31nqoVYyI7PGblwhQ6dJqMsF8OBK4_yXd30aBRPW",
+                "_globalsign-domain-verification=6CDdLtVwHrk066tD4Xbq29yhJjTS4_unPsALufFonv",
+                "atlassian-domain-verification=joqe6L8dNi+aisGbB1XHQa0pDc53V2l0GQQRUtLEcr2997x0+rtrAA5Zw+UgQw3u",
+                "google-site-verification=ZZfH6ahWHlyFeGJgai2ecZle6CAdiKdqrrJeDIB2hts",
+                "facebook-domain-verification=8k2003yb5y3vbi0esj7bae5xlztz13",
+                "amazonses:HQmmtAosT1aZ/xZ96CsCg4mh3DAJUIo3rz5o58ac37k=",
+                "postman-domain-verification=aca557d966b0c1c3e4fd781e98abf5f5059f8644dfc034de428d14a834b3f4af10b11ca781e88fd5369c3355f375bd53b03c6f8e01bbf4a00055b9324c300e5e",
+                "segment-site-verification=yewofkMKLsoHWbvTypmgnEAy17sybBys",
+                "_globalsign-domain-verification=ITMkvaf4p5GuAk7L76Q1TEVy8xgl26mOFWAjAXN_hz",
+                "globalsign-domain-verification=44CE846DB1A020711981F84C702E49DA",
+                "apple-domain-verification=ja75pc5TZ0c2wTRS",
+                "cisco-ci-domain-verification=c3ad9d7580211f001c2b386c9c02fd2ad2c93344307fc4a70eebbc9fcb68e0c",
+                "v=spf1 include:%{i}._ip.%{h}._ehlo.%{d}._spf.vali.email ~all",
+                "docusign=baaef1e3-5860-4821-8f16-7c3d353a1468",
+                "cloudhealth=2f774d15-daf8-4557-9950-8c87cda17343",
+                "MS=ms59919946"
+              ],
+              "ttl": 300,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "warnerbros.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "warnerbros.com publishes more than one v=spf1 record. RFC 7208 section 4.5 makes this a permerror: receivers stop evaluating SPF entirely rather than picking one.",
+      "impact": "SPF does not work at all for this domain, however carefully the individual records are written.",
+      "remediation": "Merge the records into a single TXT record. Two providers each asking you to 'add this SPF record' is the usual cause - combine their include: terms into one policy instead.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7208#section-4.5"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T11:46:36.094553Z",
+      "first_seen_scan_id": "01M4DNCB7CZ1RPNK0ZC6VW8Y7W",
+      "last_seen": "2026-10-08T11:46:36.094553Z",
+      "last_seen_scan_id": "01M4DNCB7CZ1RPNK0ZC6VW8Y7W",
+      "cost": {
+        "requests": 22,
+        "wall_ms": 1234,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:6e1fe030f92fc4b0e9d0b3e15a01621c265fb2c8e25f3eb37b48ff84d8480ae4",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.2.0",
+      "check_id": "dmarc-alignment",
+      "renamed_from": [],
+      "title": "DMARC uses relaxed alignment",
+      "target": {
+        "type": "domain",
+        "value": "warnerbros.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "info",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "informational",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the adkim= and aspf= tags are read directly, and default to relaxed"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _dmarc.warnerbros.com",
+          "captured_at": "2026-10-08T11:46:36.136035Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.warnerbros.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=quarantine; rua=mailto:dmarc_agg@vali.email,mailto:postmaster@warnerbros.com; ruf=mailto:Njk0@ruf.vali.email"
+              ],
+              "ttl": 600,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-a76f1260.warnerbros.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NODATA",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T11:46:36.136057Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.warnerbros.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=quarantine; rua=mailto:dmarc_agg@vali.email,mailto:postmaster@warnerbros.com; ruf=mailto:Njk0@ruf.vali.email"
+              ],
+              "ttl": 600,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "warnerbros.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "DMARC alignment is relaxed (adkim=r, aspf=r). Relaxed alignment accepts any subdomain of warnerbros.com in the authenticated identifier.",
+      "impact": "Relaxed alignment is the default and is appropriate for most senders. It does mean that anyone able to publish records under a subdomain can pass DMARC for the parent.",
+      "remediation": "If every legitimate sender signs and sends as the exact domain, set adkim=s and aspf=s. If subdomains send mail, relaxed is the correct setting and no change is needed.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7489#section-3.1"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T11:46:36.136061Z",
+      "first_seen_scan_id": "01M4DNCB7CZ1RPNK0ZC6VW8Y7W",
+      "last_seen": "2026-10-08T11:46:36.136061Z",
+      "last_seen_scan_id": "01M4DNCB7CZ1RPNK0ZC6VW8Y7W",
+      "cost": {
+        "requests": 24,
+        "wall_ms": 1275,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:13bce54051d4346fa3332386784fda5954ba94cc8026f387bd86c86ba7a9e114",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.2.0",
+      "check_id": "dkim-weak-key",
+      "renamed_from": [],
+      "title": "DKIM key is below 2048 bits",
+      "target": {
+        "type": "domain",
+        "value": "warnerbros.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.9677,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 30.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the modulus length is measured from the key itself; every common selector is read, but a domain may publish others we cannot find"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at mail._domainkey.warnerbros.com",
+          "captured_at": "2026-10-08T11:46:36.179358Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "mail._domainkey.warnerbros.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDeMVIzrCa3T14JsNY0IRv5/2V1/v2itlviLQBwXsa7shBD6TrBkswsFUToPyMRWC9tbR/5ey0nRBH0ZVxp+lsmTxid2Y2z+FApQ6ra2VsXfbJP3HE6wAO0YTVEJt1TmeczhEd2Jiz/fcabIISgXEdSpTYJhb0ct0VJRxcg4c8c7wIDAQAB"
+              ],
+              "ttl": 3600,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-a76f1260.warnerbros.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NODATA",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": {
+            "dkim_keys": [
+              {
+                "selector": "selector1",
+                "raw": "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA12cyBcESQVZSC8lWFHtRQea6WkO6bz17wlJWHMU2Y6d+yD6AePI4KfZ4Jo40tCgEzsommYNrWPzhOTuO++3kS+x9R3ilOEMkZINTqY94tdhHi0jkMvMwMz9IuwIvaqkhAzLnhGndqQ+NG4mrGO4ojfLX9V7LLrb7yNusceWdmEN+KpItpR8wq2GCpxl52rq6wHRBIlW6p+oGai51JAmtvSXCVwL/4gofuDJvLrTSeGgMcINMXFRfb3p0poKp4Bvk0KOkrdjIntxxDRYkHDwpoFQESLkWifQXomTalE56rNs5paSJpNgMRubkY3W4crKcDP+VscVcPyltJPDpwLCYPQIDAQAB;",
+                "valid": true,
+                "tags": {
+                  "v": "DKIM1",
+                  "k": "rsa",
+                  "p": "<392 base64 chars>"
+                },
+                "errors": [],
+                "key_type": "rsa",
+                "key_bits": 2048,
+                "revoked": false,
+                "testing": false
+              },
+              {
+                "selector": "mail",
+                "raw": "k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDeMVIzrCa3T14JsNY0IRv5/2V1/v2itlviLQBwXsa7shBD6TrBkswsFUToPyMRWC9tbR/5ey0nRBH0ZVxp+lsmTxid2Y2z+FApQ6ra2VsXfbJP3HE6wAO0YTVEJt1TmeczhEd2Jiz/fcabIISgXEdSpTYJhb0ct0VJRxcg4c8c7wIDAQAB",
+                "valid": true,
+                "tags": {
+                  "k": "rsa",
+                  "p": "<216 base64 chars>"
+                },
+                "errors": [],
+                "key_type": "rsa",
+                "key_bits": 1024,
+                "revoked": false,
+                "testing": false
+              },
+              {
+                "selector": "k1",
+                "raw": "k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDbNrX2cY/GUKIFx2G/1I00ftdAj713WP9AQ1xir85i89sA2guU0ta4UX1Xzm06XIU6iBP41VwmPwBGRNofhBVR+e6WHUoNyIR4Bn84LVcfZE20rmDeXQblIupNWBqLXM1Q+VieI/eZu/7k9/vOkLSaQQdml4Cv8lb3PcnluMVIhQIDAQAB;",
+                "valid": true,
+                "tags": {
+                  "k": "rsa",
+                  "p": "<216 base64 chars>"
+                },
+                "errors": [],
+                "key_type": "rsa",
+                "key_bits": 1024,
+                "revoked": false,
+                "testing": false
+              },
+              {
+                "selector": "k2",
+                "raw": "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAv2aC2KjGKLOwTweBY5A9RpjsxaBXR9r7OAU6U8/zn92ivImI75naUujWbItRI/QmL1jy5PWGqLwoUA0b90ObWaLDc+i9MtTNmGeWO009hr20fIxhGg6XBT2kjZ1DTThopSe1nAndsupmcBwlQ5Q6LJ+ZAxLcujnPIxM0ZBLmgpkv8u6RfY4eFP8OLvdAW3oSuB0DyLDigQX4Sj8wBO4YIdQH6AAmBeOsidsKAFNFUCpc3vCxtBDR12U+cBg724l3sBkMQ8evnz6idnqxq9QAVYh8k4kJ+RP+6cqTdy7LjIm8xY/bQNpQIpGUAuDo2DjLcCDun9DAI4Q/3z+Q0o9QuQIDAQAB;",
+                "valid": true,
+                "tags": {
+                  "v": "DKIM1",
+                  "k": "rsa",
+                  "p": "<392 base64 chars>"
+                },
+                "errors": [],
+                "key_type": "rsa",
+                "key_bits": 2048,
+                "revoked": false,
+                "testing": false
+              },
+              {
+                "selector": "s1",
+                "raw": "k=rsa; t=s; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAlCVFQ63qZzX2p8uB0uA5zSWS1GDox6/AjT5AzwUq7qVYCmLZZ/PzzwhwTzFedHjYNlCXwD6RusVdN3+zFqgjdBLk8+ZaExxAPqDUdrsZNJ67Z01bY4+CFv7IgWIYMlEyOgk++SyEypeqx4khU4zhAW/Ff9roKKJX1tMLLoDY3zuPunBaZ5J/IrPU1zI3lDLODZvidpDvLJDQB1QbYXct5nAh1oxeG3Ok5h2O9gagh9y3Q9X4lplGOJxf5dOu4yF2WtmaKdxZ6M2C5Kt+ICHgreYQl/ottBCaB39kmxbg8d/1fxhC3/pxUrfqn4fqhopwoskREl0suAHFQ/uS/D54ywIDAQAB",
+                "valid": true,
+                "tags": {
+                  "k": "rsa",
+                  "t": "s",
+                  "p": "<392 base64 chars>"
+                },
+                "errors": [],
+                "key_type": "rsa",
+                "key_bits": 2048,
+                "revoked": false,
+                "testing": false
+              },
+              {
+                "selector": "s2",
+                "raw": "k=rsa; t=s; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCp/OpG7cr4bVMo1hx8KFhLD0hAd+UU5Y6kS3ckh1gcXHVo/p5U/FtT+9J4rTt0iekLADfXg6k+SvcpTlIPwqMiEcpK11DpSK0fANoEZ3pBqu47e+BOvAQXhucoURlCGLMFE2dbsCxQyI6Z9xn9QB931DqQ56CJ4yHPBqnHLsNvpwIDAQAB",
+                "valid": true,
+                "tags": {
+                  "k": "rsa",
+                  "t": "s",
+                  "p": "<216 base64 chars>"
+                },
+                "errors": [],
+                "key_type": "rsa",
+                "key_bits": 1024,
+                "revoked": false,
+                "testing": false
+              }
+            ]
+          }
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T11:46:36.179378Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "mail._domainkey.warnerbros.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDeMVIzrCa3T14JsNY0IRv5/2V1/v2itlviLQBwXsa7shBD6TrBkswsFUToPyMRWC9tbR/5ey0nRBH0ZVxp+lsmTxid2Y2z+FApQ6ra2VsXfbJP3HE6wAO0YTVEJt1TmeczhEd2Jiz/fcabIISgXEdSpTYJhb0ct0VJRxcg4c8c7wIDAQAB"
+              ],
+              "ttl": 3600,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "warnerbros.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "DKIM keys below 2048 bits are published at mail._domainkey.warnerbros.com (1024 bits) and k1._domainkey.warnerbros.com (1024 bits) and s2._domainkey.warnerbros.com (1024 bits). Each meets the RFC 8301 minimum of 1024 bits, below the recommended 2048. The domain also publishes selector1._domainkey.warnerbros.com, k2._domainkey.warnerbros.com, s1._domainkey.warnerbros.com. We cannot tell from DNS which selector it signs its mail with. RFC 6376 section 6.1.2 has a verifier fetch the key named by the signature's s= tag, so a signature may name any selector the domain publishes, the weaker one included.",
+      "impact": "This is a margin, not a break: RFC 8301 permits the key, and recommends 2048 bits for signers. Moving to 2048 bits brings the domain in line with that recommendation.",
+      "remediation": "If a weaker selector is no longer used for signing, remove its record. Otherwise generate a new 2048-bit key with your mail provider, publish it under a new selector, switch signing to it, and remove the old selector once no mail is signed with it.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc8301"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T11:46:36.179381Z",
+      "first_seen_scan_id": "01M4DNCB7CZ1RPNK0ZC6VW8Y7W",
+      "last_seen": "2026-10-08T11:46:36.179381Z",
+      "last_seen_scan_id": "01M4DNCB7CZ1RPNK0ZC6VW8Y7W",
+      "cost": {
+        "requests": 25,
+        "wall_ms": 1318,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:d3ab65e30ef5b3bff28775f6b4d9bebc2887e1c7564d35ec19b0cbf72bdff74b",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.2.0",
+      "check_id": "mta-sts-missing",
+      "renamed_from": [],
+      "title": "No MTA-STS policy published",
+      "target": {
+        "type": "domain",
+        "value": "warnerbros.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "a definite TXT answer at _mta-sts with no v=STSv1 term is direct observation"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _mta-sts.warnerbros.com",
+          "captured_at": "2026-10-08T11:46:36.213833Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_mta-sts.warnerbros.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NODATA",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-a76f1260.warnerbros.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NODATA",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T11:46:36.213851Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_mta-sts.warnerbros.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NODATA",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "warnerbros.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "No MTA-STS policy record is published at _mta-sts.warnerbros.com.",
+      "impact": "Without MTA-STS a sending server that cannot negotiate TLS will deliver mail in plaintext rather than refusing, so an attacker positioned on the network can strip encryption and read the message.",
+      "remediation": "Publish a TXT record at _mta-sts.warnerbros.com of the form 'v=STSv1; id=<timestamp>', and serve the matching policy file at https://mta-sts.warnerbros.com/.well-known/mta-sts.txt. Start the policy in mode: testing, then move to mode: enforce.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc8461"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T11:46:36.213859Z",
+      "first_seen_scan_id": "01M4DNCB7CZ1RPNK0ZC6VW8Y7W",
+      "last_seen": "2026-10-08T11:46:36.213859Z",
+      "last_seen_scan_id": "01M4DNCB7CZ1RPNK0ZC6VW8Y7W",
+      "cost": {
+        "requests": 27,
+        "wall_ms": 1353,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:8b8f92aa6948b3ad55d68f568b0b1429c9aebdab5a0905dcfa6981558242a05a",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.2.0",
+      "check_id": "tls-rpt-missing",
+      "renamed_from": [],
+      "title": "No SMTP TLS reporting configured",
+      "target": {
+        "type": "domain",
+        "value": "warnerbros.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "a definite TXT answer at _smtp._tls with no v=TLSRPTv1 term is direct observation"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _smtp._tls.warnerbros.com",
+          "captured_at": "2026-10-08T11:46:36.260842Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_smtp._tls.warnerbros.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NODATA",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-a76f1260.warnerbros.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NODATA",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T11:46:36.260864Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_smtp._tls.warnerbros.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NODATA",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "warnerbros.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "No SMTP TLS reporting record is published at _smtp._tls.warnerbros.com.",
+      "impact": "Nobody is told when a sending server fails to establish TLS to your mail servers, so a downgrade attack or a broken certificate goes unnoticed.",
+      "remediation": "Publish a TXT record at _smtp._tls.warnerbros.com of the form 'v=TLSRPTv1; rua=mailto:tls-reports@warnerbros.com'.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc8460"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T11:46:36.260868Z",
+      "first_seen_scan_id": "01M4DNCB7CZ1RPNK0ZC6VW8Y7W",
+      "last_seen": "2026-10-08T11:46:36.260868Z",
+      "last_seen_scan_id": "01M4DNCB7CZ1RPNK0ZC6VW8Y7W",
+      "cost": {
+        "requests": 29,
+        "wall_ms": 1400,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    }
+  ],
+  "errors": [],
+  "telemetry": {
+    "checks_run": [
+      {
+        "check_id": "spf-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-multiple-records",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-invalid",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-invalid",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-policy-none",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "mx-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dkim-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-too-permissive",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-lookup-limit",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-pct-partial",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-no-rua",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-alignment",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "dkim-weak-key",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "mta-sts-missing",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "tls-rpt-missing",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "spoofing-possible",
+        "outcome": "clear",
+        "location": "$"
+      }
+    ],
+    "suppressed": [],
+    "requests": 29,
+    "wall_ms": 1400,
+    "ai_tokens": 0
+  },
+  "started_at": null,
+  "finished_at": "2026-10-08T11:46:36.261011Z",
+  "killed": false,
+  "outcome": "succeeded"
+}

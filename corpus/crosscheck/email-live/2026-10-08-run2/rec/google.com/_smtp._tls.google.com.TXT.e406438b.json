@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_smtp._tls.google.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=TLSRPTv1;rua=mailto:sts-reports@google.com"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 300
+}

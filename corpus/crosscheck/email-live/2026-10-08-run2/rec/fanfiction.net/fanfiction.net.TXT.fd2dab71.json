@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "fanfiction.net",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 ip4:50.31.52.242 ip4:173.205.184.0/26 include:_spf.google.com include:email.freshdesk.com include:sendgrid.net -allgoogle-site-verification=azVIufmnM70GVsbIzGiT1xm8Au0WPBFf0rtJ-puqSQM"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 360
+}

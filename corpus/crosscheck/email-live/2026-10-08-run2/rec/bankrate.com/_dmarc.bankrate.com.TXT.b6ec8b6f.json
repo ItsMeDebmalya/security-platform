@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_dmarc.bankrate.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DMARC1; p=reject; rua=mailto:c86cd61ccfab937@rep.dmarcanalyzer.com,mailto:qozv9ll0@ag.us.dmarcian.com; ruf=mailto:c86cd61ccfab937@for.dmarcanalyzer.com,mailto:qozv9ll0@fr.us.dmarcian.com; fo=1"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 300
+}

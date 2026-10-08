@@ -1,0 +1,32 @@
+{
+  "flags": [],
+  "name": "nykaa.com",
+  "rcode": "NOERROR",
+  "records": [
+    "_globalsign-domain-verification=VzgvxeU-EZw1a1A_T2Cmp7hbHd-YoVY7D6QjqE873Q",
+    "adobe-idp-site-verification=2a9a911c-7229-4b5e-b06e-e1bceaa997b3",
+    "aevu7f478p5nucm0s3psj8nr7e",
+    "anthropic-domain-verification-netjnf=TZ84SetUz1GxNowinpYYb3zCH",
+    "apple-domain-verification=iCafJBsbeRB9ygQP",
+    "atlassian-domain-verification=vLzszZOsTK4r01NnENiClxpVYGYUx66AdQq5aoYUyqhyWiKCaeQamq3vdGNE3x1o",
+    "c973botkf171qn43rknn9hdr8m",
+    "ca3-86296b6022ef4b7fb1020bc9d9128b5b",
+    "cursor-domain-verification-gzyb62=vxNKPqhqvfjLi0p7cM6iJcXCe",
+    "facebook-domain-verification=kd4uk71zm5fry0mkovam1ijwsh4lip",
+    "google-site-verification=2N0B-UkSMRGEw0dLNpKMHEJ2_WoBBTWabzLBVohXRsU",
+    "google-site-verification=Fgoi7mTCIWwPfN2i0IFkcwnvaCN45uCaizZ2wwYM-JY",
+    "google-site-verification=eSTiM3Hs_mwVMuxqRkh9RmOzmvCZ-tbcEoB4Gx58XiA",
+    "google-site-verification=iSGRD9e9dGfZkvXlbz9sDkDN72OWxFxgvai2BRwoGe8",
+    "google-site-verification=mIuUzGF3Tli7Rswf8WJJgvVZfreXZlE8DnNbGIXv_FE",
+    "google-site-verification=yGB1TwLdliUho_NIBQzha2StTzn65FPgHOPoYtaWgHU",
+    "hpe-greenlake-domain-verification=5a64535a665939326e564d337965464948705255625a36636451513461307331",
+    "jamf-site-verification=EW48aDuaEQlea1kPvpdRZA",
+    "mixpanel-domain-verify=f23bc07a-5e90-43ce-9b69-ae174af1e418",
+    "mongodb-site-verification=ygQMdGnNfB0XB20kiV2tOibvHpvF8KRZ",
+    "openai-domain-verification=dv-E4EaNkEQLcpE9IYn7esFSzpN",
+    "v=spf1 include:spf.mandrillapp.com include:_spf.google.com include:spfcorp.netcore.co.in include:mail.zendesk.com include:amazonses.com include:spf-00a39001.pphosted.com ~all"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 1800
+}

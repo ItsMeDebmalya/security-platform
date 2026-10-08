@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "spf_omcs1.oracleoutsourcing.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 ip4:129.154.68.14 ip4:140.86.49.106 ip4:141.145.121.155 ip4:160.34.9.220 ip4:129.144.145.9 ip4:193.122.69.28 ip4:158.101.225.84 ip4:129.151.113.159 ip4:129.151.103.183 -all"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 10800
+}

@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "_mta-sts.iana.org",
+  "rcode": "NXDOMAIN",
+  "records": [],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": null
+}

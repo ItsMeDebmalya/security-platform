@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "s1._domainkey.brookings.edu",
+  "rcode": "NOERROR",
+  "records": [
+    "k=rsa; t=s; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0umanupZthw0is+d4duS/gKq1FPR/ryEsl2jYLV0lr6tnT15UB6l/A6be2ozAdu2R3yf3ogr5xFBrCbHEmRxCzYxqhGZE576RObM8mLm2wURFn/fKRxo8KpGtShRu+V7XSQ4jja8Ih8CcZDRy/XSZD20GzhWovzX0+HBbUleD8MkUpM96yURsbSyb4sa/3v6S8tOVPsR2F6P4lkJuq9ezV6+klux+5p1dl0KJ5K7lB2E0bb5TqkFv/uE300fgS2wdKNhINc/175tIFpP/gsBR8j2GpUviico77okro96iZl5Aw+V4msRSX1q4mk8NEnDBlSchBWu0BvmhGR+khYi3QIDAQAB"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 1800
+}

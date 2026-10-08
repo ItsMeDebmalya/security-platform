@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "default._domainkey.paytm.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC+22c9TJ7qMNFM3AVRhNdVWyNNV1km5uFdN52Z2l3/oGTOxBLyIj1gGIUINsMdPXL4CiF82k8jLQT9e8JkG3+jxKrUsrzxUVxw1b4nO8u2JBapWj3pLMHG2v8GsnGb9cgpL+enHVI1bYdVuHrRP9aFvkrmuI5o4rSt1eG6CdSKvQIDAQAB"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 60
+}

@@ -1,0 +1,29 @@
+{
+  "flags": [],
+  "name": "reliance.com",
+  "rcode": "NOERROR",
+  "records": [
+    "3024618",
+    "4kvlnr10odgr854l1f75joo8v2",
+    "DZC=qFDjN5kb",
+    "Foxit-domain-verification=35bad218cc0aa9b698bf1a9c9d20ff99",
+    "MS=ms64835072",
+    "TtMCabZ2zPV9Z8+5zdCjFqGzCML35PbvIgQLCGKwGm9cZ5olt28See4E2MQsGKE4zZiu9m9pYuEVeYeJLm/tFw==",
+    "adobe-idp-site-verification=8421d6e8ae405767e2d481d94c0eac8a5bace8a345945be4c06f4d953a3aec6f",
+    "apple-domain-verification=AImjAojKDBy9AWkA",
+    "cisco-ci-domain-verification=5c7cdeb6c7e598a08255c42e65cbf3d5e85eba04e9204f042e77e1c9c1de953d",
+    "cloudhealth=b54b05c6-6102-4b6c-b889-bfce2aec8fd1",
+    "i2b5qrglj6lc59t6kuv98a547v",
+    "kqj1hs9jq2vdi2finda4rseh1q",
+    "miro-verification=d28baf263faa0ada80baa1f93eca234078e1d780",
+    "ms-domain-verification=f055d252-cd4a-4cd1-bdda-1642231a2401",
+    "qprpasb7m2qcb0kpluar53fm8a",
+    "twilio-domain-verification=61efd424ae5929eb3bb5d90ef3bd013c",
+    "v=spf1 mx ip4:149.72.231.47 ip4:149.72.196.66 include:spf.reliance.com -all",
+    "webexdomainverification.=d22f957e-9273-403d-acac-50badb299bc8",
+    "wrike-verification=MjkzNjI2Mjo1MmYwOTVhNjg1NWRjN2ZjOWM1MGFlNzg0YmFjMDZjMjliYzgyNGZhNjEwYTc1YjllM2FkZTdkMzk2YjM3MjQz"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 300
+}

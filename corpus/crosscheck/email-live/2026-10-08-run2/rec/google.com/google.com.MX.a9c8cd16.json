@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "google.com",
+  "rcode": "NOERROR",
+  "records": [
+    "10 smtp.google.com."
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "MX",
+  "ttl": 179
+}

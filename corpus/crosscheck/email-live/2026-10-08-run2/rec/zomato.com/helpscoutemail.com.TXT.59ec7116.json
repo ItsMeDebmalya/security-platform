@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "helpscoutemail.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 ip4:54.173.229.38 ip4:52.0.20.102 ip4:54.174.116.32 ip4:52.2.238.96 ip4:52.20.146.34 ip4:34.198.122.65 ~all"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 11
+}

@@ -1,0 +1,25 @@
+{
+  "flags": [],
+  "name": "swiggy.com",
+  "rcode": "NOERROR",
+  "records": [
+    "ntk9jrgma5mk8oenqdur7ar2kh",
+    "bsagovn15cclppcj69ksokb02b",
+    "_jsbg79is9225f4to9vt35s7d51j6kgc",
+    "google-site-verification=_KnZKfBCu5MOw56pKjOaJnPTL_VHrqXvhXPEwyFe0Vc",
+    "v=spf1 include:_spf.google.com -all",
+    "google-site-verification=DmsjidlsB2Xd4Ky1TsxrwcPXGXgYLwlwWCZUE04pZeM",
+    "google-site-verification=553lUUjqiagL_2NX6CW3XNdBE1QKJOBdvF2ZhOtORnw",
+    "google-site-verification=YYPJnPRQJuf7lHTrarvPEnUlP9psDfSDcc5OGxe406Q",
+    "google-site-verification=KoGUS38pca6o2jH6bU15OaX35zzGOd46ILVcYpPLtdk",
+    "amazonses:FP3yvf7pW64huGBhQtx1t7Xb/ChIWyyf2P9GEViFJBw=",
+    "google-site-verification=cGBPHloW-TsLO-jEDf5AohXAJ9FrfroOgW9Hja39BM4",
+    "google-site-verification=gO5_0ycvQORCYSG1iryWqof_58h1RAMrrDs-oM-7HWE",
+    "google-site-verification=GyiEHd9M620-FkuqzlrfGvwiXUaghEgFrs_TsKEdaQY",
+    "_globalsign-domain-verification=4-bp2KQB8Hi5rUcw1YfijlT-th19ohKAs6Wl9F1Awm",
+    "MS=ms24045060"
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": 60
+}

@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_spf2.brookings.edu",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 include:servers.mcsv.net include:spf.protection.outlook.com ip4:52.114.128.0/19 ip4:81.93.164.103/32 ip4:13.90.90.181/32 ip4:64.209.141.221 ip4:204.8.10.114 exists:%{i}._spf.mta.salesforce.com exists:%{i}._spf.sparkpostmail.com -all"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 3600
+}

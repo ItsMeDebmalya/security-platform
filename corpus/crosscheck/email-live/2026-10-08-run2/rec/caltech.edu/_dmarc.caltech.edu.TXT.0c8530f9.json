@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_dmarc.caltech.edu",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DMARC1; p=none; rua=mailto:6e39dba0@mxtoolbox.dmarc-report.com,mailto:caltech@us.cp-dmarc.com; ruf=mailto:6e39dba0@forensics.dmarc-report.com,mailto:caltech@us.cp-dmarc.com; fo=1"
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": 300
+}

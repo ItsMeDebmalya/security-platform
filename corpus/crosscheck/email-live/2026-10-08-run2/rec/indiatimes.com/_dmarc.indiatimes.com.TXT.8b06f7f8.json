@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_dmarc.indiatimes.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DMARC1; p=reject; rua=mailto:accepted@indiatimes.com; ruf=mailto:quarantine@indiatimes.com; rf=afrf; pct=100"
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": 1200
+}

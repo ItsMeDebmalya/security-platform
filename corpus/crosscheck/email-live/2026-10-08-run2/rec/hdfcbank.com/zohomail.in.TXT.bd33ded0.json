@@ -1,0 +1,13 @@
+{
+  "flags": [],
+  "name": "zohomail.in",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 include:spf.zohomail.in include:zeptomail.net.in -all",
+    "spycloud-domain-verification=51cc8d69-52f1-44b8-b7b1-49a6f9ff1d4b",
+    "google-site-verification=riBIaPgHOvFLClNM3tA51VCpF1m-Qzv_ivz4_xd3H7g"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 600
+}

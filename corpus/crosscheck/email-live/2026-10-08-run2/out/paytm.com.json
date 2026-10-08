@@ -1,0 +1,2753 @@
+{
+  "scanner": "email",
+  "scanner_version": "1.2.0",
+  "target": {
+    "type": "domain",
+    "value": "paytm.com"
+  },
+  "mode": "standard",
+  "findings": [
+    {
+      "id": "sha256:cc289b8b2f30ed7da78d50beaeb7e05d1ce18376f596ba4f1d204fdba776ecb4",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.2.0",
+      "check_id": "spf-lookup-limit",
+      "renamed_from": [],
+      "title": "SPF exceeds the 10 DNS lookup limit",
+      "target": {
+        "type": "domain",
+        "value": "paytm.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "high",
+      "confidence": 0.9615,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 25.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the count is computed from records we fetched ourselves, but include chains change often and a chain we could not finish walking returns inconclusive"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at paytm.com",
+          "captured_at": "2026-10-08T11:46:29.864005Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "paytm.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "14c34xr771wn93wtdyq9kx1t7j2y1ydb",
+                "5ajcnlk.ng.impervadns.net",
+                "MS=10282021",
+                "MS=6341152B9423543860BFE82B9CBE44FB96BDFB19",
+                "MS=ms10282021",
+                "OSSRH-82568",
+                "_dqmagybzw0vm244qbvvyw2m5giv60il",
+                "_jy0clu426k0zab2i8hh13xe2jdgvkso",
+                "_ohx9wucw69spxm95lad10wwy7ixocyk",
+                "amazonses:7XabL68hzjmAMz9xh+xv5zq9p67Z/tGQQl8M4KYcHiM=",
+                "amazonses:LWXYzNDz97HfT2/QevyERAj570gnCy9h5ba1SIdHdfA=",
+                "amazonses:UBMnTGuTG1ddAGNSF+//kk0Ay+bG78S+2sVSolFSOlg=",
+                "amazonses:f2cgo/64/ZR3Wc3M9u8yW+JqF/C6AamF3tP6gjqSzWw=",
+                "amazonses:htyWxncjzmnINnrUYG1SIhJOjIDg3XQehwCvBqav3Uo=",
+                "amazonses:nEOm4A5cBWbInNrqT7VT/JNqwdNxSGddWDrMrGh1lOw=",
+                "anthropic-domain-verification-7vzn6p=mBNFigbhUho0ofEdrAwlzBl4G",
+                "apple-domain-verification=Lb2QXBpJpDMp72II",
+                "asv=a6ff2b03eec006950453331350d45f6c",
+                "atlassian-domain-verification=wBkA9l9cAkKCRbEDd1t/AxmSMo5u/44IWT9DxtWScBjBKC8twpo/I2yhGoLZ/qTo",
+                "atlassian-sending-domain-verification=f1166fae-8a67-465f-97e4-af7be4985639",
+                "cursor-domain-verification-7fs8ee=rEZ116QCrFd84UcWz19goUcf5",
+                "d90rdsg118rspmlddjwmhq1xkh2jkw1f",
+                "globalsign-domain-verification=7A10D5AFD979C51C98BCA00B251102F3",
+                "google-site-verification=h8wm7P17qMYkSfARepjour4urvRE7ql07w2fHZgJIDg",
+                "google-site-verification=pPwlV980KnyiBTpL11QH-KNFR8NbPqfNsj404iEMMJg",
+                "google-site-verification=y_IZiW0IuexfXK1qw51Gfoqrn0cZOv9glKe8TGhoDqY",
+                "hpe-greenlake-domain-verification=736d446d4c744e2d74746c48564f4b53544a48473876314a52487634376a4959",
+                "jamf-site-verification=8kNKb6_iJNyPHYT89r4-dg",
+                "k8992rr9s318454k3kklt800h3jffckm",
+                "m5gh704hlkqtdys2blf83twdl2r0pwcv",
+                "nqh074ffxh6cg354v5qgtv438vbr1fmr",
+                "tfxc9ygpq5k65807s5bj9lrm5zkjx99p",
+                "v=spf1 ip4:13.127.134.11 ip4:54.240.85.29 ip4:54.240.85.30 include:amazonses.com include:_include1.paytm.com include:_include2.paytm.com include:_spf.salesforce.com include:_spf.google.com include:servers.mcsv.net include:email.onedirect.in include:email-messaging.com -all",
+                "vAjntCVONTm6xd6/Zjdla9f2PZXIhdob1LuOKms4rbQ=",
+                "wiz-domain-verification=f6d7b4796a53850158dcd7b59c561bba5e2feb91b0cb3cd73862a74e9a5b8b69",
+                "xd5bmqslydc2qghxq87f5jkc4dvlqs74",
+                "zncxhjkw1p4h6rmgbnl85p7678l1s0lb"
+              ],
+              "ttl": 60,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-88cde156.paytm.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": {
+            "spf_chain": {
+              "root": "paytm.com",
+              "steps": [
+                {
+                  "domain": "paytm.com",
+                  "rcode": "NOERROR",
+                  "record": {
+                    "raw": "v=spf1 ip4:13.127.134.11 ip4:54.240.85.29 ip4:54.240.85.30 include:amazonses.com include:_include1.paytm.com include:_include2.paytm.com include:_spf.salesforce.com include:_spf.google.com include:servers.mcsv.net include:email.onedirect.in include:email-messaging.com -all",
+                    "valid": true,
+                    "terms": [
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "13.127.134.11",
+                        "raw": "ip4:13.127.134.11",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "54.240.85.29",
+                        "raw": "ip4:54.240.85.29",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "54.240.85.30",
+                        "raw": "ip4:54.240.85.30",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "include",
+                        "qualifier": "+",
+                        "value": "amazonses.com",
+                        "raw": "include:amazonses.com",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "include",
+                        "qualifier": "+",
+                        "value": "_include1.paytm.com",
+                        "raw": "include:_include1.paytm.com",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "include",
+                        "qualifier": "+",
+                        "value": "_include2.paytm.com",
+                        "raw": "include:_include2.paytm.com",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "include",
+                        "qualifier": "+",
+                        "value": "_spf.salesforce.com",
+                        "raw": "include:_spf.salesforce.com",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "include",
+                        "qualifier": "+",
+                        "value": "_spf.google.com",
+                        "raw": "include:_spf.google.com",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "include",
+                        "qualifier": "+",
+                        "value": "servers.mcsv.net",
+                        "raw": "include:servers.mcsv.net",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "include",
+                        "qualifier": "+",
+                        "value": "email.onedirect.in",
+                        "raw": "include:email.onedirect.in",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "include",
+                        "qualifier": "+",
+                        "value": "email-messaging.com",
+                        "raw": "include:email-messaging.com",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "all",
+                        "qualifier": "-",
+                        "value": null,
+                        "raw": "-all",
+                        "costs_lookup": false
+                      }
+                    ],
+                    "modifiers": {},
+                    "errors": [],
+                    "all_qualifier": "-",
+                    "direct_lookup_count": 8
+                  },
+                  "duplicate_spf_records": false,
+                  "definite": true
+                },
+                {
+                  "domain": "amazonses.com",
+                  "rcode": "NOERROR",
+                  "record": {
+                    "raw": "v=spf1 ip4:199.255.192.0/22 ip4:199.127.232.0/22 ip4:54.240.0.0/18 ip4:69.169.224.0/20 ip4:23.249.208.0/20 ip4:23.251.224.0/19 ip4:76.223.176.0/20 ip4:54.240.64.0/18 ip4:76.223.128.0/19 ip4:216.221.160.0/19 ip4:206.55.144.0/20 ip4:24.110.64.0/18 ip4:98.77.0.0/16 -all",
+                    "valid": true,
+                    "terms": [
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "199.255.192.0/22",
+                        "raw": "ip4:199.255.192.0/22",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "199.127.232.0/22",
+                        "raw": "ip4:199.127.232.0/22",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "54.240.0.0/18",
+                        "raw": "ip4:54.240.0.0/18",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "69.169.224.0/20",
+                        "raw": "ip4:69.169.224.0/20",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "23.249.208.0/20",
+                        "raw": "ip4:23.249.208.0/20",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "23.251.224.0/19",
+                        "raw": "ip4:23.251.224.0/19",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "76.223.176.0/20",
+                        "raw": "ip4:76.223.176.0/20",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "54.240.64.0/18",
+                        "raw": "ip4:54.240.64.0/18",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "76.223.128.0/19",
+                        "raw": "ip4:76.223.128.0/19",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "216.221.160.0/19",
+                        "raw": "ip4:216.221.160.0/19",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "206.55.144.0/20",
+                        "raw": "ip4:206.55.144.0/20",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "24.110.64.0/18",
+                        "raw": "ip4:24.110.64.0/18",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "98.77.0.0/16",
+                        "raw": "ip4:98.77.0.0/16",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "all",
+                        "qualifier": "-",
+                        "value": null,
+                        "raw": "-all",
+                        "costs_lookup": false
+                      }
+                    ],
+                    "modifiers": {},
+                    "errors": [],
+                    "all_qualifier": "-",
+                    "direct_lookup_count": 0
+                  },
+                  "duplicate_spf_records": false,
+                  "definite": true
+                },
+                {
+                  "domain": "_include1.paytm.com",
+                  "rcode": "NOERROR",
+                  "record": {
+                    "raw": "v=spf1 include:_spf.one97.net include:amazonses.com include:_include3.paytm.com include:_onenine7.paytm.com ip4:125.19.44.66/32 ip4:125.21.245.156/32 ip4:13.232.157.69/32 ip4:13.232.105.32/32 ip4:13.126.236.121/32 ip4:13.232.146.80/32 -all",
+                    "valid": true,
+                    "terms": [
+                      {
+                        "mechanism": "include",
+                        "qualifier": "+",
+                        "value": "_spf.one97.net",
+                        "raw": "include:_spf.one97.net",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "include",
+                        "qualifier": "+",
+                        "value": "amazonses.com",
+                        "raw": "include:amazonses.com",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "include",
+                        "qualifier": "+",
+                        "value": "_include3.paytm.com",
+                        "raw": "include:_include3.paytm.com",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "include",
+                        "qualifier": "+",
+                        "value": "_onenine7.paytm.com",
+                        "raw": "include:_onenine7.paytm.com",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "125.19.44.66/32",
+                        "raw": "ip4:125.19.44.66/32",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "125.21.245.156/32",
+                        "raw": "ip4:125.21.245.156/32",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "13.232.157.69/32",
+                        "raw": "ip4:13.232.157.69/32",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "13.232.105.32/32",
+                        "raw": "ip4:13.232.105.32/32",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "13.126.236.121/32",
+                        "raw": "ip4:13.126.236.121/32",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "13.232.146.80/32",
+                        "raw": "ip4:13.232.146.80/32",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "all",
+                        "qualifier": "-",
+                        "value": null,
+                        "raw": "-all",
+                        "costs_lookup": false
+                      }
+                    ],
+                    "modifiers": {},
+                    "errors": [],
+                    "all_qualifier": "-",
+                    "direct_lookup_count": 4
+                  },
+                  "duplicate_spf_records": false,
+                  "definite": true
+                },
+                {
+                  "domain": "_include2.paytm.com",
+                  "rcode": "NOERROR",
+                  "record": {
+                    "raw": "v=spf1 ip4:54.179.186.39/32 ip4:54.251.151.39/32 ip4:52.74.28.141/32 ip4:54.255.153.194/32 ip4:180.179.116.236/32 ip4:54.240.38.160/32 ip4:35.154.69.241/32 ip4:13.126.241.188/32 ip4:13.127.127.236/32 ip4:13.126.94.72/32 ip4:13.232.92.168/32 -all",
+                    "valid": true,
+                    "terms": [
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "54.179.186.39/32",
+                        "raw": "ip4:54.179.186.39/32",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "54.251.151.39/32",
+                        "raw": "ip4:54.251.151.39/32",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "52.74.28.141/32",
+                        "raw": "ip4:52.74.28.141/32",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "54.255.153.194/32",
+                        "raw": "ip4:54.255.153.194/32",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "180.179.116.236/32",
+                        "raw": "ip4:180.179.116.236/32",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "54.240.38.160/32",
+                        "raw": "ip4:54.240.38.160/32",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "35.154.69.241/32",
+                        "raw": "ip4:35.154.69.241/32",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "13.126.241.188/32",
+                        "raw": "ip4:13.126.241.188/32",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "13.127.127.236/32",
+                        "raw": "ip4:13.127.127.236/32",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "13.126.94.72/32",
+                        "raw": "ip4:13.126.94.72/32",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "13.232.92.168/32",
+                        "raw": "ip4:13.232.92.168/32",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "all",
+                        "qualifier": "-",
+                        "value": null,
+                        "raw": "-all",
+                        "costs_lookup": false
+                      }
+                    ],
+                    "modifiers": {},
+                    "errors": [],
+                    "all_qualifier": "-",
+                    "direct_lookup_count": 0
+                  },
+                  "duplicate_spf_records": false,
+                  "definite": true
+                },
+                {
+                  "domain": "_spf.salesforce.com",
+                  "rcode": "NOERROR",
+                  "record": {
+                    "raw": "v=spf1 exists:%{i}._spf.mta.salesforce.com -all",
+                    "valid": true,
+                    "terms": [
+                      {
+                        "mechanism": "exists",
+                        "qualifier": "+",
+                        "value": "%{i}._spf.mta.salesforce.com",
+                        "raw": "exists:%{i}._spf.mta.salesforce.com",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "all",
+                        "qualifier": "-",
+                        "value": null,
+                        "raw": "-all",
+                        "costs_lookup": false
+                      }
+                    ],
+                    "modifiers": {},
+                    "errors": [],
+                    "all_qualifier": "-",
+                    "direct_lookup_count": 1
+                  },
+                  "duplicate_spf_records": false,
+                  "definite": true
+                },
+                {
+                  "domain": "_spf.google.com",
+                  "rcode": "NOERROR",
+                  "record": {
+                    "raw": "v=spf1 ip4:74.125.0.0/16 ip4:209.85.128.0/17 ip6:2001:4860:4864::/56 ip6:2404:6800:4864::/56 ip6:2607:f8b0:4864::/56 ip6:2800:3f0:4864::/56 ip6:2a00:1450:4864::/56 ip6:2c0f:fb50:4864::/56 ~all",
+                    "valid": true,
+                    "terms": [
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "74.125.0.0/16",
+                        "raw": "ip4:74.125.0.0/16",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "209.85.128.0/17",
+                        "raw": "ip4:209.85.128.0/17",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip6",
+                        "qualifier": "+",
+                        "value": "2001:4860:4864::/56",
+                        "raw": "ip6:2001:4860:4864::/56",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip6",
+                        "qualifier": "+",
+                        "value": "2404:6800:4864::/56",
+                        "raw": "ip6:2404:6800:4864::/56",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip6",
+                        "qualifier": "+",
+                        "value": "2607:f8b0:4864::/56",
+                        "raw": "ip6:2607:f8b0:4864::/56",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip6",
+                        "qualifier": "+",
+                        "value": "2800:3f0:4864::/56",
+                        "raw": "ip6:2800:3f0:4864::/56",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip6",
+                        "qualifier": "+",
+                        "value": "2a00:1450:4864::/56",
+                        "raw": "ip6:2a00:1450:4864::/56",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip6",
+                        "qualifier": "+",
+                        "value": "2c0f:fb50:4864::/56",
+                        "raw": "ip6:2c0f:fb50:4864::/56",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "all",
+                        "qualifier": "~",
+                        "value": null,
+                        "raw": "~all",
+                        "costs_lookup": false
+                      }
+                    ],
+                    "modifiers": {},
+                    "errors": [],
+                    "all_qualifier": "~",
+                    "direct_lookup_count": 0
+                  },
+                  "duplicate_spf_records": false,
+                  "definite": true
+                },
+                {
+                  "domain": "servers.mcsv.net",
+                  "rcode": "NOERROR",
+                  "record": {
+                    "raw": "v=spf1 ip4:205.201.128.0/20 ip4:198.2.128.0/18 ip4:148.105.0.0/16 -all",
+                    "valid": true,
+                    "terms": [
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "205.201.128.0/20",
+                        "raw": "ip4:205.201.128.0/20",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "198.2.128.0/18",
+                        "raw": "ip4:198.2.128.0/18",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "148.105.0.0/16",
+                        "raw": "ip4:148.105.0.0/16",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "all",
+                        "qualifier": "-",
+                        "value": null,
+                        "raw": "-all",
+                        "costs_lookup": false
+                      }
+                    ],
+                    "modifiers": {},
+                    "errors": [],
+                    "all_qualifier": "-",
+                    "direct_lookup_count": 0
+                  },
+                  "duplicate_spf_records": false,
+                  "definite": true
+                },
+                {
+                  "domain": "email.onedirect.in",
+                  "rcode": "NOERROR",
+                  "record": {
+                    "raw": "v=spf1 ip4:167.89.96.67 ip4:168.245.22.115 ip4:50.31.55.210 -all",
+                    "valid": true,
+                    "terms": [
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "167.89.96.67",
+                        "raw": "ip4:167.89.96.67",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "168.245.22.115",
+                        "raw": "ip4:168.245.22.115",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "50.31.55.210",
+                        "raw": "ip4:50.31.55.210",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "all",
+                        "qualifier": "-",
+                        "value": null,
+                        "raw": "-all",
+                        "costs_lookup": false
+                      }
+                    ],
+                    "modifiers": {},
+                    "errors": [],
+                    "all_qualifier": "-",
+                    "direct_lookup_count": 0
+                  },
+                  "duplicate_spf_records": false,
+                  "definite": true
+                },
+                {
+                  "domain": "email-messaging.com",
+                  "rcode": "NOERROR",
+                  "record": {
+                    "raw": "v=spf1 include:spf1.email-messaging.com ~all",
+                    "valid": true,
+                    "terms": [
+                      {
+                        "mechanism": "include",
+                        "qualifier": "+",
+                        "value": "spf1.email-messaging.com",
+                        "raw": "include:spf1.email-messaging.com",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "all",
+                        "qualifier": "~",
+                        "value": null,
+                        "raw": "~all",
+                        "costs_lookup": false
+                      }
+                    ],
+                    "modifiers": {},
+                    "errors": [],
+                    "all_qualifier": "~",
+                    "direct_lookup_count": 1
+                  },
+                  "duplicate_spf_records": false,
+                  "definite": true
+                },
+                {
+                  "domain": "_spf.one97.net",
+                  "rcode": "NOERROR",
+                  "record": {
+                    "raw": "v=spf1 ip4:125.21.245.156/32 include:_spf.google.com -all",
+                    "valid": true,
+                    "terms": [
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "125.21.245.156/32",
+                        "raw": "ip4:125.21.245.156/32",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "include",
+                        "qualifier": "+",
+                        "value": "_spf.google.com",
+                        "raw": "include:_spf.google.com",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "all",
+                        "qualifier": "-",
+                        "value": null,
+                        "raw": "-all",
+                        "costs_lookup": false
+                      }
+                    ],
+                    "modifiers": {},
+                    "errors": [],
+                    "all_qualifier": "-",
+                    "direct_lookup_count": 1
+                  },
+                  "duplicate_spf_records": false,
+                  "definite": true
+                },
+                {
+                  "domain": "_include3.paytm.com",
+                  "rcode": "NOERROR",
+                  "record": {
+                    "raw": "v=spf1 ip4:13.127.201.238/32 ip4:13.232.242.251/32 ip4:13.233.69.47/32 ip4:13.126.80.48/32 ip4:13.127.242.249/32 ip4:52.66.22.20/32 ip4:13.126.161.209/32 ip4:13.126.21.163/32 ip4:35.154.189.206/32 ip4:13.127.180.198/32 include:_include4.paytm.com  -all",
+                    "valid": true,
+                    "terms": [
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "13.127.201.238/32",
+                        "raw": "ip4:13.127.201.238/32",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "13.232.242.251/32",
+                        "raw": "ip4:13.232.242.251/32",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "13.233.69.47/32",
+                        "raw": "ip4:13.233.69.47/32",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "13.126.80.48/32",
+                        "raw": "ip4:13.126.80.48/32",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "13.127.242.249/32",
+                        "raw": "ip4:13.127.242.249/32",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "52.66.22.20/32",
+                        "raw": "ip4:52.66.22.20/32",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "13.126.161.209/32",
+                        "raw": "ip4:13.126.161.209/32",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "13.126.21.163/32",
+                        "raw": "ip4:13.126.21.163/32",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "35.154.189.206/32",
+                        "raw": "ip4:35.154.189.206/32",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "13.127.180.198/32",
+                        "raw": "ip4:13.127.180.198/32",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "include",
+                        "qualifier": "+",
+                        "value": "_include4.paytm.com",
+                        "raw": "include:_include4.paytm.com",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "all",
+                        "qualifier": "-",
+                        "value": null,
+                        "raw": "-all",
+                        "costs_lookup": false
+                      }
+                    ],
+                    "modifiers": {},
+                    "errors": [],
+                    "all_qualifier": "-",
+                    "direct_lookup_count": 1
+                  },
+                  "duplicate_spf_records": false,
+                  "definite": true
+                },
+                {
+                  "domain": "_onenine7.paytm.com",
+                  "rcode": "NOERROR",
+                  "record": {
+                    "raw": "v=spf1 ip4:125.63.68.126/32 ip4:125.19.44.75/32 ip4:125.19.44.94/32 ip4:121.241.245.27/32 ip4:125.63.68.100/32 ip4:125.19.44.91/32 -all",
+                    "valid": true,
+                    "terms": [
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "125.63.68.126/32",
+                        "raw": "ip4:125.63.68.126/32",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "125.19.44.75/32",
+                        "raw": "ip4:125.19.44.75/32",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "125.19.44.94/32",
+                        "raw": "ip4:125.19.44.94/32",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "121.241.245.27/32",
+                        "raw": "ip4:121.241.245.27/32",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "125.63.68.100/32",
+                        "raw": "ip4:125.63.68.100/32",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "125.19.44.91/32",
+                        "raw": "ip4:125.19.44.91/32",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "all",
+                        "qualifier": "-",
+                        "value": null,
+                        "raw": "-all",
+                        "costs_lookup": false
+                      }
+                    ],
+                    "modifiers": {},
+                    "errors": [],
+                    "all_qualifier": "-",
+                    "direct_lookup_count": 0
+                  },
+                  "duplicate_spf_records": false,
+                  "definite": true
+                },
+                {
+                  "domain": "spf1.email-messaging.com",
+                  "rcode": "NOERROR",
+                  "record": {
+                    "raw": "v=spf1 ip4:185.255.8.0/22 ip4:83.166.78.0/23 ip4:202.22.174.0/23 ip4:62.140.31.0/24 ip4:180.179.146.74 ip4:13.126.156.192 ip4:13.126.201.219 ip4:81.23.253.165/25 ip4:89.164.98.219 ip4:81.23.249.0/24 ip4:202.22.169.150/31 ip4:202.22.169.152/29 ip4:202.22.174.0/24 ip4:202.22.175.0/24 ip4:20.233.90.170 ip4:20.233.90.202 ip4:20.233.90.222 ip4:20.233.91.47 ip4:203.223.163.42 ip4:203.223.163.43 ip4:203.223.163.44 ip4:203.223.163.45 ip4:203.223.163.46 ip4:202.22.160.0/20 ip4:4.161.42.211 ip4:40.120.106.174 ip4:40.120.105.250 ip4:40.120.111.128 ip4:208.93.48.0/22 ip4:4.244.133.231 ip4:4.244.129.183 ip4:4.244.132.140 ip4:4.244.134.16 ip4:4.244.133.73 ip4:119.30.69.0 ip4:119.30.69.1 ip4:119.30.69.2 ip4:119.30.69.3 ip4:119.30.69.4 ip4:172.167.23.153 ip4:172.167.16.186 ip4:172.167.17.130 ip4:172.167.18.85 ip4:172.167.18.36 ip4:172.167.22.64 ip4:172.167.17.219 ip4:20.162.248.41 ip4:172.167.20.125 ip4:20.162.248.190  ip4:20.162.248.231 ip4:20.162.250.8 ip4:172.167.20.82 ip4:172.167.17.99 ip4:172.167.138.245  ip4:20.162.250.93 ip4:172.167.20.242 ip4:20.162.250.143 ip4:172.167.17.49 ip4:4.234.102.113 ip4:83.166.68.0/24 ip4:83.166.65.128/25 ip4:20.174.48.187  ip4:20.174.59.72 ip4:20.174.66.144 ip4:20.174.69.203 ip4:20.233.218.121 ip4:20.233.218.160 ip4:20.233.218.207 ip4:20.233.224.232 ip4:20.233.218.228 ip4:20.233.219.34 ip4:34.166.73.220 ip4:74.162.204.20 ip4:20.233.224.178 ip4:20.233.215.143 ip4:74.162.177.207 ip4:20.233.207.35 ip4:34.166.135.79 ip4:34.166.2.38 ip4:34.166.133.89 ip4:34.166.152.195 ip4:34.166.108.198 ip4:34.166.90.102 ip4:34.166.140.33 ip4:34.166.85.196 ip4:34.166.30.172 ip4:34.166.84.187 ip4:34.166.71.233 ip4:35.252.62.60 ip4:35.252.62.135 ip4:35.252.61.180 ip4:35.252.61.114 ip4:35.252.60.77 ip4:35.252.59.7 ip4:35.252.58.107 ip4:35.252.56.113 ip4:35.252.50.97 ip4:35.252.41.5 ip4:35.252.41.117 ip4:35.252.40.43 ip4:35.252.40.207 ip4:35.252.36.130 ip4:35.252.33.130 ip4:34.166.46.195 ip4:34.166.212.205 ip4:34.166.210.67 ip4:34.166.174.162 ip4:34.166.133.23 ip4:83.166.88.0/23 ip4:83.166.67.0/24 ip4:172.195.81.17 ip4:68.155.218.57 ip4:68.155.136.170 ip4:68.155.83.55 ip4:68.155.83.138 ip4:68.155.233.236 ip4:68.155.224.203 ip4:172.195.82.34 ip4:158.23.224.244 ip4:68.155.235.221 ip4:172.195.83.184 ip4:172.195.74.0 ip4:68.155.236.112 ip4:172.195.74.36 ip4:68.155.240.147 ip4:158.23.228.24 ip4:68.155.241.55 ip4:68.155.242.242 ip4:68.155.217.123 ip4:68.155.137.1 ~all",
+                    "valid": true,
+                    "terms": [
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "185.255.8.0/22",
+                        "raw": "ip4:185.255.8.0/22",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "83.166.78.0/23",
+                        "raw": "ip4:83.166.78.0/23",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "202.22.174.0/23",
+                        "raw": "ip4:202.22.174.0/23",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "62.140.31.0/24",
+                        "raw": "ip4:62.140.31.0/24",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "180.179.146.74",
+                        "raw": "ip4:180.179.146.74",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "13.126.156.192",
+                        "raw": "ip4:13.126.156.192",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "13.126.201.219",
+                        "raw": "ip4:13.126.201.219",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "81.23.253.165/25",
+                        "raw": "ip4:81.23.253.165/25",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "89.164.98.219",
+                        "raw": "ip4:89.164.98.219",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "81.23.249.0/24",
+                        "raw": "ip4:81.23.249.0/24",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "202.22.169.150/31",
+                        "raw": "ip4:202.22.169.150/31",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "202.22.169.152/29",
+                        "raw": "ip4:202.22.169.152/29",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "202.22.174.0/24",
+                        "raw": "ip4:202.22.174.0/24",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "202.22.175.0/24",
+                        "raw": "ip4:202.22.175.0/24",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "20.233.90.170",
+                        "raw": "ip4:20.233.90.170",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "20.233.90.202",
+                        "raw": "ip4:20.233.90.202",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "20.233.90.222",
+                        "raw": "ip4:20.233.90.222",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "20.233.91.47",
+                        "raw": "ip4:20.233.91.47",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "203.223.163.42",
+                        "raw": "ip4:203.223.163.42",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "203.223.163.43",
+                        "raw": "ip4:203.223.163.43",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "203.223.163.44",
+                        "raw": "ip4:203.223.163.44",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "203.223.163.45",
+                        "raw": "ip4:203.223.163.45",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "203.223.163.46",
+                        "raw": "ip4:203.223.163.46",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "202.22.160.0/20",
+                        "raw": "ip4:202.22.160.0/20",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "4.161.42.211",
+                        "raw": "ip4:4.161.42.211",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "40.120.106.174",
+                        "raw": "ip4:40.120.106.174",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "40.120.105.250",
+                        "raw": "ip4:40.120.105.250",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "40.120.111.128",
+                        "raw": "ip4:40.120.111.128",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "208.93.48.0/22",
+                        "raw": "ip4:208.93.48.0/22",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "4.244.133.231",
+                        "raw": "ip4:4.244.133.231",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "4.244.129.183",
+                        "raw": "ip4:4.244.129.183",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "4.244.132.140",
+                        "raw": "ip4:4.244.132.140",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "4.244.134.16",
+                        "raw": "ip4:4.244.134.16",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "4.244.133.73",
+                        "raw": "ip4:4.244.133.73",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "119.30.69.0",
+                        "raw": "ip4:119.30.69.0",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "119.30.69.1",
+                        "raw": "ip4:119.30.69.1",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "119.30.69.2",
+                        "raw": "ip4:119.30.69.2",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "119.30.69.3",
+                        "raw": "ip4:119.30.69.3",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "119.30.69.4",
+                        "raw": "ip4:119.30.69.4",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "172.167.23.153",
+                        "raw": "ip4:172.167.23.153",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "172.167.16.186",
+                        "raw": "ip4:172.167.16.186",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "172.167.17.130",
+                        "raw": "ip4:172.167.17.130",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "172.167.18.85",
+                        "raw": "ip4:172.167.18.85",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "172.167.18.36",
+                        "raw": "ip4:172.167.18.36",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "172.167.22.64",
+                        "raw": "ip4:172.167.22.64",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "172.167.17.219",
+                        "raw": "ip4:172.167.17.219",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "20.162.248.41",
+                        "raw": "ip4:20.162.248.41",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "172.167.20.125",
+                        "raw": "ip4:172.167.20.125",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "20.162.248.190",
+                        "raw": "ip4:20.162.248.190",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "20.162.248.231",
+                        "raw": "ip4:20.162.248.231",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "20.162.250.8",
+                        "raw": "ip4:20.162.250.8",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "172.167.20.82",
+                        "raw": "ip4:172.167.20.82",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "172.167.17.99",
+                        "raw": "ip4:172.167.17.99",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "172.167.138.245",
+                        "raw": "ip4:172.167.138.245",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "20.162.250.93",
+                        "raw": "ip4:20.162.250.93",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "172.167.20.242",
+                        "raw": "ip4:172.167.20.242",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "20.162.250.143",
+                        "raw": "ip4:20.162.250.143",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "172.167.17.49",
+                        "raw": "ip4:172.167.17.49",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "4.234.102.113",
+                        "raw": "ip4:4.234.102.113",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "83.166.68.0/24",
+                        "raw": "ip4:83.166.68.0/24",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "83.166.65.128/25",
+                        "raw": "ip4:83.166.65.128/25",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "20.174.48.187",
+                        "raw": "ip4:20.174.48.187",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "20.174.59.72",
+                        "raw": "ip4:20.174.59.72",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "20.174.66.144",
+                        "raw": "ip4:20.174.66.144",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "20.174.69.203",
+                        "raw": "ip4:20.174.69.203",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "20.233.218.121",
+                        "raw": "ip4:20.233.218.121",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "20.233.218.160",
+                        "raw": "ip4:20.233.218.160",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "20.233.218.207",
+                        "raw": "ip4:20.233.218.207",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "20.233.224.232",
+                        "raw": "ip4:20.233.224.232",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "20.233.218.228",
+                        "raw": "ip4:20.233.218.228",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "20.233.219.34",
+                        "raw": "ip4:20.233.219.34",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "34.166.73.220",
+                        "raw": "ip4:34.166.73.220",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "74.162.204.20",
+                        "raw": "ip4:74.162.204.20",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "20.233.224.178",
+                        "raw": "ip4:20.233.224.178",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "20.233.215.143",
+                        "raw": "ip4:20.233.215.143",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "74.162.177.207",
+                        "raw": "ip4:74.162.177.207",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "20.233.207.35",
+                        "raw": "ip4:20.233.207.35",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "34.166.135.79",
+                        "raw": "ip4:34.166.135.79",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "34.166.2.38",
+                        "raw": "ip4:34.166.2.38",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "34.166.133.89",
+                        "raw": "ip4:34.166.133.89",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "34.166.152.195",
+                        "raw": "ip4:34.166.152.195",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "34.166.108.198",
+                        "raw": "ip4:34.166.108.198",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "34.166.90.102",
+                        "raw": "ip4:34.166.90.102",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "34.166.140.33",
+                        "raw": "ip4:34.166.140.33",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "34.166.85.196",
+                        "raw": "ip4:34.166.85.196",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "34.166.30.172",
+                        "raw": "ip4:34.166.30.172",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "34.166.84.187",
+                        "raw": "ip4:34.166.84.187",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "34.166.71.233",
+                        "raw": "ip4:34.166.71.233",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "35.252.62.60",
+                        "raw": "ip4:35.252.62.60",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "35.252.62.135",
+                        "raw": "ip4:35.252.62.135",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "35.252.61.180",
+                        "raw": "ip4:35.252.61.180",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "35.252.61.114",
+                        "raw": "ip4:35.252.61.114",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "35.252.60.77",
+                        "raw": "ip4:35.252.60.77",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "35.252.59.7",
+                        "raw": "ip4:35.252.59.7",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "35.252.58.107",
+                        "raw": "ip4:35.252.58.107",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "35.252.56.113",
+                        "raw": "ip4:35.252.56.113",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "35.252.50.97",
+                        "raw": "ip4:35.252.50.97",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "35.252.41.5",
+                        "raw": "ip4:35.252.41.5",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "35.252.41.117",
+                        "raw": "ip4:35.252.41.117",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "35.252.40.43",
+                        "raw": "ip4:35.252.40.43",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "35.252.40.207",
+                        "raw": "ip4:35.252.40.207",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "35.252.36.130",
+                        "raw": "ip4:35.252.36.130",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "35.252.33.130",
+                        "raw": "ip4:35.252.33.130",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "34.166.46.195",
+                        "raw": "ip4:34.166.46.195",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "34.166.212.205",
+                        "raw": "ip4:34.166.212.205",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "34.166.210.67",
+                        "raw": "ip4:34.166.210.67",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "34.166.174.162",
+                        "raw": "ip4:34.166.174.162",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "34.166.133.23",
+                        "raw": "ip4:34.166.133.23",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "83.166.88.0/23",
+                        "raw": "ip4:83.166.88.0/23",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "83.166.67.0/24",
+                        "raw": "ip4:83.166.67.0/24",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "172.195.81.17",
+                        "raw": "ip4:172.195.81.17",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "68.155.218.57",
+                        "raw": "ip4:68.155.218.57",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "68.155.136.170",
+                        "raw": "ip4:68.155.136.170",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "68.155.83.55",
+                        "raw": "ip4:68.155.83.55",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "68.155.83.138",
+                        "raw": "ip4:68.155.83.138",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "68.155.233.236",
+                        "raw": "ip4:68.155.233.236",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "68.155.224.203",
+                        "raw": "ip4:68.155.224.203",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "172.195.82.34",
+                        "raw": "ip4:172.195.82.34",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "158.23.224.244",
+                        "raw": "ip4:158.23.224.244",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "68.155.235.221",
+                        "raw": "ip4:68.155.235.221",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "172.195.83.184",
+                        "raw": "ip4:172.195.83.184",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "172.195.74.0",
+                        "raw": "ip4:172.195.74.0",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "68.155.236.112",
+                        "raw": "ip4:68.155.236.112",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "172.195.74.36",
+                        "raw": "ip4:172.195.74.36",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "68.155.240.147",
+                        "raw": "ip4:68.155.240.147",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "158.23.228.24",
+                        "raw": "ip4:158.23.228.24",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "68.155.241.55",
+                        "raw": "ip4:68.155.241.55",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "68.155.242.242",
+                        "raw": "ip4:68.155.242.242",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "68.155.217.123",
+                        "raw": "ip4:68.155.217.123",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "68.155.137.1",
+                        "raw": "ip4:68.155.137.1",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "all",
+                        "qualifier": "~",
+                        "value": null,
+                        "raw": "~all",
+                        "costs_lookup": false
+                      }
+                    ],
+                    "modifiers": {},
+                    "errors": [],
+                    "all_qualifier": "~",
+                    "direct_lookup_count": 0
+                  },
+                  "duplicate_spf_records": false,
+                  "definite": true
+                },
+                {
+                  "domain": "_include4.paytm.com",
+                  "rcode": "NOERROR",
+                  "record": {
+                    "raw": "v=spf1 ip4:52.76.104.219/32 ip4:13.233.53.26/32 include:910033d5.ppspf.net -all",
+                    "valid": true,
+                    "terms": [
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "52.76.104.219/32",
+                        "raw": "ip4:52.76.104.219/32",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "13.233.53.26/32",
+                        "raw": "ip4:13.233.53.26/32",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "include",
+                        "qualifier": "+",
+                        "value": "910033d5.ppspf.net",
+                        "raw": "include:910033d5.ppspf.net",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "all",
+                        "qualifier": "-",
+                        "value": null,
+                        "raw": "-all",
+                        "costs_lookup": false
+                      }
+                    ],
+                    "modifiers": {},
+                    "errors": [],
+                    "all_qualifier": "-",
+                    "direct_lookup_count": 1
+                  },
+                  "duplicate_spf_records": false,
+                  "definite": true
+                },
+                {
+                  "domain": "910033d5.ppspf.net",
+                  "rcode": "NOERROR",
+                  "record": {
+                    "raw": "v=spf1 exists:%{ir}._spf.netcorecloud.net -all",
+                    "valid": true,
+                    "terms": [
+                      {
+                        "mechanism": "exists",
+                        "qualifier": "+",
+                        "value": "%{ir}._spf.netcorecloud.net",
+                        "raw": "exists:%{ir}._spf.netcorecloud.net",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "all",
+                        "qualifier": "-",
+                        "value": null,
+                        "raw": "-all",
+                        "costs_lookup": false
+                      }
+                    ],
+                    "modifiers": {},
+                    "errors": [],
+                    "all_qualifier": "-",
+                    "direct_lookup_count": 1
+                  },
+                  "duplicate_spf_records": false,
+                  "definite": true
+                }
+              ],
+              "total_lookups": 18,
+              "limit": 10,
+              "exceeded": true,
+              "problems": [
+                "include loop: amazonses.com is already in the chain",
+                "include loop: _spf.google.com is already in the chain"
+              ],
+              "definite": true
+            }
+          }
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T11:46:29.864029Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "paytm.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "nqh074ffxh6cg354v5qgtv438vbr1fmr",
+                "zncxhjkw1p4h6rmgbnl85p7678l1s0lb",
+                "xd5bmqslydc2qghxq87f5jkc4dvlqs74",
+                "MS=10282021",
+                "hpe-greenlake-domain-verification=736d446d4c744e2d74746c48564f4b53544a48473876314a52487634376a4959",
+                "atlassian-domain-verification=wBkA9l9cAkKCRbEDd1t/AxmSMo5u/44IWT9DxtWScBjBKC8twpo/I2yhGoLZ/qTo",
+                "MS=ms10282021",
+                "tfxc9ygpq5k65807s5bj9lrm5zkjx99p",
+                "_ohx9wucw69spxm95lad10wwy7ixocyk",
+                "amazonses:LWXYzNDz97HfT2/QevyERAj570gnCy9h5ba1SIdHdfA=",
+                "cursor-domain-verification-7fs8ee=rEZ116QCrFd84UcWz19goUcf5",
+                "14c34xr771wn93wtdyq9kx1t7j2y1ydb",
+                "vAjntCVONTm6xd6/Zjdla9f2PZXIhdob1LuOKms4rbQ=",
+                "MS=6341152B9423543860BFE82B9CBE44FB96BDFB19",
+                "amazonses:UBMnTGuTG1ddAGNSF+//kk0Ay+bG78S+2sVSolFSOlg=",
+                "amazonses:7XabL68hzjmAMz9xh+xv5zq9p67Z/tGQQl8M4KYcHiM=",
+                "apple-domain-verification=Lb2QXBpJpDMp72II",
+                "k8992rr9s318454k3kklt800h3jffckm",
+                "atlassian-sending-domain-verification=f1166fae-8a67-465f-97e4-af7be4985639",
+                "jamf-site-verification=8kNKb6_iJNyPHYT89r4-dg",
+                "anthropic-domain-verification-7vzn6p=mBNFigbhUho0ofEdrAwlzBl4G",
+                "asv=a6ff2b03eec006950453331350d45f6c",
+                "google-site-verification=y_IZiW0IuexfXK1qw51Gfoqrn0cZOv9glKe8TGhoDqY",
+                "v=spf1 ip4:13.127.134.11 ip4:54.240.85.29 ip4:54.240.85.30 include:amazonses.com include:_include1.paytm.com include:_include2.paytm.com include:_spf.salesforce.com include:_spf.google.com include:servers.mcsv.net include:email.onedirect.in include:email-messaging.com -all",
+                "wiz-domain-verification=f6d7b4796a53850158dcd7b59c561bba5e2feb91b0cb3cd73862a74e9a5b8b69",
+                "OSSRH-82568",
+                "google-site-verification=h8wm7P17qMYkSfARepjour4urvRE7ql07w2fHZgJIDg",
+                "google-site-verification=pPwlV980KnyiBTpL11QH-KNFR8NbPqfNsj404iEMMJg",
+                "globalsign-domain-verification=7A10D5AFD979C51C98BCA00B251102F3",
+                "5ajcnlk.ng.impervadns.net",
+                "_dqmagybzw0vm244qbvvyw2m5giv60il",
+                "m5gh704hlkqtdys2blf83twdl2r0pwcv",
+                "d90rdsg118rspmlddjwmhq1xkh2jkw1f",
+                "amazonses:htyWxncjzmnINnrUYG1SIhJOjIDg3XQehwCvBqav3Uo=",
+                "amazonses:f2cgo/64/ZR3Wc3M9u8yW+JqF/C6AamF3tP6gjqSzWw=",
+                "_jy0clu426k0zab2i8hh13xe2jdgvkso",
+                "amazonses:nEOm4A5cBWbInNrqT7VT/JNqwdNxSGddWDrMrGh1lOw="
+              ],
+              "ttl": 60,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "paytm.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "Evaluating this SPF policy needs 18 DNS lookups, above the limit of 10 in RFC 7208 section 4.6.4. The chain is: paytm.com (8) -> amazonses.com (0) -> _include1.paytm.com (4) -> _include2.paytm.com (0) -> _spf.salesforce.com (1) -> _spf.google.com (0) -> servers.mcsv.net (0) -> email.onedirect.in (0) -> email-messaging.com (1) -> _spf.one97.net (1) -> _include3.paytm.com (1) -> _onenine7.paytm.com (0) -> spf1.email-messaging.com (0) -> _include4.paytm.com (1) -> 910033d5.ppspf.net (1).",
+      "impact": "Receivers stop evaluating and return permerror, so SPF fails for this domain entirely. Legitimate mail can be rejected and forged mail is not caught.",
+      "remediation": "Reduce the chain below ten lookups. The usual fix is to replace include: terms for providers you no longer use, and to flatten a provider's ranges into ip4:/ip6: terms - those cost no lookups at all.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7208#section-4.6.4"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T11:46:29.864033Z",
+      "first_seen_scan_id": "01M4DNC55ZFM50FG2927NFFGXT",
+      "last_seen": "2026-10-08T11:46:29.864033Z",
+      "last_seen_scan_id": "01M4DNC55ZFM50FG2927NFFGXT",
+      "cost": {
+        "requests": 50,
+        "wall_ms": 1192,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:3aee62537547261bc0bfc93047e85bb12737dbfa32180b22879329dfb13166c1",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.2.0",
+      "check_id": "dmarc-alignment",
+      "renamed_from": [],
+      "title": "DMARC uses relaxed alignment",
+      "target": {
+        "type": "domain",
+        "value": "paytm.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "info",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "informational",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the adkim= and aspf= tags are read directly, and default to relaxed"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _dmarc.paytm.com",
+          "captured_at": "2026-10-08T11:46:29.870600Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.paytm.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=reject; pct=100; rua=mailto:dmarc-report@paytm.com; ruf=mailto:dmarc-report@paytm.com"
+              ],
+              "ttl": 300,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-88cde156.paytm.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T11:46:29.870616Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.paytm.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=reject; pct=100; rua=mailto:dmarc-report@paytm.com; ruf=mailto:dmarc-report@paytm.com"
+              ],
+              "ttl": 49,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "paytm.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "DMARC alignment is relaxed (adkim=r, aspf=r). Relaxed alignment accepts any subdomain of paytm.com in the authenticated identifier.",
+      "impact": "Relaxed alignment is the default and is appropriate for most senders. It does mean that anyone able to publish records under a subdomain can pass DMARC for the parent.",
+      "remediation": "If every legitimate sender signs and sends as the exact domain, set adkim=s and aspf=s. If subdomains send mail, relaxed is the correct setting and no change is needed.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7489#section-3.1"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T11:46:29.870622Z",
+      "first_seen_scan_id": "01M4DNC55ZFM50FG2927NFFGXT",
+      "last_seen": "2026-10-08T11:46:29.870622Z",
+      "last_seen_scan_id": "01M4DNC55ZFM50FG2927NFFGXT",
+      "cost": {
+        "requests": 51,
+        "wall_ms": 1199,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:b45ce0d39b6263b9042b67010df7b8982b27a39f9e937c24c5e605ef01e0c315",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.2.0",
+      "check_id": "dkim-weak-key",
+      "renamed_from": [],
+      "title": "DKIM key is below 2048 bits",
+      "target": {
+        "type": "domain",
+        "value": "paytm.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.9677,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 30.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the modulus length is measured from the key itself; every common selector is read, but a domain may publish others we cannot find"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at google._domainkey.paytm.com",
+          "captured_at": "2026-10-08T11:46:29.877506Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "google._domainkey.paytm.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCQ2wHGJmQznirfd92Wrw3mbRsNfDA+JemjPa7okrx4XDZK2Zv//MtNLQeammM5UJoEzcb5Et6Zu7bz1bupIoZJgV3Wma7fBd+010TKgxcPkz/i7dW7beC9yWsT54GqlJLyDpJO00xM0P0g95YtMexSBzmQqAj4es4K1Wq6pzr3xwIDAQAB"
+              ],
+              "ttl": 3600,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-88cde156.paytm.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": {
+            "dkim_keys": [
+              {
+                "selector": "google",
+                "raw": "v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCQ2wHGJmQznirfd92Wrw3mbRsNfDA+JemjPa7okrx4XDZK2Zv//MtNLQeammM5UJoEzcb5Et6Zu7bz1bupIoZJgV3Wma7fBd+010TKgxcPkz/i7dW7beC9yWsT54GqlJLyDpJO00xM0P0g95YtMexSBzmQqAj4es4K1Wq6pzr3xwIDAQAB",
+                "valid": true,
+                "tags": {
+                  "v": "DKIM1",
+                  "k": "rsa",
+                  "p": "<216 base64 chars>"
+                },
+                "errors": [],
+                "key_type": "rsa",
+                "key_bits": 1024,
+                "revoked": false,
+                "testing": false
+              },
+              {
+                "selector": "default",
+                "raw": "v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC+22c9TJ7qMNFM3AVRhNdVWyNNV1km5uFdN52Z2l3/oGTOxBLyIj1gGIUINsMdPXL4CiF82k8jLQT9e8JkG3+jxKrUsrzxUVxw1b4nO8u2JBapWj3pLMHG2v8GsnGb9cgpL+enHVI1bYdVuHrRP9aFvkrmuI5o4rSt1eG6CdSKvQIDAQAB",
+                "valid": true,
+                "tags": {
+                  "v": "DKIM1",
+                  "k": "rsa",
+                  "p": "<216 base64 chars>"
+                },
+                "errors": [],
+                "key_type": "rsa",
+                "key_bits": 1024,
+                "revoked": false,
+                "testing": false
+              },
+              {
+                "selector": "k2",
+                "raw": "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAv2aC2KjGKLOwTweBY5A9RpjsxaBXR9r7OAU6U8/zn92ivImI75naUujWbItRI/QmL1jy5PWGqLwoUA0b90ObWaLDc+i9MtTNmGeWO009hr20fIxhGg6XBT2kjZ1DTThopSe1nAndsupmcBwlQ5Q6LJ+ZAxLcujnPIxM0ZBLmgpkv8u6RfY4eFP8OLvdAW3oSuB0DyLDigQX4Sj8wBO4YIdQH6AAmBeOsidsKAFNFUCpc3vCxtBDR12U+cBg724l3sBkMQ8evnz6idnqxq9QAVYh8k4kJ+RP+6cqTdy7LjIm8xY/bQNpQIpGUAuDo2DjLcCDun9DAI4Q/3z+Q0o9QuQIDAQAB;",
+                "valid": true,
+                "tags": {
+                  "v": "DKIM1",
+                  "k": "rsa",
+                  "p": "<392 base64 chars>"
+                },
+                "errors": [],
+                "key_type": "rsa",
+                "key_bits": 2048,
+                "revoked": false,
+                "testing": false
+              },
+              {
+                "selector": "s1",
+                "raw": "k=rsa; t=s; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuxftgedv1e3lnVTR6+k9RfnnR+5yuqb2joeMErseEcDX4jpqVsWOTuSF8AFBA5dVoQkj3QYXzR/tbkBZ2kv4G4dAiZBHgBDhkx8TT9vcrT/whKVpTe3rZuP+TcKKBO/TJjX6+eW1Hw3OyVpAzZUSKfJlCeuT+4K1on/B7fCuzsFjCHYWDRabPoiaZ2pQ6eKobdpJTPY9rkuG+a1vNdRYfvwkC/ym6xqD8YPndkf2otyyKC+E/qCHPiWCylK02zKNCb93LHG1+41UeJ1tAXm174HT0PBd7/6fpuVIMI3ZW4mFcGSu0eZgiX/7IUNrXY+0SjRbny/IAEDwMccjwRuxVQIDAQAB",
+                "valid": true,
+                "tags": {
+                  "k": "rsa",
+                  "t": "s",
+                  "p": "<392 base64 chars>"
+                },
+                "errors": [],
+                "key_type": "rsa",
+                "key_bits": 2048,
+                "revoked": false,
+                "testing": false
+              },
+              {
+                "selector": "s2",
+                "raw": "k=rsa; t=s; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC8POEYfQ9uLXU4i+DmDt9Y40kdex/013ukx8LS4CkeO0VxrNg5sgSxbzqeGUCmoGEE1cyYN0E7ltEzT+nmvSpxPkqwB2h5p04yDPk+bB+cIbU/M5Obr6haxs0XBQc4IMU0H2WHLDtoqPbKAfmyHEakD/hqfJIsoKhHtiRN7IwJnwIDAQAB",
+                "valid": true,
+                "tags": {
+                  "k": "rsa",
+                  "t": "s",
+                  "p": "<216 base64 chars>"
+                },
+                "errors": [],
+                "key_type": "rsa",
+                "key_bits": 1024,
+                "revoked": false,
+                "testing": false
+              }
+            ]
+          }
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T11:46:29.877519Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "google._domainkey.paytm.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCQ2wHGJmQznirfd92Wrw3mbRsNfDA+JemjPa7okrx4XDZK2Zv//MtNLQeammM5UJoEzcb5Et6Zu7bz1bupIoZJgV3Wma7fBd+010TKgxcPkz/i7dW7beC9yWsT54GqlJLyDpJO00xM0P0g95YtMexSBzmQqAj4es4K1Wq6pzr3xwIDAQAB"
+              ],
+              "ttl": 3295,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "paytm.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "DKIM keys below 2048 bits are published at google._domainkey.paytm.com (1024 bits) and default._domainkey.paytm.com (1024 bits) and s2._domainkey.paytm.com (1024 bits). Each meets the RFC 8301 minimum of 1024 bits, below the recommended 2048. The domain also publishes k2._domainkey.paytm.com, s1._domainkey.paytm.com. We cannot tell from DNS which selector it signs its mail with. RFC 6376 section 6.1.2 has a verifier fetch the key named by the signature's s= tag, so a signature may name any selector the domain publishes, the weaker one included.",
+      "impact": "This is a margin, not a break: RFC 8301 permits the key, and recommends 2048 bits for signers. Moving to 2048 bits brings the domain in line with that recommendation.",
+      "remediation": "If a weaker selector is no longer used for signing, remove its record. Otherwise generate a new 2048-bit key with your mail provider, publish it under a new selector, switch signing to it, and remove the old selector once no mail is signed with it.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc8301"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T11:46:29.877522Z",
+      "first_seen_scan_id": "01M4DNC55ZFM50FG2927NFFGXT",
+      "last_seen": "2026-10-08T11:46:29.877522Z",
+      "last_seen_scan_id": "01M4DNC55ZFM50FG2927NFFGXT",
+      "cost": {
+        "requests": 52,
+        "wall_ms": 1206,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:f790f6a5bb5d868dfcdb02cc3d5958d8a28efe5390a7a44c104feda142e792a5",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.2.0",
+      "check_id": "mta-sts-missing",
+      "renamed_from": [],
+      "title": "No MTA-STS policy published",
+      "target": {
+        "type": "domain",
+        "value": "paytm.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "a definite TXT answer at _mta-sts with no v=STSv1 term is direct observation"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _mta-sts.paytm.com",
+          "captured_at": "2026-10-08T11:46:29.907405Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_mta-sts.paytm.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-88cde156.paytm.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T11:46:29.907427Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_mta-sts.paytm.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "paytm.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "No MTA-STS policy record is published at _mta-sts.paytm.com.",
+      "impact": "Without MTA-STS a sending server that cannot negotiate TLS will deliver mail in plaintext rather than refusing, so an attacker positioned on the network can strip encryption and read the message.",
+      "remediation": "Publish a TXT record at _mta-sts.paytm.com of the form 'v=STSv1; id=<timestamp>', and serve the matching policy file at https://mta-sts.paytm.com/.well-known/mta-sts.txt. Start the policy in mode: testing, then move to mode: enforce.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc8461"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T11:46:29.907430Z",
+      "first_seen_scan_id": "01M4DNC55ZFM50FG2927NFFGXT",
+      "last_seen": "2026-10-08T11:46:29.907430Z",
+      "last_seen_scan_id": "01M4DNC55ZFM50FG2927NFFGXT",
+      "cost": {
+        "requests": 54,
+        "wall_ms": 1235,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:5d1163cee392a7c3e8407fdc011739538a61ced6e5bbdc2a10d437372e67d5a2",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.2.0",
+      "check_id": "tls-rpt-missing",
+      "renamed_from": [],
+      "title": "No SMTP TLS reporting configured",
+      "target": {
+        "type": "domain",
+        "value": "paytm.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "a definite TXT answer at _smtp._tls with no v=TLSRPTv1 term is direct observation"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _smtp._tls.paytm.com",
+          "captured_at": "2026-10-08T11:46:29.939304Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_smtp._tls.paytm.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-88cde156.paytm.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T11:46:29.939334Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_smtp._tls.paytm.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "paytm.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "No SMTP TLS reporting record is published at _smtp._tls.paytm.com.",
+      "impact": "Nobody is told when a sending server fails to establish TLS to your mail servers, so a downgrade attack or a broken certificate goes unnoticed.",
+      "remediation": "Publish a TXT record at _smtp._tls.paytm.com of the form 'v=TLSRPTv1; rua=mailto:tls-reports@paytm.com'.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc8460"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T11:46:29.939341Z",
+      "first_seen_scan_id": "01M4DNC55ZFM50FG2927NFFGXT",
+      "last_seen": "2026-10-08T11:46:29.939341Z",
+      "last_seen_scan_id": "01M4DNC55ZFM50FG2927NFFGXT",
+      "cost": {
+        "requests": 56,
+        "wall_ms": 1267,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    }
+  ],
+  "errors": [],
+  "telemetry": {
+    "checks_run": [
+      {
+        "check_id": "spf-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-multiple-records",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-invalid",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-invalid",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-policy-none",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "mx-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dkim-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-too-permissive",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-lookup-limit",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-pct-partial",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-no-rua",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-alignment",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "dkim-weak-key",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "mta-sts-missing",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "tls-rpt-missing",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "spoofing-possible",
+        "outcome": "clear",
+        "location": "$"
+      }
+    ],
+    "suppressed": [],
+    "requests": 56,
+    "wall_ms": 1268,
+    "ai_tokens": 0
+  },
+  "started_at": null,
+  "finished_at": "2026-10-08T11:46:29.939527Z",
+  "killed": false,
+  "outcome": "succeeded"
+}

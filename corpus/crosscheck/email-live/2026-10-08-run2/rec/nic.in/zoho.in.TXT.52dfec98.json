@@ -1,0 +1,22 @@
+{
+  "flags": [],
+  "name": "zoho.in",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 include:spf.zoho.in -all",
+    "_odk9nzz8irx9ipssnr3c1e4my1ler9w",
+    "_p8k0jgoabpaa2bmec0g4qsny4r7yjo4",
+    "k5r7tv7tyltxpg4kp69fr2hq93q1sxg0",
+    "qgmfnjv1363dphx7wf7s826mpnhg7y1x",
+    " _y4wdv36c2hbspdxzljpafhhhevf0vkr",
+    "spycloud-domain-verification=c1b570e8-0b4d-4362-8456-ccdfb59c3b28",
+    "google-site-verification=32ZiCrVTrSkqub9qJrWkq0pNV55pGE3hUpp7Atvzkwk",
+    "google-site-verification=Px2OOaSn-PcFIRKEZpdXI-fCDa13ZkiAh5XCrIerzG8",
+    "google-site-verification=Q87UCAjCv6rHUvjG9FG18j0IEiYjLuNUTPWyeRz3Umk",
+    "google-site-verification=vQ-8T_iMTWPVMi11EeH2yldGE6i5WHQSDkAqeWDeBBc",
+    "site24x7-signals-domain-verification=dece7e1bf6650cc3c1f524bb61b30678"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 300
+}

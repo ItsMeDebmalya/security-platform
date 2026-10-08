@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_mta-sts.cloudflare.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=STSv1;id=1769609691387;"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 300
+}

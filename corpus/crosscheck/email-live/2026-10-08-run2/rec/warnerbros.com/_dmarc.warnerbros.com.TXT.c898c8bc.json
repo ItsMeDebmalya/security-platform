@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_dmarc.warnerbros.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DMARC1; p=quarantine; rua=mailto:dmarc_agg@vali.email,mailto:postmaster@warnerbros.com; ruf=mailto:Njk0@ruf.vali.email"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 600
+}
