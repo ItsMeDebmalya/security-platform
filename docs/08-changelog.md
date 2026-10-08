@@ -382,3 +382,16 @@ tail -n +3 docs/archive/tools-and-features-list.md > tools-and-features-list.md 
 tail -n +3 docs/archive/tools-and-features-list-v2.md > /tmp/v2 && mv /tmp/v2 docs/archive/tools-and-features-list-v2.md
 ```
 Then restore the entry-point lines in `CLAUDE.md` and `SPEC.md`, and the revert step above, to point at `tools-and-features-list.md` again.
+
+---
+
+## v4.0-pre.1 — ADR-027, fixtures stand in for real services only on recorded evidence (2026-10-08)
+
+**What changed.**
+- [ADR-027](02-decisions.md#adr-027--a-fixture-may-stand-in-for-a-real-service-only-on-recorded-evidence) was added. A corpus generator may hand-write a third party's response only if a cited recording of the real service backs it. Generated HTTP responses carry realistic header sets, and a contract test is to reject any HTTP fixture with no headers.
+- It was prompted by the corpus-fidelity audit (ledger, 2026-10-08). Two `domscout` checks pass their gate and are broken in production (D28, D31).
+- `CLAUDE.md` now lists ADRs 001–027.
+- `SPEC.md` marks `email` "corpus-validated, live-unverified" (D35) and records the two broken `domscout` checks.
+- No code, fixture or contract changed.
+
+**Revert.** Delete the ADR-027 section from `docs/02-decisions.md`, restore "001–026" in `CLAUDE.md`, and remove the two `SPEC.md` notes. The contract test it calls for does not exist yet, so there is nothing to remove from code.
