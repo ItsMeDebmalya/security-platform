@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "gov.uk",
+  "rcode": "NODATA",
+  "records": [],
+  "resolver": "8.8.8.8",
+  "rrtype": "MX",
+  "ttl": null
+}

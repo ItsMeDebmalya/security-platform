@@ -1,0 +1,30 @@
+{
+  "flags": [],
+  "name": "irctc.co.in",
+  "rcode": "NOERROR",
+  "records": [
+    "0zgc4524vg0d9thj8pyg7qr3vnlfkx91",
+    "4q3s4sr172fl7lkxlc03l0fpghwk9s7m",
+    "_3bq7lb5x5rbo5k10hz7mumelmbe0qog",
+    "_42kvjkm54dn5i5larg74fhdehk8x4u9",
+    "_5q72embvkl5bfjsh421ridpbu3487a3",
+    "_h3jpurmj096e14lk78oxkdxda1ighu6",
+    "_nq9zugnb0tsxqq0l8m2rwawjs81ru9p",
+    "_t5rsdiy0cufmqmbt2h5jdf3eu516d92",
+    "_xrby4w1q1193xc3fyvfo2oask27dtsc",
+    "b56b6l6scxsbr0lm137s7rhy8ggjdpnd",
+    "lx6b630qvjmdqx3n8sgk62n84qmd8qlc",
+    "MS=AE10793783FFF82C6285B327A9FF2B4641EF35FE",
+    "9E3vF4sIMm/3Ldo6szlZ8pWgeLUJEHlLrWkvfKrcYZE=",
+    "google-site-verification=JociDujdqTdVoleuEU1k9bICFBewNaGISdLInQznjZE",
+    "google-site-verification=oANjEiIQzDPt7Zn8m2z4wYrbGt59cVHuAsYEtZnXapo",
+    "_globalsign-domain-verification=6bOiQVZbXwzvd5URAAT8asYH84yJJEg-scq7YpW9D3",
+    "_globalsign-domain-verification=Le50Yt2rZtYy8T37z9FxGqcmU0B3R6mx833glC0AYR",
+    "_globalsign-domain-verification=LnPitG2mJkipUS8WE7VFSrsaM-6mtjr6uSKtCJ-FaJ",
+    "_globalsign-domain-verification=Oeq6aLmwjM4zrOQhv1C9XJo7mSrtuV6GQAGgYQkwcG",
+    "v=spf1 ip4:103.116.160.0/24 ip4:103.116.163.13/32 ip4:103.252.142.31/32 ip4:103.116.163.33/32 -all"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 86400
+}

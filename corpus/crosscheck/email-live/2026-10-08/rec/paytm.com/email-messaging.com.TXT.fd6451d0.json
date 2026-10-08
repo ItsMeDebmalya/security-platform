@@ -1,0 +1,12 @@
+{
+  "flags": [],
+  "name": "email-messaging.com",
+  "rcode": "NOERROR",
+  "records": [
+    "LbIBYRJ+zggcjKw9VmC6sqs3kKnjmhIK6aTOQXL6RWg=",
+    "v=spf1 include:spf1.email-messaging.com ~all"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 300
+}

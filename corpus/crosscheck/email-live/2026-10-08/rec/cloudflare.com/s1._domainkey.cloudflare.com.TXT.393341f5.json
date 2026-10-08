@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "s1._domainkey.cloudflare.com",
+  "rcode": "NOERROR",
+  "records": [
+    "k=rsa; t=s; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA1m74n5R+xcz+ICbNBWRIlQeHI65Hjp67+P59XSe71jItafrcJ4/5y/UvU+uNg7KNeOcEsotGo7QvLN87hqZSZqfzVyyGnQuEUXoKPdKokD6Pa5KmJSqbA5Y/f977HpikU9Xtd7Orc7ctRLK6H5QFvGwRi+oC9NRkgNB55UUnLbbkKK+LGeTw4Ghmr5gupw7iYzFXZ1qlFNqV6s9Pmgb+b7oDv+OfQxB/MJyUzQ5eWdKlJWfmW3s77J3fHFfysUbKKUBxEXPxNiMFRG1ClllZ4+AYRh1jrFpjbvZ5j43kqahKXeHDNkF+Gpptd7ufWIevAPTQDSVdKB9vyJQN6wfcQQIDAQAB"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 1800
+}

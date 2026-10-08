@@ -1,0 +1,14 @@
+{
+  "flags": [],
+  "name": "cloudflare.com",
+  "rcode": "NOERROR",
+  "records": [
+    "5 mxa-canary.global.inbound.cf-emailsecurity.net.",
+    "5 mxb-canary.global.inbound.cf-emailsecurity.net.",
+    "10 mxa.global.inbound.cf-emailsecurity.net.",
+    "10 mxb.global.inbound.cf-emailsecurity.net."
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "MX",
+  "ttl": 1094
+}

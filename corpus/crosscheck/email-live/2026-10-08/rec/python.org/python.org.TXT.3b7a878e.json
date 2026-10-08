@@ -1,0 +1,23 @@
+{
+  "flags": [],
+  "name": "python.org",
+  "rcode": "NOERROR",
+  "records": [
+    "888acb5757da46ad83b7e341ec544c64",
+    "MS=73147F1EC0843C399CF17F586EC6B8EAF8C57961",
+    "_globalsign-domain-verification=B57sRQpmte4G4w-gavZbVNmmNsMxGp5kcL19UP2599",
+    "anthropic-domain-verification-x3xt87=cFLP3aL71pAYPZLQR7JKvRhcF",
+    "google-site-verification=9852CbTRhQ51-9gCUayPbGYqJeBle_MXLb6E4AL_qQk",
+    "google-site-verification=QALZObrGl2OVG8lWUE40uVSMCAka316yADn9ZfCU5OA",
+    "google-site-verification=dqhMiMzpbkSyEhgjGKyEOMlEg2tF0MSHD7UN-MYfD-M",
+    "google-site-verification=w3b8mU3wU6cZ8uSrj3E_5f1frPejJskDpSp_nMWJ99o",
+    "libera-1298aas",
+    "openai-domain-verification=dv-VgeNijVDgW7g56UZyGIVyKNr",
+    "status-page-domain-verification=9y2klhzbxsgk",
+    "twilio-domain-verification=1c295667813cc0aaae819ed7657818f8",
+    "v=spf1 mx ip4:188.166.95.178/32 ip6:2a03:b0c0:2:d0::71:1 include:stspg-customer.com include:_spf.google.com include:mailgun.org ~all"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 300
+}

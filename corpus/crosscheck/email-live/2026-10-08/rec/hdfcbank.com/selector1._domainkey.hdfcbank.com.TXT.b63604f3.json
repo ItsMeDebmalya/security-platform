@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "selector1._domainkey.hdfcbank.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxnkem6k8ALtYtwWCpEd2/eHDlLzGX4Ogzkwn7cfPfCnBsymBqZwa43vD+xJtTVMAhMOm6w8r5LT5/H0cnDQIf9/ZX0OuN2efSEecNQpFWJREh+gLIEbSK++weBI3qA00D+mnhhFHMyY8WWRC95EXCLkAtWmivp4KWHjEdlmZV9Ypf6DkYhMJiE3Ov6/97D0y8m8SY3DbFaOCeNNHRhXRZK8PKxl8JNP4C5g2rduB3jD+iisVPD1cIlXxrgpJ6/CimD5cxTq/e/AhXGdwI1R2MKmsdhYeYFODMYADAu8caIFLZ1sJPvuyN1qA5UJusyIiXv8olSuzwwvPbgTeiQfS2QIDAQAB;"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 3600
+}

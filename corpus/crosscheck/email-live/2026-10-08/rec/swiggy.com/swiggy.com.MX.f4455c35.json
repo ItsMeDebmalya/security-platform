@@ -1,0 +1,16 @@
+{
+  "flags": [],
+  "name": "swiggy.com",
+  "rcode": "NOERROR",
+  "records": [
+    "1 aspmx.l.google.com.",
+    "10 alt3.aspmx.l.google.com.",
+    "10 alt4.aspmx.l.google.com.",
+    "10 inbound-smtp.us-east-1.amazonaws.com.",
+    "5 alt1.aspmx.l.google.com.",
+    "5 alt2.aspmx.l.google.com."
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "MX",
+  "ttl": 60
+}

@@ -1,0 +1,17 @@
+{
+  "flags": [],
+  "name": "mailgun.org",
+  "rcode": "NOERROR",
+  "records": [
+    "8f7088gv5932jxw9lwwd1b6ttx2pw2ds",
+    "_8nu1z7buo055obs89jw55hkjzooc4nm",
+    "_zowlnczhs3ly3yr8wkbffswsqqbijle",
+    "bm875fk62qjqg22ls9c0hzvp69fg6v45",
+    "google-site-verification=FIGVOKZm6lQFDBJaiC2DdwvBy8TInunoGCt-1gnL4PA",
+    "v=spf1 include:_spf.mailgun.org include:_spf.eu.mailgun.org -all",
+    "yahoo-verification-key=6SqcA173NI/sqCJxeUdqWBdMhCYOvO3l8KcWWDpf0qY="
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": 31
+}

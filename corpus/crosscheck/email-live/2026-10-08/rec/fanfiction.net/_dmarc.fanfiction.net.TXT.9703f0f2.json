@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_dmarc.fanfiction.net",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DMARC1; p=quarantine; sp=reject; ri=86400; rua=mailto:security@fictionpress.com"
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": 1800
+}

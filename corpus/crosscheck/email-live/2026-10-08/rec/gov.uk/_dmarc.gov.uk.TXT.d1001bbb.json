@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_dmarc.gov.uk",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DMARC1;p=reject;sp=none;np=reject;adkim=s;aspf=s;fo=1;rua=mailto:dmarc-rua@dmarc.service.gov.uk"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 1800
+}

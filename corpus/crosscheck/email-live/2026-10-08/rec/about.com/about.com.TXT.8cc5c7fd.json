@@ -1,0 +1,20 @@
+{
+  "flags": [],
+  "name": "about.com",
+  "rcode": "NOERROR",
+  "records": [
+    "_globalsign-domain-verification=ojigih5w0ef57wjvnpzdo5a4culsziquhumcdqksj2",
+    "adobe-idp-site-verification=4d443bb146b2a60fc0c0216c899a6ef9baa971cc3c36ac4b3020b4719b5c2e82",
+    "airtable-verification=7f23bd05102c5a2c073b0d0689ecaf71",
+    "atlassian-domain-verification=uutqhyge655rxaicqp-iayc/q7ggtojzidouyp0rb7n8oudp4q8wfsgllr1iajvr",
+    "facebook-domain-verification=rf8ocdhxrznl039sodxk5mul9of8l7",
+    "globalsign-domain-verification=w4_cm6jggwq8dxcwhkis6ltg0lzij1oizfjnoapv_d",
+    "google-site-verification=nabvdaatpqecskkkchqujsdsjagdkyi4dg5-vj-bcrw",
+    "openai-domain-verification=dv-7ma37immfvwqj1fwgsn676a6",
+    "slack-domain-verification=op2dusosy3seuyxvj1tjafq1nwifizeevpkitpnr",
+    "v=spf1 ip4 64.125.213.247 ip4 216.223.13.247 ip4 34.194.76.185 ip4 35.164.185.216 ip4 34.194.69.219  include _spf.salesforce.com include _spf.google.com include spf.protection.outlook.com include amazonses.com ~all"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 3600
+}

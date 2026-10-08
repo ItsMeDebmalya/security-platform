@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_dmarc.oraclecloud.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DMARC1;p=quarantine;pct=0;rua=mailto:dmarc_rua@emaildefense.proofpoint.com;ruf=mailto:dmarc_ruf@emaildefense.proofpoint.com;fo=1"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 3600
+}

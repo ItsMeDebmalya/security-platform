@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_dmarc.example.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DMARC1;p=reject;sp=reject;adkim=s;aspf=s"
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": 300
+}

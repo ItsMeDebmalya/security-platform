@@ -1,0 +1,14 @@
+{
+  "flags": [],
+  "name": "iana.org",
+  "rcode": "NOERROR",
+  "records": [
+    "10 pechora1.icann.org.",
+    "10 pechora6.icann.org.",
+    "10 pechora7.icann.org.",
+    "10 pechora8.icann.org."
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "MX",
+  "ttl": 3600
+}

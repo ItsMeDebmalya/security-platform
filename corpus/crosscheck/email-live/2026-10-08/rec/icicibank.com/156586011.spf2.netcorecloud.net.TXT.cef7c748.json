@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "156586011.spf2.netcorecloud.net",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 ip4:202.162.224.0/19 exists:%{ir}._spf.netcorecloud.net -all"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 3600
+}

@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_spf-a.microsoft.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 ip4:216.99.5.67 ip4:216.99.5.68 ip4:202.177.148.100 ip4:203.122.32.250 ip4:202.177.148.110 ip4:213.199.128.139 ip4:213.199.128.145 ip4:207.46.50.72 ip4:207.46.50.82 ip4:65.55.42.224/28 include:spf.protection.outlook.com ~all"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 1819
+}

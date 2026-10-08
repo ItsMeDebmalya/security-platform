@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "google._domainkey.cloudinary.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAmYI0nnz8lyEWtn/P+aZR72D/8J+Bt89yTF9/VjESV12SdYzxW1L59wQYRaQXsaMq2myzJPlZ3dPsGJGs+oTo2Ozb5pDWBdrwzVg22/SEgt2MQ3LlEcCIkGZbf6Z/sShKHChdCHmv6flpsMK5JCMkakd/k+yFj4dXT+aUVu8TQG6QSiHy2ydoQRNKDT9QvFQYRNnHWA7JogURXaz8t98v/VJ5gIaGv7hOPlqqqvJcF+NuxyZd9drjVEMbyklDIxwzs1dYwXRTjmQn1+gh45vLKq2Rg46Ff5whlna4fA0xPNRRva1DM62FsG0jVb88HtbG0RSVQ40l+sR6b2gmxpsV/wIDAQAB"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 300
+}

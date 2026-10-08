@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_dmarc.wipro.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DMARC1; p=quarantine; fo=1; pct=100; ri=3600; rua=mailto:domain.admin@wipro.com;ruf=mailto:domain.admin@wipro.com"
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": 60
+}

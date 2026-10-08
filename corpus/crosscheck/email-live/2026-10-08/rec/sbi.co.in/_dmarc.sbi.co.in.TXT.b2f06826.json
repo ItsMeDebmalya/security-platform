@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_dmarc.sbi.co.in",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DMARC1;p=reject;rua=mailto:dmarc.alerts@sbi.co.in;ruf=mailto:dmarc.ruf@sbi.co.in;fo=1"
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": 1800
+}

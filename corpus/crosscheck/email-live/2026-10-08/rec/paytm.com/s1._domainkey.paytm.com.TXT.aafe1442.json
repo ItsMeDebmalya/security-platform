@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "s1._domainkey.paytm.com",
+  "rcode": "NOERROR",
+  "records": [
+    "k=rsa; t=s; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuxftgedv1e3lnVTR6+k9RfnnR+5yuqb2joeMErseEcDX4jpqVsWOTuSF8AFBA5dVoQkj3QYXzR/tbkBZ2kv4G4dAiZBHgBDhkx8TT9vcrT/whKVpTe3rZuP+TcKKBO/TJjX6+eW1Hw3OyVpAzZUSKfJlCeuT+4K1on/B7fCuzsFjCHYWDRabPoiaZ2pQ6eKobdpJTPY9rkuG+a1vNdRYfvwkC/ym6xqD8YPndkf2otyyKC+E/qCHPiWCylK02zKNCb93LHG1+41UeJ1tAXm174HT0PBd7/6fpuVIMI3ZW4mFcGSu0eZgiX/7IUNrXY+0SjRbny/IAEDwMccjwRuxVQIDAQAB"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 1800
+}

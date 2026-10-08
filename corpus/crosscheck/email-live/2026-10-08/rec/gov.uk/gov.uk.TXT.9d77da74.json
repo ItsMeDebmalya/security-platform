@@ -1,0 +1,15 @@
+{
+  "flags": [],
+  "name": "gov.uk",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 -all",
+    "#Timestamp: 1791456000",
+    "d1v9gv6rnax070.cloudfront.net",
+    "security_contact=https://vulnerability-reporting.service.security.gov.uk",
+    "_globalsign-domain-verification=a5p69EoJN9T_qv6CU2Y_FkAocR4FJpRN84165hHR25"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 86400
+}

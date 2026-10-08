@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "_smtp._tls.reliance.com",
+  "rcode": "NXDOMAIN",
+  "records": [],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": null
+}

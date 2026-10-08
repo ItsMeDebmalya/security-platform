@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "gstatic.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 ?all"
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": 300
+}

@@ -1,0 +1,16 @@
+{
+  "flags": [],
+  "name": "brookings.edu",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 mx include:_spf1.brookings.edu include:_spf2.brookings.edu include:_spf3.brookings.edu include:241939.spf04.hubspotemail.net ip4:216.235.195.0/20 ip4:206.79.6.128/26 ip4:208.40.241.140/30 ip4:216.37.18.6 -all ",
+    "EQI28F2QN0TF1LWARPNLCP8TM5XDS2T2B3CC14XN4",
+    "parkable-domain-verification=nMtszK-QWQ2CpGYv_GjQjxubbCJBAHFfodDSFEKWM5c=",
+    "asv=60b8ca3ac8dfe2a307d07e720cd66d8a",
+    "_n3e3eg05uu6gzy2drneznrxhratqx00",
+    "nintex.6585fe1966f83c75b4b2445f"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 3600
+}

@@ -1,0 +1,780 @@
+{
+  "scanner": "email",
+  "scanner_version": "1.1.0",
+  "target": {
+    "type": "domain",
+    "value": "dnssec-failed.org"
+  },
+  "mode": "standard",
+  "findings": [
+    {
+      "id": "sha256:e0ba01418a34aa557332a3c6e1b63fe4bdb1fcc424c66f06204ed70851946194",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "spf-missing",
+      "renamed_from": [],
+      "title": "No SPF record published",
+      "target": {
+        "type": "domain",
+        "value": "dnssec-failed.org"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "medium",
+      "confidence": 0.5,
+      "confidence_provisional": true,
+      "state": "inconclusive",
+      "no_verdict_reason": "servfail",
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 1.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the lookup produced no usable answer, so nothing moves the prior"
+        }
+      ],
+      "validation": {
+        "attempted": false,
+        "outcome": "unavailable",
+        "method": null
+      },
+      "evidence": [
+        {
+          "label": "TXT at dnssec-failed.org",
+          "captured_at": "2026-10-08T10:43:57.959819Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "dnssec-failed.org",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "SERVFAIL",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-5f047d08.dnssec-failed.org",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "SERVFAIL",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "dnssec-failed.org",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "The TXT lookup for dnssec-failed.org returned SERVFAIL, so we cannot say whether an SPF record is published. That is not the same as there being none.",
+      "impact": "Unknown until the lookup succeeds.",
+      "remediation": "Re-run the scan. A persistent failure usually means a broken delegation or a DNSSEC validation problem on the authoritative nameservers.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7208"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:57.959834Z",
+      "first_seen_scan_id": "01M4DHSB7EYACWSTC101F2T3W1",
+      "last_seen": "2026-10-08T10:43:57.959834Z",
+      "last_seen_scan_id": "01M4DHSB7EYACWSTC101F2T3W1",
+      "cost": {
+        "requests": 21,
+        "wall_ms": 11417,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:928f26bb26a871f5f612a178b219c3a363b6990f0bf39e796eb7e640dd45416d",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "dmarc-missing",
+      "renamed_from": [],
+      "title": "No DMARC record published",
+      "target": {
+        "type": "domain",
+        "value": "dnssec-failed.org"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "high",
+      "confidence": 0.5,
+      "confidence_provisional": true,
+      "state": "inconclusive",
+      "no_verdict_reason": "servfail",
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 1.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the lookup produced no usable answer, so nothing moves the prior"
+        }
+      ],
+      "validation": {
+        "attempted": false,
+        "outcome": "unavailable",
+        "method": null
+      },
+      "evidence": [
+        {
+          "label": "TXT at _dmarc.dnssec-failed.org",
+          "captured_at": "2026-10-08T10:43:57.960101Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.dnssec-failed.org",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "SERVFAIL",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-5f047d08.dnssec-failed.org",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "SERVFAIL",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "dnssec-failed.org",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "The TXT lookup for _dmarc.dnssec-failed.org returned SERVFAIL, so we cannot say whether a DMARC record exists.",
+      "impact": "Unknown until the lookup succeeds.",
+      "remediation": "Re-run the scan. A persistent failure usually means a broken delegation or a DNSSEC validation problem on the authoritative nameservers.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7489"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:57.960106Z",
+      "first_seen_scan_id": "01M4DHSB7EYACWSTC101F2T3W1",
+      "last_seen": "2026-10-08T10:43:57.960106Z",
+      "last_seen_scan_id": "01M4DHSB7EYACWSTC101F2T3W1",
+      "cost": {
+        "requests": 21,
+        "wall_ms": 11417,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:9e13ce74dd25468f0fef192a7d74aac6fa51165e0c04f64f117d349e77374ae1",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "mx-missing",
+      "renamed_from": [],
+      "title": "No MX records published",
+      "target": {
+        "type": "domain",
+        "value": "dnssec-failed.org"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "medium",
+      "confidence": 0.5,
+      "confidence_provisional": true,
+      "state": "inconclusive",
+      "no_verdict_reason": "servfail",
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 1.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the lookup produced no usable answer, so nothing moves the prior"
+        }
+      ],
+      "validation": {
+        "attempted": false,
+        "outcome": "unavailable",
+        "method": null
+      },
+      "evidence": [
+        {
+          "label": "MX at dnssec-failed.org",
+          "captured_at": "2026-10-08T10:43:57.960178Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "dnssec-failed.org",
+              "rrtype": "MX",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "SERVFAIL",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-5f047d08.dnssec-failed.org",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "SERVFAIL",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "dnssec-failed.org",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "The MX lookup for dnssec-failed.org returned SERVFAIL.",
+      "impact": "Unknown until the lookup succeeds.",
+      "remediation": "Re-run the scan. A persistent failure usually means a broken delegation or a DNSSEC validation problem on the authoritative nameservers.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7505"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:57.960182Z",
+      "first_seen_scan_id": "01M4DHSB7EYACWSTC101F2T3W1",
+      "last_seen": "2026-10-08T10:43:57.960182Z",
+      "last_seen_scan_id": "01M4DHSB7EYACWSTC101F2T3W1",
+      "cost": {
+        "requests": 21,
+        "wall_ms": 11417,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:553a8819e86d0cef327bed0afd13f553c06dada625d6df92512ab93058fa85c6",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "dkim-missing",
+      "renamed_from": [],
+      "title": "No DKIM key found",
+      "target": {
+        "type": "domain",
+        "value": "dnssec-failed.org"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "medium",
+      "confidence": 0.5,
+      "confidence_provisional": true,
+      "state": "inconclusive",
+      "no_verdict_reason": "servfail",
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 1.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the lookup produced no usable answer, so nothing moves the prior"
+        }
+      ],
+      "validation": {
+        "attempted": false,
+        "outcome": "unavailable",
+        "method": null
+      },
+      "evidence": [
+        {
+          "label": "TXT at sp-wildcard-probe-5f047d08.dnssec-failed.org",
+          "captured_at": "2026-10-08T10:43:57.960240Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "sp-wildcard-probe-5f047d08.dnssec-failed.org",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "SERVFAIL",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-5f047d08.dnssec-failed.org",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "SERVFAIL",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "dnssec-failed.org",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "None of the 17 common DKIM selectors resolved for dnssec-failed.org. DKIM selector names are chosen freely by the sender and cannot be enumerated, so this does not show that the domain has no DKIM - only that we could not find a key.",
+      "impact": "Unknown: we could not determine whether DKIM is configured.",
+      "remediation": "If you know your selector, check it directly: the record lives at <selector>._domainkey.dnssec-failed.org. Your mail provider's documentation names the selector it uses.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc6376"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:57.960243Z",
+      "first_seen_scan_id": "01M4DHSB7EYACWSTC101F2T3W1",
+      "last_seen": "2026-10-08T10:43:57.960243Z",
+      "last_seen_scan_id": "01M4DHSB7EYACWSTC101F2T3W1",
+      "cost": {
+        "requests": 21,
+        "wall_ms": 11417,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:66f4c27154e19407f2b003b78e1b0cc5db8652ad7f6a8b2df24a7fd8c36c73b6",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "mta-sts-missing",
+      "renamed_from": [],
+      "title": "No MTA-STS policy published",
+      "target": {
+        "type": "domain",
+        "value": "dnssec-failed.org"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.5,
+      "confidence_provisional": true,
+      "state": "inconclusive",
+      "no_verdict_reason": "servfail",
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 1.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the lookup produced no usable answer, so nothing moves the prior"
+        }
+      ],
+      "validation": {
+        "attempted": false,
+        "outcome": "unavailable",
+        "method": null
+      },
+      "evidence": [
+        {
+          "label": "TXT at _mta-sts.dnssec-failed.org",
+          "captured_at": "2026-10-08T10:43:58.783368Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_mta-sts.dnssec-failed.org",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "SERVFAIL",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-5f047d08.dnssec-failed.org",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "SERVFAIL",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "dnssec-failed.org",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "The TXT lookup for _mta-sts.dnssec-failed.org returned SERVFAIL.",
+      "impact": "Unknown until the lookup succeeds.",
+      "remediation": "Re-run the scan. A persistent failure usually means a broken delegation or a DNSSEC validation problem on the authoritative nameservers.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc8461"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:58.783380Z",
+      "first_seen_scan_id": "01M4DHSB7EYACWSTC101F2T3W1",
+      "last_seen": "2026-10-08T10:43:58.783380Z",
+      "last_seen_scan_id": "01M4DHSB7EYACWSTC101F2T3W1",
+      "cost": {
+        "requests": 22,
+        "wall_ms": 12241,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:5ac6b44aa98899379523deb0d841b4e38610e4508a7eef17b0e8cd4ff0973467",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "tls-rpt-missing",
+      "renamed_from": [],
+      "title": "No SMTP TLS reporting configured",
+      "target": {
+        "type": "domain",
+        "value": "dnssec-failed.org"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.5,
+      "confidence_provisional": true,
+      "state": "inconclusive",
+      "no_verdict_reason": "servfail",
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 1.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the lookup produced no usable answer, so nothing moves the prior"
+        }
+      ],
+      "validation": {
+        "attempted": false,
+        "outcome": "unavailable",
+        "method": null
+      },
+      "evidence": [
+        {
+          "label": "TXT at _smtp._tls.dnssec-failed.org",
+          "captured_at": "2026-10-08T10:43:59.430358Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_smtp._tls.dnssec-failed.org",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "SERVFAIL",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-5f047d08.dnssec-failed.org",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "SERVFAIL",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "dnssec-failed.org",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "The TXT lookup for _smtp._tls.dnssec-failed.org returned SERVFAIL.",
+      "impact": "Unknown until the lookup succeeds.",
+      "remediation": "Re-run the scan. A persistent failure usually means a broken delegation or a DNSSEC validation problem on the authoritative nameservers.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc8460"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:59.430371Z",
+      "first_seen_scan_id": "01M4DHSB7EYACWSTC101F2T3W1",
+      "last_seen": "2026-10-08T10:43:59.430371Z",
+      "last_seen_scan_id": "01M4DHSB7EYACWSTC101F2T3W1",
+      "cost": {
+        "requests": 23,
+        "wall_ms": 12888,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:a38bbfceded3fbdd1a1826aca2302a59c7fccb1b3bb4ece1018954e6464b5cfa",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "spoofing-possible",
+      "renamed_from": [],
+      "title": "Mail can be sent as this domain",
+      "target": {
+        "type": "domain",
+        "value": "dnssec-failed.org"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "high",
+      "confidence": 0.5,
+      "confidence_provisional": true,
+      "state": "inconclusive",
+      "no_verdict_reason": "servfail",
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 1.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the lookup produced no usable answer, so nothing moves the prior"
+        }
+      ],
+      "validation": {
+        "attempted": false,
+        "outcome": "unavailable",
+        "method": null
+      },
+      "evidence": [
+        {
+          "label": "TXT at _dmarc.dnssec-failed.org",
+          "captured_at": "2026-10-08T10:43:59.430496Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.dnssec-failed.org",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "SERVFAIL",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-5f047d08.dnssec-failed.org",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "SERVFAIL",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "dnssec-failed.org",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "The published policy could not be read in full, so the receiver's decision cannot be simulated.",
+      "impact": "Unknown until the lookup succeeds.",
+      "remediation": "Re-run the scan. A persistent failure usually means a broken delegation or a DNSSEC validation problem on the authoritative nameservers.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7489"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:59.430500Z",
+      "first_seen_scan_id": "01M4DHSB7EYACWSTC101F2T3W1",
+      "last_seen": "2026-10-08T10:43:59.430500Z",
+      "last_seen_scan_id": "01M4DHSB7EYACWSTC101F2T3W1",
+      "cost": {
+        "requests": 23,
+        "wall_ms": 12888,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    }
+  ],
+  "errors": [],
+  "telemetry": {
+    "checks_run": [
+      {
+        "check_id": "spf-missing",
+        "outcome": "inconclusive",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-missing",
+        "outcome": "inconclusive",
+        "location": "$"
+      },
+      {
+        "check_id": "mx-missing",
+        "outcome": "inconclusive",
+        "location": "$"
+      },
+      {
+        "check_id": "dkim-missing",
+        "outcome": "inconclusive",
+        "location": "$"
+      },
+      {
+        "check_id": "mta-sts-missing",
+        "outcome": "inconclusive",
+        "location": "$"
+      },
+      {
+        "check_id": "tls-rpt-missing",
+        "outcome": "inconclusive",
+        "location": "$"
+      },
+      {
+        "check_id": "spoofing-possible",
+        "outcome": "inconclusive",
+        "location": "$"
+      }
+    ],
+    "suppressed": [],
+    "requests": 23,
+    "wall_ms": 12888,
+    "ai_tokens": 0
+  },
+  "started_at": null,
+  "finished_at": "2026-10-08T10:43:59.430552Z",
+  "killed": false,
+  "outcome": "succeeded"
+}

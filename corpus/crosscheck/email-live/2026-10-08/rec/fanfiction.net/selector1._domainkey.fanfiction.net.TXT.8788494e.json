@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "selector1._domainkey.fanfiction.net",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCbqIYTgc9iP1esOB/5esV1/xP+viR6nMGDSy/zrk1sLYQVBDslvovzXrvCzgcDFFVfaLn6Im82mZ7lwwFA6Xyj1YXLugSKM8yR2X7yrAovV8LnBMXB+aDKDP/zyS0x7V80cY1whVvPR7h5rY6OyN8bHAJiEC8shsjK8f2bXNum2QIDAQAB;"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 28800
+}

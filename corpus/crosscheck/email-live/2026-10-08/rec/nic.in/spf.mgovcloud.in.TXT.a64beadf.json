@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "spf.mgovcloud.in",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 ip4:169.148.142.0/23 ip4:169.148.144.0/23 ip4:43.239.213.0/24 ip4:43.239.215.0/24 ip4:169.148.173.0/24 ~all"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 600
+}

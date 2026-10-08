@@ -1,0 +1,24 @@
+{
+  "flags": [],
+  "name": "tcs.com",
+  "rcode": "NOERROR",
+  "records": [
+    "10 inblrg01.tcs.com.",
+    "10 inblrg03.tcs.com.",
+    "10 Inblrg04.tcs.com.",
+    "10 Inblrg05.tcs.com.",
+    "10 inchng01.tcs.com.",
+    "10 inchng02.tcs.com.",
+    "10 inchng04.tcs.com.",
+    "10 inchng05.tcs.com.",
+    "10 inmumg01.tcs.com.",
+    "10 inmumg02.tcs.com.",
+    "10 Inmumg04.tcs.com.",
+    "10 Inmumg05.tcs.com.",
+    "10 uklong01.tcs.com.",
+    "10 usnjyg01.tcs.com."
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "MX",
+  "ttl": 421
+}

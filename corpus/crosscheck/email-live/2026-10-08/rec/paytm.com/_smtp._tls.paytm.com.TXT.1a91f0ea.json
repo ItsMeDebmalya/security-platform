@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "_smtp._tls.paytm.com",
+  "rcode": "NXDOMAIN",
+  "records": [],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": null
+}

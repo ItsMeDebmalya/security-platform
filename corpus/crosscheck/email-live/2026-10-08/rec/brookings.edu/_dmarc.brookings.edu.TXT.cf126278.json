@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_dmarc.brookings.edu",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DMARC1; p=quarantine; rua=mailto:valimail@analyzer.vali.email; ruf=mailto:valimail@analyzer.vali.email; sp=quarantine; aspf=r; fo=1 "
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 3600
+}

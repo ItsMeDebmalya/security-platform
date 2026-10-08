@@ -1,0 +1,13 @@
+{
+  "flags": [],
+  "name": "transmail.net",
+  "rcode": "NOERROR",
+  "records": [
+    "google-site-verification=PFL8ry5-U8birXeFwl6q4EqNWezDqY8cDaEMuAPuJXE",
+    "google-site-verification=kTsz9Nf4vqDOIzd5FT7N_edI_qgmLXXpgQEyfbYdYnA",
+    "v=spf1 ip4:136.143.188.0/24 ip4:135.84.80.0/24 ip4:135.84.82.0/24 ip4:199.67.64.0/24 ip4:136.143.184.0/24 ip4:165.173.181.0/24 ip4:165.173.183.0/24 ip4:8.39.54.240/29 ip4:8.40.222.240/29 ~all"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 1365
+}

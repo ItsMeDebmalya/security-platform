@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_smtp._tls.sbi.co.in",
+  "rcode": "NOERROR",
+  "records": [
+    "v=TLSRPTv1;rua=mailto:office365.l2@sbi.co.in"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 3600
+}

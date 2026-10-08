@@ -1,0 +1,32 @@
+{
+  "flags": [],
+  "name": "airtel.in",
+  "rcode": "NOERROR",
+  "records": [
+    "airtel.in--pmsxj88cf1fmfqp091011qzzgpnzm2wq",
+    "airtel.in-40qskjfl0rr084dtr0yjrcb3r7w5nv8n",
+    "vb5vdhj4irsfv2bnrln90p84dn",
+    "zgys6vbvqkc3bsz8kvkkqtlbm1j1z8mg",
+    "538nb22w1vwx67t3c39bp3zgb41bsc3x",
+    "v=spf1 a:meeting.videoiq.airtel.in a:dashboard.videoiq.airtel.in include:airtel.com -all",
+    "MS=ms76018696",
+    "ntv52vcbc0l52fbnmaf79isu35",
+    "h2hj2pn0y92h1vv213vx4qcv358f0hnx",
+    "1lqgdnsfp8t0qn79n6kdx7vkg0f5m55v",
+    "5n6m36104g555731c8159xxpk01y7mn9",
+    "security_contact=mailto:securitybugs@airtel.com",
+    "kvw1v8kc00b6sq74bmgskvnc656zvbvm",
+    "sending_domain1080903=13391316b971927b81c1b09fc1fe701a4a5eb507585afdf5af3b3b419e304c0c",
+    "_tvoxqlzd3f304bj7sewxj6s45wgsrnu",
+    "_slm42zy9tcpw6jitxfynbdgy7ucv8op",
+    "_n5zea02m54ta56ohiaroffxx1arca17",
+    "8mjq4ejo7f8qpaq2uttfcddscu",
+    "_ec9cv37c6dxbdlferawxtyvgr6heqs9",
+    "d033qghwc238c1nf9nw4j7hmvtt9j83v",
+    "21F6-15AC-B616-A27A-273F-FAD6-3ED8-7DCE",
+    "701e4vklfj3lt8hef4luka3jbc"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 3600
+}

@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "google._domainkey.zomato.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCUVTCCesywC+FbkLeKi3ID1zUgw/AYfJX8/YnB6Wurl3e5/9HCoV5vbJImoNqaXcK3+GqOOJYa2RuHuybx0eAfCMIVggRd+GXypGdF091JbSyWwE3udickIjuaR1OkY69LtveWtpiaRX7bf7VWBga0QUQWC+rtM3SeHuLFs12MMQIDAQAB"
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": 900
+}

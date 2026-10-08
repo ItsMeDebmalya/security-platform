@@ -1,0 +1,13 @@
+{
+  "flags": [],
+  "name": "bebeautiful.in",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 mx a ptr include:servers.mcsv.net include:_spf.google.com include:amazonses.com include:amazonaws.com include:mail.dms.unileverservices.com -all",
+    "google-site-verification=MI4l6R5Lh8mH-ceEoAtk8gdCwI6_NL0Jv_k9lLC5uV4",
+    "google-site-verification=M3y8dplgpfAU2o7u7snCZY1meH2U7WihDL-xn_knq1Q"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 300
+}

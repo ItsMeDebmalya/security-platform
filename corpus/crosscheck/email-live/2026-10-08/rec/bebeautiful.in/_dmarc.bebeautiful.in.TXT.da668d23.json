@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_dmarc.bebeautiful.in",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DMARC1; p=none;"
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": 300
+}

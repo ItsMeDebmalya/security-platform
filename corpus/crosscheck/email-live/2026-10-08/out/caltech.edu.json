@@ -1,0 +1,1125 @@
+{
+  "scanner": "email",
+  "scanner_version": "1.1.0",
+  "target": {
+    "type": "domain",
+    "value": "caltech.edu"
+  },
+  "mode": "standard",
+  "findings": [
+    {
+      "id": "sha256:9aaf0439de1961c43443e877c4db9e7c1af3e01f9a073aa74f469bb8188a6d39",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "dmarc-policy-none",
+      "renamed_from": [],
+      "title": "DMARC policy is set to 'none'",
+      "target": {
+        "type": "domain",
+        "value": "caltech.edu"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "medium",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the p= tag is read directly from a record that parsed"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _dmarc.caltech.edu",
+          "captured_at": "2026-10-08T10:43:48.445032Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.caltech.edu",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=none; rua=mailto:6e39dba0@mxtoolbox.dmarc-report.com,mailto:caltech@us.cp-dmarc.com; ruf=mailto:6e39dba0@forensics.dmarc-report.com,mailto:caltech@us.cp-dmarc.com; fo=1"
+              ],
+              "ttl": 300,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-a9dbbbd0.caltech.edu",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NODATA",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:43:48.445061Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.caltech.edu",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=none; rua=mailto:6e39dba0@mxtoolbox.dmarc-report.com,mailto:caltech@us.cp-dmarc.com; ruf=mailto:6e39dba0@forensics.dmarc-report.com,mailto:caltech@us.cp-dmarc.com; fo=1"
+              ],
+              "ttl": 300,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "caltech.edu",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "The DMARC policy for caltech.edu is p=none, which asks receivers to take no action on mail that fails authentication. The SPF record also ends in '?all', reported separately as spf-too-permissive. It describes the same exposure from the SPF side: count the two as one.",
+      "impact": "Mail forged as this domain is still delivered. p=none is a monitoring posture, useful while you find your legitimate senders, but it stops nothing.",
+      "remediation": "Once your rua reports show every legitimate sender passing, change p=none to p=quarantine, then to p=reject. Move in that order and watch the reports at each step.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7489#section-6.3"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:48.445066Z",
+      "first_seen_scan_id": "01M4DHSCKKAF5ZJM9GZN412093",
+      "last_seen": "2026-10-08T10:43:48.445066Z",
+      "last_seen_scan_id": "01M4DHSCKKAF5ZJM9GZN412093",
+      "cost": {
+        "requests": 22,
+        "wall_ms": 489,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:f5d5120e093a321b01683dc9897ce43916b81da197c82e6d5eb4577422a5bea6",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "spf-too-permissive",
+      "renamed_from": [],
+      "title": "SPF policy is neutral for senders it does not list",
+      "target": {
+        "type": "domain",
+        "value": "caltech.edu"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "medium",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the qualifier on the all mechanism is read directly from the record"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at caltech.edu",
+          "captured_at": "2026-10-08T10:43:48.751132Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "caltech.edu",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "MS=ms43712753",
+                "iContact1389932",
+                "jk01vgvoojdefne9jihhtis667",
+                "ZOOM_verify_a-Gb5-aqQgygEiKsnho63w",
+                "apple-domain-verification=KD7b3wNXe76BHRAV",
+                "autodesk-domain-verification=TtWEzwdFn86i9o8NX_8R",
+                "1password-site-verification=VRLN67QMNNEPXIIREL6TDZABF4",
+                "amazonses:CBaUu/J2wBFtHuO9isUzHAXTnIWcN5RyPUBvggu7SNE=",
+                "amazonses:X9y0RbFXXvxu3ft83xg2e+YV++OUePTUSeCOdB3Chjg=",
+                "openai-domain-verification=dv-fRmGl55vmrLnDqlIOcOoidYz",
+                "anthropic-domain-verification-rw8528=rFwrZAPawzCVNGD318e9zzavQ",
+                "Y84qDmmAIPozyUoBIRWmXsFltoU2Pl8b8WGKPlqgz+1t5Db4z9H5ngaaCTq3TTaOK+SCPYUsGVlGn0wUzXNdow==",
+                "adobe-idp-site-verification=1e150df049a820e49156727d1b84c48a1ae11f66f87ad76d2cf30cb9d378acb6",
+                "v=spf1 ip4:131.215.0.0/16 ip4:134.4.0.0/16 ip4:192.100.16.0/24 ip4:198.129.208.0/23 ip4:208.69.128.0/22 ip4:199.188.184.0/22 ip4:198.202.125.128/25 ip4:74.122.104.0/22 ip4:72.10.184.102 ip4:72.10.184.103 ip4:72.10.182.15 ip4:72.10.182.16 include:spf.protection.outlook.com include:sendgrid.net include:mktomail.com include:spf.dynect.net include:cust-spf.cashnet.com include:amazonses.com include:_spf.createsend.com include:_spf01.mykronos.com include:_s0.caltech.edu ?all"
+              ],
+              "ttl": 3600,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-a9dbbbd0.caltech.edu",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NODATA",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:43:48.751153Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "caltech.edu",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "MS=ms43712753",
+                "iContact1389932",
+                "jk01vgvoojdefne9jihhtis667",
+                "ZOOM_verify_a-Gb5-aqQgygEiKsnho63w",
+                "apple-domain-verification=KD7b3wNXe76BHRAV",
+                "autodesk-domain-verification=TtWEzwdFn86i9o8NX_8R",
+                "1password-site-verification=VRLN67QMNNEPXIIREL6TDZABF4",
+                "amazonses:CBaUu/J2wBFtHuO9isUzHAXTnIWcN5RyPUBvggu7SNE=",
+                "amazonses:X9y0RbFXXvxu3ft83xg2e+YV++OUePTUSeCOdB3Chjg=",
+                "openai-domain-verification=dv-fRmGl55vmrLnDqlIOcOoidYz",
+                "anthropic-domain-verification-rw8528=rFwrZAPawzCVNGD318e9zzavQ",
+                "Y84qDmmAIPozyUoBIRWmXsFltoU2Pl8b8WGKPlqgz+1t5Db4z9H5ngaaCTq3TTaOK+SCPYUsGVlGn0wUzXNdow==",
+                "adobe-idp-site-verification=1e150df049a820e49156727d1b84c48a1ae11f66f87ad76d2cf30cb9d378acb6",
+                "v=spf1 ip4:131.215.0.0/16 ip4:134.4.0.0/16 ip4:192.100.16.0/24 ip4:198.129.208.0/23 ip4:208.69.128.0/22 ip4:199.188.184.0/22 ip4:198.202.125.128/25 ip4:74.122.104.0/22 ip4:72.10.184.102 ip4:72.10.184.103 ip4:72.10.182.15 ip4:72.10.182.16 include:spf.protection.outlook.com include:sendgrid.net include:mktomail.com include:spf.dynect.net include:cust-spf.cashnet.com include:amazonses.com include:_spf.createsend.com include:_spf01.mykronos.com include:_s0.caltech.edu ?all"
+              ],
+              "ttl": 3600,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "caltech.edu",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "The SPF record ends in '?all' (Neutral). RFC 7208 section 2.6.2 defines Neutral as the domain explicitly not asserting whether a sending server is authorised, and section 8.2 requires receivers to treat it exactly like the result for a domain with no SPF policy. Servers the record lists still pass; for every other server, SPF gives the same answer as having no SPF policy. DMARC does not enforce a policy here, so nothing stops forged mail. That exposure is reported as dmarc-policy-none. This finding is the same weakness seen from the SPF side: count the two as one.",
+      "impact": "For senders the record does not list, SPF gives receivers nothing to act on. Whether forged mail is stopped then rests on DMARC, with DKIM, and on each receiver's own policy.",
+      "remediation": "Change '?all' to '-all' once every legitimate sender is listed, or to '~all' while you are still confirming that.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7208#section-5.1"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:48.751161Z",
+      "first_seen_scan_id": "01M4DHSCKKAF5ZJM9GZN412093",
+      "last_seen": "2026-10-08T10:43:48.751161Z",
+      "last_seen_scan_id": "01M4DHSCKKAF5ZJM9GZN412093",
+      "cost": {
+        "requests": 33,
+        "wall_ms": 795,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:6344e5a0fe46f9e7bb326441ab4751a6013a1588f361e21145ffe55dc938dfa5",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "dmarc-alignment",
+      "renamed_from": [],
+      "title": "DMARC uses relaxed alignment",
+      "target": {
+        "type": "domain",
+        "value": "caltech.edu"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "info",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "informational",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the adkim= and aspf= tags are read directly, and default to relaxed"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _dmarc.caltech.edu",
+          "captured_at": "2026-10-08T10:43:48.751384Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.caltech.edu",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=none; rua=mailto:6e39dba0@mxtoolbox.dmarc-report.com,mailto:caltech@us.cp-dmarc.com; ruf=mailto:6e39dba0@forensics.dmarc-report.com,mailto:caltech@us.cp-dmarc.com; fo=1"
+              ],
+              "ttl": 300,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-a9dbbbd0.caltech.edu",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NODATA",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:43:48.751398Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.caltech.edu",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=none; rua=mailto:6e39dba0@mxtoolbox.dmarc-report.com,mailto:caltech@us.cp-dmarc.com; ruf=mailto:6e39dba0@forensics.dmarc-report.com,mailto:caltech@us.cp-dmarc.com; fo=1"
+              ],
+              "ttl": 300,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "caltech.edu",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "DMARC alignment is relaxed (adkim=r, aspf=r). Relaxed alignment accepts any subdomain of caltech.edu in the authenticated identifier.",
+      "impact": "Relaxed alignment is the default and is appropriate for most senders. It does mean that anyone able to publish records under a subdomain can pass DMARC for the parent.",
+      "remediation": "If every legitimate sender signs and sends as the exact domain, set adkim=s and aspf=s. If subdomains send mail, relaxed is the correct setting and no change is needed.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7489#section-3.1"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:48.751402Z",
+      "first_seen_scan_id": "01M4DHSCKKAF5ZJM9GZN412093",
+      "last_seen": "2026-10-08T10:43:48.751402Z",
+      "last_seen_scan_id": "01M4DHSCKKAF5ZJM9GZN412093",
+      "cost": {
+        "requests": 33,
+        "wall_ms": 795,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:c2c193c5e24d64fc36a6a7f8566b0695c35ae0b4a710cc8f1101a6b4c4159b14",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "dkim-weak-key",
+      "renamed_from": [],
+      "title": "DKIM key is below 2048 bits",
+      "target": {
+        "type": "domain",
+        "value": "caltech.edu"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.9677,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 30.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the modulus length is measured from the key itself; every common selector is read, but a domain may publish others we cannot find"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at default._domainkey.caltech.edu",
+          "captured_at": "2026-10-08T10:43:48.766884Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "default._domainkey.caltech.edu",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DKIM1; t=y; g=*; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC79eN71kuiG4vu4h0zC+IjdQFcahJY/mI6Lbz8hvvRCY4GzY5x8A3ePth0zmbgQGu6GpjtO0FVmP6E4ZG0iasmh20m5lLN8N9GA1IK0l5XJMIK+INqM8Kq1wt/TtybcmnyZO2Ip1laGs55dmLlqSuvjfjuA2qm1msmn9ofHx7IUwIDAQAB"
+              ],
+              "ttl": 3600,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-a9dbbbd0.caltech.edu",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NODATA",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": {
+            "dkim_keys": [
+              {
+                "selector": "selector1",
+                "raw": "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA8xkF4Iv3pKwuJT+rki/OXPKmJwWsLVXS3SDD91H+AQn+z3f4TymHV8KTsn7xaGVadFB1bbqy4qK47AWJ833R8Fd2Rue0bmssvxz7d4+1xThrj64ZAwEklMZ8XyWQrxYLc5UHqR5jQT96Ie6tS9X9QmfFxSdhzXC57yEBhWfeICTZUUbN4WYav1TdNj8Bf+W3PWQXRRFI/La+07UMD9ibFUq80tIjISqy0QpJPwoPPaw4dPl/p/LyklxiKYs6n7jJipPfbGXvqprZJuhhnpa+lo2Qfe9mPEJC581R7y51H40tRsFLBP0R/zkrttPNGPXaMOWhG/2eMWNooMKODU/soQIDAQAB;",
+                "valid": true,
+                "tags": {
+                  "v": "DKIM1",
+                  "k": "rsa",
+                  "p": "<392 base64 chars>"
+                },
+                "errors": [],
+                "key_type": "rsa",
+                "key_bits": 2048,
+                "revoked": false,
+                "testing": false
+              },
+              {
+                "selector": "selector2",
+                "raw": "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3+W3fggoJJhtKHWo92krcYNeJYc0O97ticF1FmWhmto56dKrJDSsIHAal1tvbhmSXyzUi83DXv0eI9CKsOimaMqtEw4XCKMABRDjhnaoC4R++cQ6ai5FimPhLaFcDNbDm13psDVE3lDCO2NhtTwKSba14pVmRJ0nqssFrU7EIs/bs4JoSsuwGHdJPjdkuu/E11DLWcOPzE9y1GMLsxAyrHUxtVlYwmbsummBf7mw+X6+NHqVCkRU0Zl36lVNXBnjXYDuD5LJQmdAXM9oGUVJCWcSoIENm8k8ojemtmAlEQMnkhGtq5BIiVfO4pA4XvNp7Ph7fjD8Af37obkyGkPfaQIDAQAB;",
+                "valid": true,
+                "tags": {
+                  "v": "DKIM1",
+                  "k": "rsa",
+                  "p": "<392 base64 chars>"
+                },
+                "errors": [],
+                "key_type": "rsa",
+                "key_bits": 2048,
+                "revoked": false,
+                "testing": false
+              },
+              {
+                "selector": "default",
+                "raw": "v=DKIM1; t=y; g=*; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC79eN71kuiG4vu4h0zC+IjdQFcahJY/mI6Lbz8hvvRCY4GzY5x8A3ePth0zmbgQGu6GpjtO0FVmP6E4ZG0iasmh20m5lLN8N9GA1IK0l5XJMIK+INqM8Kq1wt/TtybcmnyZO2Ip1laGs55dmLlqSuvjfjuA2qm1msmn9ofHx7IUwIDAQAB",
+                "valid": true,
+                "tags": {
+                  "v": "DKIM1",
+                  "t": "y",
+                  "g": "*",
+                  "k": "rsa",
+                  "p": "<216 base64 chars>"
+                },
+                "errors": [],
+                "key_type": "rsa",
+                "key_bits": 1024,
+                "revoked": false,
+                "testing": true
+              },
+              {
+                "selector": "k2",
+                "raw": "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAv2aC2KjGKLOwTweBY5A9RpjsxaBXR9r7OAU6U8/zn92ivImI75naUujWbItRI/QmL1jy5PWGqLwoUA0b90ObWaLDc+i9MtTNmGeWO009hr20fIxhGg6XBT2kjZ1DTThopSe1nAndsupmcBwlQ5Q6LJ+ZAxLcujnPIxM0ZBLmgpkv8u6RfY4eFP8OLvdAW3oSuB0DyLDigQX4Sj8wBO4YIdQH6AAmBeOsidsKAFNFUCpc3vCxtBDR12U+cBg724l3sBkMQ8evnz6idnqxq9QAVYh8k4kJ+RP+6cqTdy7LjIm8xY/bQNpQIpGUAuDo2DjLcCDun9DAI4Q/3z+Q0o9QuQIDAQAB;",
+                "valid": true,
+                "tags": {
+                  "v": "DKIM1",
+                  "k": "rsa",
+                  "p": "<392 base64 chars>"
+                },
+                "errors": [],
+                "key_type": "rsa",
+                "key_bits": 2048,
+                "revoked": false,
+                "testing": false
+              },
+              {
+                "selector": "s1",
+                "raw": "k=rsa; t=s; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA32PlTn4eqhOZ0rmMdGHTdc8lpdfiZ38rpphtyp9bp6uQzCLRuihrQyfAGcV2x+dAWD8rtpZlersNZ2hGXCotGViP+mFOtLOcuSHdhaSVYvWSe79ejk4pYu2HmHN0CXIRFkqKJVL62T7NhtDRdfc6lnm60/JffqRAsJhbPbBuHE5+z0ehSElNNkVC01KtpmQwaGs/WODUkjQD8kdi4YbUmwZjd456fW2hujZ69uvHdtt11/V5fxo1or1yDI1JuLqBX7PiI2BsZRSnJcA8wKjPWAJAqhADF4i8etVrdvmeZa/pvc1i/BzNp00CDzrdFJVG+hnpTjrKjmwpKhAYUPCSoQIDAQAB",
+                "valid": true,
+                "tags": {
+                  "k": "rsa",
+                  "t": "s",
+                  "p": "<392 base64 chars>"
+                },
+                "errors": [],
+                "key_type": "rsa",
+                "key_bits": 2048,
+                "revoked": false,
+                "testing": false
+              },
+              {
+                "selector": "s2",
+                "raw": "k=rsa; t=s; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDKJ0hAwdEs4Fn3kbCCdpT8FaOK3uJGIHr42xcmtEwhDwB7KdcWwhZW8E16xzgQFQpVcAwKa5CiYJXbLuYsYLVkpHn24niONU47r8aihTdhYsOD6d7vg/HT4p7RKUV5z+mD126MEB99GKwnLd/IkprY9GYoS5F/CZrn/1fjGkDD5QIDAQAB",
+                "valid": true,
+                "tags": {
+                  "k": "rsa",
+                  "t": "s",
+                  "p": "<216 base64 chars>"
+                },
+                "errors": [],
+                "key_type": "rsa",
+                "key_bits": 1024,
+                "revoked": false,
+                "testing": false
+              }
+            ]
+          }
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:43:48.766900Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "default._domainkey.caltech.edu",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DKIM1; t=y; g=*; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC79eN71kuiG4vu4h0zC+IjdQFcahJY/mI6Lbz8hvvRCY4GzY5x8A3ePth0zmbgQGu6GpjtO0FVmP6E4ZG0iasmh20m5lLN8N9GA1IK0l5XJMIK+INqM8Kq1wt/TtybcmnyZO2Ip1laGs55dmLlqSuvjfjuA2qm1msmn9ofHx7IUwIDAQAB"
+              ],
+              "ttl": 3600,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "caltech.edu",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "DKIM keys below 2048 bits are published at default._domainkey.caltech.edu (1024 bits) and s2._domainkey.caltech.edu (1024 bits). Each meets the RFC 8301 minimum of 1024 bits, below the recommended 2048. The domain also publishes selector1._domainkey.caltech.edu, selector2._domainkey.caltech.edu, k2._domainkey.caltech.edu, s1._domainkey.caltech.edu. We cannot tell from DNS which selector it signs its mail with. RFC 6376 section 6.1.2 has a verifier fetch the key named by the signature's s= tag, so a signature may name any selector the domain publishes, the weaker one included.",
+      "impact": "This is a margin, not a break: RFC 8301 permits the key, and recommends 2048 bits for signers. Moving to 2048 bits brings the domain in line with that recommendation.",
+      "remediation": "If a weaker selector is no longer used for signing, remove its record. Otherwise generate a new 2048-bit key with your mail provider, publish it under a new selector, switch signing to it, and remove the old selector once no mail is signed with it.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc8301"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:48.766904Z",
+      "first_seen_scan_id": "01M4DHSCKKAF5ZJM9GZN412093",
+      "last_seen": "2026-10-08T10:43:48.766904Z",
+      "last_seen_scan_id": "01M4DHSCKKAF5ZJM9GZN412093",
+      "cost": {
+        "requests": 34,
+        "wall_ms": 810,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:402cab450a0a51d0ea31b740a0f330d9193fab87129cadc175b95701435f2456",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "mta-sts-missing",
+      "renamed_from": [],
+      "title": "No MTA-STS policy published",
+      "target": {
+        "type": "domain",
+        "value": "caltech.edu"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "a definite TXT answer at _mta-sts with no v=STSv1 term is direct observation"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _mta-sts.caltech.edu",
+          "captured_at": "2026-10-08T10:43:48.794875Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_mta-sts.caltech.edu",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NODATA",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-a9dbbbd0.caltech.edu",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NODATA",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:43:48.794895Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_mta-sts.caltech.edu",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NODATA",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "caltech.edu",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "No MTA-STS policy record is published at _mta-sts.caltech.edu.",
+      "impact": "Without MTA-STS a sending server that cannot negotiate TLS will deliver mail in plaintext rather than refusing, so an attacker positioned on the network can strip encryption and read the message.",
+      "remediation": "Publish a TXT record at _mta-sts.caltech.edu of the form 'v=STSv1; id=<timestamp>', and serve the matching policy file at https://mta-sts.caltech.edu/.well-known/mta-sts.txt. Start the policy in mode: testing, then move to mode: enforce.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc8461"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:48.794899Z",
+      "first_seen_scan_id": "01M4DHSCKKAF5ZJM9GZN412093",
+      "last_seen": "2026-10-08T10:43:48.794899Z",
+      "last_seen_scan_id": "01M4DHSCKKAF5ZJM9GZN412093",
+      "cost": {
+        "requests": 36,
+        "wall_ms": 838,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:c1e5820d210ffefcbd54fada4b91b622f71a508d0e6e4cf52234e10a85900ddd",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "tls-rpt-missing",
+      "renamed_from": [],
+      "title": "No SMTP TLS reporting configured",
+      "target": {
+        "type": "domain",
+        "value": "caltech.edu"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "a definite TXT answer at _smtp._tls with no v=TLSRPTv1 term is direct observation"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _smtp._tls.caltech.edu",
+          "captured_at": "2026-10-08T10:43:48.842921Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_smtp._tls.caltech.edu",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NODATA",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-a9dbbbd0.caltech.edu",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NODATA",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:43:48.842944Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_smtp._tls.caltech.edu",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NODATA",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "caltech.edu",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "No SMTP TLS reporting record is published at _smtp._tls.caltech.edu.",
+      "impact": "Nobody is told when a sending server fails to establish TLS to your mail servers, so a downgrade attack or a broken certificate goes unnoticed.",
+      "remediation": "Publish a TXT record at _smtp._tls.caltech.edu of the form 'v=TLSRPTv1; rua=mailto:tls-reports@caltech.edu'.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc8460"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:48.842947Z",
+      "first_seen_scan_id": "01M4DHSCKKAF5ZJM9GZN412093",
+      "last_seen": "2026-10-08T10:43:48.842947Z",
+      "last_seen_scan_id": "01M4DHSCKKAF5ZJM9GZN412093",
+      "cost": {
+        "requests": 38,
+        "wall_ms": 886,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:3b41ee51fb01e227fc001517588e7b3f53d6021216912456a3d7f9b9622a5183",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "spoofing-possible",
+      "renamed_from": [],
+      "title": "Mail can be sent as this domain",
+      "target": {
+        "type": "domain",
+        "value": "caltech.edu"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "high",
+      "confidence": 0.9615,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 25.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "this is a simulation of a receiver's decision from records we read, not an observation of a receiver actually making it; the ratio is lower to say so"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _dmarc.caltech.edu",
+          "captured_at": "2026-10-08T10:43:48.843165Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.caltech.edu",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=none; rua=mailto:6e39dba0@mxtoolbox.dmarc-report.com,mailto:caltech@us.cp-dmarc.com; ruf=mailto:6e39dba0@forensics.dmarc-report.com,mailto:caltech@us.cp-dmarc.com; fo=1"
+              ],
+              "ttl": 300,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-a9dbbbd0.caltech.edu",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NODATA",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:43:48.843177Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.caltech.edu",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=none; rua=mailto:6e39dba0@mxtoolbox.dmarc-report.com,mailto:caltech@us.cp-dmarc.com; ruf=mailto:6e39dba0@forensics.dmarc-report.com,mailto:caltech@us.cp-dmarc.com; fo=1"
+              ],
+              "ttl": 300,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "caltech.edu",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "Simulating the decision a receiving mail server would make for a message forged from caltech.edu: it would be delivered, because the DMARC policy is p=none, which asks receivers to take no action.",
+      "impact": "Anyone can send mail that appears to come from this domain and expect it to reach the inbox. That is the mechanism behind invoice fraud and most credential phishing that targets a company's own staff.",
+      "remediation": "Publish an SPF record listing your senders and ending in -all, sign your mail with DKIM, then publish 'v=DMARC1; p=reject; rua=mailto:dmarc@caltech.edu' at _dmarc.caltech.edu. Move to p=reject only after the rua reports show every legitimate sender passing.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7489"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:48.843183Z",
+      "first_seen_scan_id": "01M4DHSCKKAF5ZJM9GZN412093",
+      "last_seen": "2026-10-08T10:43:48.843183Z",
+      "last_seen_scan_id": "01M4DHSCKKAF5ZJM9GZN412093",
+      "cost": {
+        "requests": 38,
+        "wall_ms": 887,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    }
+  ],
+  "errors": [],
+  "telemetry": {
+    "checks_run": [
+      {
+        "check_id": "spf-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-multiple-records",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-invalid",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-invalid",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-policy-none",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "mx-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dkim-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-too-permissive",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-lookup-limit",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-pct-partial",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-no-rua",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-alignment",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "dkim-weak-key",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "mta-sts-missing",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "tls-rpt-missing",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "spoofing-possible",
+        "outcome": "reported",
+        "location": "$"
+      }
+    ],
+    "suppressed": [],
+    "requests": 38,
+    "wall_ms": 887,
+    "ai_tokens": 0
+  },
+  "started_at": null,
+  "finished_at": "2026-10-08T10:43:48.843257Z",
+  "killed": false,
+  "outcome": "succeeded"
+}

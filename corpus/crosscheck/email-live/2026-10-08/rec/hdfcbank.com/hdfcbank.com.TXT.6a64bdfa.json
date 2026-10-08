@@ -1,0 +1,29 @@
+{
+  "flags": [],
+  "name": "hdfcbank.com",
+  "rcode": "NOERROR",
+  "records": [
+    "MS=ms46913039",
+    "MS=ms74082869",
+    "6F8CDDEA4EEDAB714F572B809448B60E",
+    "_1idiq9ofrpiw2f20xrohniyagpmzao5",
+    "_3kc15bfbi0ab4sci4172zy8y7s7z2vy",
+    "_d401bc8vyjf3mvc4ba70zrdlr0hbd5r",
+    "_zm4vqb5a4317xcvioqje57lvzlq3ney",
+    "VISA=4C6B11D5C819E5E42FAF03DD052B8711",
+    "VISA=E23AC9ED35C4136BF5FD8B4F441DD4DD",
+    "VISA= CEA9BEC53CA2C9A2016519D3F9A114AD",
+    "VISA= D1FC7587238AD55C74E0BB821568B816",
+    "AB99-9938-1E42-421A-670B-A4EC-AE75-CA42",
+    "MS=0EDFBB7D4E0FC1013E4D4A7ED4A8AAD171043782",
+    "zoho-verification=zb41378664.zmverify.zoho.in",
+    "google-site-verification=6GLBHNTspb_ujzxPd8HiQJGYdbyxFgGXQ8Y1gLUThdg",
+    "google-site-verification=RQTtljsMPQ5-eeu8tTxXGjrvLVeItgnFBmK3RkW1wyY",
+    "google-site-verification=TUCNNs9aH9AQXmg6RfYIv8vS9Ak7cub9hizdGeXm3lw",
+    "v=spf2.0/mfrom ip4:180.179.138.143 ip4:180.179.200.213 mx include:spf.hdfcbank.com include:spf.powerelay.com include:spf.protection.outlook.com -all",
+    "v=spf1 include:zohomail.in ip4:180.179.138.143 ip4:180.179.200.213 mx include:spf.hdfcbank.com include:spf.powerelay.com include:spf.protection.outlook.com -all"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 300
+}

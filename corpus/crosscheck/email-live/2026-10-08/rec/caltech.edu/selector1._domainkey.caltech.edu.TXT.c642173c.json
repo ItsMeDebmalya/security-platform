@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "selector1._domainkey.caltech.edu",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA8xkF4Iv3pKwuJT+rki/OXPKmJwWsLVXS3SDD91H+AQn+z3f4TymHV8KTsn7xaGVadFB1bbqy4qK47AWJ833R8Fd2Rue0bmssvxz7d4+1xThrj64ZAwEklMZ8XyWQrxYLc5UHqR5jQT96Ie6tS9X9QmfFxSdhzXC57yEBhWfeICTZUUbN4WYav1TdNj8Bf+W3PWQXRRFI/La+07UMD9ibFUq80tIjISqy0QpJPwoPPaw4dPl/p/LyklxiKYs6n7jJipPfbGXvqprZJuhhnpa+lo2Qfe9mPEJC581R7y51H40tRsFLBP0R/zkrttPNGPXaMOWhG/2eMWNooMKODU/soQIDAQAB;"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 3600
+}

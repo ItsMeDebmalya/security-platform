@@ -1,0 +1,24 @@
+{
+  "flags": [],
+  "name": "bookmyshow.com",
+  "rcode": "NOERROR",
+  "records": [
+    "MS=ms12649043",
+    "MS=ms42522338",
+    "mandrill_verify.WVGLxqpkZHtYgdyHnCSEbg",
+    "projectdiscovery-verification=c1b82acc1b",
+    "MS=2C0F3AA957EF32C91B12B24A4CFE2E8CE2092FDA",
+    "amazonses:b3fTuF+LrPjN7x4EFF10hOSZUTGHXP1kKaxH7h2TQSY=",
+    "facebook-domain-verification=tfvd5w2nekrqcifqi2ov17amlk112q",
+    "have-i-been-pwned-verification=dweb_ff5prd0gmr4xsal0satn6ujh",
+    "google-site-verification=AVazCG9jlZfN4XufAlqPq7HXv0c6l5auDz2sY7TElpA",
+    "google-site-verification=JXhFPM-v13Dsbfzt-a-gTlzPctmKhsSBGG6St4-JqAg",
+    "google-site-verification=bU5eSwtlsxVoJTHtMHtd-p4YmgyFfD6esVt2jKoNiqs",
+    "google-site-verification=l4ZJX-o24OK1wNg7vD9JM4OLM4sgRct61sevow-vbRo",
+    "google-site-verification=u4Uot5QMxcWX3uwmdyiroxvPGwdWXsQU27cOXlbSOIM",
+    "v=spf1 include:_spf.google.com include:amazonses.com include:servers.mcsv.net include:spf.mandrillapp.com  include:securemail.zscalerthree.net ip4:136.226.142.0/24 ip4:136.226.152.0/24 ip4:147.161.205.0/24 ip4:147.161.200.0/24 ip4:165.225.118.0/24 ip4:167.103.30.0/24 ip4:167.103.34.0/24 ip4:136.226.177.0/24 ip4:136.226.95.0/24 ip4:136.226.197.0/24 ~all"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 300
+}

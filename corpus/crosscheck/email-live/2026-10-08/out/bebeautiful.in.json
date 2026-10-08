@@ -1,0 +1,2331 @@
+{
+  "scanner": "email",
+  "scanner_version": "1.1.0",
+  "target": {
+    "type": "domain",
+    "value": "bebeautiful.in"
+  },
+  "mode": "standard",
+  "findings": [
+    {
+      "id": "sha256:49147fc3aa513d72fdad0c27df7870b74c6bcc9e0ce79fa1411faf981d276279",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "dmarc-policy-none",
+      "renamed_from": [],
+      "title": "DMARC policy is set to 'none'",
+      "target": {
+        "type": "domain",
+        "value": "bebeautiful.in"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "medium",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the p= tag is read directly from a record that parsed"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _dmarc.bebeautiful.in",
+          "captured_at": "2026-10-08T10:43:48.747636Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.bebeautiful.in",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=none;"
+              ],
+              "ttl": 300,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-629fa387.bebeautiful.in",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:43:48.747669Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.bebeautiful.in",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=none;"
+              ],
+              "ttl": 300,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "bebeautiful.in",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "The DMARC policy for bebeautiful.in is p=none, which asks receivers to take no action on mail that fails authentication.",
+      "impact": "Mail forged as this domain is still delivered. p=none is a monitoring posture, useful while you find your legitimate senders, but it stops nothing.",
+      "remediation": "Once your rua reports show every legitimate sender passing, change p=none to p=quarantine, then to p=reject. Move in that order and watch the reports at each step.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7489#section-6.3"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:48.747674Z",
+      "first_seen_scan_id": "01M4DHSCZV9WHZKFE1W6ZXK6NC",
+      "last_seen": "2026-10-08T10:43:48.747674Z",
+      "last_seen_scan_id": "01M4DHSCZV9WHZKFE1W6ZXK6NC",
+      "cost": {
+        "requests": 22,
+        "wall_ms": 399,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:3dc90182486c81ac07d15e3708426d680d42a52e6bbdaf153ac52f7300f85908",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "mx-missing",
+      "renamed_from": [],
+      "title": "No MX records published",
+      "target": {
+        "type": "domain",
+        "value": "bebeautiful.in"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "medium",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "a definite empty MX answer is a direct observation"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "MX at bebeautiful.in",
+          "captured_at": "2026-10-08T10:43:48.763585Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "bebeautiful.in",
+              "rrtype": "MX",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NODATA",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-629fa387.bebeautiful.in",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:43:48.763610Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "bebeautiful.in",
+              "rrtype": "MX",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NODATA",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "bebeautiful.in",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "bebeautiful.in publishes no MX records.",
+      "impact": "Mail addressed to this domain cannot be delivered. If the domain is not meant to receive mail, saying so explicitly is better than silence.",
+      "remediation": "Publish MX records pointing at your mail provider. If the domain should never receive mail, publish the null MX record 'MX 0 .' (RFC 7505), which tells senders so immediately.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7505"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:48.763621Z",
+      "first_seen_scan_id": "01M4DHSCZV9WHZKFE1W6ZXK6NC",
+      "last_seen": "2026-10-08T10:43:48.763621Z",
+      "last_seen_scan_id": "01M4DHSCZV9WHZKFE1W6ZXK6NC",
+      "cost": {
+        "requests": 23,
+        "wall_ms": 415,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:0d768096eef5510cc6ea3bf58e5288dfe93c330468f34f8fc4767279f51f5381",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "dkim-missing",
+      "renamed_from": [],
+      "title": "No DKIM key found",
+      "target": {
+        "type": "domain",
+        "value": "bebeautiful.in"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "medium",
+      "confidence": 0.5,
+      "confidence_provisional": true,
+      "state": "inconclusive",
+      "no_verdict_reason": "blocked_prerequisite",
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 1.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the lookup produced no usable answer, so nothing moves the prior"
+        }
+      ],
+      "validation": {
+        "attempted": false,
+        "outcome": "unavailable",
+        "method": null
+      },
+      "evidence": [
+        {
+          "label": "TXT at sp-wildcard-probe-629fa387.bebeautiful.in",
+          "captured_at": "2026-10-08T10:43:48.763762Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "sp-wildcard-probe-629fa387.bebeautiful.in",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-629fa387.bebeautiful.in",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "bebeautiful.in",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "None of the 17 common DKIM selectors resolved for bebeautiful.in. DKIM selector names are chosen freely by the sender and cannot be enumerated, so this does not show that the domain has no DKIM - only that we could not find a key.",
+      "impact": "Unknown: we could not determine whether DKIM is configured.",
+      "remediation": "If you know your selector, check it directly: the record lives at <selector>._domainkey.bebeautiful.in. Your mail provider's documentation names the selector it uses.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc6376"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:48.763766Z",
+      "first_seen_scan_id": "01M4DHSCZV9WHZKFE1W6ZXK6NC",
+      "last_seen": "2026-10-08T10:43:48.763766Z",
+      "last_seen_scan_id": "01M4DHSCZV9WHZKFE1W6ZXK6NC",
+      "cost": {
+        "requests": 23,
+        "wall_ms": 415,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:6d39ffd1da4afa943065757d5110779c0dfb22bed069fc01f3cbd2209b8ec024",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "spf-lookup-limit",
+      "renamed_from": [],
+      "title": "SPF exceeds the 10 DNS lookup limit",
+      "target": {
+        "type": "domain",
+        "value": "bebeautiful.in"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "high",
+      "confidence": 0.9615,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 25.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the count is computed from records we fetched ourselves, but include chains change often and a chain we could not finish walking returns inconclusive"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at bebeautiful.in",
+          "captured_at": "2026-10-08T10:43:49.095235Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "bebeautiful.in",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=spf1 mx a ptr include:servers.mcsv.net include:_spf.google.com include:amazonses.com include:amazonaws.com include:mail.dms.unileverservices.com -all",
+                "google-site-verification=MI4l6R5Lh8mH-ceEoAtk8gdCwI6_NL0Jv_k9lLC5uV4",
+                "google-site-verification=M3y8dplgpfAU2o7u7snCZY1meH2U7WihDL-xn_knq1Q"
+              ],
+              "ttl": 300,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-629fa387.bebeautiful.in",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": {
+            "spf_chain": {
+              "root": "bebeautiful.in",
+              "steps": [
+                {
+                  "domain": "bebeautiful.in",
+                  "rcode": "NOERROR",
+                  "record": {
+                    "raw": "v=spf1 mx a ptr include:servers.mcsv.net include:_spf.google.com include:amazonses.com include:amazonaws.com include:mail.dms.unileverservices.com -all",
+                    "valid": true,
+                    "terms": [
+                      {
+                        "mechanism": "mx",
+                        "qualifier": "+",
+                        "value": null,
+                        "raw": "mx",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "a",
+                        "qualifier": "+",
+                        "value": null,
+                        "raw": "a",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "ptr",
+                        "qualifier": "+",
+                        "value": null,
+                        "raw": "ptr",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "include",
+                        "qualifier": "+",
+                        "value": "servers.mcsv.net",
+                        "raw": "include:servers.mcsv.net",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "include",
+                        "qualifier": "+",
+                        "value": "_spf.google.com",
+                        "raw": "include:_spf.google.com",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "include",
+                        "qualifier": "+",
+                        "value": "amazonses.com",
+                        "raw": "include:amazonses.com",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "include",
+                        "qualifier": "+",
+                        "value": "amazonaws.com",
+                        "raw": "include:amazonaws.com",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "include",
+                        "qualifier": "+",
+                        "value": "mail.dms.unileverservices.com",
+                        "raw": "include:mail.dms.unileverservices.com",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "all",
+                        "qualifier": "-",
+                        "value": null,
+                        "raw": "-all",
+                        "costs_lookup": false
+                      }
+                    ],
+                    "modifiers": {},
+                    "errors": [],
+                    "all_qualifier": "-",
+                    "direct_lookup_count": 8
+                  },
+                  "duplicate_spf_records": false,
+                  "definite": true
+                },
+                {
+                  "domain": "servers.mcsv.net",
+                  "rcode": "NOERROR",
+                  "record": {
+                    "raw": "v=spf1 ip4:205.201.128.0/20 ip4:198.2.128.0/18 ip4:148.105.0.0/16 -all",
+                    "valid": true,
+                    "terms": [
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "205.201.128.0/20",
+                        "raw": "ip4:205.201.128.0/20",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "198.2.128.0/18",
+                        "raw": "ip4:198.2.128.0/18",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "148.105.0.0/16",
+                        "raw": "ip4:148.105.0.0/16",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "all",
+                        "qualifier": "-",
+                        "value": null,
+                        "raw": "-all",
+                        "costs_lookup": false
+                      }
+                    ],
+                    "modifiers": {},
+                    "errors": [],
+                    "all_qualifier": "-",
+                    "direct_lookup_count": 0
+                  },
+                  "duplicate_spf_records": false,
+                  "definite": true
+                },
+                {
+                  "domain": "_spf.google.com",
+                  "rcode": "NOERROR",
+                  "record": {
+                    "raw": "v=spf1 ip4:74.125.0.0/16 ip4:209.85.128.0/17 ip6:2001:4860:4864::/56 ip6:2404:6800:4864::/56 ip6:2607:f8b0:4864::/56 ip6:2800:3f0:4864::/56 ip6:2a00:1450:4864::/56 ip6:2c0f:fb50:4864::/56 ~all",
+                    "valid": true,
+                    "terms": [
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "74.125.0.0/16",
+                        "raw": "ip4:74.125.0.0/16",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "209.85.128.0/17",
+                        "raw": "ip4:209.85.128.0/17",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip6",
+                        "qualifier": "+",
+                        "value": "2001:4860:4864::/56",
+                        "raw": "ip6:2001:4860:4864::/56",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip6",
+                        "qualifier": "+",
+                        "value": "2404:6800:4864::/56",
+                        "raw": "ip6:2404:6800:4864::/56",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip6",
+                        "qualifier": "+",
+                        "value": "2607:f8b0:4864::/56",
+                        "raw": "ip6:2607:f8b0:4864::/56",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip6",
+                        "qualifier": "+",
+                        "value": "2800:3f0:4864::/56",
+                        "raw": "ip6:2800:3f0:4864::/56",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip6",
+                        "qualifier": "+",
+                        "value": "2a00:1450:4864::/56",
+                        "raw": "ip6:2a00:1450:4864::/56",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip6",
+                        "qualifier": "+",
+                        "value": "2c0f:fb50:4864::/56",
+                        "raw": "ip6:2c0f:fb50:4864::/56",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "all",
+                        "qualifier": "~",
+                        "value": null,
+                        "raw": "~all",
+                        "costs_lookup": false
+                      }
+                    ],
+                    "modifiers": {},
+                    "errors": [],
+                    "all_qualifier": "~",
+                    "direct_lookup_count": 0
+                  },
+                  "duplicate_spf_records": false,
+                  "definite": true
+                },
+                {
+                  "domain": "amazonses.com",
+                  "rcode": "NOERROR",
+                  "record": {
+                    "raw": "v=spf1 ip4:199.255.192.0/22 ip4:199.127.232.0/22 ip4:54.240.0.0/18 ip4:69.169.224.0/20 ip4:23.249.208.0/20 ip4:23.251.224.0/19 ip4:76.223.176.0/20 ip4:54.240.64.0/18 ip4:76.223.128.0/19 ip4:216.221.160.0/19 ip4:206.55.144.0/20 ip4:24.110.64.0/18 ip4:98.77.0.0/16 -all",
+                    "valid": true,
+                    "terms": [
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "199.255.192.0/22",
+                        "raw": "ip4:199.255.192.0/22",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "199.127.232.0/22",
+                        "raw": "ip4:199.127.232.0/22",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "54.240.0.0/18",
+                        "raw": "ip4:54.240.0.0/18",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "69.169.224.0/20",
+                        "raw": "ip4:69.169.224.0/20",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "23.249.208.0/20",
+                        "raw": "ip4:23.249.208.0/20",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "23.251.224.0/19",
+                        "raw": "ip4:23.251.224.0/19",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "76.223.176.0/20",
+                        "raw": "ip4:76.223.176.0/20",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "54.240.64.0/18",
+                        "raw": "ip4:54.240.64.0/18",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "76.223.128.0/19",
+                        "raw": "ip4:76.223.128.0/19",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "216.221.160.0/19",
+                        "raw": "ip4:216.221.160.0/19",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "206.55.144.0/20",
+                        "raw": "ip4:206.55.144.0/20",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "24.110.64.0/18",
+                        "raw": "ip4:24.110.64.0/18",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "98.77.0.0/16",
+                        "raw": "ip4:98.77.0.0/16",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "all",
+                        "qualifier": "-",
+                        "value": null,
+                        "raw": "-all",
+                        "costs_lookup": false
+                      }
+                    ],
+                    "modifiers": {},
+                    "errors": [],
+                    "all_qualifier": "-",
+                    "direct_lookup_count": 0
+                  },
+                  "duplicate_spf_records": false,
+                  "definite": true
+                },
+                {
+                  "domain": "amazonaws.com",
+                  "rcode": "NOERROR",
+                  "record": {
+                    "raw": "v=spf1 include:amazon.com ~all",
+                    "valid": true,
+                    "terms": [
+                      {
+                        "mechanism": "include",
+                        "qualifier": "+",
+                        "value": "amazon.com",
+                        "raw": "include:amazon.com",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "all",
+                        "qualifier": "~",
+                        "value": null,
+                        "raw": "~all",
+                        "costs_lookup": false
+                      }
+                    ],
+                    "modifiers": {},
+                    "errors": [],
+                    "all_qualifier": "~",
+                    "direct_lookup_count": 1
+                  },
+                  "duplicate_spf_records": false,
+                  "definite": true
+                },
+                {
+                  "domain": "mail.dms.unileverservices.com",
+                  "rcode": "NOERROR",
+                  "record": {
+                    "raw": "v=spf1 a mx ip4:3.212.160.81 ip4:66.189.46.252 include:_spf.google.com include:spf.protection.outlook.com ip4:20.115.101.171 -all",
+                    "valid": true,
+                    "terms": [
+                      {
+                        "mechanism": "a",
+                        "qualifier": "+",
+                        "value": null,
+                        "raw": "a",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "mx",
+                        "qualifier": "+",
+                        "value": null,
+                        "raw": "mx",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "3.212.160.81",
+                        "raw": "ip4:3.212.160.81",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "66.189.46.252",
+                        "raw": "ip4:66.189.46.252",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "include",
+                        "qualifier": "+",
+                        "value": "_spf.google.com",
+                        "raw": "include:_spf.google.com",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "include",
+                        "qualifier": "+",
+                        "value": "spf.protection.outlook.com",
+                        "raw": "include:spf.protection.outlook.com",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "20.115.101.171",
+                        "raw": "ip4:20.115.101.171",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "all",
+                        "qualifier": "-",
+                        "value": null,
+                        "raw": "-all",
+                        "costs_lookup": false
+                      }
+                    ],
+                    "modifiers": {},
+                    "errors": [],
+                    "all_qualifier": "-",
+                    "direct_lookup_count": 4
+                  },
+                  "duplicate_spf_records": false,
+                  "definite": true
+                },
+                {
+                  "domain": "amazon.com",
+                  "rcode": "NOERROR",
+                  "record": {
+                    "raw": "v=spf1 include:spf1.amazon.com include:spf2.amazon.com include:amazonses.com -all",
+                    "valid": true,
+                    "terms": [
+                      {
+                        "mechanism": "include",
+                        "qualifier": "+",
+                        "value": "spf1.amazon.com",
+                        "raw": "include:spf1.amazon.com",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "include",
+                        "qualifier": "+",
+                        "value": "spf2.amazon.com",
+                        "raw": "include:spf2.amazon.com",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "include",
+                        "qualifier": "+",
+                        "value": "amazonses.com",
+                        "raw": "include:amazonses.com",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "all",
+                        "qualifier": "-",
+                        "value": null,
+                        "raw": "-all",
+                        "costs_lookup": false
+                      }
+                    ],
+                    "modifiers": {},
+                    "errors": [],
+                    "all_qualifier": "-",
+                    "direct_lookup_count": 3
+                  },
+                  "duplicate_spf_records": false,
+                  "definite": true
+                },
+                {
+                  "domain": "spf.protection.outlook.com",
+                  "rcode": "NOERROR",
+                  "record": {
+                    "raw": "v=spf1 ip4:40.92.0.0/15 ip4:40.107.0.0/16 ip4:52.100.0.0/15 ip4:52.102.0.0/16 ip4:52.103.0.0/17 ip4:104.47.0.0/17 ip6:2a01:111:f400::/48 ip6:2a01:111:f403::/49 ip6:2a01:111:f403:8000::/51 ip6:2a01:111:f403:c000::/51 ip6:2a01:111:f403:f000::/52 -all",
+                    "valid": true,
+                    "terms": [
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "40.92.0.0/15",
+                        "raw": "ip4:40.92.0.0/15",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "40.107.0.0/16",
+                        "raw": "ip4:40.107.0.0/16",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "52.100.0.0/15",
+                        "raw": "ip4:52.100.0.0/15",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "52.102.0.0/16",
+                        "raw": "ip4:52.102.0.0/16",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "52.103.0.0/17",
+                        "raw": "ip4:52.103.0.0/17",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "104.47.0.0/17",
+                        "raw": "ip4:104.47.0.0/17",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip6",
+                        "qualifier": "+",
+                        "value": "2a01:111:f400::/48",
+                        "raw": "ip6:2a01:111:f400::/48",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip6",
+                        "qualifier": "+",
+                        "value": "2a01:111:f403::/49",
+                        "raw": "ip6:2a01:111:f403::/49",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip6",
+                        "qualifier": "+",
+                        "value": "2a01:111:f403:8000::/51",
+                        "raw": "ip6:2a01:111:f403:8000::/51",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip6",
+                        "qualifier": "+",
+                        "value": "2a01:111:f403:c000::/51",
+                        "raw": "ip6:2a01:111:f403:c000::/51",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip6",
+                        "qualifier": "+",
+                        "value": "2a01:111:f403:f000::/52",
+                        "raw": "ip6:2a01:111:f403:f000::/52",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "all",
+                        "qualifier": "-",
+                        "value": null,
+                        "raw": "-all",
+                        "costs_lookup": false
+                      }
+                    ],
+                    "modifiers": {},
+                    "errors": [],
+                    "all_qualifier": "-",
+                    "direct_lookup_count": 0
+                  },
+                  "duplicate_spf_records": false,
+                  "definite": true
+                },
+                {
+                  "domain": "spf1.amazon.com",
+                  "rcode": "NOERROR",
+                  "record": {
+                    "raw": "v=spf1 ip4:207.171.160.0/19 ip4:87.238.80.0/21 ip4:72.21.192.0/19 ip4:194.154.193.192/27 ip4:194.7.41.152/28 ip4:212.123.28.40/32 ip4:203.81.17.0/24 ip4:178.236.10.128/26 ip4:52.94.124.0/28 ip4:99.78.197.208/28 ip4:52.119.213.144/28 -all",
+                    "valid": true,
+                    "terms": [
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "207.171.160.0/19",
+                        "raw": "ip4:207.171.160.0/19",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "87.238.80.0/21",
+                        "raw": "ip4:87.238.80.0/21",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "72.21.192.0/19",
+                        "raw": "ip4:72.21.192.0/19",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "194.154.193.192/27",
+                        "raw": "ip4:194.154.193.192/27",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "194.7.41.152/28",
+                        "raw": "ip4:194.7.41.152/28",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "212.123.28.40/32",
+                        "raw": "ip4:212.123.28.40/32",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "203.81.17.0/24",
+                        "raw": "ip4:203.81.17.0/24",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "178.236.10.128/26",
+                        "raw": "ip4:178.236.10.128/26",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "52.94.124.0/28",
+                        "raw": "ip4:52.94.124.0/28",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "99.78.197.208/28",
+                        "raw": "ip4:99.78.197.208/28",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "52.119.213.144/28",
+                        "raw": "ip4:52.119.213.144/28",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "all",
+                        "qualifier": "-",
+                        "value": null,
+                        "raw": "-all",
+                        "costs_lookup": false
+                      }
+                    ],
+                    "modifiers": {},
+                    "errors": [],
+                    "all_qualifier": "-",
+                    "direct_lookup_count": 0
+                  },
+                  "duplicate_spf_records": false,
+                  "definite": true
+                },
+                {
+                  "domain": "spf2.amazon.com",
+                  "rcode": "NOERROR",
+                  "record": {
+                    "raw": "v=spf1 ip4:176.32.105.0/24 ip4:176.32.127.0/24 ip4:106.50.16.0/28 ip4:205.251.233.32/32 ip4:205.251.233.36/32 ip4:72.21.217.142/32 ip4:52.95.48.152/29 ip4:52.95.49.88/29 include:spf3.amazon.com -all",
+                    "valid": true,
+                    "terms": [
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "176.32.105.0/24",
+                        "raw": "ip4:176.32.105.0/24",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "176.32.127.0/24",
+                        "raw": "ip4:176.32.127.0/24",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "106.50.16.0/28",
+                        "raw": "ip4:106.50.16.0/28",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "205.251.233.32/32",
+                        "raw": "ip4:205.251.233.32/32",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "205.251.233.36/32",
+                        "raw": "ip4:205.251.233.36/32",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "72.21.217.142/32",
+                        "raw": "ip4:72.21.217.142/32",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "52.95.48.152/29",
+                        "raw": "ip4:52.95.48.152/29",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "52.95.49.88/29",
+                        "raw": "ip4:52.95.49.88/29",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "include",
+                        "qualifier": "+",
+                        "value": "spf3.amazon.com",
+                        "raw": "include:spf3.amazon.com",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "all",
+                        "qualifier": "-",
+                        "value": null,
+                        "raw": "-all",
+                        "costs_lookup": false
+                      }
+                    ],
+                    "modifiers": {},
+                    "errors": [],
+                    "all_qualifier": "-",
+                    "direct_lookup_count": 1
+                  },
+                  "duplicate_spf_records": false,
+                  "definite": true
+                },
+                {
+                  "domain": "spf3.amazon.com",
+                  "rcode": "NOERROR",
+                  "record": {
+                    "raw": "v=spf1 ip4:18.156.205.64 ip4:3.65.3.180 ip4:3.72.182.33 ip4:3.74.81.189 ip4:63.176.194.123 ip4:18.197.217.180 ip4:3.75.33.185 ip4:35.158.23.94 ip4:3.64.237.68 ip4:63.178.143.178 ip4:52.28.197.132 ip4:52.57.120.243 ip4:63.178.132.221 ip4:18.199.210.3 ip4:18.158.153.154 ip4:44.245.243.92 ip4:44.246.1.125 ip4:44.246.68.102 ip4:44.246.77.92 ip4:52.13.214.179 ip4:52.26.1.71 ip4:52.34.181.151 ip4:52.42.203.116 ip4:35.155.198.111 ip4:52.12.53.23 ip4:52.35.192.45 ip4:35.162.73.231 ip4:34.218.115.239 ip4:35.83.148.184 ip4:50.112.246.219 ip4:107.22.191.150 ip4:13.216.54.180 ip4:13.216.7.111 ip4:18.207.52.234 ip4:3.211.80.218 ip4:3.216.221.67 ip4:3.221.209.22 ip4:34.193.58.168 ip4:34.198.94.229 ip4:34.197.254.9 ip4:54.211.126.101 ip4:34.197.10.50 ip4:34.198.218.121 ip4:50.16.246.183 ip4:44.210.169.44 -all",
+                    "valid": true,
+                    "terms": [
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "18.156.205.64",
+                        "raw": "ip4:18.156.205.64",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "3.65.3.180",
+                        "raw": "ip4:3.65.3.180",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "3.72.182.33",
+                        "raw": "ip4:3.72.182.33",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "3.74.81.189",
+                        "raw": "ip4:3.74.81.189",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "63.176.194.123",
+                        "raw": "ip4:63.176.194.123",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "18.197.217.180",
+                        "raw": "ip4:18.197.217.180",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "3.75.33.185",
+                        "raw": "ip4:3.75.33.185",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "35.158.23.94",
+                        "raw": "ip4:35.158.23.94",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "3.64.237.68",
+                        "raw": "ip4:3.64.237.68",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "63.178.143.178",
+                        "raw": "ip4:63.178.143.178",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "52.28.197.132",
+                        "raw": "ip4:52.28.197.132",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "52.57.120.243",
+                        "raw": "ip4:52.57.120.243",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "63.178.132.221",
+                        "raw": "ip4:63.178.132.221",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "18.199.210.3",
+                        "raw": "ip4:18.199.210.3",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "18.158.153.154",
+                        "raw": "ip4:18.158.153.154",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "44.245.243.92",
+                        "raw": "ip4:44.245.243.92",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "44.246.1.125",
+                        "raw": "ip4:44.246.1.125",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "44.246.68.102",
+                        "raw": "ip4:44.246.68.102",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "44.246.77.92",
+                        "raw": "ip4:44.246.77.92",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "52.13.214.179",
+                        "raw": "ip4:52.13.214.179",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "52.26.1.71",
+                        "raw": "ip4:52.26.1.71",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "52.34.181.151",
+                        "raw": "ip4:52.34.181.151",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "52.42.203.116",
+                        "raw": "ip4:52.42.203.116",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "35.155.198.111",
+                        "raw": "ip4:35.155.198.111",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "52.12.53.23",
+                        "raw": "ip4:52.12.53.23",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "52.35.192.45",
+                        "raw": "ip4:52.35.192.45",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "35.162.73.231",
+                        "raw": "ip4:35.162.73.231",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "34.218.115.239",
+                        "raw": "ip4:34.218.115.239",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "35.83.148.184",
+                        "raw": "ip4:35.83.148.184",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "50.112.246.219",
+                        "raw": "ip4:50.112.246.219",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "107.22.191.150",
+                        "raw": "ip4:107.22.191.150",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "13.216.54.180",
+                        "raw": "ip4:13.216.54.180",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "13.216.7.111",
+                        "raw": "ip4:13.216.7.111",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "18.207.52.234",
+                        "raw": "ip4:18.207.52.234",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "3.211.80.218",
+                        "raw": "ip4:3.211.80.218",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "3.216.221.67",
+                        "raw": "ip4:3.216.221.67",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "3.221.209.22",
+                        "raw": "ip4:3.221.209.22",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "34.193.58.168",
+                        "raw": "ip4:34.193.58.168",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "34.198.94.229",
+                        "raw": "ip4:34.198.94.229",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "34.197.254.9",
+                        "raw": "ip4:34.197.254.9",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "54.211.126.101",
+                        "raw": "ip4:54.211.126.101",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "34.197.10.50",
+                        "raw": "ip4:34.197.10.50",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "34.198.218.121",
+                        "raw": "ip4:34.198.218.121",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "50.16.246.183",
+                        "raw": "ip4:50.16.246.183",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "44.210.169.44",
+                        "raw": "ip4:44.210.169.44",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "all",
+                        "qualifier": "-",
+                        "value": null,
+                        "raw": "-all",
+                        "costs_lookup": false
+                      }
+                    ],
+                    "modifiers": {},
+                    "errors": [],
+                    "all_qualifier": "-",
+                    "direct_lookup_count": 0
+                  },
+                  "duplicate_spf_records": false,
+                  "definite": true
+                }
+              ],
+              "total_lookups": 17,
+              "limit": 10,
+              "exceeded": true,
+              "problems": [
+                "include loop: _spf.google.com is already in the chain",
+                "include loop: amazonses.com is already in the chain"
+              ],
+              "definite": true
+            }
+          }
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:43:49.095254Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "bebeautiful.in",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=spf1 mx a ptr include:servers.mcsv.net include:_spf.google.com include:amazonses.com include:amazonaws.com include:mail.dms.unileverservices.com -all",
+                "google-site-verification=MI4l6R5Lh8mH-ceEoAtk8gdCwI6_NL0Jv_k9lLC5uV4",
+                "google-site-verification=M3y8dplgpfAU2o7u7snCZY1meH2U7WihDL-xn_knq1Q"
+              ],
+              "ttl": 300,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "bebeautiful.in",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "Evaluating this SPF policy needs 17 DNS lookups, above the limit of 10 in RFC 7208 section 4.6.4. The chain is: bebeautiful.in (8) -> servers.mcsv.net (0) -> _spf.google.com (0) -> amazonses.com (0) -> amazonaws.com (1) -> mail.dms.unileverservices.com (4) -> amazon.com (3) -> spf.protection.outlook.com (0) -> spf1.amazon.com (0) -> spf2.amazon.com (1) -> spf3.amazon.com (0).",
+      "impact": "Receivers stop evaluating and return permerror, so SPF fails for this domain entirely. Legitimate mail can be rejected and forged mail is not caught.",
+      "remediation": "Reduce the chain below ten lookups. The usual fix is to replace include: terms for providers you no longer use, and to flatten a provider's ranges into ip4:/ip6: terms - those cost no lookups at all.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7208#section-4.6.4"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:49.095258Z",
+      "first_seen_scan_id": "01M4DHSCZV9WHZKFE1W6ZXK6NC",
+      "last_seen": "2026-10-08T10:43:49.095258Z",
+      "last_seen_scan_id": "01M4DHSCZV9WHZKFE1W6ZXK6NC",
+      "cost": {
+        "requests": 44,
+        "wall_ms": 747,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:e14ae0a98445a2487ce50dcf6b6b653b0f66d486991ad481710d794d10fc80f9",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "dmarc-no-rua",
+      "renamed_from": [],
+      "title": "DMARC has no reporting address",
+      "target": {
+        "type": "domain",
+        "value": "bebeautiful.in"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the absence of a rua= tag in a parsed record is unambiguous"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _dmarc.bebeautiful.in",
+          "captured_at": "2026-10-08T10:43:49.095398Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.bebeautiful.in",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=none;"
+              ],
+              "ttl": 300,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-629fa387.bebeautiful.in",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:43:49.095406Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.bebeautiful.in",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=none;"
+              ],
+              "ttl": 300,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "bebeautiful.in",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "The DMARC record has no rua= tag, so no aggregate reports are sent anywhere.",
+      "impact": "Without reports there is no way to see which senders are failing authentication, which makes moving to an enforcing policy guesswork.",
+      "remediation": "Add 'rua=mailto:dmarc-reports@bebeautiful.in' to the record. Reports arrive daily as XML; a report analyser makes them readable.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7489#section-7"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:49.095409Z",
+      "first_seen_scan_id": "01M4DHSCZV9WHZKFE1W6ZXK6NC",
+      "last_seen": "2026-10-08T10:43:49.095409Z",
+      "last_seen_scan_id": "01M4DHSCZV9WHZKFE1W6ZXK6NC",
+      "cost": {
+        "requests": 44,
+        "wall_ms": 747,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:36b2df8fa2e1854bfadb0c8ddc120f83d4d00190227b4a600871c2964e9a5a28",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "dmarc-alignment",
+      "renamed_from": [],
+      "title": "DMARC uses relaxed alignment",
+      "target": {
+        "type": "domain",
+        "value": "bebeautiful.in"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "info",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "informational",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the adkim= and aspf= tags are read directly, and default to relaxed"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _dmarc.bebeautiful.in",
+          "captured_at": "2026-10-08T10:43:49.095484Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.bebeautiful.in",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=none;"
+              ],
+              "ttl": 300,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-629fa387.bebeautiful.in",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:43:49.095491Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.bebeautiful.in",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=none;"
+              ],
+              "ttl": 300,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "bebeautiful.in",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "DMARC alignment is relaxed (adkim=r, aspf=r). Relaxed alignment accepts any subdomain of bebeautiful.in in the authenticated identifier.",
+      "impact": "Relaxed alignment is the default and is appropriate for most senders. It does mean that anyone able to publish records under a subdomain can pass DMARC for the parent.",
+      "remediation": "If every legitimate sender signs and sends as the exact domain, set adkim=s and aspf=s. If subdomains send mail, relaxed is the correct setting and no change is needed.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7489#section-3.1"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:49.095494Z",
+      "first_seen_scan_id": "01M4DHSCZV9WHZKFE1W6ZXK6NC",
+      "last_seen": "2026-10-08T10:43:49.095494Z",
+      "last_seen_scan_id": "01M4DHSCZV9WHZKFE1W6ZXK6NC",
+      "cost": {
+        "requests": 44,
+        "wall_ms": 747,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:2dee5a99d99a1d44ac623718b3dda3c6223bd7fbc6cefd02fcfae236148149e2",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "mta-sts-missing",
+      "renamed_from": [],
+      "title": "No MTA-STS policy published",
+      "target": {
+        "type": "domain",
+        "value": "bebeautiful.in"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "a definite TXT answer at _mta-sts with no v=STSv1 term is direct observation"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _mta-sts.bebeautiful.in",
+          "captured_at": "2026-10-08T10:43:49.122832Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_mta-sts.bebeautiful.in",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-629fa387.bebeautiful.in",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:43:49.122862Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_mta-sts.bebeautiful.in",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "bebeautiful.in",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "No MTA-STS policy record is published at _mta-sts.bebeautiful.in.",
+      "impact": "Without MTA-STS a sending server that cannot negotiate TLS will deliver mail in plaintext rather than refusing, so an attacker positioned on the network can strip encryption and read the message.",
+      "remediation": "Publish a TXT record at _mta-sts.bebeautiful.in of the form 'v=STSv1; id=<timestamp>', and serve the matching policy file at https://mta-sts.bebeautiful.in/.well-known/mta-sts.txt. Start the policy in mode: testing, then move to mode: enforce.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc8461"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:49.122869Z",
+      "first_seen_scan_id": "01M4DHSCZV9WHZKFE1W6ZXK6NC",
+      "last_seen": "2026-10-08T10:43:49.122869Z",
+      "last_seen_scan_id": "01M4DHSCZV9WHZKFE1W6ZXK6NC",
+      "cost": {
+        "requests": 46,
+        "wall_ms": 775,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:4fdc414148ce005f6f8cf6e7529192bcc6867729b66ecd7ea57bdf332e06e0ee",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "tls-rpt-missing",
+      "renamed_from": [],
+      "title": "No SMTP TLS reporting configured",
+      "target": {
+        "type": "domain",
+        "value": "bebeautiful.in"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "a definite TXT answer at _smtp._tls with no v=TLSRPTv1 term is direct observation"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _smtp._tls.bebeautiful.in",
+          "captured_at": "2026-10-08T10:43:49.159102Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_smtp._tls.bebeautiful.in",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-629fa387.bebeautiful.in",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:43:49.159124Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_smtp._tls.bebeautiful.in",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "bebeautiful.in",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "No SMTP TLS reporting record is published at _smtp._tls.bebeautiful.in.",
+      "impact": "Nobody is told when a sending server fails to establish TLS to your mail servers, so a downgrade attack or a broken certificate goes unnoticed.",
+      "remediation": "Publish a TXT record at _smtp._tls.bebeautiful.in of the form 'v=TLSRPTv1; rua=mailto:tls-reports@bebeautiful.in'.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc8460"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:49.159128Z",
+      "first_seen_scan_id": "01M4DHSCZV9WHZKFE1W6ZXK6NC",
+      "last_seen": "2026-10-08T10:43:49.159128Z",
+      "last_seen_scan_id": "01M4DHSCZV9WHZKFE1W6ZXK6NC",
+      "cost": {
+        "requests": 48,
+        "wall_ms": 811,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:32087fe62c4014da4c33c6b10fa66b6ff76d3ebcb81db3b153253ef8af8f793d",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.1.0",
+      "check_id": "spoofing-possible",
+      "renamed_from": [],
+      "title": "Mail can be sent as this domain",
+      "target": {
+        "type": "domain",
+        "value": "bebeautiful.in"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "high",
+      "confidence": 0.9615,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 25.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "this is a simulation of a receiver's decision from records we read, not an observation of a receiver actually making it; the ratio is lower to say so"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _dmarc.bebeautiful.in",
+          "captured_at": "2026-10-08T10:43:49.159329Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.bebeautiful.in",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=none;"
+              ],
+              "ttl": 300,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-629fa387.bebeautiful.in",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T10:43:49.159339Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.bebeautiful.in",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=none;"
+              ],
+              "ttl": 300,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "bebeautiful.in",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "Simulating the decision a receiving mail server would make for a message forged from bebeautiful.in: it would be delivered, because the DMARC policy is p=none, which asks receivers to take no action.",
+      "impact": "Anyone can send mail that appears to come from this domain and expect it to reach the inbox. That is the mechanism behind invoice fraud and most credential phishing that targets a company's own staff.",
+      "remediation": "Publish an SPF record listing your senders and ending in -all, sign your mail with DKIM, then publish 'v=DMARC1; p=reject; rua=mailto:dmarc@bebeautiful.in' at _dmarc.bebeautiful.in. Move to p=reject only after the rua reports show every legitimate sender passing.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7489"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T10:43:49.159343Z",
+      "first_seen_scan_id": "01M4DHSCZV9WHZKFE1W6ZXK6NC",
+      "last_seen": "2026-10-08T10:43:49.159343Z",
+      "last_seen_scan_id": "01M4DHSCZV9WHZKFE1W6ZXK6NC",
+      "cost": {
+        "requests": 48,
+        "wall_ms": 811,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    }
+  ],
+  "errors": [],
+  "telemetry": {
+    "checks_run": [
+      {
+        "check_id": "spf-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-multiple-records",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-invalid",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-invalid",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-policy-none",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "mx-missing",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "dkim-missing",
+        "outcome": "inconclusive",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-too-permissive",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-lookup-limit",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-pct-partial",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-no-rua",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-alignment",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "mta-sts-missing",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "tls-rpt-missing",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "spoofing-possible",
+        "outcome": "reported",
+        "location": "$"
+      }
+    ],
+    "suppressed": [],
+    "requests": 48,
+    "wall_ms": 811,
+    "ai_tokens": 0
+  },
+  "started_at": null,
+  "finished_at": "2026-10-08T10:43:49.159422Z",
+  "killed": false,
+  "outcome": "succeeded"
+}

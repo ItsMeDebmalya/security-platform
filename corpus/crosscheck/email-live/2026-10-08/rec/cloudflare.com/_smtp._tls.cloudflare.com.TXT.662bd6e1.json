@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_smtp._tls.cloudflare.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=TLSRPTv1; rua=mailto:rua@cloudflare.com;"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 300
+}

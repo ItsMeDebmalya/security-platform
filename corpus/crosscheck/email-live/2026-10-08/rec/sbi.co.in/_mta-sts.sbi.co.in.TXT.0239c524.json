@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_mta-sts.sbi.co.in",
+  "rcode": "NOERROR",
+  "records": [
+    "v=STSv1; id=20260703"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 3600
+}

@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "_smtp._tls.bebeautiful.in",
+  "rcode": "NXDOMAIN",
+  "records": [],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": null
+}

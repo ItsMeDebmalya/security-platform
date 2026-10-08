@@ -1,0 +1,15 @@
+{
+  "flags": [],
+  "name": "amazonaws.com",
+  "rcode": "NOERROR",
+  "records": [
+    "atlassian-domain-verification=ZT4AapXgobCpXIWoNcd7gtMjZyOUdr4EDFMnFUWrqqqgdaQVbDvoGpRaIwj/tgPH",
+    "google-site-verification=EEVHeL7fVZb5ix5bR0draHWtJ5MfS0538OwXAfY8HCY",
+    "pf2vv39dfkf9tszsg5lggfs6tp6bkjn4",
+    "spf2.0/pra include:amazon.com ~all",
+    "v=spf1 include:amazon.com ~all"
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": 900
+}

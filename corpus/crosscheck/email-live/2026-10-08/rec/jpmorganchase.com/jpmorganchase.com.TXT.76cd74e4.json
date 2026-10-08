@@ -1,0 +1,30 @@
+{
+  "flags": [],
+  "name": "jpmorganchase.com",
+  "rcode": "NOERROR",
+  "records": [
+    "1+O/eVj+6WU8nviuB808qQzlr5eDntCB8k7FzukbGTbj3Dc5kbSARbPTzbx7RIgFLqoelsr7PwjROrD6uEFN0w==",
+    "7wf5p7nzwsklzjz2ssh0406r0x50v40r",
+    "Dynatrace-site-verification=2e4f1787-2bd3-46c1-82b7-98b9f291ca48__u9ds5porm9j7ta4qe6gc78qqlu",
+    "Dynatrace-site-verification=8359e391-5c93-4b76-813a-9064af8cb8de__4082hmgrea9fp2v8okkh74bfeh",
+    "J0P1M11968",
+    "MS=ms30383936",
+    "_416jmo5kqekblgcj03zfzvcic8xcmt8",
+    "_4tudp4mx58p47exju00pvcjbjk7mi94",
+    "_5440vpu4gwczgb0eyxxk97nvvqlb49y",
+    "_a0x9smfdwuolzhm0t1r4zc1owc75kx0",
+    "_czhdxtfgtoxd1ympot0eq6c46y8kik0",
+    "_vynfq7nyfro87oi75od3o447x0sq2a0",
+    "_xzu36tb02mx637u536nunywy7zey9wz",
+    "_yirfcadwxe6bjx4ucklbzkcdd96m2u3",
+    "autodesk-domain-verification=BIdybw2pI4HhzRJ6P1Lh",
+    "facebook-domain-verification=816oi5gnuexp0l05fhxdgqx8q54trg",
+    "ge+apI3K6/59IDwtaIXwfnfzb30RxF000kmNQ4ahH9d1577qWYONOnvx500PoHsnuel5bUPlE+VOAWqZdCJCYg==",
+    "testingdyn",
+    "v=spf1 a:spf.jpmchase.com ip4:207.162.228.0/24 ip4:207.162.229.0/24 ip4:207.162.225.0/24 ip4:196.37.232.50 ip4:159.53.46.0/24 ip4:159.53.36.0/24 ip4:159.53.110.0/24 ip4:170.148.48.0/24 ip4:159.53.78.0/24 -all",
+    "zhnsrfg8pfxw7ttsgd8vyzrwh8887tj5"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 3600
+}

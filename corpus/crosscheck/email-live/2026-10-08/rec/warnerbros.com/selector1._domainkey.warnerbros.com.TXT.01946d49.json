@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "selector1._domainkey.warnerbros.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA12cyBcESQVZSC8lWFHtRQea6WkO6bz17wlJWHMU2Y6d+yD6AePI4KfZ4Jo40tCgEzsommYNrWPzhOTuO++3kS+x9R3ilOEMkZINTqY94tdhHi0jkMvMwMz9IuwIvaqkhAzLnhGndqQ+NG4mrGO4ojfLX9V7LLrb7yNusceWdmEN+KpItpR8wq2GCpxl52rq6wHRBIlW6p+oGai51JAmtvSXCVwL/4gofuDJvLrTSeGgMcINMXFRfb3p0poKp4Bvk0KOkrdjIntxxDRYkHDwpoFQESLkWifQXomTalE56rNs5paSJpNgMRubkY3W4crKcDP+VscVcPyltJPDpwLCYPQIDAQAB;"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 3600
+}

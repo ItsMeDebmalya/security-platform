@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_mta-sts.microsoft.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=STSv1; id=20190225000000Z;"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 3600
+}

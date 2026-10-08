@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "sbi.co.in",
+  "rcode": "NOERROR",
+  "records": [
+    "0 sbi-co-in.mail.protection.outlook.com."
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "MX",
+  "ttl": 600
+}

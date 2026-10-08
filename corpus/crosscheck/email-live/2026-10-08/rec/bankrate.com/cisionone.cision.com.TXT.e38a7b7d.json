@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "cisionone.cision.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 include:%{i}._ip.%{h}._ehlo.%{d}._spf.vali.email include:mailgun.org ~all"
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": 300
+}
