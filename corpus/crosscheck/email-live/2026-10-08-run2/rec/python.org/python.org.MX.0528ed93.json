@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "python.org",
+  "rcode": "NOERROR",
+  "records": [
+    "50 mail.python.org."
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "MX",
+  "ttl": 60
+}

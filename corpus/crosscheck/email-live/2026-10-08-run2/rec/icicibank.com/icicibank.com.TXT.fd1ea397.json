@@ -1,0 +1,32 @@
+{
+  "flags": [],
+  "name": "icicibank.com",
+  "rcode": "NOERROR",
+  "records": [
+    "MS=ms52700731",
+    "EB34-A410-C4AD-ABC3-0C4F-630B-9A7A-794B",
+    "ii5xx6mg2ok47qpemvtrjaguqwjxjhey.dkim.amazonses.com",
+    "u2qwetm5l424w4bbwmwyj4zlzgohkx5t.dkim.amazonses.com",
+    "gyo7b3ax3lkcgxklxir7cveuuyfde5gz.dkim.amazonses.com",
+    "ST4eO1Wghd0qGer9wteWG99VdaddQXXo4pdQ0qU5fvN0J1lxR0syIxUesi4dtApZBPcPoShvU8RIIAt5b1z+WA==",
+    "4Q3B3pTe7TvfRntmCDJ2wyBFBpqvTIuZZtrd7LZNr6JQdVpf9xv90MBe0d7rUPwcSwwi7Z4Gc7EPTJzbp6t7dg==",
+    "google-site-verification=m1M234uXFSSszQp_EwMyiRO82e7lNVFgw5Vh_MPGSuY",
+    "MS=ms93634292",
+    "v=spf1 include:spf.protection.outlook.com ip4:103.87.41.227 ip4:103.87.41.228 ip4:103.87.41.229 ip4:203.171.211.12 ip4:203.171.211.13 ip4:203.171.211.14 ip4:203.171.211.15 ip4:203.171.211.16 ip4:103.87.41.230 ip4:103.87.41.231 ip4:103.87.41.232  ip4:103.87.41.233 ip4:103.87.41.234 ip4:103.87.41.235 ip4:103.60.5.11 ip4:103.60.5.12 ip4:103.60.5.13 ip4:103.60.5.14 ip4:103.169.235.11 ip4:103.169.235.12 ip4:103.169.235.13 ip4:103.169.235.46 ip4:103.169.235.47 include:_spf1.icicibank.com -all",
+    "google-site-verification=b87lpF78LJIyswetJOxNTq4Bwra1TJvv1REsDlr96Io",
+    "adobe-idp-site-verification=d37136889e6281715d4a222fa72216da4412bd6d86358a064deff86d1c4c5e9a",
+    "atlassian-domain-verification=QS8CdnNOBOME9pTX5Wmi4RipBZwFt0tk9YGND0qo2EenPOKxA06WHizbeJEGwa8i",
+    "pexip-ms-tenant-domain-verification=0ceb6b0b-89c2-49f1-b36b-643419ef915c",
+    "Visa=A85FA5A118115BEAAF5CFA0D742F692E",
+    "VISA=59352480425FB47B75163EAFE16B418B",
+    "A34CE0BF652F126CF8A0DFB321C42EC9.C5FA67888253C9E6BFFE23BE37180357.20260406.ssl.com",
+    "google-site-verification=gpSx0ivGVdI2X138ZcHo6jwbNebRnOPiPmWSIkMZ79U",
+    "google-site-verification=bMO7r3fxTr3in7bcvjRMWhgORnUYxEyYZLEb4U-trOQ",
+    "google-site-verification=3TXzaCVZBuGyNiRhvtXkIYzMBAwxXtyHUOPIo1y9yLM",
+    "google-site-verification=75WuR0IasGjYcYDt8sDOx4klSA__V7ecux88v5b-LVg",
+    "MS=ms83549914"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 556
+}

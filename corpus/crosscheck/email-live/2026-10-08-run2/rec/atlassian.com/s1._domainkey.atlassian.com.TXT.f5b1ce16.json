@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "s1._domainkey.atlassian.com",
+  "rcode": "NOERROR",
+  "records": [
+    "k=rsa; t=s; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCyBd8d5z1DFksfA8BmiD34c1JNSHm0OIm/JcnO40tu/1rCUcnaqx71DSkoej/l+d9hyRz14xNddt/Bf+jmIpM8dcTrXXAE+4Za9XJ/1hD37WDUa0P7BsptsBFS+rxKIVlDwgB54q2hmnYuvAhUVVwTQaLQzMMAvst5TcKe86WuNQIDAQAB"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 60
+}

@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "spf1.atlassian.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 ip4:208.117.48.0/20 ip4:52.38.191.241 ~all"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 300
+}

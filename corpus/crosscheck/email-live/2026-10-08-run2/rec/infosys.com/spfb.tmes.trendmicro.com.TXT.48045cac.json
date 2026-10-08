@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "spfb.tmes.trendmicro.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 ip4:107.22.223.18 ip4:52.70.252.86 ip4:35.156.245.132 ip4:18.156.0.20 ip4:3.72.196.143 ip4:54.146.4.63 ip4:54.174.82.86 ip6:2600:1f18:42fe:5c00::/60 ip6:2a05:d014:10e:d900::/60 ip6:2406:da1c:1ef6:1c00::/60 include:spfc.tmes.trendmicro.com ~all"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 300
+}

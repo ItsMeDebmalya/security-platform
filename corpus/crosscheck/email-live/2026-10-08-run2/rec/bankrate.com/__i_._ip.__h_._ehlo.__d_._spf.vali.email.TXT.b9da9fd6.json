@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "%{i}._ip.%{h}._ehlo.%{d}._spf.vali.email",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 -all"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 201
+}

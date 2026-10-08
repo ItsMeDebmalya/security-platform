@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_dmarc.makemytrip.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DMARC1; p=reject; pct=100; rua=mailto:dmarc@makemytrip.com; sp=reject; aspf=r;"
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": 1333
+}

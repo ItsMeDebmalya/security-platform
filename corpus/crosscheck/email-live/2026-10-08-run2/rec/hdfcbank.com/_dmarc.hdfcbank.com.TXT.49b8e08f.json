@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_dmarc.hdfcbank.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DMARC1; p=reject; rua=mailto:dmarc.rua@hdfcbank.net; ruf=mailto:dmarc.ruf@hdfcbank.net; fo=1"
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": 300
+}

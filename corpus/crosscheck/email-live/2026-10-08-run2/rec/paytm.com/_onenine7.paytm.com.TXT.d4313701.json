@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_onenine7.paytm.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 ip4:125.63.68.126/32 ip4:125.19.44.75/32 ip4:125.19.44.94/32 ip4:121.241.245.27/32 ip4:125.63.68.100/32 ip4:125.19.44.91/32 -all"
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": 60
+}

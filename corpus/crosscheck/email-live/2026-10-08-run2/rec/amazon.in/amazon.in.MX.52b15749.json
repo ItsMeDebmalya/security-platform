@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "amazon.in",
+  "rcode": "NOERROR",
+  "records": [
+    "10 amazon-smtp.amazon.com."
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "MX",
+  "ttl": 900
+}

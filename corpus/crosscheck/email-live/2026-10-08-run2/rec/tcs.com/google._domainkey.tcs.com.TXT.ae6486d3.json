@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "google._domainkey.tcs.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAp+Lg4pG+qHbW6LG3RWwd7vNy5/uS9MIgmoHR9m+kYt+0+nQq8/nu9OwwnJVqUDCuWEKJJvpmuHAb7NUrL9J/kVfYY+7Vf32lHc7QJ/HqEfedeoymIfG2s1Mpgp9qSAXqFrt72+aQVMorqEgAVu3Jf9T6L6SJGLT4K5E7GTVdjM666u+v2UTdcs1M4K82E0FLp0nNcPWqtJzF5oYeT9BruXZlWTtH3J/1z3AEa5fEYn3A+fxxILcBPvSLGjKGFC+k5x1fl7Cq83getCzsKmTN327OZ0Dzp1bL7oqw+6mK8OSPKBDP/gugVYbiiLUfJOgxqdUabmbSeGJXSHj7MezfrQIDAQAB"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 86400
+}

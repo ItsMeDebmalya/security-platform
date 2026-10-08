@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "default._domainkey.zomato.in",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DKIM1; p="
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 300
+}

@@ -1,0 +1,12 @@
+{
+  "flags": [],
+  "name": "oraclecloud.com",
+  "rcode": "NOERROR",
+  "records": [
+    "google-site-verification=IewBl1UFMqOWZMcNXkSRmSr35VZGFwwRWNj7bHeocMY",
+    "v=spf1 include:spf_c.oraclecloud.com include:spf_omcs.oracleoutsourcing.com include:spf.dynect.net include:spf.oracleemaildelivery.com -all"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 300
+}

@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_spf-a.infosys.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 ip4:52.5.134.202 ip4:174.143.181.180 ip4:192.40.173.140 ip4:192.40.173.141 ip4:122.98.14.118 ip4:122.98.14.119 ip4:122.98.10.172 ip4:122.98.10.173 ip4:192.168.139.194 ip4:192.168.139.193 include:ipreomail.com include:spf.tmes.trendmicro.com -all"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 3600
+}

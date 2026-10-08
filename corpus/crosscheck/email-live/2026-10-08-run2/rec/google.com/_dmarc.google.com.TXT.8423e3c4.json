@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_dmarc.google.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DMARC1; p=reject; rua=mailto:mailauth-reports@google.com"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 99
+}

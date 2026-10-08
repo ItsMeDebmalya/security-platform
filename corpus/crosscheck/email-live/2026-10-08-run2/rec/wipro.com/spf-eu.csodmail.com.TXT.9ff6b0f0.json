@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "spf-eu.csodmail.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 ip4:3.68.129.51 ip4:3.123.206.219 ~all"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 3600
+}

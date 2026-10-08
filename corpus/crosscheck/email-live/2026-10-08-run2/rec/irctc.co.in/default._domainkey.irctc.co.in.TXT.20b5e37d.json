@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "default._domainkey.irctc.co.in",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DKIM1; k=rsa; s=email; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDl6r7O3GXSBFG13FMGlbB75oXFvpPUZnMOR1JVqWEXa6ylY1/kc9ixYihuPFVVEIJTUBt3E7dVvCUkso7NYxWNmm0i4a4aYAitZ/1trikUCTivcSzCEOhU3RoC7yf2K6imTrwVioGcgY8+Xk8Ty5wv/jvch8teVgdGwrBE+QZ/8wIDAQAB"
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": 21600
+}

@@ -1,0 +1,22 @@
+{
+  "flags": [],
+  "name": "iana.org",
+  "rcode": "NOERROR",
+  "records": [
+    "anthropic-domain-verification-y6snfs=iFBQ4ycOIIfJWwcVxPVrM7GjE",
+    "ZOOM_verify_OSW2jT8DRO7PWDLYayPfa1",
+    "yahoo-verification-key=a1BzYfCAaz0f0Lu5ciZqvFkN93BwOIFipV9hvjjvqJw=",
+    "openai-domain-verification=dv-PthFCD7xcAsc4Af2tmFj9sui",
+    "docusign=b2d7c7b0-4627-494b-a7aa-682ee87c265d",
+    "smartsheet-site-validation=CcnvONgQ2ibuzf2zHZxgPaWUqTwt-Sjr",
+    "hibp-verify=dweb_deeci9b66kmruhrzqi0rgz1m",
+    "google-site-verification=iIqTTcUxND4wZOeVe5Ho728rH3JOSDnssYsYJ7pUtQQ",
+    "google-site-verification=6UylNQOBC9EN1ZNfySQ3g8XdRBqkGG4gifrzF9zsPD0",
+    "MS=ms22660639",
+    "v=spf1 redirect=icann.org",
+    "c9e864a6c53444038d34fe3a22513b74"
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": 21600
+}

@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_relay.amadeus.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 ip4:82.150.225.79 ip4:171.17.133.140 ip4:171.17.133.100 ip4:82.150.230.4 ip4:82.150.230.84/31 ip4:82.150.230.87 -all"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 3600
+}

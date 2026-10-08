@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_spf.salesforce.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 exists:%{i}._spf.mta.salesforce.com -all"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 2109
+}

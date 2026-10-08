@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "google._domainkey.python.org",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCOu1HEs6/+K8nD1TgxnDYPE0Pdsj/eLUEEZYbgBzuMGc9G/kdx5RpOhCiEAhju96049GMcWtrYz4xiRSCkHgtsUXKRpC+uMbOzHywr92QM/y7t+UyV59n9w3l73oIoOYa9TvmJ7VDoShtwd8fb2cyaiKybeXIcf6tzOS9WJsugWQIDAQAB"
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": 300
+}

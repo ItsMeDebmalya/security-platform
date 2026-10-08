@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "salesforce.icann.org",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 include:_spf.salesforce.com -all"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 600
+}

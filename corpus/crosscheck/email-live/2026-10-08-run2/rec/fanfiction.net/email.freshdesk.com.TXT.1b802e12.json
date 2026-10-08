@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "email.freshdesk.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 include:sendgrid.net include:fdspfus.freshemail.io include:fdspfeuc.freshemail.io include:fdspfind.freshemail.io include:fdspfaus.freshemail.io ~all"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 300
+}

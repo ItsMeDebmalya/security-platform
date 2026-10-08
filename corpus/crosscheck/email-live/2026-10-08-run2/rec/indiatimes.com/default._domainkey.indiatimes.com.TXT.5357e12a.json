@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "default._domainkey.indiatimes.com",
+  "rcode": "NOERROR",
+  "records": [
+    "k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC/dYEfKiVgkMeqzspA0KzzmWBgAQ+zGphuxniRSCGtCDJHMtGzv75WkMmt8EuGVLbWkytmzK7U47zal/UradY8RvyMEgKNyvc+BmMG/aXEfAKVfOJ2NPXNreDplYLwnUhhtBbcJ0m/mpJ+liZxhA7rBNhPMr/eWPDkxeQ9g7n/kQIDAQAB"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 1200
+}

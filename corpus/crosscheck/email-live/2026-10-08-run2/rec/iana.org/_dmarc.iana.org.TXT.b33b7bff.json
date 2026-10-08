@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_dmarc.iana.org",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DMARC1; p=none;fo=1; rua=mailto:tutnr7vw@ag.us.dmarcian.com; ruf=mailto:dmarc-ruf@iana.org;"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 3600
+}

@@ -1,0 +1,812 @@
+{
+  "scanner": "email",
+  "scanner_version": "1.2.0",
+  "target": {
+    "type": "domain",
+    "value": "fanfiction.net"
+  },
+  "mode": "standard",
+  "findings": [
+    {
+      "id": "sha256:944081ea8440b00f1cf263cebfbac8bd0e473f400b8e2c39980c07d32b8660b9",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.2.0",
+      "check_id": "spf-invalid",
+      "renamed_from": [],
+      "title": "SPF record is not valid",
+      "target": {
+        "type": "domain",
+        "value": "fanfiction.net"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "medium",
+      "confidence": 0.9677,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 30.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "RFC 7208 syntax is unambiguous, but real-world records use extensions we may not know, so the ratio is below that of a plain absence"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at fanfiction.net",
+          "captured_at": "2026-10-08T11:46:35.199804Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "fanfiction.net",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=spf1 ip4:50.31.52.242 ip4:173.205.184.0/26 include:_spf.google.com include:email.freshdesk.com include:sendgrid.net -allgoogle-site-verification=azVIufmnM70GVsbIzGiT1xm8Au0WPBFf0rtJ-puqSQM"
+              ],
+              "ttl": 360,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-d5b976e0.fanfiction.net",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": {
+            "spf": {
+              "raw": "v=spf1 ip4:50.31.52.242 ip4:173.205.184.0/26 include:_spf.google.com include:email.freshdesk.com include:sendgrid.net -allgoogle-site-verification=azVIufmnM70GVsbIzGiT1xm8Au0WPBFf0rtJ-puqSQM",
+              "valid": false,
+              "terms": [
+                {
+                  "mechanism": "ip4",
+                  "qualifier": "+",
+                  "value": "50.31.52.242",
+                  "raw": "ip4:50.31.52.242",
+                  "costs_lookup": false
+                },
+                {
+                  "mechanism": "ip4",
+                  "qualifier": "+",
+                  "value": "173.205.184.0/26",
+                  "raw": "ip4:173.205.184.0/26",
+                  "costs_lookup": false
+                },
+                {
+                  "mechanism": "include",
+                  "qualifier": "+",
+                  "value": "_spf.google.com",
+                  "raw": "include:_spf.google.com",
+                  "costs_lookup": true
+                },
+                {
+                  "mechanism": "include",
+                  "qualifier": "+",
+                  "value": "email.freshdesk.com",
+                  "raw": "include:email.freshdesk.com",
+                  "costs_lookup": true
+                },
+                {
+                  "mechanism": "include",
+                  "qualifier": "+",
+                  "value": "sendgrid.net",
+                  "raw": "include:sendgrid.net",
+                  "costs_lookup": true
+                }
+              ],
+              "modifiers": {},
+              "errors": [
+                "cannot parse term '-allgoogle-site-verification=azVIufmnM70GVsbIzGiT1xm8Au0WPBFf0rtJ-puqSQM'"
+              ],
+              "all_qualifier": null,
+              "direct_lookup_count": 3
+            }
+          }
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T11:46:35.199824Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "fanfiction.net",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=spf1 ip4:50.31.52.242 ip4:173.205.184.0/26 include:_spf.google.com include:email.freshdesk.com include:sendgrid.net -allgoogle-site-verification=azVIufmnM70GVsbIzGiT1xm8Au0WPBFf0rtJ-puqSQM"
+              ],
+              "ttl": 360,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "fanfiction.net",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "The SPF record at fanfiction.net does not parse: cannot parse term '-allgoogle-site-verification=azVIufmnM70GVsbIzGiT1xm8Au0WPBFf0rtJ-puqSQM'.",
+      "impact": "A record receivers cannot parse is treated as permerror, which means SPF gives no protection and may cause legitimate mail to be rejected.",
+      "remediation": "Fix the terms listed above. Every mechanism must be one of all, include, a, mx, ptr, ip4, ip6 or exists, optionally prefixed with +, -, ~ or ?.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7208"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T11:46:35.199827Z",
+      "first_seen_scan_id": "01M4DNCBA3ZVM2XHSZ2FCNHCBS",
+      "last_seen": "2026-10-08T11:46:35.199827Z",
+      "last_seen_scan_id": "01M4DNCBA3ZVM2XHSZ2FCNHCBS",
+      "cost": {
+        "requests": 22,
+        "wall_ms": 252,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:8510eec8becaf9759b3635fc7c8247256c18dc7009df4f176a816dfed1bb7663",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.2.0",
+      "check_id": "dmarc-alignment",
+      "renamed_from": [],
+      "title": "DMARC uses relaxed alignment",
+      "target": {
+        "type": "domain",
+        "value": "fanfiction.net"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "info",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "informational",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the adkim= and aspf= tags are read directly, and default to relaxed"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _dmarc.fanfiction.net",
+          "captured_at": "2026-10-08T11:46:35.295379Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.fanfiction.net",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=quarantine; sp=reject; ri=86400; rua=mailto:security@fictionpress.com"
+              ],
+              "ttl": 1800,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-d5b976e0.fanfiction.net",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T11:46:35.295400Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.fanfiction.net",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=quarantine; sp=reject; ri=86400; rua=mailto:security@fictionpress.com"
+              ],
+              "ttl": 1800,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "fanfiction.net",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "DMARC alignment is relaxed (adkim=r, aspf=r). Relaxed alignment accepts any subdomain of fanfiction.net in the authenticated identifier.",
+      "impact": "Relaxed alignment is the default and is appropriate for most senders. It does mean that anyone able to publish records under a subdomain can pass DMARC for the parent.",
+      "remediation": "If every legitimate sender signs and sends as the exact domain, set adkim=s and aspf=s. If subdomains send mail, relaxed is the correct setting and no change is needed.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7489#section-3.1"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T11:46:35.295410Z",
+      "first_seen_scan_id": "01M4DNCBA3ZVM2XHSZ2FCNHCBS",
+      "last_seen": "2026-10-08T11:46:35.295410Z",
+      "last_seen_scan_id": "01M4DNCBA3ZVM2XHSZ2FCNHCBS",
+      "cost": {
+        "requests": 31,
+        "wall_ms": 348,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:8258e5ec4516fd7d4ebc3979207b082c2687f0919b7875bd5054ed900782091a",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.2.0",
+      "check_id": "dkim-weak-key",
+      "renamed_from": [],
+      "title": "DKIM key is below 2048 bits",
+      "target": {
+        "type": "domain",
+        "value": "fanfiction.net"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.9677,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 30.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the modulus length is measured from the key itself; every common selector is read, but a domain may publish others we cannot find"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at selector1._domainkey.fanfiction.net",
+          "captured_at": "2026-10-08T11:46:35.313693Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "selector1._domainkey.fanfiction.net",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCbqIYTgc9iP1esOB/5esV1/xP+viR6nMGDSy/zrk1sLYQVBDslvovzXrvCzgcDFFVfaLn6Im82mZ7lwwFA6Xyj1YXLugSKM8yR2X7yrAovV8LnBMXB+aDKDP/zyS0x7V80cY1whVvPR7h5rY6OyN8bHAJiEC8shsjK8f2bXNum2QIDAQAB;"
+              ],
+              "ttl": 28800,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-d5b976e0.fanfiction.net",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": {
+            "dkim_keys": [
+              {
+                "selector": "selector1",
+                "raw": "v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCbqIYTgc9iP1esOB/5esV1/xP+viR6nMGDSy/zrk1sLYQVBDslvovzXrvCzgcDFFVfaLn6Im82mZ7lwwFA6Xyj1YXLugSKM8yR2X7yrAovV8LnBMXB+aDKDP/zyS0x7V80cY1whVvPR7h5rY6OyN8bHAJiEC8shsjK8f2bXNum2QIDAQAB;",
+                "valid": true,
+                "tags": {
+                  "v": "DKIM1",
+                  "k": "rsa",
+                  "p": "<216 base64 chars>"
+                },
+                "errors": [],
+                "key_type": "rsa",
+                "key_bits": 1024,
+                "revoked": false,
+                "testing": false
+              }
+            ]
+          }
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T11:46:35.313709Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "selector1._domainkey.fanfiction.net",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCbqIYTgc9iP1esOB/5esV1/xP+viR6nMGDSy/zrk1sLYQVBDslvovzXrvCzgcDFFVfaLn6Im82mZ7lwwFA6Xyj1YXLugSKM8yR2X7yrAovV8LnBMXB+aDKDP/zyS0x7V80cY1whVvPR7h5rY6OyN8bHAJiEC8shsjK8f2bXNum2QIDAQAB;"
+              ],
+              "ttl": 21600,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "fanfiction.net",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "The DKIM key published at selector1._domainkey.fanfiction.net is 1024 bits. It meets the RFC 8301 minimum of 1024 bits, below the recommended 2048.",
+      "impact": "This is a margin, not a break: RFC 8301 permits the key, and recommends 2048 bits for signers. Moving to 2048 bits brings the domain in line with that recommendation.",
+      "remediation": "If a weaker selector is no longer used for signing, remove its record. Otherwise generate a new 2048-bit key with your mail provider, publish it under a new selector, switch signing to it, and remove the old selector once no mail is signed with it.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc8301"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T11:46:35.313712Z",
+      "first_seen_scan_id": "01M4DNCBA3ZVM2XHSZ2FCNHCBS",
+      "last_seen": "2026-10-08T11:46:35.313712Z",
+      "last_seen_scan_id": "01M4DNCBA3ZVM2XHSZ2FCNHCBS",
+      "cost": {
+        "requests": 32,
+        "wall_ms": 366,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:df2d5d29dc494db9c38ae3195876e804f63322a1d1505351630d7afd9b37dd27",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.2.0",
+      "check_id": "mta-sts-missing",
+      "renamed_from": [],
+      "title": "No MTA-STS policy published",
+      "target": {
+        "type": "domain",
+        "value": "fanfiction.net"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "a definite TXT answer at _mta-sts with no v=STSv1 term is direct observation"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _mta-sts.fanfiction.net",
+          "captured_at": "2026-10-08T11:46:35.332278Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_mta-sts.fanfiction.net",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-d5b976e0.fanfiction.net",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T11:46:35.332297Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_mta-sts.fanfiction.net",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "fanfiction.net",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "No MTA-STS policy record is published at _mta-sts.fanfiction.net.",
+      "impact": "Without MTA-STS a sending server that cannot negotiate TLS will deliver mail in plaintext rather than refusing, so an attacker positioned on the network can strip encryption and read the message.",
+      "remediation": "Publish a TXT record at _mta-sts.fanfiction.net of the form 'v=STSv1; id=<timestamp>', and serve the matching policy file at https://mta-sts.fanfiction.net/.well-known/mta-sts.txt. Start the policy in mode: testing, then move to mode: enforce.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc8461"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T11:46:35.332300Z",
+      "first_seen_scan_id": "01M4DNCBA3ZVM2XHSZ2FCNHCBS",
+      "last_seen": "2026-10-08T11:46:35.332300Z",
+      "last_seen_scan_id": "01M4DNCBA3ZVM2XHSZ2FCNHCBS",
+      "cost": {
+        "requests": 34,
+        "wall_ms": 385,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:f05529092fface42e7fc05713087dfb1644b416acfa4f21dd9c6ed15cb1db611",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.2.0",
+      "check_id": "tls-rpt-missing",
+      "renamed_from": [],
+      "title": "No SMTP TLS reporting configured",
+      "target": {
+        "type": "domain",
+        "value": "fanfiction.net"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "a definite TXT answer at _smtp._tls with no v=TLSRPTv1 term is direct observation"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _smtp._tls.fanfiction.net",
+          "captured_at": "2026-10-08T11:46:35.356195Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_smtp._tls.fanfiction.net",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-d5b976e0.fanfiction.net",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T11:46:35.356218Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_smtp._tls.fanfiction.net",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "fanfiction.net",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "No SMTP TLS reporting record is published at _smtp._tls.fanfiction.net.",
+      "impact": "Nobody is told when a sending server fails to establish TLS to your mail servers, so a downgrade attack or a broken certificate goes unnoticed.",
+      "remediation": "Publish a TXT record at _smtp._tls.fanfiction.net of the form 'v=TLSRPTv1; rua=mailto:tls-reports@fanfiction.net'.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc8460"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T11:46:35.356222Z",
+      "first_seen_scan_id": "01M4DNCBA3ZVM2XHSZ2FCNHCBS",
+      "last_seen": "2026-10-08T11:46:35.356222Z",
+      "last_seen_scan_id": "01M4DNCBA3ZVM2XHSZ2FCNHCBS",
+      "cost": {
+        "requests": 36,
+        "wall_ms": 409,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    }
+  ],
+  "errors": [],
+  "telemetry": {
+    "checks_run": [
+      {
+        "check_id": "spf-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-multiple-records",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-invalid",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-invalid",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-policy-none",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "mx-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dkim-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-too-permissive",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-lookup-limit",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-pct-partial",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-no-rua",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-alignment",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "dkim-weak-key",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "mta-sts-missing",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "tls-rpt-missing",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "spoofing-possible",
+        "outcome": "clear",
+        "location": "$"
+      }
+    ],
+    "suppressed": [],
+    "requests": 36,
+    "wall_ms": 409,
+    "ai_tokens": 0
+  },
+  "started_at": null,
+  "finished_at": "2026-10-08T11:46:35.356359Z",
+  "killed": false,
+  "outcome": "succeeded"
+}

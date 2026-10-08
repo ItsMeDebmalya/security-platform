@@ -1,0 +1,24 @@
+{
+  "flags": [],
+  "name": "caltech.edu",
+  "rcode": "NOERROR",
+  "records": [
+    "autodesk-domain-verification=TtWEzwdFn86i9o8NX_8R",
+    "apple-domain-verification=KD7b3wNXe76BHRAV",
+    "openai-domain-verification=dv-fRmGl55vmrLnDqlIOcOoidYz",
+    "amazonses:X9y0RbFXXvxu3ft83xg2e+YV++OUePTUSeCOdB3Chjg=",
+    "MS=ms43712753",
+    "v=spf1 ip4:131.215.0.0/16 ip4:134.4.0.0/16 ip4:192.100.16.0/24 ip4:198.129.208.0/23 ip4:208.69.128.0/22 ip4:199.188.184.0/22 ip4:198.202.125.128/25 ip4:74.122.104.0/22 ip4:72.10.184.102 ip4:72.10.184.103 ip4:72.10.182.15 ip4:72.10.182.16 include:spf.protection.outlook.com include:sendgrid.net include:mktomail.com include:spf.dynect.net include:cust-spf.cashnet.com include:amazonses.com include:_spf.createsend.com include:_spf01.mykronos.com include:_s0.caltech.edu ?all",
+    "1password-site-verification=VRLN67QMNNEPXIIREL6TDZABF4",
+    "adobe-idp-site-verification=1e150df049a820e49156727d1b84c48a1ae11f66f87ad76d2cf30cb9d378acb6",
+    "anthropic-domain-verification-rw8528=rFwrZAPawzCVNGD318e9zzavQ",
+    "ZOOM_verify_a-Gb5-aqQgygEiKsnho63w",
+    "iContact1389932",
+    "amazonses:CBaUu/J2wBFtHuO9isUzHAXTnIWcN5RyPUBvggu7SNE=",
+    "jk01vgvoojdefne9jihhtis667",
+    "Y84qDmmAIPozyUoBIRWmXsFltoU2Pl8b8WGKPlqgz+1t5Db4z9H5ngaaCTq3TTaOK+SCPYUsGVlGn0wUzXNdow=="
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": 3600
+}

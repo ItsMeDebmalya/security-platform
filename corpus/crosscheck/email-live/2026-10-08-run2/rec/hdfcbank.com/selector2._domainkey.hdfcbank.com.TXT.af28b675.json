@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "selector2._domainkey.hdfcbank.com",
+  "rcode": "NXDOMAIN",
+  "records": [],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": null
+}

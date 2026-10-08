@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "selector2._domainkey.wipro.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2ZiU177BlYUp2FGhz7XPIHX2mTqS+Z/FS6AQ7MqgGOWhUZ+Sbees8gZ0IJZ4rVn+w9XZFD9GVQYQa8mmIfxcQvv/oi2tpCTIr3vXK0+4SsQQbGHpodp8n9JZOe95yoWH2OwPBDGgqTJ9pC+iZkkny0PVuwxIGniKaOGyxHrmie0GSNk7CYBIQ0kAQA0+fYO00crdjmIytqS/WFyaN0FtMAeZmJwMqcgX2/GT8+sCN/NH8el9DqyJilOqw7msPriqh4MvA/TUhozU5nBdp6gAUSHfL6jHtZM+UUC8CwzUUEtgVyrfvnPUZKnDNy6aKFY1hAWQMCjSZRD8HmFl8HLm1QIDAQAB;"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 3600
+}

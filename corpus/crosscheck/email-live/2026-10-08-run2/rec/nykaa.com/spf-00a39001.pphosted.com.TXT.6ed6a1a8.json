@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "spf-00a39001.pphosted.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=spf1 ip4:66.159.232.26 ip4:205.220.185.244"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 300
+}

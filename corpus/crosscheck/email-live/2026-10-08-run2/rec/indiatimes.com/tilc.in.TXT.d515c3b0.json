@@ -1,0 +1,12 @@
+{
+  "flags": [],
+  "name": "tilc.in",
+  "rcode": "NOERROR",
+  "records": [
+    "m94nhgrzrwrv5tl1v4psqwzvrx9zgt2b",
+    "v=spf1 include:_spf.tilc.in -all"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 60
+}

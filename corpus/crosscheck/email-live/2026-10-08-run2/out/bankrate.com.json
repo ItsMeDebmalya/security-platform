@@ -1,0 +1,1476 @@
+{
+  "scanner": "email",
+  "scanner_version": "1.2.0",
+  "target": {
+    "type": "domain",
+    "value": "bankrate.com"
+  },
+  "mode": "standard",
+  "findings": [
+    {
+      "id": "sha256:b8b346da12611fb9f506dee024d8248358b7cc3f5db8ca636978e4dc320a248d",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.2.0",
+      "check_id": "spf-lookup-limit",
+      "renamed_from": [],
+      "title": "SPF exceeds the 10 DNS lookup limit",
+      "target": {
+        "type": "domain",
+        "value": "bankrate.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "high",
+      "confidence": 0.9615,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 25.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the count is computed from records we fetched ourselves, but include chains change often and a chain we could not finish walking returns inconclusive"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at bankrate.com",
+          "captured_at": "2026-10-08T11:46:34.826414Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "bankrate.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "0ed1fe018af5d07a38b06846f693bcbc9ac303c997",
+                "1pka11hd106o7e86rtepov6idl",
+                "_globalsign-domain-verification=avMnRTh37pe5RnPDhCy0lZIUwcXqxuLSpiafZhDpY3",
+                "_globalsign-domain-verification=dOKIr3laRwqqoKhk0K7tLTnQFKpyV09qo_wkSho6sI",
+                "activeprospect-domain-verification=peWGJlBLkDDqp02YOWwFtg==",
+                "activeprospect-domain-verification=vMD2H3BdHjFBqG5agk2RTQ==",
+                "activeprospect-domain-verification=w8X4Ld24eEa+kxYuIdthUg==",
+                "adobe-idp-site-verification=b6e27597198dfc9921fbe2ad78e9a76012bb17d0ddb65389e600ecb80de9a555",
+                "apple-domain-verification=4rmc64e9oDooDmoqJ6fA9ApF0lTqQcJRWBdavsodp30",
+                "atlassian-domain-verification=dXpMb6IBZlmK7X42/O28YWyiXYn0+90NDFEfrPsBAoAoUsAoDiuicnQAmjbUiyVB",
+                "canva-site-verification=D-rbzDi1O8Pb3-Cbo1nheg",
+                "ciscocidomainverification=66070bfde7571ba12976e12465d478170ac2361010b661b792191bcd98d3edba",
+                "dhf19593oc10dpve6p97g4s8cl",
+                "docker-verification=c73b34b7-b3ca-4e76-ae7e-ecfdc394f104",
+                "enrkr2dli6c0cgg3m2gj68fh9s",
+                "globalsign-domain-verification=pyR6ci6IB7uVAxLPZN5Z7_imdnvGJLhXCcmfs8v5RP",
+                "google-site-verification=-s9Q49IB0CBlyjYDR0_zGpfTZ6lTQwy1MekbWFXKe5A",
+                "google-site-verification=1c0L8uAGF_THGm5BT3SvzOA_Vf2NsttdNSz5MoAnjBo",
+                "google-site-verification=Os8rZ4yYA_mvNFVpwTQ0xKXABtNNKXHif0_jEmn-fqM",
+                "google-site-verification=TWhZ25g8kyV_rT92FMPYBSzBAtc7RsvaqYKeQww5QOk",
+                "google-site-verification=uE48atBgB27ZsoTp3dJWccSrAP-qOIBrCBypGHkALfA",
+                "loaderio=a9650278bb7e667a8c10b26d971c9b06",
+                "loaderio=e593d03028c5de6789216e15889b3876",
+                "prodpad-domain-verification=n6X2x4u3kqWiMLjpHGZ1zniRr7fnUl9FNSd6u5oTFwI=",
+                "v5idsgnu02eagjsuhkdh9fj1ji",
+                "v=spf1 include:spf.protection.outlook.com include:email.prnewswire.com include:amazonses.com include:mailgun.org include:cisionone.cision.com ip4:149.72.161.134 ~all",
+                "zapier-domain-verification-challenge=86baff43-45be-48cb-9674-06d6d1966fe2"
+              ],
+              "ttl": 86400,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-6721f5c0.bankrate.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": {
+            "spf_chain": {
+              "root": "bankrate.com",
+              "steps": [
+                {
+                  "domain": "bankrate.com",
+                  "rcode": "NOERROR",
+                  "record": {
+                    "raw": "v=spf1 include:spf.protection.outlook.com include:email.prnewswire.com include:amazonses.com include:mailgun.org include:cisionone.cision.com ip4:149.72.161.134 ~all",
+                    "valid": true,
+                    "terms": [
+                      {
+                        "mechanism": "include",
+                        "qualifier": "+",
+                        "value": "spf.protection.outlook.com",
+                        "raw": "include:spf.protection.outlook.com",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "include",
+                        "qualifier": "+",
+                        "value": "email.prnewswire.com",
+                        "raw": "include:email.prnewswire.com",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "include",
+                        "qualifier": "+",
+                        "value": "amazonses.com",
+                        "raw": "include:amazonses.com",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "include",
+                        "qualifier": "+",
+                        "value": "mailgun.org",
+                        "raw": "include:mailgun.org",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "include",
+                        "qualifier": "+",
+                        "value": "cisionone.cision.com",
+                        "raw": "include:cisionone.cision.com",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "149.72.161.134",
+                        "raw": "ip4:149.72.161.134",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "all",
+                        "qualifier": "~",
+                        "value": null,
+                        "raw": "~all",
+                        "costs_lookup": false
+                      }
+                    ],
+                    "modifiers": {},
+                    "errors": [],
+                    "all_qualifier": "~",
+                    "direct_lookup_count": 5
+                  },
+                  "duplicate_spf_records": false,
+                  "definite": true
+                },
+                {
+                  "domain": "spf.protection.outlook.com",
+                  "rcode": "NOERROR",
+                  "record": {
+                    "raw": "v=spf1 ip4:40.92.0.0/15 ip4:40.107.0.0/16 ip4:52.100.0.0/15 ip4:52.102.0.0/16 ip4:52.103.0.0/17 ip4:104.47.0.0/17 ip6:2a01:111:f400::/48 ip6:2a01:111:f403::/49 ip6:2a01:111:f403:8000::/51 ip6:2a01:111:f403:c000::/51 ip6:2a01:111:f403:f000::/52 -all",
+                    "valid": true,
+                    "terms": [
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "40.92.0.0/15",
+                        "raw": "ip4:40.92.0.0/15",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "40.107.0.0/16",
+                        "raw": "ip4:40.107.0.0/16",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "52.100.0.0/15",
+                        "raw": "ip4:52.100.0.0/15",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "52.102.0.0/16",
+                        "raw": "ip4:52.102.0.0/16",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "52.103.0.0/17",
+                        "raw": "ip4:52.103.0.0/17",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "104.47.0.0/17",
+                        "raw": "ip4:104.47.0.0/17",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip6",
+                        "qualifier": "+",
+                        "value": "2a01:111:f400::/48",
+                        "raw": "ip6:2a01:111:f400::/48",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip6",
+                        "qualifier": "+",
+                        "value": "2a01:111:f403::/49",
+                        "raw": "ip6:2a01:111:f403::/49",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip6",
+                        "qualifier": "+",
+                        "value": "2a01:111:f403:8000::/51",
+                        "raw": "ip6:2a01:111:f403:8000::/51",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip6",
+                        "qualifier": "+",
+                        "value": "2a01:111:f403:c000::/51",
+                        "raw": "ip6:2a01:111:f403:c000::/51",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip6",
+                        "qualifier": "+",
+                        "value": "2a01:111:f403:f000::/52",
+                        "raw": "ip6:2a01:111:f403:f000::/52",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "all",
+                        "qualifier": "-",
+                        "value": null,
+                        "raw": "-all",
+                        "costs_lookup": false
+                      }
+                    ],
+                    "modifiers": {},
+                    "errors": [],
+                    "all_qualifier": "-",
+                    "direct_lookup_count": 0
+                  },
+                  "duplicate_spf_records": false,
+                  "definite": true
+                },
+                {
+                  "domain": "email.prnewswire.com",
+                  "rcode": "NOERROR",
+                  "record": {
+                    "raw": "v=spf1 ip4:167.89.0.0/17 ip4:208.117.48.0/20 ip4:50.31.32.0/19 ip4:198.37.144.0/20 ip4:198.21.0.0/21 ip4:192.254.112.0/20 ip4:168.245.0.0/17 ip4:149.72.0.0/16 ip4:159.183.0.0/16 ip4:134.128.64.0/18 ip4:159.26.176.0/20 include:ab.sendgrid.net ~all",
+                    "valid": true,
+                    "terms": [
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "167.89.0.0/17",
+                        "raw": "ip4:167.89.0.0/17",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "208.117.48.0/20",
+                        "raw": "ip4:208.117.48.0/20",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "50.31.32.0/19",
+                        "raw": "ip4:50.31.32.0/19",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "198.37.144.0/20",
+                        "raw": "ip4:198.37.144.0/20",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "198.21.0.0/21",
+                        "raw": "ip4:198.21.0.0/21",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "192.254.112.0/20",
+                        "raw": "ip4:192.254.112.0/20",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "168.245.0.0/17",
+                        "raw": "ip4:168.245.0.0/17",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "149.72.0.0/16",
+                        "raw": "ip4:149.72.0.0/16",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "159.183.0.0/16",
+                        "raw": "ip4:159.183.0.0/16",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "134.128.64.0/18",
+                        "raw": "ip4:134.128.64.0/18",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "159.26.176.0/20",
+                        "raw": "ip4:159.26.176.0/20",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "include",
+                        "qualifier": "+",
+                        "value": "ab.sendgrid.net",
+                        "raw": "include:ab.sendgrid.net",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "all",
+                        "qualifier": "~",
+                        "value": null,
+                        "raw": "~all",
+                        "costs_lookup": false
+                      }
+                    ],
+                    "modifiers": {},
+                    "errors": [],
+                    "all_qualifier": "~",
+                    "direct_lookup_count": 1
+                  },
+                  "duplicate_spf_records": false,
+                  "definite": true
+                },
+                {
+                  "domain": "amazonses.com",
+                  "rcode": "NOERROR",
+                  "record": {
+                    "raw": "v=spf1 ip4:199.255.192.0/22 ip4:199.127.232.0/22 ip4:54.240.0.0/18 ip4:69.169.224.0/20 ip4:23.249.208.0/20 ip4:23.251.224.0/19 ip4:76.223.176.0/20 ip4:54.240.64.0/18 ip4:76.223.128.0/19 ip4:216.221.160.0/19 ip4:206.55.144.0/20 ip4:24.110.64.0/18 ip4:98.77.0.0/16 -all",
+                    "valid": true,
+                    "terms": [
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "199.255.192.0/22",
+                        "raw": "ip4:199.255.192.0/22",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "199.127.232.0/22",
+                        "raw": "ip4:199.127.232.0/22",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "54.240.0.0/18",
+                        "raw": "ip4:54.240.0.0/18",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "69.169.224.0/20",
+                        "raw": "ip4:69.169.224.0/20",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "23.249.208.0/20",
+                        "raw": "ip4:23.249.208.0/20",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "23.251.224.0/19",
+                        "raw": "ip4:23.251.224.0/19",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "76.223.176.0/20",
+                        "raw": "ip4:76.223.176.0/20",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "54.240.64.0/18",
+                        "raw": "ip4:54.240.64.0/18",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "76.223.128.0/19",
+                        "raw": "ip4:76.223.128.0/19",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "216.221.160.0/19",
+                        "raw": "ip4:216.221.160.0/19",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "206.55.144.0/20",
+                        "raw": "ip4:206.55.144.0/20",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "24.110.64.0/18",
+                        "raw": "ip4:24.110.64.0/18",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "98.77.0.0/16",
+                        "raw": "ip4:98.77.0.0/16",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "all",
+                        "qualifier": "-",
+                        "value": null,
+                        "raw": "-all",
+                        "costs_lookup": false
+                      }
+                    ],
+                    "modifiers": {},
+                    "errors": [],
+                    "all_qualifier": "-",
+                    "direct_lookup_count": 0
+                  },
+                  "duplicate_spf_records": false,
+                  "definite": true
+                },
+                {
+                  "domain": "mailgun.org",
+                  "rcode": "NOERROR",
+                  "record": {
+                    "raw": "v=spf1 include:_spf.mailgun.org include:_spf.eu.mailgun.org -all",
+                    "valid": true,
+                    "terms": [
+                      {
+                        "mechanism": "include",
+                        "qualifier": "+",
+                        "value": "_spf.mailgun.org",
+                        "raw": "include:_spf.mailgun.org",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "include",
+                        "qualifier": "+",
+                        "value": "_spf.eu.mailgun.org",
+                        "raw": "include:_spf.eu.mailgun.org",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "all",
+                        "qualifier": "-",
+                        "value": null,
+                        "raw": "-all",
+                        "costs_lookup": false
+                      }
+                    ],
+                    "modifiers": {},
+                    "errors": [],
+                    "all_qualifier": "-",
+                    "direct_lookup_count": 2
+                  },
+                  "duplicate_spf_records": false,
+                  "definite": true
+                },
+                {
+                  "domain": "cisionone.cision.com",
+                  "rcode": "NOERROR",
+                  "record": {
+                    "raw": "v=spf1 include:%{i}._ip.%{h}._ehlo.%{d}._spf.vali.email include:mailgun.org ~all",
+                    "valid": true,
+                    "terms": [
+                      {
+                        "mechanism": "include",
+                        "qualifier": "+",
+                        "value": "%{i}._ip.%{h}._ehlo.%{d}._spf.vali.email",
+                        "raw": "include:%{i}._ip.%{h}._ehlo.%{d}._spf.vali.email",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "include",
+                        "qualifier": "+",
+                        "value": "mailgun.org",
+                        "raw": "include:mailgun.org",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "all",
+                        "qualifier": "~",
+                        "value": null,
+                        "raw": "~all",
+                        "costs_lookup": false
+                      }
+                    ],
+                    "modifiers": {},
+                    "errors": [],
+                    "all_qualifier": "~",
+                    "direct_lookup_count": 2
+                  },
+                  "duplicate_spf_records": false,
+                  "definite": true
+                },
+                {
+                  "domain": "ab.sendgrid.net",
+                  "rcode": "NOERROR",
+                  "record": {
+                    "raw": "v=spf1 ip4:223.165.113.0/24 ip4:223.165.115.0/24 ip4:223.165.118.0/23 ip4:223.165.120.0/23 ~all",
+                    "valid": true,
+                    "terms": [
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "223.165.113.0/24",
+                        "raw": "ip4:223.165.113.0/24",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "223.165.115.0/24",
+                        "raw": "ip4:223.165.115.0/24",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "223.165.118.0/23",
+                        "raw": "ip4:223.165.118.0/23",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "223.165.120.0/23",
+                        "raw": "ip4:223.165.120.0/23",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "all",
+                        "qualifier": "~",
+                        "value": null,
+                        "raw": "~all",
+                        "costs_lookup": false
+                      }
+                    ],
+                    "modifiers": {},
+                    "errors": [],
+                    "all_qualifier": "~",
+                    "direct_lookup_count": 0
+                  },
+                  "duplicate_spf_records": false,
+                  "definite": true
+                },
+                {
+                  "domain": "_spf.mailgun.org",
+                  "rcode": "NOERROR",
+                  "record": {
+                    "raw": "v=spf1 include:_spf1.mailgun.org include:_spf2.mailgun.org ~all",
+                    "valid": true,
+                    "terms": [
+                      {
+                        "mechanism": "include",
+                        "qualifier": "+",
+                        "value": "_spf1.mailgun.org",
+                        "raw": "include:_spf1.mailgun.org",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "include",
+                        "qualifier": "+",
+                        "value": "_spf2.mailgun.org",
+                        "raw": "include:_spf2.mailgun.org",
+                        "costs_lookup": true
+                      },
+                      {
+                        "mechanism": "all",
+                        "qualifier": "~",
+                        "value": null,
+                        "raw": "~all",
+                        "costs_lookup": false
+                      }
+                    ],
+                    "modifiers": {},
+                    "errors": [],
+                    "all_qualifier": "~",
+                    "direct_lookup_count": 2
+                  },
+                  "duplicate_spf_records": false,
+                  "definite": true
+                },
+                {
+                  "domain": "_spf.eu.mailgun.org",
+                  "rcode": "NOERROR",
+                  "record": {
+                    "raw": "v=spf1 ip4:141.193.32.0/23 ip4:159.135.140.80/29 ip4:159.135.132.128/25 ip4:161.38.204.0/22 ip4:87.253.232.0/21 ip4:185.189.236.0/22 ip4:185.211.120.0/22 ip4:185.250.236.0/22 ip4:143.55.236.0/22 ip4:198.244.60.0/22 ip4:204.220.160.0/20 ~all",
+                    "valid": true,
+                    "terms": [
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "141.193.32.0/23",
+                        "raw": "ip4:141.193.32.0/23",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "159.135.140.80/29",
+                        "raw": "ip4:159.135.140.80/29",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "159.135.132.128/25",
+                        "raw": "ip4:159.135.132.128/25",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "161.38.204.0/22",
+                        "raw": "ip4:161.38.204.0/22",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "87.253.232.0/21",
+                        "raw": "ip4:87.253.232.0/21",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "185.189.236.0/22",
+                        "raw": "ip4:185.189.236.0/22",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "185.211.120.0/22",
+                        "raw": "ip4:185.211.120.0/22",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "185.250.236.0/22",
+                        "raw": "ip4:185.250.236.0/22",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "143.55.236.0/22",
+                        "raw": "ip4:143.55.236.0/22",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "198.244.60.0/22",
+                        "raw": "ip4:198.244.60.0/22",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "204.220.160.0/20",
+                        "raw": "ip4:204.220.160.0/20",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "all",
+                        "qualifier": "~",
+                        "value": null,
+                        "raw": "~all",
+                        "costs_lookup": false
+                      }
+                    ],
+                    "modifiers": {},
+                    "errors": [],
+                    "all_qualifier": "~",
+                    "direct_lookup_count": 0
+                  },
+                  "duplicate_spf_records": false,
+                  "definite": true
+                },
+                {
+                  "domain": "%{i}._ip.%{h}._ehlo.%{d}._spf.vali.email",
+                  "rcode": "NOERROR",
+                  "record": {
+                    "raw": "v=spf1 -all",
+                    "valid": true,
+                    "terms": [
+                      {
+                        "mechanism": "all",
+                        "qualifier": "-",
+                        "value": null,
+                        "raw": "-all",
+                        "costs_lookup": false
+                      }
+                    ],
+                    "modifiers": {},
+                    "errors": [],
+                    "all_qualifier": "-",
+                    "direct_lookup_count": 0
+                  },
+                  "duplicate_spf_records": false,
+                  "definite": true
+                },
+                {
+                  "domain": "_spf1.mailgun.org",
+                  "rcode": "NOERROR",
+                  "record": {
+                    "raw": "v=spf1 ip4:159.135.224.0/20 ip4:69.72.32.0/20 ip4:204.220.90.0/23 ip4:204.220.92.0/22 ~all",
+                    "valid": true,
+                    "terms": [
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "159.135.224.0/20",
+                        "raw": "ip4:159.135.224.0/20",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "69.72.32.0/20",
+                        "raw": "ip4:69.72.32.0/20",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "204.220.90.0/23",
+                        "raw": "ip4:204.220.90.0/23",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "204.220.92.0/22",
+                        "raw": "ip4:204.220.92.0/22",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "all",
+                        "qualifier": "~",
+                        "value": null,
+                        "raw": "~all",
+                        "costs_lookup": false
+                      }
+                    ],
+                    "modifiers": {},
+                    "errors": [],
+                    "all_qualifier": "~",
+                    "direct_lookup_count": 0
+                  },
+                  "duplicate_spf_records": false,
+                  "definite": true
+                },
+                {
+                  "domain": "_spf2.mailgun.org",
+                  "rcode": "NOERROR",
+                  "record": {
+                    "raw": "v=spf1 ip4:161.38.192.0/20 ip4:143.55.224.0/21 ip4:143.55.232.0/22 ip4:159.112.240.0/20 ip4:198.244.48.0/20 ip4:204.220.168.0/21 ip4:204.220.176.0/20 ~all",
+                    "valid": true,
+                    "terms": [
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "161.38.192.0/20",
+                        "raw": "ip4:161.38.192.0/20",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "143.55.224.0/21",
+                        "raw": "ip4:143.55.224.0/21",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "143.55.232.0/22",
+                        "raw": "ip4:143.55.232.0/22",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "159.112.240.0/20",
+                        "raw": "ip4:159.112.240.0/20",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "198.244.48.0/20",
+                        "raw": "ip4:198.244.48.0/20",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "204.220.168.0/21",
+                        "raw": "ip4:204.220.168.0/21",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "ip4",
+                        "qualifier": "+",
+                        "value": "204.220.176.0/20",
+                        "raw": "ip4:204.220.176.0/20",
+                        "costs_lookup": false
+                      },
+                      {
+                        "mechanism": "all",
+                        "qualifier": "~",
+                        "value": null,
+                        "raw": "~all",
+                        "costs_lookup": false
+                      }
+                    ],
+                    "modifiers": {},
+                    "errors": [],
+                    "all_qualifier": "~",
+                    "direct_lookup_count": 0
+                  },
+                  "duplicate_spf_records": false,
+                  "definite": true
+                }
+              ],
+              "total_lookups": 12,
+              "limit": 10,
+              "exceeded": true,
+              "problems": [
+                "include loop: mailgun.org is already in the chain"
+              ],
+              "definite": true
+            }
+          }
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T11:46:34.826447Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "bankrate.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "google-site-verification=1c0L8uAGF_THGm5BT3SvzOA_Vf2NsttdNSz5MoAnjBo",
+                "0ed1fe018af5d07a38b06846f693bcbc9ac303c997",
+                "atlassian-domain-verification=dXpMb6IBZlmK7X42/O28YWyiXYn0+90NDFEfrPsBAoAoUsAoDiuicnQAmjbUiyVB",
+                "docker-verification=c73b34b7-b3ca-4e76-ae7e-ecfdc394f104",
+                "globalsign-domain-verification=pyR6ci6IB7uVAxLPZN5Z7_imdnvGJLhXCcmfs8v5RP",
+                "activeprospect-domain-verification=vMD2H3BdHjFBqG5agk2RTQ==",
+                "google-site-verification=TWhZ25g8kyV_rT92FMPYBSzBAtc7RsvaqYKeQww5QOk",
+                "google-site-verification=Os8rZ4yYA_mvNFVpwTQ0xKXABtNNKXHif0_jEmn-fqM",
+                "google-site-verification=uE48atBgB27ZsoTp3dJWccSrAP-qOIBrCBypGHkALfA",
+                "activeprospect-domain-verification=peWGJlBLkDDqp02YOWwFtg==",
+                "_globalsign-domain-verification=dOKIr3laRwqqoKhk0K7tLTnQFKpyV09qo_wkSho6sI",
+                "zapier-domain-verification-challenge=86baff43-45be-48cb-9674-06d6d1966fe2",
+                "adobe-idp-site-verification=b6e27597198dfc9921fbe2ad78e9a76012bb17d0ddb65389e600ecb80de9a555",
+                "ciscocidomainverification=66070bfde7571ba12976e12465d478170ac2361010b661b792191bcd98d3edba",
+                "v5idsgnu02eagjsuhkdh9fj1ji",
+                "activeprospect-domain-verification=w8X4Ld24eEa+kxYuIdthUg==",
+                "v=spf1 include:spf.protection.outlook.com include:email.prnewswire.com include:amazonses.com include:mailgun.org include:cisionone.cision.com ip4:149.72.161.134 ~all",
+                "canva-site-verification=D-rbzDi1O8Pb3-Cbo1nheg",
+                "loaderio=a9650278bb7e667a8c10b26d971c9b06",
+                "loaderio=e593d03028c5de6789216e15889b3876",
+                "google-site-verification=-s9Q49IB0CBlyjYDR0_zGpfTZ6lTQwy1MekbWFXKe5A",
+                "_globalsign-domain-verification=avMnRTh37pe5RnPDhCy0lZIUwcXqxuLSpiafZhDpY3",
+                "apple-domain-verification=4rmc64e9oDooDmoqJ6fA9ApF0lTqQcJRWBdavsodp30",
+                "dhf19593oc10dpve6p97g4s8cl",
+                "enrkr2dli6c0cgg3m2gj68fh9s",
+                "prodpad-domain-verification=n6X2x4u3kqWiMLjpHGZ1zniRr7fnUl9FNSd6u5oTFwI=",
+                "1pka11hd106o7e86rtepov6idl"
+              ],
+              "ttl": 21600,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "bankrate.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "Evaluating this SPF policy needs 12 DNS lookups, above the limit of 10 in RFC 7208 section 4.6.4. The chain is: bankrate.com (5) -> spf.protection.outlook.com (0) -> email.prnewswire.com (1) -> amazonses.com (0) -> mailgun.org (2) -> cisionone.cision.com (2) -> ab.sendgrid.net (0) -> _spf.mailgun.org (2) -> _spf.eu.mailgun.org (0) -> %{i}._ip.%{h}._ehlo.%{d}._spf.vali.email (0) -> _spf1.mailgun.org (0) -> _spf2.mailgun.org (0).",
+      "impact": "Receivers stop evaluating and return permerror, so SPF fails for this domain entirely. Legitimate mail can be rejected and forged mail is not caught.",
+      "remediation": "Reduce the chain below ten lookups. The usual fix is to replace include: terms for providers you no longer use, and to flatten a provider's ranges into ip4:/ip6: terms - those cost no lookups at all.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7208#section-4.6.4"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T11:46:34.826453Z",
+      "first_seen_scan_id": "01M4DNCABGCJFQDACC32E76VF5",
+      "last_seen": "2026-10-08T11:46:34.826453Z",
+      "last_seen_scan_id": "01M4DNCABGCJFQDACC32E76VF5",
+      "cost": {
+        "requests": 44,
+        "wall_ms": 858,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:83b308608108e44757859a2d2cd21f6fe5e7c99971bf590560155b617e5e3def",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.2.0",
+      "check_id": "dmarc-alignment",
+      "renamed_from": [],
+      "title": "DMARC uses relaxed alignment",
+      "target": {
+        "type": "domain",
+        "value": "bankrate.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "info",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "informational",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the adkim= and aspf= tags are read directly, and default to relaxed"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _dmarc.bankrate.com",
+          "captured_at": "2026-10-08T11:46:34.842082Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.bankrate.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=reject; rua=mailto:c86cd61ccfab937@rep.dmarcanalyzer.com,mailto:qozv9ll0@ag.us.dmarcian.com; ruf=mailto:c86cd61ccfab937@for.dmarcanalyzer.com,mailto:qozv9ll0@fr.us.dmarcian.com; fo=1"
+              ],
+              "ttl": 300,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-6721f5c0.bankrate.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T11:46:34.842111Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.bankrate.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=reject; rua=mailto:c86cd61ccfab937@rep.dmarcanalyzer.com,mailto:qozv9ll0@ag.us.dmarcian.com; ruf=mailto:c86cd61ccfab937@for.dmarcanalyzer.com,mailto:qozv9ll0@fr.us.dmarcian.com; fo=1"
+              ],
+              "ttl": 300,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "bankrate.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "DMARC alignment is relaxed (adkim=r, aspf=r). Relaxed alignment accepts any subdomain of bankrate.com in the authenticated identifier.",
+      "impact": "Relaxed alignment is the default and is appropriate for most senders. It does mean that anyone able to publish records under a subdomain can pass DMARC for the parent.",
+      "remediation": "If every legitimate sender signs and sends as the exact domain, set adkim=s and aspf=s. If subdomains send mail, relaxed is the correct setting and no change is needed.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7489#section-3.1"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T11:46:34.842119Z",
+      "first_seen_scan_id": "01M4DNCABGCJFQDACC32E76VF5",
+      "last_seen": "2026-10-08T11:46:34.842119Z",
+      "last_seen_scan_id": "01M4DNCABGCJFQDACC32E76VF5",
+      "cost": {
+        "requests": 45,
+        "wall_ms": 873,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:61bdabb6214994c1eef3b4b4980939c44d5b0b7de1886e20ef12bdf9aec1fd4c",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.2.0",
+      "check_id": "mta-sts-missing",
+      "renamed_from": [],
+      "title": "No MTA-STS policy published",
+      "target": {
+        "type": "domain",
+        "value": "bankrate.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "a definite TXT answer at _mta-sts with no v=STSv1 term is direct observation"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _mta-sts.bankrate.com",
+          "captured_at": "2026-10-08T11:46:34.874046Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_mta-sts.bankrate.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-6721f5c0.bankrate.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T11:46:34.874072Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_mta-sts.bankrate.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "bankrate.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "No MTA-STS policy record is published at _mta-sts.bankrate.com.",
+      "impact": "Without MTA-STS a sending server that cannot negotiate TLS will deliver mail in plaintext rather than refusing, so an attacker positioned on the network can strip encryption and read the message.",
+      "remediation": "Publish a TXT record at _mta-sts.bankrate.com of the form 'v=STSv1; id=<timestamp>', and serve the matching policy file at https://mta-sts.bankrate.com/.well-known/mta-sts.txt. Start the policy in mode: testing, then move to mode: enforce.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc8461"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T11:46:34.874077Z",
+      "first_seen_scan_id": "01M4DNCABGCJFQDACC32E76VF5",
+      "last_seen": "2026-10-08T11:46:34.874077Z",
+      "last_seen_scan_id": "01M4DNCABGCJFQDACC32E76VF5",
+      "cost": {
+        "requests": 47,
+        "wall_ms": 905,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:0673e01e8765ca0b62b49bde8f5ea31053ea71db4e5be2996cc72a17500237a5",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.2.0",
+      "check_id": "tls-rpt-missing",
+      "renamed_from": [],
+      "title": "No SMTP TLS reporting configured",
+      "target": {
+        "type": "domain",
+        "value": "bankrate.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "a definite TXT answer at _smtp._tls with no v=TLSRPTv1 term is direct observation"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _smtp._tls.bankrate.com",
+          "captured_at": "2026-10-08T11:46:34.902948Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_smtp._tls.bankrate.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-6721f5c0.bankrate.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-08T11:46:34.902978Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_smtp._tls.bankrate.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "bankrate.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "No SMTP TLS reporting record is published at _smtp._tls.bankrate.com.",
+      "impact": "Nobody is told when a sending server fails to establish TLS to your mail servers, so a downgrade attack or a broken certificate goes unnoticed.",
+      "remediation": "Publish a TXT record at _smtp._tls.bankrate.com of the form 'v=TLSRPTv1; rua=mailto:tls-reports@bankrate.com'.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc8460"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-08T11:46:34.902983Z",
+      "first_seen_scan_id": "01M4DNCABGCJFQDACC32E76VF5",
+      "last_seen": "2026-10-08T11:46:34.902983Z",
+      "last_seen_scan_id": "01M4DNCABGCJFQDACC32E76VF5",
+      "cost": {
+        "requests": 49,
+        "wall_ms": 934,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    }
+  ],
+  "errors": [],
+  "telemetry": {
+    "checks_run": [
+      {
+        "check_id": "spf-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-multiple-records",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-invalid",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-invalid",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-policy-none",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "mx-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dkim-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-too-permissive",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-lookup-limit",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-pct-partial",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-no-rua",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-alignment",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "dkim-weak-key",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "mta-sts-missing",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "tls-rpt-missing",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "spoofing-possible",
+        "outcome": "clear",
+        "location": "$"
+      }
+    ],
+    "suppressed": [],
+    "requests": 49,
+    "wall_ms": 935,
+    "ai_tokens": 0
+  },
+  "started_at": null,
+  "finished_at": "2026-10-08T11:46:34.903149Z",
+  "killed": false,
+  "outcome": "succeeded"
+}

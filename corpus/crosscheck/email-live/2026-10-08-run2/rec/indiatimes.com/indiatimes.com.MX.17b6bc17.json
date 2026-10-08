@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "indiatimes.com",
+  "rcode": "NOERROR",
+  "records": [
+    "5 bounce.indiatimes.com."
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "MX",
+  "ttl": 803
+}

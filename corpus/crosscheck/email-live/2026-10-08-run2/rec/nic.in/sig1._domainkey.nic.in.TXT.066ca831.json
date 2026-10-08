@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "sig1._domainkey.nic.in",
+  "rcode": "NXDOMAIN",
+  "records": [],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": null
+}

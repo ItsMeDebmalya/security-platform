@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "google._domainkey.nykaa.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCfR5vSgLbOyWe1y1RIpRq04jZ3NANaTOsfK55QM3+gM5ow9ry6PTy/kL/YaeUKsKqGPLiK/CdcuGkBSbis6SHPe8/oIQi4WWoDP2SvdybEGsiWBwACk+Vr4eYGRJNrH8AHucPxsRuEiUcNNb7FEV8fPJd00QHTQT4uYUUFQThA+wIDAQAB"
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": 1202
+}

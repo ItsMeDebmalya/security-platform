@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_dmarc.atlassian.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DMARC1; p=reject; fo=1; pct=100; adkim=r; aspf=r; rua=mailto:dmarc_rua@emaildefense.proofpoint.com,mailto:dmarc-rua@abuse.atlassian.com; ruf=mailto:dmarc_ruf@emaildefense.proofpoint.com,mailto:dmarc-ruf@abuse.atlassian.com"
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": 259
+}

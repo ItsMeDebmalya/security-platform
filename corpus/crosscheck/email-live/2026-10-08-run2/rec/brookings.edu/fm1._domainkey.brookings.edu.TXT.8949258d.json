@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "fm1._domainkey.brookings.edu",
+  "rcode": "NXDOMAIN",
+  "records": [],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": null
+}

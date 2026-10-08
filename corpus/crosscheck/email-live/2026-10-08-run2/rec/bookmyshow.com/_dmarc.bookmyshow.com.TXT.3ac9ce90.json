@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_dmarc.bookmyshow.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DMARC1; p=reject;rua=mailto:d4807247e33f260@rep.dmarcanalyzer.com;ruf=mailto:d4807247e33f260@for.dmarcanalyzer.com; pct=100; sp=reject;adkim=s; aspf=s; fo=1;"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 300
+}

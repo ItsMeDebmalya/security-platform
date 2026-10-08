@@ -1,0 +1,15 @@
+{
+  "flags": [],
+  "name": "mktomail.com",
+  "rcode": "NOERROR",
+  "records": [
+    "MS=ms63804055",
+    "google-site-verification=hlFqCorHDm61oaA9tEbxS2EoxvmpThp60Z3A8osUq5I",
+    "yahoo-verification-key=b3fByyORggzdu8uzicQakiKHtuQj7bXZxVFk5bCi1Jk=",
+    "v=spf1 ip4:199.15.212.0/22 ip4:72.3.185.0/24 ip4:72.32.154.0/24 ip4:72.32.217.0/24 ip4:72.32.243.0/24 ip4:94.236.119.0/26 ip4:37.188.97.188/32 ip4:185.28.196.0/22 ip4:192.28.128.0/18 ip4:103.237.104.0/22 ip4:130.248.172.0/24 ip4:130.248.173.0/24 ~all",
+    "MS=ms86038015"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 433
+}
