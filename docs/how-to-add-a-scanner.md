@@ -156,6 +156,7 @@ Then `make corpus`. Then `uv run python -m cli.corpus --update-baseline` once th
 - [ ] `make lint`, `make typecheck`, `make test` green
 - [ ] `make corpus` shows no precision regression
 - [ ] new detections have a positive *and* a negative corpus case
+- [ ] every new check has **fired against a real positive**: a live target or a recording of one, hand-verified and cited here. A corpus positive we wrote does not count. With no real positive, it ships marked UNDETERMINED with the reason, or not at all ([ADR-017](02-decisions.md#adr-017--live-verification-is-part-of-a-tools-definition-of-done), ledger D37)
 - [ ] any new dependency is in `tools/registry.yaml` with a licence
 - [ ] `scanner_version` bumped if results changed
 - [ ] `state` is derived, not hand-set
@@ -177,3 +178,11 @@ A scanner that queries a public *service* it does not own — `crt.sh`, an RDAP 
 Declare those hosts on the scanner: `service_hosts: frozenset[str] = frozenset({"crt.sh", "rdap.org"})` (`domscout` is the first to do this). `cli/main.py` and `cli/corpus.py` union them into the HTTP scope. This **never widens the target scope and confers no authorisation** — it is a fixed, code-reviewed allowlist of read-only public services, and `core/authz.py` remains the only gate. Keep the list minimal and justified; each host is part of the scanner's audited definition, like its checks.
 
 **Enumeration/inventory is not a vulnerability.** If your scanner's output is an asset list (subdomains, records), those findings are `severity: info` → `informational`, and `docs/10-measurement.md` excludes them from precision/recall by design. Do not invent a confidence score for inventory. Gate only the actual security findings; guard inventory against *false discovery* (a known-good/wildcard case that must report nothing false), and assess completeness live against a competitor, never as a frozen-corpus number (`domscout`, ledger 2026-09-03).
+
+## 10. Three lessons from Tool 4a (`web`)
+
+Each of these is a trap that looks fine in a green corpus. The third was a real defect found in review, three times over.
+
+1. **A replayed probe path must be deterministic.** If you probe a path to get a control (a URL that should not exist), derive it from the target — never from `random` or a clock. Replay looks fixtures up by URL, so a random path is a different URL on every run and replay can never find what was recorded. `web`'s 404-control path is a function of the target.
+2. **Never swallow `MissingFixtureError`.** It means the scanner asked for something the frozen fixtures do not hold — a corpus gap, not a target failure. A broad `except Exception` turns it into an `inconclusive` that the gate quietly absorbs. domscout does this today: see [the standing observation](14-progress-ledger.md#a-broad-except-can-turn-a-corpus-gap-into-an-inconclusive-2026-10-06). Catch the specific errors you can explain, and let this one propagate (`web` re-raises it).
+3. **Redact everything you store that came from the target.** Core redacts the *captures* it makes, not the strings you write: finding descriptions, header names and values, request URLs and locations all reach storage as you wrote them. And core's header redaction goes by header *name* only, so a secret inside an ordinary header value is stored raw by any scanner ([ledger D21](14-progress-ledger.md#d-deferred-register)). `web` redacts all of these itself until D21 is fixed in core. Redact at capture time, not at display time.

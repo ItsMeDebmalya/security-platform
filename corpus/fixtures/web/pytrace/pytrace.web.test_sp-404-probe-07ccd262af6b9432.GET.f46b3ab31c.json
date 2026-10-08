@@ -1,0 +1,20 @@
+{
+  "body": "<pre>Traceback (most recent call last):\n  File &quot;/app/server.py&quot;, line 13, in do_GET\n    body, status = ROUTES[self.path.split(&quot;?&quot;)[0]], 200\n                   ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^\nKeyError: &#x27;/sp-404-probe-07ccd262af6b9432&#x27;\n</pre>",
+  "body_truncated": false,
+  "elapsed_ms": 0,
+  "headers": {
+    "connection": "keep-alive",
+    "content-length": "270",
+    "content-security-policy": "default-src 'self'; script-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'",
+    "content-type": "text/html; charset=utf-8",
+    "date": "Wed, 07 Oct 2026 10:46:28 GMT",
+    "referrer-policy": "strict-origin-when-cross-origin",
+    "server": "nginx",
+    "strict-transport-security": "max-age=31536000; includeSubDomains",
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "DENY"
+  },
+  "redactions": [],
+  "status": 500,
+  "url": "https://pytrace.web.test/sp-404-probe-07ccd262af6b9432"
+}

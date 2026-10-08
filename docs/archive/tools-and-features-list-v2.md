@@ -1,3 +1,5 @@
+> ARCHIVED — superseded by docs/18-v4-plan.md. Do not use for current direction.
+
 # Platform Tools & Features — Proposed List
 ### Version 2 — updated with tool coverage review
 

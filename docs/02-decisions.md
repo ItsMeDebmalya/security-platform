@@ -6,7 +6,7 @@ Status values: **Decided** · **Provisional** (decided but low-confidence, revis
 
 | # | Decision | Status | Reversal cost |
 |---|---|---|---|
-| 001 | Tool-first build order | Decided | Low |
+| 001 | Tool-first build order | **Superseded** by [026](#adr-026--adopt-api-first-architecture-supersedes-adr-001-tool-first-and-adr-012-platform-deferral) | Low |
 | 002 | Freeze the Scanner Contract before tool #1 | Decided | Very high once tools exist |
 | 003 | Permissive-OSS-or-build-it-ourselves | Decided | Very high (legal) |
 | 004 | No exploitation, ever | Decided | Not reversible — product identity |
@@ -17,7 +17,7 @@ Status values: **Decided** · **Provisional** (decided but low-confidence, revis
 | 009 | Postgres + queue + object storage for the platform | Provisional | Medium |
 | 010 | Import findings from commercial scanners | Decided | Low |
 | 011 | Compliance *readiness*, never "compliance" | Decided | Not reversible — legal |
-| 012 | Defer all platform/billing work to Phase 6 | Decided | Low |
+| 012 | Defer all platform/billing work to Phase 6 | **Superseded** by [026](#adr-026--adopt-api-first-architecture-supersedes-adr-001-tool-first-and-adr-012-platform-deferral) | Low |
 | 013 | Measurement spec: gates are precision + recall + inconclusive rate | Decided | Low |
 | 014 | Descope the moat claims to what 2 people can own | Decided | Low |
 | 015 | Ownership verification exists from tool #1, not Phase 6 | Decided | Not reversible (legal) |
@@ -27,6 +27,8 @@ Status values: **Decided** · **Provisional** (decided but low-confidence, revis
 ---
 
 ## ADR-001 — Build tools first, platform second
+
+> **Superseded by [ADR-026](#adr-026--adopt-api-first-architecture-supersedes-adr-001-tool-first-and-adr-012-platform-deferral) (2026-10-02).** The v4 plan replaces tool-first with API-first. The text below is kept unchanged as the historical record of why tool-first was chosen.
 
 **Decision.** Build and prove scanners one at a time as standalone CLI tools. Build the website only after a shelf of them exists and passes accuracy gates.
 
@@ -284,6 +286,8 @@ Both are isolated services behind interfaces, so this is a contained cost, not a
 
 ## ADR-012 — Defer all platform, billing and account work to Phase 6
 
+> **Superseded by [ADR-026](#adr-026--adopt-api-first-architecture-supersedes-adr-001-tool-first-and-adr-012-platform-deferral) (2026-10-02).** The v4 Phase 1 MVP includes accounts, ownership verification, billing and Free/Pro tiers, so they are no longer deferred to Phase 6. The text below is kept unchanged as the historical record.
+
 **Decision.** No accounts, payments, dashboards, teams or tiers until the scanner shelf exists.
 
 **Reasoning.** Direct consequence of ADR-001. These are well-understood, largely undifferentiated problems with mature off-the-shelf solutions; building them early consumes the time that should go into the only thing competitors cannot copy.
@@ -402,6 +406,8 @@ Everything else about this ADR is unchanged and still the load-bearing decision:
 - Each tool's ledger entry records the live result — how many targets, how many findings, how many hand-verified.
 - A live finding that turns out to be wrong becomes a corpus case, so the corpus grows in the direction reality points.
 - **Verify with an independent method, not a second copy of your own assumption.** A near-miss: `openssl s_client -tls1` reported a handshake refused, which looked like a false positive in our TLS scanner. The refusal came from openssl's own security level, not the server. A verification tool carrying the same blind spot as the thing it verifies confirms nothing.
+
+**Amended 2026-10-08: a check must be shown to fire before it ships.** Four advertised checks were found that cannot report a positive in production, yet every one passed its gate (ledger D28, D31, D37). A live run that finds nothing wrong on a healthy target does not show that a check can find anything at all. So the definition of done now includes, per check: **the check fired against a real positive**, a live target or a recording of one, hand-verified and cited in the PR. A corpus positive we wrote does not count. Where no real positive exists, the check ships marked UNDETERMINED in the [scanner catalogue](21-scanner-catalogue.md), with the reason stated, or it does not ship. Checks that were already shipped are not grandfathered as WORKING: they are counted as they stand in SPEC.md's standing figure.
 
 **Costs we accept.** Live runs are non-deterministic and cannot gate CI. They stay a human step recorded in the ledger, not an automated one — which means they can be skipped under pressure, and the ledger is the only thing that would show it.
 
@@ -656,3 +662,44 @@ Once findings connect, "fix these first" falls out. A finding that is a link in 
 - **Sales discipline.** The marketing stays on *safe-by-default*; exploitation is described, if at all, as a consenting Deep-tier escalation. The moment a deck implies the product exploits by default, [ADR-004](#adr-004--no-exploitation-ever)'s selling point is lost.
 
 **Reversal cost.** Low today, because nothing is built — it is a policy plus a future per-scanner flag. It rises as scanners gain exploitation capability, which is the argument for keeping the flag opt-in and the exclusions hard from the first line of code.
+
+---
+
+## ADR-026 — Adopt API-first architecture (supersedes ADR-001 tool-first and ADR-012 platform deferral)
+
+**Decision.** The v4 plan ([18-v4-plan.md](18-v4-plan.md)) replaces the tool-first build order of [ADR-001](#adr-001--build-tools-first-platform-second). `api/` and `web/` are now built from Phase 1 of the v4 migration, not deferred to Phase 6. It also supersedes [ADR-012](#adr-012--defer-all-platform-billing-and-account-work-to-phase-6): the v4 Phase 1 MVP includes accounts, ownership verification, billing and Free/Pro tiers ([19-v4-roadmap.md](19-v4-roadmap.md)), so none of them waits for Phase 6. Every capability is exposed through `api/` first, and `web/` is a thin client of it that holds no logic of its own. The schedule is in [19-v4-roadmap.md](19-v4-roadmap.md) and the steps are in [20-migration-runbook.md](20-migration-runbook.md).
+
+**What carries forward unchanged.** ADR-001 named the Scanner Contract ([ADR-002](#adr-002--freeze-the-scanner-contract-before-writing-tool-1)) as what lets the platform be built at any time without touching scanners, and this ADR relies on that. The contract stays frozen. The validated `core/` services and the shipped scanners are extended, not rebuilt. Every accuracy gate, licence rule, the no-exploitation rule and the ownership rule still apply.
+
+**Reversal cost.** Low while `api/` and `web/` are empty. It rises with every endpoint and screen built on them, and sharply once accounts and billing hold customer data.
+
+---
+
+## ADR-027 — A fixture may stand in for a real service only on recorded evidence
+
+**Status.** Decided (operator, 2026-10-08). Binds every scanner and every corpus generator, starting with Tool 4b.
+
+**Context.** The corpus-fidelity audit of 2026-10-08 (see [14-progress-ledger.md](14-progress-ledger.md), "Corpus-fidelity audit") found two shipped `domscout` checks broken in production. Both passed their gate.
+- `domain-expiring` has never read an expiry date live, for any TLD (D28). The generator wrote rdap.org as answering `200` with the record. The real service answers `302` to the registry.
+- The S3 and Heroku takeover fingerprints can never fire (D31). The generator wrote abandoned targets as `NXDOMAIN`. The real services resolve every name, real or not.
+
+In both cases the parser, the scope rule and the gate each did their job. The gate measured the scanner against a version of the service that does not exist. A generator that fabricates a third party's behaviour can make a scanner pass its gate while it is broken in production. [ADR-017](#adr-017--live-verification-is-part-of-a-tools-definition-of-done) already requires live verification. This ADR closes the gap that let a corpus disagree with the live world without anyone noticing.
+
+**Decision.**
+
+1. **A generator may hand-write a third party's response only if a cited recording of the real service backs it.**
+   - A third party is any service the scanner talks to that we did not build: registries and RDAP servers, CT logs, hosting providers' DNS and HTTP, public resolvers, external APIs.
+   - The citation is a committed recording, or a ledger entry with date, URL and what was observed. It must show the real status code, the redirect hops, the header set, the body shape, and the failure modes the scanner must handle, for example a bootstrap `302`, wildcard DNS, or a `502`.
+   - The hand-written response must reproduce that shape. A simplified shape is allowed only if the simplification is stated and the omitted parts are covered by a live case.
+2. **Lab targets we build are real software, and that is allowed.** Examples are nginx, Django and the OpenSSL lab: the defect is ours, the behaviour is the product's. A lab setting that imitates a product we do not run, such as an `X-Powered-By: PHP/…` header with no PHP behind it, must cite a real observation of that product's format.
+3. **Generated HTTP responses carry realistic header sets, and a contract test rejects any committed HTTP fixture with no headers at all.** The reason, from the audit: *a fake with no headers can never contain a redirect. This is what hid D28.* Every `domscout` HTTP fixture recorded `headers: {}`, so no fixture could carry a `Location`, and the redirect path was never exercised. An empty header set is not a simplification. It removes a whole class of real behaviour.
+
+**Consequences.**
+- **Existing fixtures that break this ADR today:**
+  - all 9 `domscout` cases: the rdap.org shape, the S3/Heroku `NXDOMAIN`, the crt.sh shape (unverified), and empty headers throughout;
+  - the `email` zones, which are authored targets served by an in-memory fake rather than real DNS software. D7, a CoreDNS lab, is the route to clause 2.
+- **The contract test (clause 3) lands with the `domscout` re-record (D28/D31).** Landing it earlier would fail on those fixtures, and an allowlist of known violators would invite the next one.
+- **New scanners (Tool 4b onward):** a generator review asks clause 1's question for each external service before the corpus is frozen.
+- **The method that passed the audit is the standard:** real recorded traffic, live hand-verified hosts, and an external cross-check. Only `web` (Tool 4a) was built that way, and only `web` came out clean.
+
+**Reversal cost.** Low. It is a review rule and one contract test, and dropping either changes no shipped behaviour. The cost of not having it is a gate number that is false in production, and that has already happened twice.

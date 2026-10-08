@@ -1,3 +1,5 @@
+> ARCHIVED — superseded by docs/18-v4-plan.md. Do not use for current direction.
+
 # Security Platform — Build Plan
 
 ### Version 3.4 — the plan as it now stands, with two tools shipped against it

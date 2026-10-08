@@ -2,11 +2,29 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## CURRENT STATE
+
+This repo is being evolved to the v4 architecture.
+Target: docs/18-v4-plan.md | Roadmap: docs/19-v4-roadmap.md | Migration: docs/20-migration-runbook.md
+The tool-first strategy in docs/archive/ is SUPERSEDED. Do not follow it.
+
+## NON-NEGOTIABLE: extend, do not rebuild
+
+These already exist in core/ and are validated. EXTEND them, never regenerate:
+core/confidence.py, core/correlation.py, core/assetgraph.py, core/killswitch.py,
+core/cost.py, core/evidence.py, core/store.py, core/state.py, core/replay.py,
+core/measurement.py, core/registry.py, core/authz.py, core/ratelimit.py
+The 4 files in contracts/ are the FROZEN contract — change only via a deliberate,
+additive migration with an ADR, never ad hoc.
+The 4 validated scanners (domscout, email, tls, web) must not be regenerated.
+The only NEW top-level dirs in this migration are api/ and web/.
+If a task seems to require rebuilding any of the above, STOP and ask me.
+
 ## Repository state
 
-**Phase 0 is implemented; Tools 1 (Email) and 2 (TLS) pass their gates.** The Scanner Contract is frozen, `core/` services exist, the CLI runs, and the corpus harness gates on real numbers.
+**Phase 0 is implemented; Tools 1 (Email), 2 (TLS), 3 (DomScout) and 4a (Website Scanner, Light) have shipped and pass their gates.** The Scanner Contract is frozen, `core/` services exist, the CLI runs, and the corpus harness gates on real numbers.
 
-Scanners: `example` (reference), `email` (Tool 1 — 17 checks, 1.000/1.000, 16-case corpus), `tls` (Tool 2 — v1.2.0, 19 checks, 1.000/1.000 over 220 corpus checks, cross-checked against testssl.sh; includes the first derived finding and a runtime testssl.sh wrap for legacy ciphers in Standard mode).
+Scanners: `example` (reference), `domscout` (Tool 3 — Light, live-verified; gate numbers in `SPEC.md`), `web` (Tool 4a — Light, live-verified; passive only; gate numbers in `SPEC.md`), `email` (Tool 1 — 17 checks, 1.000/1.000, 16-case corpus), `tls` (Tool 2 — v1.2.0, 19 checks, 1.000/1.000 over 220 corpus checks, cross-checked against testssl.sh; includes the first derived finding and a runtime testssl.sh wrap for legacy ciphers in Standard mode).
 
 Commands: `make install`, `make test`, `make lint`, `make typecheck`, `make licence-check`, `make corpus`, `make crosscheck`, `make targets-up`, and `scan run <tool> --target <t>`. Python 3.13.15, pinned in `.python-version`; dependencies via `uv`.
 
@@ -14,11 +32,11 @@ Read `docs/14-progress-ledger.md` for where things stand — including **standin
 
 ## Documents
 
-- `tools-and-features-list.md` — entry point and index
+- `docs/18-v4-plan.md` — **current plan entry point** (v4). The v3.4 front door, `tools-and-features-list.md`, is archived in `docs/archive/`
 - `SPEC.md` — **the canonical build specification: what each tool must do, current status, gates.** Authority for "what to build," replacing `docs/reference/product-spec.md` in that role.
 - `docs/00-context.md` — product, strategy, standards
 - `docs/01-architecture.md` — **the Scanner Contract, finding/evidence model, confidence engine**
-- `docs/02-decisions.md` — ADRs 001–025
+- `docs/02-decisions.md` — ADRs 001–027
 - `docs/03-roadmap.md` — phases 0, **0b (foundation for the calendar)**, 1–7 with accuracy gates
 - `docs/04-phase-0-foundations.md`, `docs/05-phase-1-first-tools.md` — task-level plans
 - `docs/06-guidelines.md` — rules for all code
@@ -30,6 +48,7 @@ Read `docs/14-progress-ledger.md` for where things stand — including **standin
 - `docs/17-testing-runbook.md` — **how to prove the scanners are correct**: the test layers, the corpus, the labs, live verification, CI. Copy-pasteable
 - `docs/16-learning-map.md` — **what the developer needs to learn**, dev and security, tiered by when it is needed
 - `docs/how-to-add-a-scanner.md` — the practical guide, written by building the reference scanner
+- `docs/21-scanner-catalogue.md` — **every shipped check**: what it finds, mode, highest state and its evidence, working/broken. Derived from code; regenerate it, don't hand-edit. Status defers to `SPEC.md` and the ledger
 - `docs/08-changelog.md` — v2→v3, v3→v3.1, and the v3.2 additive contract changes made during Phase 0, with revert notes
 - `docs/09-ownership-verification.md` — the legal gate on active scans; methods per target type, audit record, interim allowlist schema
 - `docs/10-measurement.md` — **how precision/recall/inconclusive-rate are computed**; read before touching the corpus harness
@@ -67,11 +86,11 @@ This set has drifted before, in both directions: a document restating another's 
 
 A security scanning SaaS. Users scan assets they own; findings come with **evidence and calibrated confidence**. Every scanner exposes three modes: **Light** (passive, no auth needed, free), **Standard** (active, requires verified ownership), **Deep/Validated** (Standard + proof, Business tier).
 
-## Build strategy — tool-first (ADR-001)
+## Build strategy — API-first (ADR-026, supersedes ADR-001 and ADR-012)
 
-Scanners are built **one at a time as standalone CLI tools**, each gated on accuracy against a ground-truth corpus, before the website exists. The site is Phase 6. Do not propose building UI, accounts, or billing before then.
+The v4 plan (`docs/18-v4-plan.md`) replaces tool-first. `api/` and `web/` are in scope from Phase 1 of the v4 migration: every capability goes through `api/` first, and `web/` is a thin client of it with no logic of its own. Accounts, ownership verification, billing and Free/Pro tiers are part of the v4 Phase 1 MVP and are no longer deferred to Phase 6. For order and steps, see `docs/19-v4-roadmap.md` and `docs/20-migration-runbook.md`.
 
-The mitigation for tool-first's failure mode is the **Scanner Contract** (Phase 0): a frozen finding/evidence schema and `BaseScanner` interface. Everything depends on it. Changing it after Phase 1 is a migration, not an edit.
+Each scanner is still gated on accuracy against a ground-truth corpus before it ships. The **Scanner Contract** (Phase 0) is still the foundation: a frozen finding/evidence schema and `BaseScanner` interface that `api/` wraps rather than replaces. Changing it is a migration, not an edit.
 
 The contract was audited in v3.1 before freezing and gained: a `ScanRun` entity, `status`/`status_history`, `instance_key` + reserved `location: "$"` + `renamed_from` in the ID scheme, `detection_methods[]` with independence classes, kind-specific evidence shapes, and `related_assets[]`. Do not reintroduce the simpler versions.
 

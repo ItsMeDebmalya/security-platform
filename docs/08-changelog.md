@@ -6,13 +6,13 @@
 
 ## The original is preserved
 
-**[archive/tools-and-features-list-v2.md](archive/tools-and-features-list-v2.md)** — the v2 document, byte-for-byte unchanged.
+**[archive/tools-and-features-list-v2.md](archive/tools-and-features-list-v2.md)** — the v2 document, byte-for-byte unchanged apart from the two-line ARCHIVED banner added at the top in v4.0-pre (see below).
 
 Nothing was deleted. Every tool description, feature list, differentiator and decision from v2 survives, either in the working documents or in [reference/product-spec.md](reference/product-spec.md).
 
 **To revert entirely:**
 ```bash
-cp docs/archive/tools-and-features-list-v2.md tools-and-features-list.md
+tail -n +3 docs/archive/tools-and-features-list-v2.md > tools-and-features-list.md  # skip the 2-line ARCHIVED banner
 rm -rf docs/0*.md docs/reference
 ```
 That returns you to exactly the state before this rewrite.
@@ -364,3 +364,44 @@ The client asked for differentiation that holds up in 2026 rather than 2022. Res
 - The measurement split counts `tp`/`fp` by derivation only, not `fn`. `Expected` corpus fixtures have no derivation of their own — a false negative is a thing the scanner failed to claim, and until a corpus actually contains derived expectations (no scanner emits them yet) there is nothing to split there. Revisit when Tool 2 v1.1 lands derived findings in a corpus.
 
 **Revert.** Drop the four fields from the schema and model, the two new validators, `ConfidenceEngine.inherit`, and the four new `CaseScore`/`TierSummary` fields plus the `claims` block in `to_dict()`. Every finding stored today already has `derivation: "detected"` and `materialises_at: null` in effect (the fields did not exist), so nothing needs rewriting either direction.
+
+---
+
+## v4.0-pre — v4 migration housekeeping (2026-10-02)
+
+**What changed.**
+- `tools-and-features-list.md` (the v3.4 front door) moved to [archive/tools-and-features-list.md](archive/tools-and-features-list.md). Its internal relative links were left as they were and no longer resolve from `docs/archive/`. That is accepted for an archived file.
+- Both archive files, `archive/tools-and-features-list.md` and `archive/tools-and-features-list-v2.md`, gained a two-line banner at the top: `> ARCHIVED — superseded by docs/18-v4-plan.md. Do not use for current direction.` followed by a blank line. This is the only edit ever made to the v2 file. The revert step under "The original is preserved" now skips those two lines.
+- v4 plan documents added (docs/18 ~526 lines, docs/19 ~453 lines, docs/20 ~297 lines): [18-v4-plan.md](18-v4-plan.md), [19-v4-roadmap.md](19-v4-roadmap.md), [20-migration-runbook.md](20-migration-runbook.md).
+- `CLAUDE.md` and `SPEC.md` now point to `docs/18-v4-plan.md` as the plan entry point instead of `tools-and-features-list.md`.
+- [ADR-026](02-decisions.md#adr-026--adopt-api-first-architecture-supersedes-adr-001-tool-first-and-adr-012-platform-deferral) adopts API-first and supersedes both [ADR-001](02-decisions.md#adr-001--build-tools-first-platform-second) (tool-first) and [ADR-012](02-decisions.md#adr-012--defer-all-platform-billing-and-account-work-to-phase-6) (defer platform, billing and account work to Phase 6), because the v4 Phase 1 MVP includes accounts, ownership verification, billing and Free/Pro tiers. Both ADRs are marked superseded, and their text is kept. In `CLAUDE.md`, the build-strategy section now points to ADR-026 and the v4 plan, the "no UI/accounts/billing before Phase 6" rule is removed, and the section says that work is in v4 Phase 1. `CLAUDE.md`'s "Repository state" section now includes DomScout (Tool 3) as shipped. Revert: remove ADR-026 and the superseded markers on ADR-001 and ADR-012, then restore those `CLAUDE.md` sections from git.
+
+**Revert.**
+```bash
+tail -n +3 docs/archive/tools-and-features-list.md > tools-and-features-list.md && git rm -q docs/archive/tools-and-features-list.md
+tail -n +3 docs/archive/tools-and-features-list-v2.md > /tmp/v2 && mv /tmp/v2 docs/archive/tools-and-features-list-v2.md
+```
+Then restore the entry-point lines in `CLAUDE.md` and `SPEC.md`, and the revert step above, to point at `tools-and-features-list.md` again.
+
+---
+
+## v4.0-pre.1 — ADR-027, fixtures stand in for real services only on recorded evidence (2026-10-08)
+
+**What changed.**
+- [ADR-027](02-decisions.md#adr-027--a-fixture-may-stand-in-for-a-real-service-only-on-recorded-evidence) was added. A corpus generator may hand-write a third party's response only if a cited recording of the real service backs it. Generated HTTP responses carry realistic header sets, and a contract test is to reject any HTTP fixture with no headers.
+- It was prompted by the corpus-fidelity audit (ledger, 2026-10-08). Two `domscout` checks pass their gate and are broken in production (D28, D31).
+- `CLAUDE.md` now lists ADRs 001–027.
+- `SPEC.md` marks `email` "corpus-validated, live-unverified" (D35) and records the two broken `domscout` checks.
+- No code, fixture or contract changed.
+
+**Revert.** Delete the ADR-027 section from `docs/02-decisions.md`, restore "001–026" in `CLAUDE.md`, and remove the two `SPEC.md` notes. The contract test it calls for does not exist yet, so there is nothing to remove from code.
+
+## v4.0-pre.2 — ADR-017 amended: a check must fire against a real positive before it ships (2026-10-08)
+
+**What changed.**
+- [ADR-017](02-decisions.md#adr-017--live-verification-is-part-of-a-tools-definition-of-done) gained a clause: every new check must be shown to fire against a real positive (live, hand-verified, cited) before it ships. A corpus positive does not count. It was prompted by the fourth advertised check found that cannot fire in production (ledger D37, after D28 and D31).
+- `docs/how-to-add-a-scanner.md` §7 has the matching checklist item.
+- `SPEC.md` now states the catalogue's standing figure (63 checks: 23 WORKING, 3 BROKEN, 37 UNDETERMINED) and declares that no `tls` check can reach `confirmed`.
+- No code, fixture or contract changed.
+
+**Revert.** Delete the "Amended 2026-10-08" paragraph from ADR-017, the §7 checklist item, and the two `SPEC.md` additions.

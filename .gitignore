@@ -7,3 +7,8 @@ corpus/results/latest.json
 .pytest_cache/
 tools/bin/
 temp
+corpus/lab/web/certs/
+
+# web Light (Tool 4a) live-run evidence: kept out of git, redacted, hashed in raw-manifest.sha256
+corpus/crosscheck/web-light/raw/
+corpus/crosscheck/web-light/collected.md

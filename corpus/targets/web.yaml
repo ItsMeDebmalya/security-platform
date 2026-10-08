@@ -1,0 +1,22 @@
+# Ground-truth corpus for the web scanner (Tool 4a - Website Scanner, Light).
+# Recorded from the local lab by corpus/generators/web.py (make web-lab-up).
+# Recall is corpus-relative: "all header misconfigurations" is not a knowable
+# set. Transport-failure and challenge-page cases are unit tests, not frozen
+# cases (see the plan's spec-deviation notes and ledger D-W2).
+gate:
+  precision: 0.95
+  recall: 0.85
+  inconclusive_max: 0.15
+  recall_definition: corpus_relative
+cases:
+  - {id: known-good, tier: known_good, source: frozen, mode: light, target: {type: domain, value: known-good.web.test}, fixtures: corpus/fixtures/web/known-good}
+  - {id: bare, tier: vulnerable, source: frozen, mode: light, target: {type: domain, value: bare.web.test}, fixtures: corpus/fixtures/web/bare}
+  - {id: hsts-weak, tier: vulnerable, source: frozen, mode: light, target: {type: domain, value: hsts-weak.web.test}, fixtures: corpus/fixtures/web/hsts-weak}
+  - {id: csp-weak, tier: vulnerable, source: frozen, mode: light, target: {type: domain, value: csp-weak.web.test}, fixtures: corpus/fixtures/web/csp-weak}
+  - {id: csp-meta, tier: vulnerable, source: frozen, mode: light, target: {type: domain, value: csp-meta.web.test}, fixtures: corpus/fixtures/web/csp-meta}
+  - {id: listing, tier: vulnerable, source: frozen, mode: light, target: {type: domain, value: listing.web.test}, fixtures: corpus/fixtures/web/listing}
+  - {id: mixed-sri, tier: vulnerable, source: frozen, mode: light, target: {type: domain, value: mixed-sri.web.test}, fixtures: corpus/fixtures/web/mixed-sri}
+  - {id: secret, tier: vulnerable, source: frozen, mode: light, target: {type: domain, value: secret.web.test}, fixtures: corpus/fixtures/web/secret}
+  - {id: eol, tier: vulnerable, source: frozen, mode: light, target: {type: domain, value: eol.web.test}, fixtures: corpus/fixtures/web/eol}
+  - {id: django-debug, tier: vulnerable, source: frozen, mode: light, target: {type: domain, value: django-debug.web.test}, fixtures: corpus/fixtures/web/django-debug}
+  - {id: pytrace, tier: vulnerable, source: frozen, mode: light, target: {type: domain, value: pytrace.web.test}, fixtures: corpus/fixtures/web/pytrace}

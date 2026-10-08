@@ -1,0 +1,135 @@
+# End-of-life branches for the web scanner (Tool 4a). Past-only: every entry's
+# eol_date is on or before its reviewed_on. Every source is vendor tier (a primary
+# vendor page, https url required); an end-of-life date is never from our own observation.
+# `branch` is quoted so YAML never turns 7.4 into a float.
+
+- product: PHP
+  branch: "5.6"
+  eol_date: 2018-12-31
+  source:
+    tier: vendor
+    url: "https://www.php.net/eol.php"
+  reviewed_on: 2026-10-07
+
+- product: PHP
+  branch: "7.0"
+  eol_date: 2019-01-10
+  source:
+    tier: vendor
+    url: "https://www.php.net/eol.php"
+  reviewed_on: 2026-10-07
+
+- product: PHP
+  branch: "7.1"
+  eol_date: 2019-12-01
+  source:
+    tier: vendor
+    url: "https://www.php.net/eol.php"
+  reviewed_on: 2026-10-07
+
+- product: PHP
+  branch: "7.2"
+  eol_date: 2020-11-30
+  source:
+    tier: vendor
+    url: "https://www.php.net/eol.php"
+  reviewed_on: 2026-10-07
+
+- product: PHP
+  branch: "7.3"
+  eol_date: 2021-12-06
+  source:
+    tier: vendor
+    url: "https://www.php.net/eol.php"
+  reviewed_on: 2026-10-07
+
+- product: PHP
+  branch: "7.4"
+  eol_date: 2022-11-28
+  source:
+    tier: vendor
+    url: "https://www.php.net/eol.php"
+  reviewed_on: 2026-10-07
+
+- product: PHP
+  branch: "8.0"
+  eol_date: 2023-11-26
+  source:
+    tier: vendor
+    url: "https://www.php.net/eol.php"
+  reviewed_on: 2026-10-07
+
+- product: PHP
+  branch: "8.1"
+  eol_date: 2025-12-31
+  source:
+    tier: vendor
+    url: "https://www.php.net/eol.php"
+  reviewed_on: 2026-10-07
+
+- product: Drupal
+  branch: "7"
+  eol_date: 2025-01-05
+  source:
+    tier: vendor
+    url: "https://www.drupal.org/about/drupal-7/d7eol"
+  reviewed_on: 2026-10-07
+
+- product: Drupal
+  branch: "8"
+  eol_date: 2021-11-02
+  source:
+    tier: vendor
+    url: "https://www.drupal.org/psa-2021-06-29"
+  reviewed_on: 2026-10-07
+
+- product: Drupal
+  branch: "9"
+  eol_date: 2023-11-01
+  source:
+    tier: vendor
+    url: "https://www.drupal.org/psa-2023-11-01"
+  reviewed_on: 2026-10-07
+
+- product: Bootstrap
+  branch: "3"
+  eol_date: 2019-07-24
+  source:
+    tier: vendor
+    url: "https://github.com/twbs/release"
+  reviewed_on: 2026-10-07
+
+- product: Bootstrap
+  branch: "4"
+  eol_date: 2023-01-01
+  source:
+    tier: vendor
+    url: "https://github.com/twbs/release"
+  reviewed_on: 2026-10-07
+
+- product: Microsoft-IIS
+  branch: "7.5"
+  eol_date: 2020-01-15
+  source:
+    tier: vendor
+    url: "https://learn.microsoft.com/en-us/lifecycle/products/internet-information-services-iis"
+    note: 'row "IIS 7.5 on Windows Server 2008 R2": end 1/15/2020 6:59:59 AM PT'
+  reviewed_on: 2026-10-07
+
+- product: Microsoft-IIS
+  branch: "8.0"
+  eol_date: 2023-10-11
+  source:
+    tier: vendor
+    url: "https://learn.microsoft.com/en-us/lifecycle/products/internet-information-services-iis"
+    note: 'row "IIS 8 on Windows Server 2012": end 10/11/2023 6:59:59 AM PT'
+  reviewed_on: 2026-10-07
+
+- product: Microsoft-IIS
+  branch: "8.5"
+  eol_date: 2023-10-11
+  source:
+    tier: vendor
+    url: "https://learn.microsoft.com/en-us/lifecycle/products/internet-information-services-iis"
+    note: 'Deliberately the LATER date. The page lists "IIS 8.5 on Windows Server 2012 R2" ending 10/11/2023 and "IIS 8.5 on Windows 8.1" ending 1/11/2023; a Server: Microsoft-IIS/8.5 header cannot tell them apart, so we claim end-of-life only once every IIS 8.5 variant is past it. Do not "correct" this to 2023-01-11.'
+  reviewed_on: 2026-10-07

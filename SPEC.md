@@ -12,7 +12,7 @@ This document is **not**:
 
 - the schedule — that is [docs/03-roadmap.md](docs/03-roadmap.md);
 - the decision record — that is [docs/02-decisions.md](docs/02-decisions.md);
-- the strategy front door — that is [tools-and-features-list.md](tools-and-features-list.md);
+- the strategy front door — that is [docs/18-v4-plan.md](docs/18-v4-plan.md);
 - the build log — that is [docs/14-progress-ledger.md](docs/14-progress-ledger.md).
 
 Where those documents own something, this one **links, does not restate**. Restating is how this document set has drifted apart before — see the ledger's repeated "a number reached a decision document without being checked against its primary source" defect (D13, D16). Do not repeat it here.
@@ -47,7 +47,7 @@ Every scanner exposes three modes: **Light**, **Standard**, **Deep/Validated**.
 - A **passive** check needs no authorisation in any mode.
 - **A check with no declaration counts as active.** `passive=None` is a legacy path kept only for the reference scanner; a real scanner's checks must all declare.
 
-In practice, for the two shipped scanners every check happens to be passive, so **Light remains free and unauthorised in practice** — but that is a fact about Email and TLS's check catalogues today, not a rule the mode enforces. The next scanner to add an active Light-mode check (plausible for AI/agent exposure, see A1) will be denied by `core/authz.py` exactly as a Standard check would be, and that is correct behaviour, not a bug.
+In practice, for the four shipped scanners (`email`, `tls`, `domscout`, `web`) every check happens to be passive, so **Light remains free and unauthorised in practice** — but that is a fact about their check catalogues today, not a rule the mode enforces. The next scanner to add an active Light-mode check (plausible for AI/agent exposure, see A1) will be denied by `core/authz.py` exactly as a Standard check would be, and that is correct behaviour, not a bug.
 
 **Resolved 2026-09-01.** [docs/00-context.md](docs/00-context.md)'s scan-mode table carried the pre-0b.6 framing — permission as a property of the mode — and has been corrected to state the mechanism above, with the table row kept as a description of what is true of the two shipped scanners today rather than as the rule. The same correction was applied to [docs/12-cli-runbook.md](docs/12-cli-runbook.md), [docs/13-test-targets.md](docs/13-test-targets.md) and [docs/how-to-add-a-scanner.md](docs/how-to-add-a-scanner.md).
 
@@ -92,7 +92,7 @@ Two orthogonal fields, added at two scanners deliberately (before ten made it a 
 
 Content source: [docs/reference/product-spec.md](docs/reference/product-spec.md) (v2, corrected below where wrong). Gates and phase placement: [docs/03-roadmap.md](docs/03-roadmap.md). Corrections from v2 are called out inline as **[v2 said X → now Y]**.
 
-### A1. Website Scanner
+### A1. Website Scanner — Tool 4a (`web`, Light) **Shipped**; 4b (AI/agent exposure) next
 
 One-line: crawl and probe a site for header/cookie/config weaknesses (Light), injection and business-logic bugs (Standard), and — new in v3.4 — AI/agent exposure.
 
@@ -101,8 +101,10 @@ One-line: crawl and probe a site for header/cookie/config weaknesses (Light), in
 - **Deep** — validation engine confirms each Standard finding via an independent method; blind classes proven via OOB callback.
 - **New in v3.4**: AI and agent exposure — MCP servers, agent admin panels, unauthenticated model endpoints, **passive detection only**. Finding a server is passive; reading its admin panel is not, and the AI-exposure checks must each carry their own `passive` declaration under 0b.6 rather than inherit one from the mode.
 - Mechanism: crawler (ZAP's, Apache-2.0, to start — **[v2 said]** Nuclei for template checks; ZAP crawler as a stopgap → still the plan, unchanged), own injection engine, own content-discovery engine, web-archive APIs, OOB callback client.
-- **Status: Not built.** Blocked on: HTTP record/replay (**done**, 0b.4) and the OOB callback server (Phase 2a, not built).
-- **Gate:** precision ≥ 0.90 overall (`confirmed` ≥ 0.98), recall ≥ 0.75 on the benchmark tier, inconclusive ≤ 0.15, ≥ 0.95 of blind-class findings proven via OOB. Recall is **benchmark-true, corpus-relative elsewhere** — never publish it as absolute for Light.
+- **Status: Light shipped — Tool 4a (`web`) v1.0.3, live-verified on v1.0.1** (ADR-017/ADR-024; build log and live-verification results in the [ledger](docs/14-progress-ledger.md#2026-10-07--tool-4a--website-scanner-light-web-v101)). 21 checks, all passive: transport and redirect, security headers, CSP, page content, error pages and directories. **Tool 4a is the passive half only. Tool 4b (AI/agent exposure) is the next tool and is not built;** its spec starts with the passivity ADR. **Standard and Deep: not built** — blocked on the OOB callback server (Phase 2a, not built); HTTP record/replay is done (0b.4).
+- **Deferred from Light:** cookie-flag checks and cookie-name fingerprints (ledger D-W1) — they need a core redaction change first (D21), so they are owed, not dropped.
+- **Gate, Light (Tool 4a):** precision ≥ 0.95, recall ≥ 0.85 (corpus-relative), inconclusive ≤ 0.15 ([roadmap](docs/03-roadmap.md), Phase 1 Tool 4). **Actual, from `make corpus` (2026-10-08, v1.0.3, unchanged from v1.0.1):** `precision 1.000, recall 1.000, susp% 3.4%, inconc% 0.9%, PASS` — 234 checks run, **10 claims** (`confirmed`/`highly_likely`) over an 11-case lab corpus. Read the claim count with the number: 1.000 rests on ten claims, not 234 checks, and those ten come from the header-policy and directory-listing families only — debug-mode, secret-in-response, error-disclosure, EOL, SRI and mixed content land at `suspected`, are excused from the gate, and so are not covered by the 1.000; and the recall is **corpus-relative** (a corpus we wrote ourselves; "all header misconfigurations on a site we don't fully understand" is not a knowable set), never an absolute figure. Hand-verified live against 13 hosts with zero false positives — see the ledger. **Correction:** this entry previously said "No Light-mode gate is set in the roadmap"; it is — the roadmap's Phase 1 table has carried it since v3. Fixed here, not by adding a document (CLAUDE.md rule 4).
+- **Gate, Standard/Deep (not built):** precision ≥ 0.90 overall (`confirmed` ≥ 0.98), recall ≥ 0.75 on the benchmark tier, inconclusive ≤ 0.15, ≥ 0.95 of blind-class findings proven via OOB. Recall is **benchmark-true, corpus-relative elsewhere** — never publish it as absolute for Light.
 - Depends on: A4 (asset discovery), Phase 2a (OOB server), asset graph (0b.2, done).
 - Constraint: no Nuclei-as-embedded-scanner claim beyond template use; **[v2 said]** "import Burp findings" as an offset for not embedding Burp — still the plan (ADR-010).
 
@@ -128,10 +130,13 @@ One-line: certificate, chain, protocol and cipher analysis, plus (v1.1) certific
 - **v1.1 additions (v3.4):** certificate lifetime readiness (dated, `materialises_at` set to the date renewal cadence breaks) and post-quantum exposure. Post-quantum is **Blocked on Python 3.15** (`ssl.SSLContext.set_groups`/`get_groups`, `SSLSocket.group()`) — **not 3.13 as the roadmap originally and incorrectly stated (D16, corrected 2026-08-28).** Certificate lifetime readiness has no such blocker and is Not built yet.
 - **Status: Shipped, v1.2.0.** 19 checks — 8 Light, 11 Standard, **all passive** ([ADR-023](docs/02-decisions.md#adr-023--passive-is-ordinary-negotiation-only-malformed-input-is-active)) — so TLS needs no authorisation in any mode, like email. Includes `tls-vuln-beast`, the first **derived** finding any scanner emits ([ADR-018](docs/02-decisions.md#adr-018--findings-carry-a-date-and-say-whether-they-were-detected-or-derived); confidence inherited from `tls-protocol-obsolete`). RC4/Sweet32/Logjam are **unblocked (D20)**: `tls-vuln-rc4`, `tls-vuln-sweet32`, `tls-vuln-logjam` wrap testssl.sh at runtime, Standard mode only, per ADR-016's amendment, with real corpus positives recorded against public badssl.com weak endpoints. `tls-vuln-freak` ships (same mechanism) but has **no corpus positive** — `export.badssl.com` no longer negotiates an export-grade suite against either engine, so no live public endpoint remains to record one from; deferred, not faked. Gate met, 220 checks, 1.000/1.000.
 - **Gate:** precision ≥ 0.98, recall ≥ 0.95, inconclusive ≤ 0.15. **Actual, from `make corpus` (2026-09-02, v1.2.0):** `precision 1.000, recall 1.000, PASS` — 220 checks run, **5 claims** (`confirmed`/`highly_likely`). Read the claim count with the number: most findings land as `suspected` (honest — one `independence_class` — and excused from the gate on both sides), so 1.000 rests on five claims, not 220.
+- **Declared limit: no `tls` check can reach `confirmed`** (2026-10-08, from [the scanner catalogue](docs/21-scanner-catalogue.md#tls--ssltls-analyzer-tool-2-v120)). `tls` has no validation step: nothing re-observes a finding after it is made, and `core/state.py` requires a passed validation for `confirmed`. Its ceiling is `highly_likely`, reached when two readings of the same handshake agree: our certificate parse and OpenSSL's trust-path verdict. **All 5 claims behind the gate number are `highly_likely`; none is `confirmed`.** They are not the same kind of evidence as `web`'s 10 claims (9 `confirmed` by re-observation on a second page, 1 `highly_likely`). Anyone quoting `tls`'s 1.000 must say it rests on 5 unvalidated claims.
 - **Caveats that belong here, not buried:** 14-case corpus, cross-checked against testssl.sh. Six real defects across Tools 1 and 2 survived their corpora at precision 1.000 — three of the six were in the TLS lab itself (a CA missing `basicConstraints`, servers accepting TLS 1.0, a two-level chain standing in for an incomplete one), found only by reading the fixtures, not by the harness. Certificate revocation checking (OCSP/CRL) is not built — `revoked.badssl.com` currently returns nothing, which reads as a pass (D12). No weak-cipher (`RC4`/`3DES`) positive case exists; OpenSSL 3 compiles them out (D11).
 - Depends on: HTTP record/replay for HSTS (done, 0b.4).
 
 ### A4. Domain & Subdomain Enumeration — Tool 3 (`domscout`), **Shipped (Light) v1.0.0 — live-verified**
+
+> **2026-10-08: two advertised checks are broken in production while the gate passes.** `domain-expiring` has never read an expiry date live ([ledger D28](docs/14-progress-ledger.md#d-deferred-register)). The S3 and Heroku takeover fingerprints can never fire (D31). Both come from fixtures that fabricated a third party's behaviour ([ADR-027](docs/02-decisions.md#adr-027--a-fixture-may-stand-in-for-a-real-service-only-on-recorded-evidence)). Do not quote domscout's gate number.
 
 One-line: the asset list every other tool scans, plus subdomain-takeover detection.
 
@@ -174,6 +179,7 @@ One-line: SPF/DKIM/DMARC configuration and spoofing risk.
 - **Standard** — SPF syntax + DNS-lookup-count analysis, SPF too-permissive check, DKIM key strength, DMARC alignment mode, DMARC reporting addresses, BIMI, MTA-STS/TLS-RPT, open-relay test, mail-server TLS, blacklist status, look-alike domain detection.
 - **Not built from v2 scope:** open-relay test and mail-TLS check (D4 — need SMTP connections, active not passive, deferred without blocking the gate) and look-alike domain detection (D5 — needs RDAP + a permutation engine, larger than the rest of Tool 1 combined).
 - **Status: Shipped.** 17 checks, gate met.
+- **Corpus-validated, live-unverified (2026-10-08, [ledger D35](docs/14-progress-ledger.md#d-deferred-register)).** Every one of the 21 claims reached `confirmed` by second-resolver agreement, which the corpus cannot make fail. The earlier live sweep was not archived. **Do not quote the gate number** until the live re-verification closes.
 - **Gate:** precision ≥ 0.99, recall ≥ 0.95, inconclusive ≤ 0.15. **Actual, from `make corpus` (2026-09-01):** `precision 1.000, recall 1.000, susp% 0.0%, inconc% 0.8%, PASS` — 240 checks run, **21 claims**.
 - **Caveats:** 16-case corpus of **synthetic zones we wrote ourselves** — proves the checks do what was intended, not that intent matches the world (D6: ~50 real domains as a frozen tier is owed, not built). Six real defects across Tools 1 and 2 survived corpora at precision 1.000; live verification against real domains is part of a tool's definition of done (ADR-017), not optional polish.
 - Depends on: nothing further; passes without D4/D5.
@@ -391,13 +397,15 @@ Full text: [docs/06-guidelines.md](docs/06-guidelines.md), [docs/10-measurement.
 
 ## Status summary table
 
-Verified against the repo and `make corpus` (2026-09-03) — see the run at the end of this document.
+Verified against the repo and `make corpus` (2026-10-07) — see the run at the end of this document.
+
+**Live evidence for shipped checks — standing figure (2026-10-08, from [the scanner catalogue](docs/21-scanner-catalogue.md)).** The four shipped scanners run **63 checks: 23 WORKING, 3 BROKEN, 37 UNDETERMINED.** **59% of our shipped checks (37 of 63) have no evidence either way that they work in production, and 3 more (5%) are known broken, so 63% (40 of 63) have no evidence that they work.** WORKING means the check fired correctly on a real, live target and was checked by hand. UNDETERMINED means no known defect but no live evidence that meets that standard: the check has passed only in a corpus or lab we wrote, or is under re-verification (all 17 `email` checks, D35). The gate numbers below are corpus numbers and do not change this figure. Update it only by regenerating the catalogue.
 
 | Tool / Feature | Status | Gate | Actual (where shipped) |
 |---|---|---|---|
-| A1 Website Scanner | Not built | **Standard mode:** precision ≥0.90 (`confirmed`≥0.98), recall ≥0.75 (benchmark tier). No Light-mode gate is set in the roadmap. | — |
+| A1 Website Scanner | **A1 Light (4a, `web` v1.0.3) shipped — live-verified; Standard not built; 4b (AI exposure) next** | **Light:** precision ≥0.95, recall ≥0.85 (corpus-relative), inconc ≤0.15. **Standard:** precision ≥0.90 (`confirmed`≥0.98), recall ≥0.75 (benchmark tier) | Light: 1.000 / 1.000 (recall corpus-relative), 234 checks, **10 claims**, 0.9% inconc, PASS |
 | A2 Network Scanner | Not built | not yet set | — |
-| A3 SSL/TLS Analyzer | **Shipped v1.2.0** | precision ≥0.98, recall ≥0.95, inconc ≤0.15 | 1.000 / 1.000, 220 checks, 5 claims, PASS |
+| A3 SSL/TLS Analyzer | **Shipped v1.2.0** | precision ≥0.98, recall ≥0.95, inconc ≤0.15 | 1.000 / 1.000, 220 checks, 5 claims (all `highly_likely`; no `tls` check can reach `confirmed`), PASS |
 | A4 Domain & Subdomain Enum (`domscout`) | **Shipped (Light) v1.0.0 — live-verified; kinetrix+coverage owed** | precision ≥0.95, recall ≥0.80, inconc ≤0.15 | 1.000 / 1.000, 50 checks, **1 claim**, PASS |
 | A5 Deface Monitoring | Not built | not yet set | — |
 | A6 API Scanner | Not built | not yet set | — |
@@ -428,7 +436,7 @@ Verified against the repo and `make corpus` (2026-09-03) — see the run at the 
 
 `example` scanner (reference, not a product tool): 1.000 / 1.000, 3 checks, 2 claims, PASS — not counted in the product catalogue above.
 
-**`make corpus` output used for this table (2026-09-03):**
+**`make corpus` output used for this table (2026-10-07):**
 
 ```
 scanner     checks   TP   FP   FN  precision   recall   susp%  inconc%  gate
@@ -438,4 +446,8 @@ domscout        50    1    0    0      1.000    1.000   4.0%    0.0%  PASS
 email          240   21    0    0      1.000    1.000   0.0%    0.8%  PASS
 example          3    2    0    0      1.000    1.000   0.0%    0.0%  PASS
 tls            220    5    0    0      1.000    1.000   7.7%   12.3%  PASS
+web            234   10    0    0      1.000    1.000   3.4%    0.9%  PASS
+           recall is corpus-relative only - never publish this as absolute
 ```
+
+Numbers are pasted from the live run; the per-scanner recall annotations for `domscout`, `email`, `example` and `tls` are kept from the previous block. The harness's "recall is absolute" line for domscout applies to its gated security findings; subdomain enumeration is ungated (see A4).

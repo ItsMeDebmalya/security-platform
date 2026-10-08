@@ -1,0 +1,15 @@
+{
+  "body": "<html>\r\n<head><title>404 Not Found</title></head>\r\n<body>\r\n<center><h1>404 Not Found</h1></center>\r\n<hr><center>nginx/1.27.5</center>\r\n</body>\r\n</html>\r\n",
+  "body_truncated": false,
+  "elapsed_ms": 0,
+  "headers": {
+    "connection": "keep-alive",
+    "content-length": "153",
+    "content-type": "text/html",
+    "date": "Wed, 07 Oct 2026 10:46:28 GMT",
+    "server": "nginx/1.27.5"
+  },
+  "redactions": [],
+  "status": 404,
+  "url": "https://bare.web.test/.well-known/security.txt"
+}
