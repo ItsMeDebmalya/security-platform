@@ -1,6 +1,6 @@
 UV := uv
 
-.PHONY: web-lab-up web-lab-down install test lint format typecheck licence-check targets-up targets-down targets-status crosscheck corpus scan check
+.PHONY: web-lab-up web-lab-down install test lint format typecheck licence-check rfc-check targets-up targets-down targets-status crosscheck corpus scan check
 
 install:
 	$(UV) sync
@@ -18,6 +18,9 @@ format:
 
 typecheck:
 	$(UV) run mypy
+
+rfc-check:
+	$(UV) run python -m cli.rfcs
 
 licence-check:
 	$(UV) run python -m cli.licences
