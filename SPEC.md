@@ -135,6 +135,8 @@ One-line: certificate, chain, protocol and cipher analysis, plus (v1.1) certific
 
 ### A4. Domain & Subdomain Enumeration — Tool 3 (`domscout`), **Shipped (Light) v1.0.0 — live-verified**
 
+> **2026-10-08: two advertised checks are broken in production while the gate passes.** `domain-expiring` has never read an expiry date live ([ledger D28](docs/14-progress-ledger.md#d-deferred-register)). The S3 and Heroku takeover fingerprints can never fire (D31). Both come from fixtures that fabricated a third party's behaviour ([ADR-027](docs/02-decisions.md#adr-027--a-fixture-may-stand-in-for-a-real-service-only-on-recorded-evidence)). Do not quote domscout's gate number.
+
 One-line: the asset list every other tool scans, plus subdomain-takeover detection.
 
 - **Light** — subdomains from CT logs (crt.sh), all DNS record types, RDAP domain-expiry, nameservers, DNSSEC delegation state, and **dangling-CNAME subdomain-takeover** (passive under [ADR-023](docs/02-decisions.md#adr-023--passive-is-ordinary-negotiation-only-malformed-input-is-active): ordinary DNS plus at most one ordinary HTTPS GET, never claiming the resource). **[v2/earlier SPEC said]** takeover was a Standard item → **[now]** the dangling-CNAME check is passive and ships in Light, matching the roadmap row; active brute-forced takeover stays Standard.
@@ -176,6 +178,7 @@ One-line: SPF/DKIM/DMARC configuration and spoofing risk.
 - **Standard** — SPF syntax + DNS-lookup-count analysis, SPF too-permissive check, DKIM key strength, DMARC alignment mode, DMARC reporting addresses, BIMI, MTA-STS/TLS-RPT, open-relay test, mail-server TLS, blacklist status, look-alike domain detection.
 - **Not built from v2 scope:** open-relay test and mail-TLS check (D4 — need SMTP connections, active not passive, deferred without blocking the gate) and look-alike domain detection (D5 — needs RDAP + a permutation engine, larger than the rest of Tool 1 combined).
 - **Status: Shipped.** 17 checks, gate met.
+- **Corpus-validated, live-unverified (2026-10-08, [ledger D35](docs/14-progress-ledger.md#d-deferred-register)).** Every one of the 21 claims reached `confirmed` by second-resolver agreement, which the corpus cannot make fail. The earlier live sweep was not archived. **Do not quote the gate number** until the live re-verification closes.
 - **Gate:** precision ≥ 0.99, recall ≥ 0.95, inconclusive ≤ 0.15. **Actual, from `make corpus` (2026-09-01):** `precision 1.000, recall 1.000, susp% 0.0%, inconc% 0.8%, PASS` — 240 checks run, **21 claims**.
 - **Caveats:** 16-case corpus of **synthetic zones we wrote ourselves** — proves the checks do what was intended, not that intent matches the world (D6: ~50 real domains as a frozen tier is owed, not built). Six real defects across Tools 1 and 2 survived corpora at precision 1.000; live verification against real domains is part of a tool's definition of done (ADR-017), not optional polish.
 - Depends on: nothing further; passes without D4/D5.

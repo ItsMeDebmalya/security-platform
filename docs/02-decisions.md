@@ -670,3 +670,34 @@ Once findings connect, "fix these first" falls out. A finding that is a link in 
 **What carries forward unchanged.** ADR-001 named the Scanner Contract ([ADR-002](#adr-002--freeze-the-scanner-contract-before-writing-tool-1)) as what lets the platform be built at any time without touching scanners, and this ADR relies on that. The contract stays frozen. The validated `core/` services and the shipped scanners are extended, not rebuilt. Every accuracy gate, licence rule, the no-exploitation rule and the ownership rule still apply.
 
 **Reversal cost.** Low while `api/` and `web/` are empty. It rises with every endpoint and screen built on them, and sharply once accounts and billing hold customer data.
+
+---
+
+## ADR-027 — A fixture may stand in for a real service only on recorded evidence
+
+**Status.** Decided (operator, 2026-10-08). Binds every scanner and every corpus generator, starting with Tool 4b.
+
+**Context.** The corpus-fidelity audit of 2026-10-08 (see [14-progress-ledger.md](14-progress-ledger.md), "Corpus-fidelity audit") found two shipped `domscout` checks broken in production. Both passed their gate.
+- `domain-expiring` has never read an expiry date live, for any TLD (D28). The generator wrote rdap.org as answering `200` with the record. The real service answers `302` to the registry.
+- The S3 and Heroku takeover fingerprints can never fire (D31). The generator wrote abandoned targets as `NXDOMAIN`. The real services resolve every name, real or not.
+
+In both cases the parser, the scope rule and the gate each did their job. The gate measured the scanner against a version of the service that does not exist. A generator that fabricates a third party's behaviour can make a scanner pass its gate while it is broken in production. [ADR-017](#adr-017--live-verification-is-part-of-a-tools-definition-of-done) already requires live verification. This ADR closes the gap that let a corpus disagree with the live world without anyone noticing.
+
+**Decision.**
+
+1. **A generator may hand-write a third party's response only if a cited recording of the real service backs it.**
+   - A third party is any service the scanner talks to that we did not build: registries and RDAP servers, CT logs, hosting providers' DNS and HTTP, public resolvers, external APIs.
+   - The citation is a committed recording, or a ledger entry with date, URL and what was observed. It must show the real status code, the redirect hops, the header set, the body shape, and the failure modes the scanner must handle, for example a bootstrap `302`, wildcard DNS, or a `502`.
+   - The hand-written response must reproduce that shape. A simplified shape is allowed only if the simplification is stated and the omitted parts are covered by a live case.
+2. **Lab targets we build are real software, and that is allowed.** Examples are nginx, Django and the OpenSSL lab: the defect is ours, the behaviour is the product's. A lab setting that imitates a product we do not run, such as an `X-Powered-By: PHP/…` header with no PHP behind it, must cite a real observation of that product's format.
+3. **Generated HTTP responses carry realistic header sets, and a contract test rejects any committed HTTP fixture with no headers at all.** The reason, from the audit: *a fake with no headers can never contain a redirect. This is what hid D28.* Every `domscout` HTTP fixture recorded `headers: {}`, so no fixture could carry a `Location`, and the redirect path was never exercised. An empty header set is not a simplification. It removes a whole class of real behaviour.
+
+**Consequences.**
+- **Existing fixtures that break this ADR today:**
+  - all 9 `domscout` cases: the rdap.org shape, the S3/Heroku `NXDOMAIN`, the crt.sh shape (unverified), and empty headers throughout;
+  - the `email` zones, which are authored targets served by an in-memory fake rather than real DNS software. D7, a CoreDNS lab, is the route to clause 2.
+- **The contract test (clause 3) lands with the `domscout` re-record (D28/D31).** Landing it earlier would fail on those fixtures, and an allowlist of known violators would invite the next one.
+- **New scanners (Tool 4b onward):** a generator review asks clause 1's question for each external service before the corpus is frozen.
+- **The method that passed the audit is the standard:** real recorded traffic, live hand-verified hosts, and an external cross-check. Only `web` (Tool 4a) was built that way, and only `web` came out clean.
+
+**Reversal cost.** Low. It is a review rule and one contract test, and dropping either changes no shipped behaviour. The cost of not having it is a gate number that is false in production, and that has already happened twice.
