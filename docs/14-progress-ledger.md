@@ -1178,7 +1178,9 @@ The six:
 
 **On hold, for the operator.** Hand-verifying the 147 non-informational findings and the checkdmarc cross-check. Every `confirmed` in this run rests on D39's non-validation, so verifying now and again after the fix would be doing it twice. The run also showed one blast-radius item live: **zomato.in** gets `spoofing-possible: confirmed` solely for having no SPF, under `p=reject` (blast-radius item 1 above).
 
-## 2026-10-08 · False claims fixed before verification; `?all` low in every posture
+## 2026-10-08 · Email v1.2.0 — false claims fixed before verification; `?all` low in every posture
+
+**Version.** Bumped to 1.2.0 here. D39 (PR #10) changed email's results and should have bumped the version itself; it did not, and this PR does it for both changes.
 
 - **`spoofing-possible` no longer fires on a missing SPF record under an enforced policy.** No SPF gives the result None, never an aligned pass, so forged mail fails DMARC and the policy applies (RFC 7208 §2.6.1; RFC 7489 §3.1.2, §6.6.2). zomato.in's live `confirmed` in run 1 was false. Missing SPF is now an added reason only when DMARC does not enforce, and it can no longer firm up a hedged (undefined-handling) DMARC reason into a claim.
 - **`spf-missing`'s impact** said "a message forged from any server passes SPF by default". It now says SPF returns None, neither pass nor fail.

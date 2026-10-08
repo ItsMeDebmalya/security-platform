@@ -87,7 +87,7 @@ Live basis: 13 real hosts, every claim hand-verified with `curl`, cross-checked 
 
 ---
 
-## email — Email Security Scanner (Tool 1, v1.1.0)
+## email — Email Security Scanner (Tool 1, v1.2.0)
 
 17 checks, all passive DNS. Nothing is sent to the domain's mail servers. 9 run in Light, and 8 more in Standard.
 
