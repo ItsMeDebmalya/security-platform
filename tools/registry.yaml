@@ -37,6 +37,19 @@
   reviewed_at: 2026-10-09
   review_evidence: "installed package metadata (License-Expression or License field) and the bundled licence file in its dist-info"
 
+- name: idna
+  version: "3.19"
+  licence: BSD 3-Clause
+  spdx: BSD-3-Clause
+  source: https://github.com/kjd/idna
+  purpose: "ADR-030: hostname encoding the way browsers do it (UTS-46, non-transitional) for certificate matching and SNI"
+  isolation: library
+  # Already a transitive dependency (via httpx and anyio); direct since ADR-030.
+  # Licence read from installed metadata: License-Expression BSD-3-Clause, and the
+  # bundled idna-3.19.dist-info/licenses/LICENSE.md (BSD 3-Clause text).
+  # AWAITING OPERATOR SIGN-OFF: signed_off_by / signed_off_at are left for the operator.
+  review_evidence: "installed package metadata (License-Expression: BSD-3-Clause) and the bundled licence file in its dist-info"
+
 - name: jsonschema
   version: "4.26.0"
   licence: MIT

@@ -664,37 +664,21 @@ def test_a_mismatch_lists_ip_sans_and_never_says_there_are_none():
     assert "no subjectAltName" not in finding.description
 
 
-def test_an_idna_ambiguous_host_is_inconclusive_not_a_mismatch():
-    """D48 re-review: refuse to judge rather than claim a mismatch both readings
-    would share by construction."""
+def test_the_scanner_reports_an_unencodable_host_as_inconclusive():
+    """ADR-030: a name idna rejects (a joiner outside CONTEXTJ) is no verdict."""
     from dataclasses import replace
 
-    from core.tls import TlsObservation
-
-    with lab_server(common_name="xn--fa-hia.de", sans=["xn--fa-hia.de"]) as srv:
-        observation = TlsClient(scope=LOOPBACK).inspect(
-            "localhost", srv.port, servername="localhost"
-        )
-    assert isinstance(observation, TlsObservation)
-
-    ambiguous = replace(observation, servername="faß.de")
-
-    assert ambiguous.hostname_matches is None
-
-
-def test_the_scanner_reports_an_idna_ambiguous_host_as_inconclusive():
-    from dataclasses import replace
-
-    with lab_server(common_name="xn--fa-hia.de", sans=["xn--fa-hia.de"]) as srv:
+    with lab_server(common_name="ab.example", sans=["ab.example"]) as srv:
         real = TlsClient(scope=LOOPBACK).inspect("localhost", srv.port, servername="localhost")
 
     class _Fake(TlsClient):
         def inspect(self, host, port, *, servername=None, **_):
             return replace(real, host=host, port=port, servername=servername)
 
-    ctx = ScanContext(tls=_Fake(scope=Scope(frozenset({"faß.de"}))))
-    result = TlsScanner().run(Asset(type="url", value="https://faß.de"), "light", ctx)
+    host = "a\u200db.example"
+    ctx = ScanContext(tls=_Fake(scope=Scope(frozenset({host}))))
+    result = TlsScanner().run(Asset(type="url", value=f"https://{host}"), "light", ctx)
 
     (finding,) = [f for f in result.findings if f.check_id == "tls-hostname-mismatch"]
     assert finding.state == "inconclusive"
-    assert "IDNA 2003" in finding.description
+    assert "UTS-46" in finding.description

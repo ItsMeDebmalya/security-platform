@@ -790,3 +790,28 @@ In both cases the parser, the scope rule and the gate each did their job. The ga
 - `email`, `domscout` and `web` bump `scanner_version`, because their evidence now carries receipts. `tls` evidence carries the empty field and no receipt in any corpus case, so its version is unchanged.
 
 **Reversal cost.** Low for the finding: drop the helper calls. The field is additive, so removing it is a contract migration in its own right.
+
+## ADR-030 — Hostnames are encoded the way browsers encode them: UTS-46, non-transitional, as the WHATWG URL Standard specifies
+
+**Status.** Accepted 2026-10-09 (operator approved adding `idna`; the processing choice is this ADR's). Follows the D48 re-review.
+
+**Context.** A hostname with non-ASCII characters is matched against a certificate in its A-label (punycode) form (RFC 9525 §6.3), so it must be encoded first. Until now both of `tls`'s readings encoded it with Python's built-in `idna` codec, which implements **IDNA 2003**. Our matcher called it directly, and `ssl` calls it on `server_hostname` before OpenSSL sees the name. For ß, ς, ZWNJ and ZWJ, IDNA 2003 gives a different A-label from what browsers use. `faß.de` became `fass.de` instead of `xn--fa-hia.de`. So both readings could agree on a false mismatch. The D48 re-review's stopgap made such names `inconclusive`.
+
+**The choice: UTS-46 processing with Transitional_Processing=false, which is what browsers do, not strict IDNA 2008.**
+- **What browsers do is specified.** The WHATWG URL Standard's domain-to-ASCII algorithm runs UTS #46 ToASCII with `Transitional_Processing` false, `CheckBidi` true and `CheckJoiners` true. The other parameters (`CheckHyphens`, `UseSTD3ASCIIRules`, `VerifyDnsLength`) follow its `beStrict` flag, which is false for ordinary URL parsing. Hostname matching should follow what real clients do (operator).
+- **Where the two differ.** On ß, ς and the joiners, UTS-46 non-transitional and IDNA 2008 agree: ß stays ß, ς stays ς, and a joiner is allowed only where IDNA 2008's CONTEXTJ rule allows it, as after a virama in Indic scripts. Transitional processing was where ß became ss, and UTS #46 has deprecated it. What still separates UTS-46 from strict IDNA 2008 is **mapping**: UTS-46 case-folds and normalises input, so `BÜCHER.example` maps to `xn--bcher-kva.example`, while strict IDNA 2008 rejects the uppercase input. A browser maps it, so we map it.
+- **Implementation:** the `idna` package (BSD-3-Clause), already a transitive dependency through `httpx` and `anyio`, now a direct one with a registry entry. We call `idna.encode(name, uts46=True)`. It applies UTS-46 mapping, then IDNA 2008 validity checks (CONTEXTJ, Bidi). Those checks are stricter than UTS-46 ToASCII in a few places, such as hyphen positions and some symbols.
+
+**Decision.**
+1. **One encoder**, `core.tls.a_label`. An ASCII name is only lowercased. A non-ASCII name goes through `idna.encode(name, uts46=True)`.
+2. **Both readings use it.** Our matcher compares the A-label, and the A-label is what is passed as the SNI and as the name OpenSSL checks, so Python's IDNA 2003 codec never runs.
+3. **A name that does not encode is `inconclusive`, never a mismatch.** That covers a joiner where CONTEXTJ forbids it, and anything else `idna` rejects. The name is invalid, and no client would get as far as checking a certificate. Where `idna` is stricter than UTS-46, this costs recall, never precision.
+4. This replaces the D48 re-review's stopgap, which made every name containing ß, ς, ZWNJ or ZWJ `inconclusive`.
+
+**Consequences.**
+- `faß.de` matches a certificate for `xn--fa-hia.de`, for both readings, as in a browser. Indic-script names (`.भारत`, `.இந்தியா`), including a joiner after a virama, are tested.
+- The shared IDNA 2003 blind spot recorded under D38 is gone. Both readings still share the encoder, now the right one. The encoder is input to both readings, not one of them.
+- `tls` bumps its version, because results change for non-ASCII names.
+- **Limit:** a name that does not encode is still connected to, with Python's IDNA 2003 encoding of it as the SNI. Only the hostname check refuses to judge it; the other TLS checks judge whatever server answered. No browser would connect to such a name at all. Making every TLS check `inconclusive` for an invalid name is the stricter fix, recorded and not yet built.
+
+**Reversal cost.** Low: remove the call and go back to the stopgap.
