@@ -177,6 +177,44 @@ def test_openssl_is_asked_without_the_common_name_fallback_too():
     assert obs.openssl_hostname_match is False
 
 
+def _inspect_ip(srv):
+    return client().inspect("127.0.0.1", srv.port, servername="127.0.0.1")
+
+
+def test_an_ip_target_matches_an_ip_address_san_for_both_readings():
+    """D48 review, BLOCKER: without the CN fallback, an IP SAN was never read."""
+    with lab_server(common_name="127.0.0.1", sans=[], ip_sans=["127.0.0.1"]) as srv:
+        obs = _inspect_ip(srv)
+
+    assert obs.certificate is not None and obs.certificate.ip_sans == ["127.0.0.1"]
+    assert obs.hostname_matches is True and obs.openssl_hostname_match is True
+
+
+def test_an_ip_target_matches_alongside_dns_sans():
+    with lab_server(common_name="x.test", sans=["x.test"], ip_sans=["127.0.0.1"]) as srv:
+        obs = _inspect_ip(srv)
+
+    assert obs.hostname_matches is True and obs.openssl_hostname_match is True
+
+
+def test_an_ip_is_never_matched_against_a_dns_san_or_the_common_name():
+    with lab_server(common_name="127.0.0.1", sans=["127.0.0.1"]) as srv:
+        obs = _inspect_ip(srv)
+
+    assert obs.hostname_matches is False
+
+
+def test_a_unicode_servername_is_compared_in_its_a_label_form():
+    """D48 review nit: certificates carry A-labels; a U-label host must match them."""
+    a_label = "xn--bcher-kva.example"
+    with lab_server(common_name=a_label, sans=[a_label]) as srv:
+        obs = inspect(srv)
+
+    assert obs.certificate is not None
+    assert obs.certificate.covers_hostname("bücher.example") is True
+    assert obs.certificate.covers_hostname("BÜCHER.example") is True
+
+
 def test_a_san_still_matches_for_both_readings():
     with lab_server(common_name="ignored.test", sans=["localhost"]) as srv:
         obs = inspect(srv)

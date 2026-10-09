@@ -356,8 +356,9 @@ class _Scan:
     def _check_identity(self) -> None:
         assert self.cert is not None
         if self.observation.hostname_matches is False:
-            if self.cert.sans:
-                valid_for = f"It is valid for: {', '.join(self.cert.sans)}."
+            presented = [*self.cert.sans, *self.cert.ip_sans]
+            if presented:
+                valid_for = f"It is valid for: {', '.join(presented)}."
             else:
                 # D48: a CN-only certificate covers no name under RFC 9525 §2,
                 # so saying it is "valid for" its CN would be a false claim.

@@ -639,3 +639,26 @@ def test_a_common_name_only_certificate_is_a_mismatch_and_says_why():
     assert "valid for" not in finding.description
     assert "RFC 9525" in finding.description
     assert finding.references == ["https://www.rfc-editor.org/rfc/rfc9525"]
+
+
+def _scan_ip(server):
+    ctx = ScanContext(tls=TlsClient(scope=Scope(frozenset({"127.0.0.1"}))))
+    target = Asset(type="url", value=f"https://127.0.0.1:{server.port}")
+    return TlsScanner().run(target, "light", ctx)
+
+
+def test_an_ip_target_with_its_ip_san_is_no_mismatch():
+    """D48 review, BLOCKER: a valid IP certificate gave a false high mismatch."""
+    with lab_server(common_name="127.0.0.1", sans=[], ip_sans=["127.0.0.1"]) as srv:
+        result = _scan_ip(srv)
+
+    assert not [f for f in result.findings if f.check_id == "tls-hostname-mismatch"]
+
+
+def test_a_mismatch_lists_ip_sans_and_never_says_there_are_none():
+    with lab_server(common_name="10.0.0.9", sans=[], ip_sans=["10.0.0.9"]) as srv:
+        result = _scan_ip(srv)
+
+    (finding,) = [f for f in result.findings if f.check_id == "tls-hostname-mismatch"]
+    assert "10.0.0.9" in finding.description
+    assert "no subjectAltName" not in finding.description

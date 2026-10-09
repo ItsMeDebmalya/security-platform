@@ -21,6 +21,7 @@ Two OpenSSL behaviours to know, both discovered the hard way:
 from __future__ import annotations
 
 import datetime as dt
+import ipaddress
 import socket
 import ssl
 import subprocess
@@ -61,6 +62,7 @@ def mint(
     issuer_key: object | None = None,
     is_ca: bool = False,
     omit_san: bool = False,
+    ip_sans: list[str] | None = None,
 ) -> Minted:
     """Create a certificate with exactly the defect you ask for.
 
@@ -90,12 +92,11 @@ def mint(
         .not_valid_after(now + not_after_days * DAY)
     )
     if not omit_san:
-        builder = builder.add_extension(
-            x509.SubjectAlternativeName(
-                [x509.DNSName(name) for name in (sans if sans is not None else [common_name])]
-            ),
-            critical=False,
-        )
+        general_names: list[x509.GeneralName] = [
+            x509.DNSName(name) for name in (sans if sans is not None else [common_name])
+        ]
+        general_names += [x509.IPAddress(ipaddress.ip_address(ip)) for ip in ip_sans or []]
+        builder = builder.add_extension(x509.SubjectAlternativeName(general_names), critical=False)
     builder = builder.add_extension(
         x509.SubjectKeyIdentifier.from_public_key(key.public_key()),  # type: ignore[union-attr]
         critical=False,
