@@ -156,6 +156,72 @@ def test_a_wildcard_certificate_does_not_cover_the_bare_domain():
     assert obs.hostname_matches is False
 
 
+# D48: RFC 9525 §2, "The Common Name RDN MUST NOT be used to identify a service".
+# RFC 6125, which allowed falling back to the CN when there were no SANs, is
+# obsoleted by RFC 9525. Both readings must refuse the fallback, or two readings
+# that share a blind spot agree on a wrong answer (D38).
+
+
+def test_a_certificate_naming_the_host_only_in_its_common_name_does_not_match():
+    with lab_server(common_name="localhost", omit_san=True) as srv:
+        obs = inspect(srv)
+
+    assert obs.certificate is not None and not obs.certificate.sans
+    assert obs.hostname_matches is False
+
+
+def test_openssl_is_asked_without_the_common_name_fallback_too():
+    with lab_server(common_name="localhost", omit_san=True) as srv:
+        obs = inspect(srv)
+
+    assert obs.openssl_hostname_match is False
+
+
+def _inspect_ip(srv):
+    return client().inspect("127.0.0.1", srv.port, servername="127.0.0.1")
+
+
+def test_an_ip_target_matches_an_ip_address_san_for_both_readings():
+    """D48 review, BLOCKER: without the CN fallback, an IP SAN was never read."""
+    with lab_server(common_name="127.0.0.1", sans=[], ip_sans=["127.0.0.1"]) as srv:
+        obs = _inspect_ip(srv)
+
+    assert obs.certificate is not None and obs.certificate.ip_sans == ["127.0.0.1"]
+    assert obs.hostname_matches is True and obs.openssl_hostname_match is True
+
+
+def test_an_ip_target_matches_alongside_dns_sans():
+    with lab_server(common_name="x.test", sans=["x.test"], ip_sans=["127.0.0.1"]) as srv:
+        obs = _inspect_ip(srv)
+
+    assert obs.hostname_matches is True and obs.openssl_hostname_match is True
+
+
+def test_an_ip_is_never_matched_against_a_dns_san_or_the_common_name():
+    with lab_server(common_name="127.0.0.1", sans=["127.0.0.1"]) as srv:
+        obs = _inspect_ip(srv)
+
+    assert obs.hostname_matches is False
+
+
+def test_a_unicode_servername_is_compared_in_its_a_label_form():
+    """D48 review nit: certificates carry A-labels; a U-label host must match them."""
+    a_label = "xn--bcher-kva.example"
+    with lab_server(common_name=a_label, sans=[a_label]) as srv:
+        obs = inspect(srv)
+
+    assert obs.certificate is not None
+    assert obs.certificate.covers_hostname("bücher.example") is True
+    assert obs.certificate.covers_hostname("BÜCHER.example") is True
+
+
+def test_a_san_still_matches_for_both_readings():
+    with lab_server(common_name="ignored.test", sans=["localhost"]) as srv:
+        obs = inspect(srv)
+
+    assert obs.hostname_matches is True and obs.openssl_hostname_match is True
+
+
 # --- the trust verdict ------------------------------------------------------
 
 
@@ -573,3 +639,25 @@ def test_the_hostname_probe_uses_the_configured_trust_anchor():
 
     assert obs.hostname_matches is False
     assert obs.openssl_hostname_match is False
+
+
+@pytest.mark.parametrize("host", ["faß.de", "ς.example", "a‍b.example", "a‌b.example"])
+def test_a_name_idna_2003_and_uts_46_encode_differently_is_not_judged(host):
+    """D48 re-review: Python's IDNA 2003 codec (ours, and what ssl hands OpenSSL)
+    maps ß, ς, ZWJ and ZWNJ differently from UTS-46, which browsers use. Both
+    readings would agree on a false mismatch, so neither may judge."""
+    from core.tls import idna_ambiguous
+
+    assert idna_ambiguous(host)
+    assert not idna_ambiguous("bücher.example") and not idna_ambiguous("x.test")
+
+
+def test_an_ipv6_zone_id_does_not_stop_an_address_match():
+    with lab_server(common_name="x.test", sans=["x.test"]) as srv:
+        cert = inspect(srv).certificate
+    assert cert is not None
+    from dataclasses import replace
+
+    with_ip = replace(cert, ip_sans=["fe80::1"])
+    assert with_ip.covers_hostname("fe80::1%eth0") is True
+    assert with_ip.covers_hostname("[fe80::1]") is True

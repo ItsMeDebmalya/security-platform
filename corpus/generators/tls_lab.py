@@ -21,6 +21,7 @@ Two OpenSSL behaviours to know, both discovered the hard way:
 from __future__ import annotations
 
 import datetime as dt
+import ipaddress
 import socket
 import ssl
 import subprocess
@@ -60,8 +61,13 @@ def mint(
     issuer_cn: str | None = None,
     issuer_key: object | None = None,
     is_ca: bool = False,
+    omit_san: bool = False,
+    ip_sans: list[str] | None = None,
 ) -> Minted:
     """Create a certificate with exactly the defect you ask for.
+
+    `omit_san=True` gives a certificate with no subjectAltName extension at all,
+    so only its Common Name names a host (D48: RFC 9525 forbids matching that).
 
     `not_after_days` in the past gives an expired certificate; a small positive
     number gives one expiring soon. `key_bits=1024` gives a weak key.
@@ -84,22 +90,21 @@ def mint(
         .serial_number(x509.random_serial_number())
         .not_valid_before(now + not_before_days * DAY)
         .not_valid_after(now + not_after_days * DAY)
-        .add_extension(
-            x509.SubjectAlternativeName(
-                [x509.DNSName(name) for name in (sans if sans is not None else [common_name])]
-            ),
-            critical=False,
-        )
-        .add_extension(
-            x509.SubjectKeyIdentifier.from_public_key(key.public_key()),  # type: ignore[union-attr]
-            critical=False,
-        )
-        .add_extension(
-            x509.AuthorityKeyIdentifier.from_issuer_public_key(
-                issuer_key.public_key() if issuer_key is not None else key.public_key()  # type: ignore[union-attr]
-            ),
-            critical=False,
-        )
+    )
+    if not omit_san:
+        general_names: list[x509.GeneralName] = [
+            x509.DNSName(name) for name in (sans if sans is not None else [common_name])
+        ]
+        general_names += [x509.IPAddress(ipaddress.ip_address(ip)) for ip in ip_sans or []]
+        builder = builder.add_extension(x509.SubjectAlternativeName(general_names), critical=False)
+    builder = builder.add_extension(
+        x509.SubjectKeyIdentifier.from_public_key(key.public_key()),  # type: ignore[union-attr]
+        critical=False,
+    ).add_extension(
+        x509.AuthorityKeyIdentifier.from_issuer_public_key(
+            issuer_key.public_key() if issuer_key is not None else key.public_key()  # type: ignore[union-attr]
+        ),
+        critical=False,
     )
 
     if is_ca:

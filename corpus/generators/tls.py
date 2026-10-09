@@ -95,6 +95,11 @@ CASES: dict[str, dict[str, Any]] = {
             "max_version": ssl.TLSVersion.TLSv1,
         },
     },
+    # D48: the leaf names `localhost` only in its Common Name, with no SAN at
+    # all. RFC 9525 §2 forbids matching the CN, so this is a mismatch, for our
+    # matcher and for OpenSSL's reading alike. Appended last, so no other
+    # case's port moves.
+    "cn-only": {"mode": "light", "chain": {"omit_san": True}},
 }
 
 
@@ -135,8 +140,10 @@ def _build(tmp: Path, case_id: str, spec: dict[str, Any], port: int):
     return LabServer(leaf, chain_file=chain, port=port, **server_kwargs), str(ca.cert_path)
 
 
-def generate() -> None:
+def generate(only: set[str] | None = None) -> None:
     for index, (case_id, spec) in enumerate(CASES.items()):
+        if only is not None and case_id not in only:
+            continue
         port = BASE_PORT + index
         directory = FIXTURES / case_id
         if directory.exists():
@@ -174,4 +181,6 @@ def generate() -> None:
 
 
 if __name__ == "__main__":
-    generate()
+    import sys
+
+    generate(set(sys.argv[1:]) or None)

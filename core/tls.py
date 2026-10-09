@@ -47,6 +47,7 @@ from __future__ import annotations
 
 import base64
 import datetime as dt
+import ipaddress
 import socket
 import ssl
 import tempfile
@@ -127,6 +128,9 @@ class CertificateInfo:
     fingerprint_sha256: str
     subject_cn: str | None = None
     issuer_cn: str | None = None
+    ip_sans: list[str] = field(default_factory=list)
+    """subjectAltName iPAddress entries (D48 review): an IP target is matched by
+    address against these, never against a DNS name or the Common Name."""
 
     def days_until_expiry(self, now: dt.datetime | None = None) -> int:
         """Whole days left. Negative once expired.
@@ -145,13 +149,28 @@ class CertificateInfo:
         return (now or dt.datetime.now(dt.UTC)) < self.not_before
 
     def covers_hostname(self, hostname: str) -> bool:
-        """RFC 6125 name matching, including single-label wildcards.
+        """RFC 9525 name matching (§6.3), including single-label wildcards.
 
         `*.example.test` covers `api.example.test` and covers neither
         `a.b.example.test` nor the bare `example.test`.
+
+        Only subjectAltName DNS names count. RFC 9525 §2: "The Common Name RDN
+        MUST NOT be used to identify a service". RFC 6125, which it obsoletes,
+        allowed falling back to the CN when there were no SANs; this did, until
+        D48, and so missed mismatches that current clients reject.
         """
-        names = list(self.sans) or ([self.subject_cn] if self.subject_cn else [])
-        host = hostname.lower().rstrip(".")
+        host = hostname.strip().rstrip(".")
+        try:
+            # brackets and an IPv6 zone id are not part of the address octets
+            address = ipaddress.ip_address(host.strip("[]").split("%", 1)[0])
+        except ValueError:
+            address = None
+        if address is not None:
+            # RFC 9525 §6.4: an IP reference identity matches an iPAddress SAN,
+            # by address. It is never compared with a DNS name or the CN.
+            return any(_same_address(address, ip) for ip in self.ip_sans)
+        names = list(self.sans)
+        host = _a_label(host.lower())
         for raw in names:
             name = raw.lower().rstrip(".")
             if name == host:
@@ -175,6 +194,7 @@ class CertificateInfo:
             "not_before": self.not_before.isoformat(),
             "not_after": self.not_after.isoformat(),
             "sans": list(self.sans),
+            "ip_sans": list(self.ip_sans),
             "key_type": self.key_type,
             "key_bits": self.key_bits,
             "signature_algorithm": self.signature_algorithm,
@@ -212,6 +232,8 @@ class TlsObservation:
     @property
     def hostname_matches(self) -> bool | None:
         if self.certificate is None or self.servername is None:
+            return None
+        if idna_ambiguous(self.servername):
             return None
         return self.certificate.covers_hostname(self.servername)
 
@@ -446,8 +468,8 @@ class SystemTlsBackend:
         needs its issuer, so wrong.host.badssl.com produced no verdict at all
         until the system store was included.
 
-        That verdict is a genuinely independent implementation of RFC 6125
-        against our own, so a hostname finding rests on two readings rather
+        That verdict is a separate implementation of RFC 9525 matching from our
+        own, so a hostname finding rests on two readings rather
         than one, and a bug in our wildcard handling shows up as a
         disagreement rather than a silent wrong answer.
         """
@@ -470,6 +492,10 @@ class SystemTlsBackend:
                 # trust fails first and OpenSSL never reaches the hostname.
                 context.load_verify_locations(cafile=trust_anchor)
             context.check_hostname = True
+            # D48: no Common Name fallback, as RFC 9525 §2 requires. Python
+            # defaults this to True, which made OpenSSL's reading share our old
+            # blind spot, so the two readings agreed on a wrong answer (D38).
+            context.hostname_checks_common_name = False
             context.verify_mode = ssl.CERT_REQUIRED
             with (
                 socket.create_connection((host, port), timeout=timeout_s) as raw,
@@ -682,6 +708,36 @@ def _common_name(name: x509.Name) -> str | None:
     return str(values[0].value) if values else None
 
 
+IDNA_DEVIATIONS = frozenset("ß\u03c2\u200c\u200d")
+"""The four characters IDNA 2003 and UTS-46 non-transitional processing map
+differently (ß, final sigma, ZWNJ, ZWJ). Python's `idna` codec is IDNA 2003, and
+`ssl` hands OpenSSL the same encoding, so both hostname readings would share a
+wrong answer for a name containing one (D48 re-review)."""
+
+
+def idna_ambiguous(hostname: str) -> bool:
+    """A name neither reading can judge reliably: refuse rather than guess."""
+    return any(ch in IDNA_DEVIATIONS for ch in hostname.lower())
+
+
+def _same_address(address: ipaddress.IPv4Address | ipaddress.IPv6Address, raw: str) -> bool:
+    try:
+        return ipaddress.ip_address(raw) == address
+    except ValueError:
+        return False
+
+
+def _a_label(host: str) -> str:
+    """The A-label (punycode) form, which is what certificates carry (RFC 9525
+    §6.3: U-labels are converted to A-labels before comparing)."""
+    if host.isascii():
+        return host
+    try:
+        return host.encode("idna").decode("ascii")
+    except UnicodeError:
+        return host
+
+
 def _parse_certificate(der: bytes) -> CertificateInfo:
     cert = x509.load_der_x509_certificate(der)
 
@@ -690,8 +746,10 @@ def _parse_certificate(der: bytes) -> CertificateInfo:
         san = extension.value
         assert isinstance(san, x509.SubjectAlternativeName)
         sans = san.get_values_for_type(x509.DNSName)
+        ip_sans = [str(ip) for ip in san.get_values_for_type(x509.IPAddress)]
     except x509.ExtensionNotFound:
         sans = []
+        ip_sans = []
 
     public_key = cert.public_key()
     key_bits = getattr(public_key, "key_size", None)
@@ -731,6 +789,7 @@ def _parse_certificate(der: bytes) -> CertificateInfo:
         not_before=cert.not_valid_before_utc,
         not_after=cert.not_valid_after_utc,
         sans=list(sans),
+        ip_sans=ip_sans,
         key_type=key_type,
         key_bits=key_bits,
         signature_algorithm=signature_algorithm,

@@ -40,7 +40,7 @@ from core.testssl import (
     LegacyCipherReport,
     TestsslUnavailableError,
 )
-from core.tls import DEFAULT_PORT, TlsClient, TlsObservation
+from core.tls import DEFAULT_PORT, TlsClient, TlsObservation, idna_ambiguous
 from scanners.tls.checks import (
     CERTIFICATE,
     CHECKS,
@@ -75,7 +75,7 @@ _REFERENCES = {
     "tls-cert-expired": ["https://www.rfc-editor.org/rfc/rfc5280"],
     "tls-cert-expiring-soon": ["https://www.rfc-editor.org/rfc/rfc5280"],
     "tls-cert-not-yet-valid": ["https://www.rfc-editor.org/rfc/rfc5280"],
-    "tls-hostname-mismatch": ["https://www.rfc-editor.org/rfc/rfc6125"],
+    "tls-hostname-mismatch": ["https://www.rfc-editor.org/rfc/rfc9525"],
     "tls-cert-self-signed": ["https://www.rfc-editor.org/rfc/rfc5280"],
     "tls-chain-incomplete": ["https://www.rfc-editor.org/rfc/rfc5246#section-7.4.2"],
     "tls-protocol-obsolete": ["https://www.rfc-editor.org/rfc/rfc8996"],
@@ -108,7 +108,7 @@ LEGACY_CIPHER_CHECK_IDS = tuple(CHECK_TO_TESTSSL_ID)
 @register
 class TlsScanner(BaseScanner):
     name = "tls"
-    version = "1.2.0"
+    version = "1.3.0"
     supported_modes = frozenset({"light", "standard"})
     target_types = frozenset({"domain", "url", "ip"})
 
@@ -355,13 +355,54 @@ class _Scan:
 
     def _check_identity(self) -> None:
         assert self.cert is not None
+        if self.observation.servername and idna_ambiguous(self.observation.servername):
+            # D48 re-review: IDNA 2003 (ours, and what OpenSSL is handed) and
+            # UTS-46 (browsers) encode this name differently, so both readings
+            # would share a wrong answer. Say so instead of judging.
+            check = CHECKS["tls-hostname-mismatch"]
+            self._emit(
+                check,
+                no_verdict_reason="blocked_prerequisite",
+                description=(
+                    f"{self.host} contains a character (ß, ς, ZWNJ or ZWJ) that IDNA 2003 and "
+                    "UTS-46 encode differently. Our matcher and OpenSSL's both use IDNA 2003, "
+                    "so neither can say reliably whether the certificate covers the name."
+                ),
+                impact="Unknown. This is a limit of our name encoding, not an observation.",
+                remediation=(
+                    "Check the certificate's names by hand against the A-label a browser uses."
+                ),
+                signals=[self._signal(check, CERTIFICATE, ratio=1.0)],
+            )
+            self.checks.append(
+                CheckRun(
+                    check_id="tls-hostname-mismatch",
+                    location=self._location(),
+                    outcome="inconclusive",
+                )
+            )
+            return
         if self.observation.hostname_matches is False:
-            names = ", ".join(self.cert.sans) or self.cert.subject_cn or "none"
+            presented = [*self.cert.sans, *self.cert.ip_sans]
+            if presented:
+                valid_for = f"It is valid for: {', '.join(presented)}."
+            else:
+                # D48: a CN-only certificate covers no name under RFC 9525 §2,
+                # so saying it is "valid for" its CN would be a false claim.
+                cn = (
+                    f" Its Common Name is {self.cert.subject_cn}, but"
+                    if self.cert.subject_cn
+                    else ""
+                )
+                valid_for = (
+                    f"It has no subjectAltName names.{cn} RFC 9525 §2 says the Common Name "
+                    "must not be used to identify a service, so it covers no name."
+                )
             self._report(
                 "tls-hostname-mismatch",
                 description=(
                     f"The certificate presented for {self.host} does not cover that name. "
-                    f"It is valid for: {names}."
+                    f"{valid_for}"
                 ),
                 impact=(
                     "Browsers refuse the connection with a security warning naming the wrong "
@@ -378,9 +419,11 @@ class _Scan:
             self._clear("tls-hostname-mismatch")
 
     def _hostname_signals(self) -> list[Signal]:
-        """Our RFC 6125 matcher, plus OpenSSL's if it reached a verdict.
+        """Our RFC 9525 matcher, plus OpenSSL's if it reached a verdict.
 
-        Two independent implementations of the same rule. Where they disagree
+        Two implementations of the same rule, both without the Common Name
+        fallback since D48 (before it, both fell back, so they shared that blind
+        spot). Where they disagree
         the finding stays at one signal, which is the correct outcome: a
         disagreement about name matching means one of us has a bug, and that is
         not the moment to sound confident.

@@ -620,3 +620,81 @@ def test_the_test_and_control_are_not_the_same_observation():
     evidence = found[0].evidence[0]
 
     assert evidence.test["protocol"] != evidence.control["protocol"]
+
+
+def test_a_common_name_only_certificate_is_a_mismatch_and_says_why():
+    """D48: RFC 9525 §2 forbids matching the CN, for both readings, and the
+    description must not call the certificate "valid for" its CN."""
+    import yaml
+
+    from cli.corpus import ROOT, _run_case
+
+    cases = yaml.safe_load((ROOT / "corpus" / "targets" / "tls.yaml").read_text())["cases"]
+    (case,) = [c for c in cases if c["id"] == "cn-only"]
+
+    result = _run_case("tls", case)
+
+    (finding,) = [f for f in result.findings if f.check_id == "tls-hostname-mismatch"]
+    assert finding.state == "highly_likely"  # our matcher and OpenSSL's agree
+    assert "valid for" not in finding.description
+    assert "RFC 9525" in finding.description
+    assert finding.references == ["https://www.rfc-editor.org/rfc/rfc9525"]
+
+
+def _scan_ip(server):
+    ctx = ScanContext(tls=TlsClient(scope=Scope(frozenset({"127.0.0.1"}))))
+    target = Asset(type="url", value=f"https://127.0.0.1:{server.port}")
+    return TlsScanner().run(target, "light", ctx)
+
+
+def test_an_ip_target_with_its_ip_san_is_no_mismatch():
+    """D48 review, BLOCKER: a valid IP certificate gave a false high mismatch."""
+    with lab_server(common_name="127.0.0.1", sans=[], ip_sans=["127.0.0.1"]) as srv:
+        result = _scan_ip(srv)
+
+    assert not [f for f in result.findings if f.check_id == "tls-hostname-mismatch"]
+
+
+def test_a_mismatch_lists_ip_sans_and_never_says_there_are_none():
+    with lab_server(common_name="10.0.0.9", sans=[], ip_sans=["10.0.0.9"]) as srv:
+        result = _scan_ip(srv)
+
+    (finding,) = [f for f in result.findings if f.check_id == "tls-hostname-mismatch"]
+    assert "10.0.0.9" in finding.description
+    assert "no subjectAltName" not in finding.description
+
+
+def test_an_idna_ambiguous_host_is_inconclusive_not_a_mismatch():
+    """D48 re-review: refuse to judge rather than claim a mismatch both readings
+    would share by construction."""
+    from dataclasses import replace
+
+    from core.tls import TlsObservation
+
+    with lab_server(common_name="xn--fa-hia.de", sans=["xn--fa-hia.de"]) as srv:
+        observation = TlsClient(scope=LOOPBACK).inspect(
+            "localhost", srv.port, servername="localhost"
+        )
+    assert isinstance(observation, TlsObservation)
+
+    ambiguous = replace(observation, servername="faß.de")
+
+    assert ambiguous.hostname_matches is None
+
+
+def test_the_scanner_reports_an_idna_ambiguous_host_as_inconclusive():
+    from dataclasses import replace
+
+    with lab_server(common_name="xn--fa-hia.de", sans=["xn--fa-hia.de"]) as srv:
+        real = TlsClient(scope=LOOPBACK).inspect("localhost", srv.port, servername="localhost")
+
+    class _Fake(TlsClient):
+        def inspect(self, host, port, *, servername=None, **_):
+            return replace(real, host=host, port=port, servername=servername)
+
+    ctx = ScanContext(tls=_Fake(scope=Scope(frozenset({"faß.de"}))))
+    result = TlsScanner().run(Asset(type="url", value="https://faß.de"), "light", ctx)
+
+    (finding,) = [f for f in result.findings if f.check_id == "tls-hostname-mismatch"]
+    assert finding.state == "inconclusive"
+    assert "IDNA 2003" in finding.description

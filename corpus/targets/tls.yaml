@@ -141,6 +141,15 @@ cases:
     target: { type: url, value: "https://localhost:14415" }
     fixtures: corpus/fixtures/tls/beast-vulnerable
 
+  # D48: the leaf names the host only in its Common Name (no SAN). RFC 9525 §2
+  # forbids matching the CN, so both readings must call it a mismatch.
+  - id: cn-only
+    tier: vulnerable
+    source: frozen
+    mode: light
+    target: { type: url, value: "https://localhost:14416" }
+    fixtures: corpus/fixtures/tls/cn-only
+
   # D20: legacy ciphers via the testssl.sh runtime wrap. RC4/3DES/export are
   # compiled out of OpenSSL 3.5, so nothing local - lab included - can serve
   # one. These four freeze real recordings against public badssl.com weak

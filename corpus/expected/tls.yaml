@@ -43,6 +43,9 @@ beast-vulnerable:
   - { check_id: tls-protocol-obsolete, location: "localhost:14415" }
   - { check_id: tls-vuln-beast, location: "localhost:14415" }
   - { check_id: tls-no-forward-secrecy, location: "localhost:14415" }
+# D48: CN-only leaf. A mismatch under RFC 9525, for our matcher and OpenSSL's.
+cn-only:
+  - { check_id: tls-hostname-mismatch, location: "localhost:14416" }
 # D20, real recordings against public badssl.com weak endpoints - the local
 # lab cannot serve any of these (compiled out of OpenSSL 3.5, same wall D11
 # hit). rc4/3des/dh512.badssl.com serve *only* their legacy cipher, so our own
