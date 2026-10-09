@@ -44,6 +44,10 @@ CASES = {
     # longer exists; the weak-key claim rests on mandrill, which every
     # resolver agrees on, so it must still validate.
     "disagree-stale-dkim": ("flipkart.com", ["9.9.9.9", "1.1.1.1"]),
+    # A real record using a tag RFC 9989 removed: cloudinary.com publishes
+    # p=quarantine; pct=1 (verified by hand in email live run 2). Resolvers
+    # agreed on every lookup, so the default order is used.
+    "real-obsolete-pct": ("cloudinary.com", ["1.1.1.1", "8.8.8.8"]),
 }
 
 

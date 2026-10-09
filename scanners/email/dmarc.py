@@ -1,24 +1,34 @@
-"""DMARC parsing, per RFC 7489.
+"""DMARC parsing, per RFC 9989 (May 2026), with RFC 7489's differences kept visible.
 
-A DMARC record is a tag-value list, and the ordering rules matter: `v` must be
-first and `p` must immediately follow it.
+RFC 9989 obsoletes RFC 7489 (ledger D44). It is the primary reading here.
+Receivers implementing either will be in service for some time, so where the
+two disagree the record carries both, and a finding states both (the dual
+reading, ADR-017).
 
-What a receiver does with a broken record is a separate question, and RFC 7489
-answers it only for some errors. `receiver_handling` records which answer
-applies, so a finding says what the spec says and no more:
+What a receiver does with a broken record, by `receiver_handling`:
 
-- `ignored` - `v` is not first or not exactly `DMARC1` (case-sensitive): "the
-  entire retrieved record MUST be ignored" (RFC 7489 section 6.3, RFC 9989
-  section 4.7).
-- `no_processing` / `treat_as_none` - no valid `p`, or an invalid `sp`.
-  Section 6.6.3 step 6: with a syntactically valid `rua` the receiver SHOULD act
-  as if the record said `p=none`; without one it applies no DMARC processing.
-- `discard_tag` - a malformed tag after `v` and `p`. Section 6.3: such errors
-  "SHOULD be discarded in favor of default values (if any) or ignored outright".
-  The record still counts.
-- `undefined` - a duplicated tag, or `p` not immediately after `v`. Both are
-  forbidden (duplicates through DKIM's tag-list rule, RFC 6376 section 3.2,
-  which section 6.3 adopts), but no spec says what a receiver then does.
+- `ignored`: `v` is not first or not exactly `DMARC1` (case-sensitive). "The
+  entire record MUST be ignored" (RFC 7489 section 6.3, RFC 9989 section 4.7).
+- `no_processing` / `treat_as_none`: an invalid `p`, `sp` or `np` value (RFC
+  9989 section 4.10.1, MUST; RFC 7489 section 6.6.3 step 6, SHOULD). With a
+  syntactically valid `rua` the receiver acts as if the record said `p=none`;
+  without one it applies no DMARC processing. RFC 7489 does not know `np`, so an
+  invalid `np` is `np_invalid_only`: a 9989-only problem.
+- `discard_tag`: a malformed tag. Both RFCs discard it in favour of its default
+  ("MUST" in RFC 9989 section 4.8, "SHOULD" in RFC 7489 section 6.3). The
+  record still counts.
+- `undefined`: a duplicated tag. DKIM's tag-list rule (RFC 6376 section 3.2,
+  adopted by both RFCs) makes the tag list invalid, but neither says what a
+  receiver then does.
+
+No longer errors under RFC 9989, recorded instead:
+
+- an absent `p`: treated as `p=none` (section 4.7). `p_absent` keeps it visible,
+  because RFC 7489 applied no DMARC processing to such a record.
+- `p` not straight after `v`: the order is free (section 4.8). It is a
+  `legacy_issue`, because RFC 7489 required it.
+- `pct`, `rf`, `ri` and report size limits: removed (Appendix C). Listed in
+  `obsolete_tags`.
 """
 
 from __future__ import annotations
@@ -30,7 +40,11 @@ from typing import Any
 VERSION = "DMARC1"
 POLICIES = frozenset({"none", "quarantine", "reject"})
 ALIGNMENT = frozenset({"r", "s"})
-KNOWN_TAGS = frozenset({"v", "p", "sp", "pct", "rua", "ruf", "adkim", "aspf", "fo", "rf", "ri"})
+KNOWN_TAGS = frozenset(
+    {"v", "p", "sp", "np", "psd", "t", "rua", "ruf", "adkim", "aspf", "fo", "pct", "rf", "ri"}
+)
+PSD_VALUES = frozenset({"y", "n", "u"})
+TEST_VALUES = frozenset({"y", "n"})
 # A DMARC URI (RFC 7489 section 6.4): a URI, optionally followed by "!" and a size limit.
 _DMARC_URI = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:[^\s!,;]+(![0-9]+[kmgt]?)?$")
 
@@ -41,15 +55,53 @@ class DmarcRecord:
     tags: dict[str, str] = field(default_factory=dict)
     errors: list[str] = field(default_factory=list)
     receiver_handling: str | None = None
+    legacy_issues: list[str] = field(default_factory=list)
+    """Valid under RFC 9989, but not under RFC 7489."""
+    np_invalid_only: bool = False
 
     @property
     def valid(self) -> bool:
         return not self.errors
 
     @property
+    def usable(self) -> bool:
+        """Whether receivers apply the record: valid, or only a malformed tag discarded."""
+        return self.receiver_handling in (None, "discard_tag")
+
+    @property
+    def p_absent(self) -> bool:
+        return "p" not in self.tags
+
+    @property
     def policy(self) -> str | None:
+        """RFC 9989 4.7: an absent p is treated as p=none."""
+        if self.p_absent:
+            return "none"
         value = self.tags.get("p")
         return value.lower() if value else None
+
+    @property
+    def np(self) -> str | None:
+        value = self.tags.get("np")
+        return value.lower() if value else None
+
+    @property
+    def testing(self) -> bool:
+        """RFC 9989 4.7: t=y asks receivers to apply one level below the policy."""
+        return self.tags.get("t", "n").lower() == "y"
+
+    @property
+    def psd(self) -> str:
+        return self.tags.get("psd", "u").lower()
+
+    @property
+    def obsolete_tags(self) -> list[str]:
+        """Tags RFC 9989 removed (Appendix C.4, C.5.2), in a fixed order."""
+        found: list[str] = [tag for tag in ("pct", "rf", "ri") if tag in self.tags]
+        uris = self.rua + self.ruf
+        if any("!" in uri for uri in uris):
+            found.append("rua size limit" if any("!" in u for u in self.rua) else "ruf size limit")
+        return found
 
     @property
     def subdomain_policy(self) -> str | None:
@@ -93,6 +145,9 @@ class DmarcRecord:
             "tags": dict(self.tags),
             "errors": list(self.errors),
             "receiver_handling": self.receiver_handling,
+            "legacy_issues": list(self.legacy_issues),
+            "obsolete_tags": self.obsolete_tags,
+            "p_absent": self.p_absent,
             "policy": self.policy,
             "effective_subdomain_policy": self.effective_subdomain_policy,
             "pct": self.pct,
@@ -139,21 +194,22 @@ def parse_dmarc(text: str) -> DmarcRecord:
         return DmarcRecord(raw=raw, tags=tags, errors=errors, receiver_handling="ignored")
 
     policy_usable = True
-    misordered = False
-    if "p" not in tags:
-        errors.append("no p= tag; RFC 7489 requires a policy")
-        policy_usable = False
-    elif tags["p"].lower() not in POLICIES:
+    np_invalid = False
+    legacy: list[str] = []
+    if "p" in tags and tags["p"].lower() not in POLICIES:
         errors.append(
             f"unknown policy {tags['p']!r}; expected one of {', '.join(sorted(POLICIES))}"
         )
         policy_usable = False
-    elif len(names) > 1 and names[1] != "p":
-        errors.append("p= must immediately follow v=")
-        misordered = True
+    elif "p" in tags and len(names) > 1 and names[1] != "p":
+        legacy.append("p= is not the tag straight after v= (RFC 7489 required it)")
 
     if "sp" in tags and tags["sp"].lower() not in POLICIES:
         errors.append(f"unknown subdomain policy {tags['sp']!r}")
+        policy_usable = False
+    if "np" in tags and tags["np"].lower() not in POLICIES:
+        errors.append(f"unknown non-existent-subdomain policy {tags['np']!r}")
+        np_invalid = policy_usable
         policy_usable = False
 
     if "pct" in tags:
@@ -168,17 +224,28 @@ def parse_dmarc(text: str) -> DmarcRecord:
     for tag in ("adkim", "aspf"):
         if tag in tags and tags[tag].lower() not in ALIGNMENT:
             errors.append(f"{tag}={tags[tag]!r} is not 'r' or 's'")
+    if "t" in tags and tags["t"].lower() not in TEST_VALUES:
+        errors.append(f"t={tags['t']!r} is not 'y' or 'n'")
+    if "psd" in tags and tags["psd"].lower() not in PSD_VALUES:
+        errors.append(f"psd={tags['psd']!r} is not 'y', 'n' or 'u'")
 
     handling: str | None = None
     if not policy_usable:
-        handling = "treat_as_none" if _has_valid_rua(tags) else "no_processing"
-    elif duplicated or misordered:
+        handling = "treat_as_none" if has_valid_rua(tags) else "no_processing"
+    elif duplicated:
         handling = "undefined"
     elif errors:
         handling = "discard_tag"
-    return DmarcRecord(raw=raw, tags=tags, errors=errors, receiver_handling=handling)
+    return DmarcRecord(
+        raw=raw,
+        tags=tags,
+        errors=errors,
+        receiver_handling=handling,
+        legacy_issues=legacy,
+        np_invalid_only=np_invalid and not duplicated,
+    )
 
 
-def _has_valid_rua(tags: dict[str, str]) -> bool:
-    """RFC 7489 6.6.3 step 6: 'at least one syntactically valid reporting URI'."""
+def has_valid_rua(tags: dict[str, str]) -> bool:
+    """'At least one syntactically valid reporting URI' (RFC 9989 4.10.1, RFC 7489 6.6.3)."""
     return any(_DMARC_URI.match(uri.strip()) for uri in tags.get("rua", "").split(","))

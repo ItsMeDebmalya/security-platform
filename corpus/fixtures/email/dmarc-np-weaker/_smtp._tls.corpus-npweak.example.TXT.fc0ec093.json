@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_smtp._tls.corpus-npweak.example",
+  "rcode": "NOERROR",
+  "records": [
+    "v=TLSRPTv1; rua=mailto:tls@corpus-npweak.example"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 300
+}

@@ -164,6 +164,24 @@ CASES: dict[str, tuple[str, object, str]] = {
         ),
         "standard",
     ),
+    "dmarc-test-mode": (
+        "corpus-testmode.example",
+        good(
+            "corpus-testmode.example",
+            dmarc="v=DMARC1; p=quarantine; t=y; rua=mailto:d@corpus-testmode.example",
+        ),
+        "standard",
+    ),
+    "dmarc-np-weaker": (
+        "corpus-npweak.example",
+        good(
+            "corpus-npweak.example",
+            dmarc=(
+                "v=DMARC1; p=reject; np=none; rua=mailto:d@corpus-npweak.example; adkim=s; aspf=s"
+            ),
+        ),
+        "standard",
+    ),
     "dmarc-relaxed-alignment": (
         "corpus-relaxed.example",
         good(

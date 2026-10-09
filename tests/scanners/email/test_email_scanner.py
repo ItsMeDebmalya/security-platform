@@ -695,25 +695,28 @@ def test_a_revoked_selector_beside_a_strong_key_is_neither_weak_nor_unmeasurable
     assert findings_for("revoked.example", answers, "dkim-weak-key", mode="standard") == []
 
 
-def test_dmarc_with_no_policy_and_no_rua_cites_what_the_rfc_says_receivers_do(findings_for):
-    """RFC 7489 6.6.3 step 6: no valid p and no valid rua means the receiver
-    applies no DMARC processing. That is a spec statement, so it may be said."""
-    answers = zone("nop.example", dmarc="v=DMARC1")
+def test_dmarc_with_an_invalid_policy_and_no_rua_cites_both_rfcs(findings_for):
+    """RFC 9989 4.10.1 and RFC 7489 6.6.3 agree: an invalid p and no valid rua
+    means no DMARC processing. (An *absent* p is p=none under RFC 9989; see
+    test_a_missing_p_is_reported_as_policy_none_under_both_rfcs.)"""
+    answers = zone("nop.example", dmarc="v=DMARC1; p=bogus")
 
     [found] = findings_for("nop.example", answers, "dmarc-invalid")
 
     assert found.state == "confirmed"
     assert "no DMARC processing" in found.description
-    assert "6.6.3" in found.description
+    assert "4.10.1" in found.description and "6.6.3" in found.description
 
 
-def test_dmarc_with_no_policy_but_a_rua_says_receivers_treat_it_as_p_none(findings_for):
+def test_dmarc_with_no_policy_but_a_rua_is_reported_as_policy_none(findings_for):
+    """RFC 9989 4.7: an absent p is p=none. RFC 7489 6.6.3: with a valid rua,
+    act as if p=none. Same verdict, so it is a claim."""
     answers = zone("nop.example", dmarc="v=DMARC1; rua=mailto:d@nop.example")
 
-    [found] = findings_for("nop.example", answers, "dmarc-invalid")
+    [found] = findings_for("nop.example", answers, "dmarc-policy-none")
 
-    assert "as if" in found.description and "p=none" in found.description
-    assert "ignore" not in found.description
+    assert found.state == "confirmed"
+    assert "no p= tag" in found.description
 
 
 @pytest.mark.parametrize(
@@ -721,33 +724,30 @@ def test_dmarc_with_no_policy_but_a_rua_says_receivers_treat_it_as_p_none(findin
     [
         "v=DMARC1; p=reject; p=none; rua=mailto:d@dup.example",
         "v=DMARC1; p=reject; rua=mailto:d@dup.example; rua=mailto:e@dup.example",
-        "v=DMARC1; rua=mailto:d@dup.example; p=reject",
     ],
-    ids=["duplicate-p", "duplicate-rua", "p-not-second"],
+    ids=["duplicate-p", "duplicate-rua"],
 )
-def test_a_dmarc_error_whose_receiver_handling_no_spec_defines_is_suspected(findings_for, record):
-    """RFC 7489 says v and p MUST come first and in that order, and borrows
-    DKIM's rule that a duplicated tag makes the tag-list invalid - but it does
-    not say what a receiver does with such a record. So we do not say either."""
+def test_a_repeated_tag_whose_receiver_handling_no_rfc_defines_is_suspected(findings_for, record):
+    """A repeated tag invalidates the tag list (RFC 6376 3.2, adopted by both
+    DMARC RFCs), but neither says what a receiver then does. So we do not
+    say either."""
     answers = zone("dup.example", dmarc=record)
 
     [found] = findings_for("dup.example", answers, "dmarc-invalid")
 
     assert found.state == "suspected"
-    assert "does not define" in found.description
-    assert "vary" in found.description
+    assert "neither DMARC RFC says" in found.description
     assert "ignore a record like this entirely" not in found.description
-    assert "would be ignored" not in found.title
 
 
 def test_a_malformed_optional_tag_cites_the_rfc_rule_to_discard_it(findings_for):
-    """RFC 7489 6.3: syntax errors after v and p SHOULD be discarded in favour
-    of defaults - the opposite of 'receivers ignore the record'."""
+    """Both RFCs discard a malformed tag in favour of its default (RFC 9989 4.8
+    MUST, RFC 7489 6.3 SHOULD), the opposite of 'receivers ignore the record'."""
     answers = zone("pct.example", dmarc="v=DMARC1; p=reject; pct=abc")
 
     [found] = findings_for("pct.example", answers, "dmarc-invalid")
 
-    assert found.state == "suspected"
+    assert found.state == "confirmed" and found.severity == "low"
     assert "discard" in found.description
     assert "ignore a record like this entirely" not in found.description
 
@@ -827,9 +827,9 @@ def test_reject_says_failing_mail_is_asked_to_be_rejected(findings_for):
     ("dmarc", "other"),
     [
         ("v=DMARC1; p=none; rua=mailto:d@x.example", "dmarc-policy-none"),
-        ("v=DMARC1; p=reject; pct=50; rua=mailto:d@x.example", "dmarc-pct-partial"),
         (None, "dmarc-missing"),
-        ("v=DMARC1", "dmarc-invalid"),
+        ("v=DMARC1", "dmarc-policy-none"),  # RFC 9989: an absent p is p=none
+        ("v=DMARC1; p=bogus", "dmarc-invalid"),
     ],
 )
 def test_neutral_all_and_the_dmarc_weakness_name_each_other(run_scan, dmarc, other):
@@ -858,7 +858,7 @@ def test_softfail_all_is_a_declared_non_finding_even_without_dmarc(findings_for)
 
 
 def test_dmarc_treated_as_none_is_medium_and_says_the_operator_is_misled(findings_for):
-    answers = zone("x.example", dmarc="v=DMARC1; rua=mailto:d@x.example")
+    answers = zone("x.example", dmarc="v=DMARC1; p=bogus; rua=mailto:d@x.example")
 
     [found] = findings_for("x.example", answers, "dmarc-invalid")
 
@@ -889,13 +889,22 @@ def test_explicit_pass_all_is_spoofable_even_under_p_reject(findings_for):
 
 
 def test_a_dmarc_record_with_no_usable_policy_is_a_spoofing_reason_citing_the_rfc(findings_for):
+    answers = zone("x.example", spf="v=spf1 -all", dmarc="v=DMARC1; p=bogus")
+
+    [found] = findings_for("x.example", answers, "spoofing-possible")
+
+    assert found.state == "confirmed"
+    assert "4.10.1" in found.description and "6.6.3" in found.description
+    assert "receivers ignore it" not in found.description
+
+
+def test_a_missing_p_is_a_spoofing_reason_under_both_rfcs(findings_for):
     answers = zone("x.example", spf="v=spf1 -all", dmarc="v=DMARC1")
 
     [found] = findings_for("x.example", answers, "spoofing-possible")
 
     assert found.state == "confirmed"
-    assert "6.6.3" in found.description
-    assert "receivers ignore it" not in found.description
+    assert "no p= tag" in found.description and "RFC 9989" in found.description
 
 
 def test_a_record_treated_as_none_gives_the_p_none_reason(findings_for):
@@ -925,7 +934,7 @@ def test_a_dmarc_error_with_undefined_handling_holds_spoofing_at_suspected(findi
     [found] = findings_for("x.example", answers, "spoofing-possible")
 
     assert found.state == "suspected"
-    assert "vary" in found.description
+    assert "RFC" in found.description
 
 
 # --- D39: the second resolver is real now, so it can disagree ---------------
@@ -1184,3 +1193,133 @@ def test_an_inherited_sp_none_is_not_described_as_p_none(run_scan):
 
     assert "p=none" not in spoof.description
     assert spoof.state == "suspected"
+
+
+# --- RFC 9989 dual reading (2026-10-09) --------------------------------------
+# RFC 9989 is the primary reading. Where RFC 7489 gives a different verdict the
+# finding states both and is capped at suspected. Severity is that of the worst
+# case; the state carries the doubt (ADR-017).
+
+
+def _dm(dmarc, spf="v=spf1 -all"):
+    return zone("x.example", spf=spf, dmarc=dmarc)
+
+
+def _one(run_scan, dmarc, check_id, mode="standard", spf="v=spf1 -all"):
+    result = run_scan("x.example", _dm(dmarc, spf), mode=mode)
+    return [f for f in result.findings if f.check_id == check_id]
+
+
+def test_partial_pct_states_both_readings_and_is_suspected(run_scan):
+    [found] = _one(
+        run_scan, "v=DMARC1; p=reject; pct=1; rua=mailto:d@x.example", "dmarc-pct-partial"
+    )
+
+    assert found.state == "suspected" and found.severity == "medium"
+    assert "RFC 9989" in found.description and "RFC 7489" in found.description
+    assert "all failing mail" in found.description
+
+
+def test_pct_partial_spoofing_is_a_hedge_not_a_claim(run_scan):
+    [found] = _one(run_scan, "v=DMARC1; p=reject; pct=1", "spoofing-possible")
+
+    assert found.state == "suspected"
+    assert "RFC 7489" in found.description
+
+
+@pytest.mark.parametrize(
+    ("dmarc", "severity", "tags"),
+    [
+        ("v=DMARC1; p=reject; pct=1; rua=mailto:d@x.example", "low", "pct"),
+        ("v=DMARC1; p=reject; pct=100; rf=afrf; ri=86400", "info", "pct, rf, ri"),
+        ("v=DMARC1; p=reject; rua=mailto:d@x.example!10m", "info", "rua size limit"),
+    ],
+)
+def test_tags_removed_by_rfc_9989_are_reported(run_scan, dmarc, severity, tags):
+    """Low only where the removed tag changes what receivers do (pct below 100)."""
+    [found] = _one(run_scan, dmarc, "dmarc-obsolete-tags")
+
+    assert found.severity == severity
+    assert tags in found.description
+
+
+def test_a_record_with_no_obsolete_tags_gets_no_finding(run_scan):
+    assert _one(run_scan, "v=DMARC1; p=reject; rua=mailto:d@x.example", "dmarc-obsolete-tags") == []
+
+
+def test_test_mode_with_quarantine_is_reported_with_both_readings(run_scan):
+    [found] = _one(run_scan, "v=DMARC1; p=quarantine; t=y", "dmarc-test-mode", mode="light")
+
+    assert found.state == "suspected" and found.severity == "medium"
+    assert "none" in found.description and "RFC 7489" in found.description
+
+
+def test_test_mode_has_no_effect_on_p_none(run_scan):
+    assert _one(run_scan, "v=DMARC1; p=none; t=y", "dmarc-test-mode", mode="light") == []
+
+
+def test_test_mode_quarantine_is_a_spoofing_hedge(run_scan):
+    """Under RFC 9989, quarantine with t=y is applied as none."""
+    [found] = _one(run_scan, "v=DMARC1; p=quarantine; t=y", "spoofing-possible")
+
+    assert found.state == "suspected"
+
+
+def test_a_weaker_np_is_reported_with_both_readings(run_scan):
+    [found] = _one(run_scan, "v=DMARC1; p=reject; np=none", "dmarc-np-weaker")
+
+    assert found.state == "suspected" and found.severity == "low"
+    assert "non-existent" in found.description and "RFC 7489" in found.description
+
+
+def test_an_np_no_weaker_than_the_policy_gets_no_finding(run_scan):
+    assert _one(run_scan, "v=DMARC1; p=reject; np=reject", "dmarc-np-weaker") == []
+
+
+def test_an_invalid_np_is_a_dual_reading_and_suspected(run_scan):
+    [found] = _one(
+        run_scan, "v=DMARC1; p=reject; np=bogus; rua=mailto:d@x.example", "dmarc-invalid"
+    )
+
+    assert found.state == "suspected" and found.severity == "medium"
+    assert "RFC 7489" in found.description
+
+
+def test_a_missing_p_is_reported_as_policy_none_under_both_rfcs(run_scan):
+    """aajtak.in: 'v=DMARC1'. RFC 9989: p=none. RFC 7489: no DMARC processing.
+    Unprotected either way, so it is a claim, and it is no longer 'invalid'."""
+    result = run_scan("x.example", _dm("v=DMARC1"), mode="standard")
+    by_id = {f.check_id: f for f in result.findings}
+
+    assert "dmarc-invalid" not in by_id
+    found = by_id["dmarc-policy-none"]
+    assert found.state == "confirmed" and found.severity == "medium"
+    assert "no p= tag" in found.description and "RFC 9989" in found.description
+    assert "believes" in found.description
+
+
+def test_a_misplaced_p_takes_dmarc_missings_severity_and_is_suspected(run_scan):
+    """Worst case: an RFC 7489 receiver discards the record, which is as if no
+    DMARC record existed."""
+    [found] = _one(run_scan, "v=DMARC1; rua=mailto:d@x.example; p=reject", "dmarc-invalid")
+
+    assert found.severity == "high" and found.state == "suspected"
+    assert "valid under RFC 9989" in found.description
+
+
+def test_a_malformed_optional_tag_is_low_and_confirmed(run_scan):
+    [found] = _one(run_scan, "v=DMARC1; p=reject; adkim=x", "dmarc-invalid")
+
+    assert found.severity == "low" and found.state == "confirmed"
+    assert "default" in found.description
+
+
+def test_a_record_with_only_a_discarded_tag_still_has_its_policy_evaluated(run_scan):
+    assert _one(run_scan, "v=DMARC1; p=none; adkim=x", "dmarc-policy-none")
+
+
+def test_duplicate_tags_take_dmarc_missings_severity_and_are_suspected(run_scan):
+    [found] = _one(run_scan, "v=DMARC1; p=reject; p=none", "dmarc-invalid")
+
+    assert found.severity == "high" and found.state == "suspected"
+    assert "RFC 9989" in found.description

@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_dmarc.cloudinary.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DMARC1; p=quarantine; pct=1; rua=mailto:t8enm3ny@ag.dmarcian.com; ruf=mailto:t8enm3ny@fr.dmarcian.com;"
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": null
+}

@@ -152,3 +152,26 @@ cases:
     target: { type: domain, value: flipkart.com }
     fixtures: corpus/fixtures/email/disagree-stale-dkim
 
+  - id: real-obsolete-pct
+    tier: real_recorded
+    source: recorded
+    mode: standard
+    target: { type: domain, value: cloudinary.com }
+    fixtures: corpus/fixtures/email/real-obsolete-pct
+
+  # RFC 9989 tags with no real positive found yet (searched: the 45 domains of
+  # email live runs 1 and 2). Synthetic until one is; the catalogue says so.
+  - id: dmarc-test-mode
+    tier: vulnerable
+    source: frozen
+    mode: standard
+    target: { type: domain, value: corpus-testmode.example }
+    fixtures: corpus/fixtures/email/dmarc-test-mode
+
+  - id: dmarc-np-weaker
+    tier: vulnerable
+    source: frozen
+    mode: standard
+    target: { type: domain, value: corpus-npweak.example }
+    fixtures: corpus/fixtures/email/dmarc-np-weaker
+
