@@ -1,6 +1,6 @@
 {
   "flags": [],
-  "name": "sp-wildcard-probe-79b29b2e.corpus-badspf.example",
+  "name": "sp-wildcard-probe-79acb8cc.corpus-badspf.example",
   "rcode": "NXDOMAIN",
   "records": [],
   "resolver": "1.1.1.1",

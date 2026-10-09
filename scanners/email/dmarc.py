@@ -203,6 +203,14 @@ def parse_dmarc(text: str) -> DmarcRecord:
         policy_usable = False
     elif "p" in tags and len(names) > 1 and names[1] != "p":
         legacy.append("p= is not the tag straight after v= (RFC 7489 required it)")
+    formats = [f.strip().lower() for f in tags.get("rf", "").split(":") if f.strip()]
+    if any(f != "afrf" for f in formats):
+        # RFC 7489 6.3: "a Mail Receiver observing a different value SHOULD
+        # ignore it or MAY ignore the entire DMARC record" (review S6).
+        legacy.append(
+            f"rf={tags['rf']} asks for a report format other than afrf, and RFC 7489 lets a "
+            "receiver ignore the entire record for that"
+        )
 
     if "sp" in tags and tags["sp"].lower() not in POLICIES:
         errors.append(f"unknown subdomain policy {tags['sp']!r}")

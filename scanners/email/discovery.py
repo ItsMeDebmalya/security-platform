@@ -35,7 +35,8 @@ def has_exact_version(text: str) -> bool:
     """RFC 9989 4.10 step 2: a record must start with a v tag naming DMARC1, exactly."""
     first = text.strip().split(";", 1)[0]
     name, _, value = first.partition("=")
-    return name.strip() == "v" and value.strip() == VERSION
+    # Tag names are case-insensitive in the ABNF ("v"); the value is not (%s"DMARC1").
+    return name.strip().lower() == "v" and value.strip() == VERSION
 
 
 @dataclass(frozen=True)
@@ -43,8 +44,10 @@ class Discovery:
     domain: str
     target_answer: DnsResponse
     target_records: int
-    """How many DMARC-looking records `_dmarc.<domain>` returned. More than one
-    means every one of them is discarded (RFC 7489 6.6.3, RFC 9989 4.10)."""
+    """How many records at `_dmarc.<domain>` begin with exactly v=DMARC1. More
+    than one means every one of them is discarded (RFC 7489 6.6.3, RFC 9989
+    4.10). Records with any other version are discarded first, so they are
+    not counted here (review B1)."""
     record: DmarcRecord | None = None
     """The record that applies, as published. None when none applies."""
     answer: DnsResponse | None = None
@@ -56,6 +59,8 @@ class Discovery:
     queried: list[DnsResponse] = field(default_factory=list)
     definite: bool = True
     """False when a lookup failed before the walk could conclude."""
+    found: list[tuple[str, DmarcRecord]] = field(default_factory=list)
+    """Every single valid record the walk met above the target, longest first."""
 
     @property
     def inherited(self) -> bool:
@@ -63,13 +68,43 @@ class Discovery:
 
     @property
     def effective(self) -> DmarcRecord | None:
-        """The applied record with the policy this domain actually gets in `p`."""
-        if self.record is None or self.policy_tag == "p":
+        """The applied record with the policy this domain gets under RFC 9989 in `p`."""
+        return self._with_policy(self.policy_tag)
+
+    @property
+    def effective_7489(self) -> DmarcRecord | None:
+        """The same record read by RFC 7489, which does not know np (review S2)."""
+        return self._with_policy("sp" if self.policy_tag == "np" else self.policy_tag)
+
+    def _with_policy(self, tag: str) -> DmarcRecord | None:
+        if self.record is None or tag == "p":
             return self.record
-        value = self.record.tags.get(self.policy_tag)
+        value = self.record.tags.get(tag)
         if value is None:
             return self.record
         return replace(self.record, tags={**self.record.tags, "p": value})
+
+    @property
+    def rfc7489_may_differ(self) -> bool:
+        """Whether an RFC 7489 receiver can be shown to pick a different record.
+
+        RFC 7489 finds the Organizational Domain with a Public Suffix List; RFC
+        9989 walks the tree. We do not consult a PSL (ledger D49), but some
+        divergence is visible from the walk itself (review B5):
+
+        - a `psd` tag decided the choice: RFC 7489 does not know `psd`;
+        - more than one ancestor publishes: the two methods may pick different ones;
+        - the record applied is at a single-label name: a TLD is a public suffix,
+          never an Organizational Domain under RFC 7489.
+
+        Not visible: a record at a multi-label public suffix with no psd tag
+        (D49). There an RFC 7489 receiver may find no record and we cannot say so.
+        """
+        if not self.inherited or self.source is None:
+            return False
+        if any(rec.tags.get("psd", "").lower() in ("y", "n") for _, rec in self.found):
+            return True
+        return len(self.found) > 1 or "." not in self.source
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -83,12 +118,14 @@ class Discovery:
         }
 
 
+def exact_records(answer: DnsResponse) -> list[str]:
+    """RFC 9989 4.10 step 2: only records beginning with exactly v=DMARC1 count."""
+    return [r for r in answer.records if has_exact_version(r)]
+
+
 def _single_valid(answer: DnsResponse) -> DmarcRecord | None:
-    candidates = [r for r in answer.records if is_dmarc_candidate(r)]
-    valid = [r for r in candidates if has_exact_version(r)]
-    if len(candidates) != 1 or len(valid) != 1:
-        return None
-    return parse_dmarc(valid[0])
+    valid = exact_records(answer)
+    return parse_dmarc(valid[0]) if len(valid) == 1 else None
 
 
 def _walk_names(domain: str) -> list[str]:
@@ -102,7 +139,7 @@ def discover(
 ) -> Discovery:
     domain = domain.lower().rstrip(".")
     target = dns.query(f"_dmarc.{domain}", "TXT", resolver=resolver)
-    target_count = sum(1 for r in target.records if is_dmarc_candidate(r))
+    target_count = len(exact_records(target))
     queried = [target]
     if not target.is_definite():
         return Discovery(domain, target, 0, queried=queried, definite=False)
@@ -111,32 +148,43 @@ def discover(
     if own is not None:
         return Discovery(domain, target, target_count, own, target, domain, "p", queried)
 
-    found: list[tuple[str, DmarcRecord, DnsResponse]] = []
-    for name in _walk_names(domain):
-        answer = dns.query(f"_dmarc.{name}", "TXT", resolver=resolver)
-        queried.append(answer)
-        if not answer.is_definite():
-            return Discovery(domain, target, target_count, queried=queried, definite=False)
-        record = _single_valid(answer)
-        if record is None:
-            continue
-        found.append((name, record, answer))
-        if record.tags.get("psd", "").lower() in ("y", "n"):
-            break
-
-    chosen = _organizational(domain, found)
+    found = walk_ancestors(domain, dns, resolver=resolver, queried=queried)
+    if found is None:
+        return Discovery(domain, target, target_count, queried=queried, definite=False)
+    seen = [(name, record) for name, record, _ in found]
+    chosen = organizational(domain, found)
     if chosen is None:
-        return Discovery(domain, target, target_count, queried=queried)
+        return Discovery(domain, target, target_count, queried=queried, found=seen)
     name, record, answer = chosen
     tag = "sp" if author_exists else "np"
     if tag == "np" and "np" not in record.tags:
         tag = "sp"
     if tag not in record.tags:
         tag = "p"
-    return Discovery(domain, target, target_count, record, answer, name, tag, queried)
+    return Discovery(domain, target, target_count, record, answer, name, tag, queried, True, seen)
 
 
-def _organizational(
+def walk_ancestors(
+    domain: str, dns: Any, *, resolver: str | None = None, queried: list[DnsResponse] | None = None
+) -> list[tuple[str, DmarcRecord, DnsResponse]] | None:
+    """Steps 3 to 7 of RFC 9989 4.10, above `domain`. None if a lookup failed."""
+    queried = queried if queried is not None else []
+    found: list[tuple[str, DmarcRecord, DnsResponse]] = []
+    for name in _walk_names(domain):
+        answer = dns.query(f"_dmarc.{name}", "TXT", resolver=resolver)
+        queried.append(answer)
+        if not answer.is_definite():
+            return None
+        record = _single_valid(answer)
+        if record is None:
+            continue
+        found.append((name, record, answer))
+        if record.tags.get("psd", "").lower() in ("y", "n"):
+            break
+    return found
+
+
+def organizational(
     domain: str, found: list[tuple[str, DmarcRecord, DnsResponse]]
 ) -> tuple[str, DmarcRecord, DnsResponse] | None:
     """RFC 9989 4.10.2, longest name to shortest (`found` is in walk order).
