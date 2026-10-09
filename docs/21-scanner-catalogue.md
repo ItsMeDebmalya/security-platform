@@ -125,7 +125,7 @@ Live basis: 13 real hosts, every claim hand-verified with `curl`, cross-checked 
 
 ---
 
-## tls — SSL/TLS Analyzer (Tool 2, v1.3.0)
+## tls — SSL/TLS Analyzer (Tool 2, v1.3.1)
 
 19 checks, all passive under ADR-023 (ordinary TLS handshakes). 8 run in Light, and 11 more in Standard.
 

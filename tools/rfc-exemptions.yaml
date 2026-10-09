@@ -1,0 +1,38 @@
+# Obsoleted RFCs we still cite on purpose: legacy but deployed (operator, 2026-10-09).
+#
+# `make rfc-check` reports these as exempt rather than failing. Each entry needs:
+#   reason             - why the obsoleted RFC is still the right citation
+#   successor_checked  - the RFC that obsoletes it, which was read before deciding
+#   evidence           - where the "still deployed" claim was verified
+# An entry missing any of them is refused, and tests/cli/test_rfcs.py checks that
+# offline, so CI fails. An exemption for an RFC nothing cites any more fails too.
+# Exempting an RFC is a decision, not a silencer: when the deployed world moves
+# to the successor, the citation and this entry change together.
+
+- rfc: 5246
+  cited_for: tls-chain-incomplete (beside RFC 9846 §4.5.1)
+  reason: >-
+    TLS 1.2 is still negotiated, and RFC 5246 §7.4.2 is the certificate-chain rule
+    a TLS 1.2 connection follows: each certificate must certify the one before it.
+    RFC 9846 §4.5.1, cited first, is the current rule and states the pre-1.3
+    ordering requirement in a note. Both are cited because the check judges
+    whichever version was negotiated.
+  successor_checked: RFC 9846 (TLS 1.3, July 2026), which obsoletes RFC 5246 and RFC 8446
+  evidence: https://www.rfc-editor.org/rfc/rfc9846#section-4.5.1
+  decided_at: 2026-10-09
+
+- rfc: 6962
+  cited_for: tls-no-certificate-transparency
+  reason: >-
+    Today's CT logs run RFC 6962, not its successor. Chrome's log policy requires
+    a log to conform to "either RFC 6962" or static-ct-api v1.1.0, and does not
+    mention RFC 9162. static-ct-api takes its submission path, SCT format and
+    Merkle hashing from RFC 6962. RFC 9162 (CT 2.0) is Experimental. The check itself
+    reads the embedded-SCT extension defined by RFC 6962 (OID
+    1.3.6.1.4.1.11129.2.4.2, `PRECERT_SIGNED_CERTIFICATE_TIMESTAMPS` in core/tls.py).
+    Apple's policy was not verified from a primary source.
+  successor_checked: RFC 9162 (Certificate Transparency 2.0, Experimental)
+  evidence: >-
+    https://googlechrome.github.io/CertificateTransparency/log_policy.html and
+    https://github.com/C2SP/C2SP/blob/main/static-ct-api.md, read 2026-10-09
+  decided_at: 2026-10-09

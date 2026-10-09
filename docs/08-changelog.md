@@ -500,3 +500,15 @@ Then restore the entry-point lines in `CLAUDE.md` and `SPEC.md`, and the revert 
 
 **Revert.** Revert the merge commit. RFC 6125's Common Name fallback then returns in both readings, and IP SANs are no longer read.
 
+## v4.0-pre.10 — ADR-017 amended: legacy-but-deployed RFC citations; tls v1.3.1 (2026-10-09)
+
+**What changed.**
+- `make rfc-check` reports an obsoleted RFC listed in `tools/rfc-exemptions.yaml` as exempt. Each exemption needs a reason, the successor that was read, and evidence; `tests/cli/test_rfcs.py` enforces this offline in CI.
+- `tls` v1.3.1:
+  - `tls-weak-cipher` and `tls-no-forward-secrecy` cite RFC 9325 (§4, §7.3), which obsoletes RFC 7525.
+  - `tls-chain-incomplete` cites RFC 9846 §4.5.1 and keeps RFC 5246 §7.4.2.
+  - `tls-no-certificate-transparency` keeps RFC 6962. Both kept RFCs are exempt.
+- Ledger: canaries are the approved way to get real positives for secret checks.
+
+**Revert.** Revert the merge commit. `make rfc-check` then fails on RFC 5246, 6962 and 7525 again.
+
