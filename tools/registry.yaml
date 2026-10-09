@@ -12,6 +12,13 @@
 #   service    - stood up as its own container, talked to over HTTP.
 #   data       - a data set rather than code. Its licence still applies.
 #
+# signed_off_by / signed_off_at - the original sign-off. Never edited: it
+#   records who approved the component, and when.
+# reviewed_by / reviewed_at / review_evidence - a later re-review, kept beside
+#   the original sign-off rather than replacing it. 2026-10-09: Debmalya Dey
+#   re-reviewed the 19 entries satwik signed, after the change of ownership
+#   (ledger). review_evidence says where the licence was read from.
+#
 # Transitive dependencies are pinned by uv.lock but not individually licensed
 # here; a full transitive sweep is a Phase 6 task.
 
@@ -26,6 +33,9 @@
   isolation: library
   signed_off_by: satwik
   signed_off_at: 2026-08-22
+  reviewed_by: Debmalya Dey
+  reviewed_at: 2026-10-09
+  review_evidence: "installed package metadata (License-Expression or License field) and the bundled licence file in its dist-info"
 
 - name: jsonschema
   version: "4.26.0"
@@ -36,6 +46,9 @@
   isolation: library
   signed_off_by: satwik
   signed_off_at: 2026-08-22
+  reviewed_by: Debmalya Dey
+  reviewed_at: 2026-10-09
+  review_evidence: "installed package metadata (License-Expression or License field) and the bundled licence file in its dist-info"
 
 - name: pyyaml
   version: "6.0.3"
@@ -46,6 +59,9 @@
   isolation: library
   signed_off_by: satwik
   signed_off_at: 2026-08-22
+  reviewed_by: Debmalya Dey
+  reviewed_at: 2026-10-09
+  review_evidence: "installed package metadata (License-Expression or License field) and the bundled licence file in its dist-info"
 
 - name: python-ulid
   version: "4.0.1"
@@ -56,6 +72,9 @@
   isolation: library
   signed_off_by: satwik
   signed_off_at: 2026-08-22
+  reviewed_by: Debmalya Dey
+  reviewed_at: 2026-10-09
+  review_evidence: "installed package metadata (License-Expression or License field) and the bundled licence file in its dist-info"
 
 - name: dnspython
   version: "2.8.0"
@@ -66,6 +85,9 @@
   isolation: library
   signed_off_by: satwik
   signed_off_at: 2026-08-22
+  reviewed_by: Debmalya Dey
+  reviewed_at: 2026-10-09
+  review_evidence: "installed package metadata (License-Expression or License field) and the bundled licence file in its dist-info"
 
 - name: httpx
   version: "0.28.1"
@@ -76,6 +98,9 @@
   isolation: library
   signed_off_by: satwik
   signed_off_at: 2026-08-22
+  reviewed_by: Debmalya Dey
+  reviewed_at: 2026-10-09
+  review_evidence: "installed package metadata (License-Expression or License field) and the bundled licence file in its dist-info"
 
 - name: typer
   version: "0.27.1"
@@ -86,6 +111,9 @@
   isolation: library
   signed_off_by: satwik
   signed_off_at: 2026-08-22
+  reviewed_by: Debmalya Dey
+  reviewed_at: 2026-10-09
+  review_evidence: "installed package metadata (License-Expression or License field) and the bundled licence file in its dist-info"
 
 - name: cryptography
   version: "50.0.0"
@@ -96,6 +124,9 @@
   isolation: library
   signed_off_by: satwik
   signed_off_at: 2026-08-24
+  reviewed_by: Debmalya Dey
+  reviewed_at: 2026-10-09
+  review_evidence: "installed package metadata (License-Expression or License field) and the bundled licence file in its dist-info"
 
 - name: testssl.sh
   version: "3.2.4"
@@ -113,6 +144,9 @@
   isolation: subprocess   # GPL: separate process, output parsed. Never imported.
   signed_off_by: satwik
   signed_off_at: 2026-08-24
+  reviewed_by: Debmalya Dey
+  reviewed_at: 2026-10-09
+  review_evidence: "bundled LICENSE file (GNU GPL v2) and the script header ('License: GPLv2') in tools/bin/testssl.sh-3.2.4"
 
 - name: checkdmarc
   version: "6.0.3"
@@ -140,6 +174,9 @@
   isolation: library
   signed_off_by: satwik
   signed_off_at: 2026-08-22
+  reviewed_by: Debmalya Dey
+  reviewed_at: 2026-10-09
+  review_evidence: "installed package metadata (License-Expression or License field) and the bundled licence file in its dist-info"
 
 - name: ruff
   version: "0.16.4"
@@ -150,6 +187,9 @@
   isolation: subprocess   # run as a separate command; never imported
   signed_off_by: satwik
   signed_off_at: 2026-08-22
+  reviewed_by: Debmalya Dey
+  reviewed_at: 2026-10-09
+  review_evidence: "installed package metadata (License-Expression or License field) and the bundled licence file in its dist-info"
 
 - name: mypy
   version: "2.3.1"
@@ -160,6 +200,9 @@
   isolation: subprocess   # run as a separate command; never imported
   signed_off_by: satwik
   signed_off_at: 2026-08-22
+  reviewed_by: Debmalya Dey
+  reviewed_at: 2026-10-09
+  review_evidence: "installed package metadata (License-Expression or License field) and the bundled licence file in its dist-info"
 
 - name: referencing
   version: "0.37.0"
@@ -170,6 +213,9 @@
   isolation: library
   signed_off_by: satwik
   signed_off_at: 2026-08-22
+  reviewed_by: Debmalya Dey
+  reviewed_at: 2026-10-09
+  review_evidence: "installed package metadata (License-Expression or License field) and the bundled licence file in its dist-info"
 
 - name: types-pyyaml
   version: "6.0.12.20260815"
@@ -180,6 +226,9 @@
   isolation: library
   signed_off_by: satwik
   signed_off_at: 2026-08-22
+  reviewed_by: Debmalya Dey
+  reviewed_at: 2026-10-09
+  review_evidence: "installed package metadata (License-Expression or License field) and the bundled licence file in its dist-info"
 
 - name: types-jsonschema
   version: "4.26.0.20260518"
@@ -190,6 +239,9 @@
   isolation: library
   signed_off_by: satwik
   signed_off_at: 2026-08-22
+  reviewed_by: Debmalya Dey
+  reviewed_at: 2026-10-09
+  review_evidence: "installed package metadata (License-Expression or License field) and the bundled licence file in its dist-info"
 
 # --- Corpus targets ---------------------------------------------------------
 #
@@ -207,6 +259,9 @@
   isolation: service
   signed_off_by: satwik
   signed_off_at: 2026-08-24
+  reviewed_by: Debmalya Dey
+  reviewed_at: 2026-10-09
+  review_evidence: "OCI image label org.opencontainers.image.licenses=MIT on bkimminich/juice-shop:v19.0.0, image digest sha256:2765a26de7647609099a338d5b7f61085d95903c8703bb70f03fcc4b12f0818d"
 
 - name: dvwa
   version: "latest"
@@ -217,6 +272,9 @@
   isolation: service   # GPL: its own container, talked to over HTTP. Never imported.
   signed_off_by: satwik
   signed_off_at: 2026-08-24
+  reviewed_by: Debmalya Dey
+  reviewed_at: 2026-10-09
+  review_evidence: "OCI image label org.opencontainers.image.licenses=gpl-3.0 on ghcr.io/digininja/dvwa:latest; the tag floats, so the image inspected was digest sha256:830037dfb394a98ef408c34eeb5c4f145aff7bd07d1402470c650bba964591d2"
 
 - name: vampi
   version: "latest"
@@ -227,6 +285,9 @@
   isolation: service
   signed_off_by: satwik
   signed_off_at: 2026-08-24
+  reviewed_by: Debmalya Dey
+  reviewed_at: 2026-10-09
+  review_evidence: "/vampi/LICENSE inside erev0s/vampi:latest (MIT License); the tag floats, so the image inspected was digest sha256:0a5a224b6e14ae7da6a6ea265178ff71286ff903aec74adee98f660bb0e4ca12"
 
 - name: badssl.com
   version: "master"
@@ -237,6 +298,9 @@
   isolation: service
   signed_off_by: satwik
   signed_off_at: 2026-08-24
+  reviewed_by: Debmalya Dey
+  reviewed_at: 2026-10-09
+  review_evidence: "GitHub's licence API for chromium/badssl.com (spdx_id Apache-2.0), NOT local metadata: no local image or package exists"
 
 - name: nginx
   version: "1.27.5-alpine (digest sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10)"

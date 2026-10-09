@@ -232,7 +232,7 @@ Today that is three TLS checks; email has none. Light needs nothing at all.
 # you cannot publish DNS (Cloudflare zone managed elsewhere): attest instead
 ./scripts/authorise-domain.sh --self-owned \
   "owned and operated by us; DNS managed outside our direct control" \
-  codez.in erp.codez.in kinetrix.in
+  codez.in <operator ERP host> kinetrix.in
 
 ./scripts/authorise-domain.sh --check example.com   # 5-second feedback loop
 ```
