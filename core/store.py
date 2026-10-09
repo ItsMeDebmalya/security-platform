@@ -67,10 +67,18 @@ class ReadOnlyStoreError(RuntimeError):
 
 
 def is_read_only(path: Path) -> bool:
-    """True when an existing store file, or its directory, cannot be written."""
+    """True when an existing store file, or its directory, cannot be written.
+
+    Judged on the symlink's target, where SQLite writes its journal. A file or
+    directory with no write bits counts as read-only even for root, who could
+    write it anyway: a 0444 copy says it must not be changed.
+    """
     if not path.exists():
         return False
-    return not (os.access(path, os.W_OK) and os.access(path.parent, os.W_OK))
+    target = path.resolve()
+    return any(
+        not os.access(p, os.W_OK) or not p.stat().st_mode & 0o222 for p in (target, target.parent)
+    )
 
 
 class FindingStore:
@@ -106,6 +114,17 @@ class FindingStore:
         try:
             memory = sqlite3.connect(":memory:")
             source.backup(memory)
+        except sqlite3.OperationalError as exc:
+            memory.close()
+            if "readonly" not in str(exc):
+                raise
+            # A hot journal: a writer died mid-transaction, and reading the file
+            # needs the rollback SQLite cannot do read-only. Reading past it
+            # (`immutable=1`) could read a torn database, so say what to do.
+            raise ReadOnlyStoreError(
+                f"{path} has an unfinished transaction and needs recovery: copy it, "
+                "with its -journal file, somewhere writable and open it there once"
+            ) from None
         finally:
             source.close()
         return memory

@@ -1407,7 +1407,14 @@ Since D21 the first open of a store writes to it (the ADR-028 sweep), so a read-
 - `ingest`, `transition` and `touch_last_seen` raise `ReadOnlyStoreError`. `scan run --store` and `scan verify` refuse a read-only store before scanning ([runbook §2a](12-cli-runbook.md#2a-persistence-and-scan-verify)).
 - Writable stores keep the one-time cleanup on disk.
 - Tests (`tests/core/test_store_read_only.py`, `tests/cli/test_verify.py`): a read-only store opens, explicitly and when detected; a pre-ADR-028 read-only store is redacted in memory with its file byte-identical; a legacy row does not shadow the newer row; every write raises; a missing read-only path is an error and creates no file. Each failed before the fix.
-- **Limits:** the whole store is copied into memory on a read-only open. Detection relies on `os.access`, so root, which can write anything, never sees a store as read-only unless asked.
+- **Independent review (c6b3995): no blocker.** No secret reached disk, and a read-only file never changed. Two should-fixes, fixed before merge (tests failed first):
+  1. A hot journal (a writer killed mid-transaction) made a read-only open fail with a raw sqlite error. It now says the store needs recovery and how. Reading past the journal (`immutable=1`) could read a torn database, so we do not.
+  2. A symlink was judged by its own directory, not its target's, where SQLite writes its journal. Detection now resolves the path.
+- **Also changed:** a file or directory with no write bits counts as read-only **even for root**. Root can write a 0444 copy, but the copy says it must not be changed. This matters because the operator runs as root under WSL.
+- **Limits, recorded:**
+  - The whole store is copied into memory on a read-only open.
+  - A database switched to WAL by another tool leaves `-shm`/`-wal` files in its directory on a read-only open; `FindingStore` never sets WAL.
+  - `scan run --store` with a missing path in an unwritable directory runs the scan before failing to create the store.
 
 ## Next
 

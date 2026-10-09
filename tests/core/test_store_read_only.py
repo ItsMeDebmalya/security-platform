@@ -125,3 +125,71 @@ def test_a_writable_store_still_cleans_itself_on_disk(tmp_path):
         assert not store.read_only
 
     assert GHP not in path.read_bytes().decode("latin-1")
+
+
+# --- review of c6b3995 -----------------------------------------------------------
+
+
+def test_a_store_with_no_write_bits_is_read_only_even_for_root(tmp_path):
+    """A 0444 copy says "do not change me"; root could write it, but must not."""
+    path = tmp_path / "s.db"
+    _clean_store(path)
+    path.chmod(0o444)
+    before = _fingerprint(path)
+    try:
+        with FindingStore(path) as store:
+            assert store.read_only
+    finally:
+        path.chmod(0o644)
+    assert _fingerprint(path) == before
+
+
+def test_a_symlink_is_judged_by_its_target(tmp_path, monkeypatch):
+    locked = tmp_path / "locked"
+    locked.mkdir()
+    target = locked / "s.db"
+    _clean_store(target)
+    link = tmp_path / "link.db"
+    link.symlink_to(target)
+    real = os.access
+    monkeypatch.setattr(
+        "core.store.os.access",
+        lambda p, mode: (
+            False if mode & os.W_OK and str(p).startswith(str(locked)) else real(p, mode)
+        ),
+    )
+
+    with FindingStore(link) as store:
+        assert store.read_only
+
+
+def _leave_hot_journal(path) -> None:
+    import subprocess
+    import sys
+
+    code = (
+        "import os, sqlite3\n"
+        f"c = sqlite3.connect({str(path)!r}); c.execute('PRAGMA cache_size = 1')\n"
+        "c.execute('BEGIN')\n"
+        'c.execute("UPDATE findings SET data = data || hex(randomblob(4000))")\n'
+        'c.execute("INSERT INTO findings SELECT id || x, org_id, scanner, check_id, "\n'
+        '  "target_value, location, status, hex(randomblob(4000)) FROM findings, "\n'
+        '  "(WITH RECURSIVE r(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM r WHERE x < 300) "\n'
+        '  "SELECT x FROM r)")\n'
+        "os._exit(0)\n"
+    )
+    subprocess.run([sys.executable, "-c", code], check=True)
+
+
+def test_a_read_only_store_with_a_hot_journal_says_it_needs_recovery(tmp_path):
+    path = tmp_path / "s.db"
+    _clean_store(path)
+    _leave_hot_journal(path)
+    journal = tmp_path / "s.db-journal"
+    assert journal.exists()
+    before, journal_before = _fingerprint(path), journal.read_bytes()
+
+    with pytest.raises(ReadOnlyStoreError, match="recover"):
+        FindingStore(path, read_only=True)
+
+    assert _fingerprint(path) == before and journal.read_bytes() == journal_before
