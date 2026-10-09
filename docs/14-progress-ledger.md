@@ -1391,13 +1391,23 @@ Operator-approved. One Standard-mode email scan of grafana.com (email v1.4.1), r
 - **Re-review (d74b72e): no blocker remains; the blocker and all eight should-fixes confirmed fixed.** It found one new should-fix, fixed before merge:
   - **N1, fix 5's rewrite could destroy newer state.** When a legacy row's redacted id already belonged to a stored row, loading upserted the legacy content over it. In the repro, an `accepted_risk` finding went back to `open` and lost its history. Now the existing row wins and the legacy row is only deleted. `list_findings` does not list it twice, and `get` by the legacy id returns the newer row. Tests (list and get) failed before the fix.
 - **N1 review (c1b27a2): OK on all four items.** It noted an older gap: a legacy row was cleaned only when read. So a re-scan that ingested first left the secret on disk until the next read, and replaced the legacy finding's status with a fresh `open` row. **Fixed before merge:** the first open of a store loads every row through the redactor, then sets `PRAGMA user_version = 1` so it runs once. The test failed before the fix.
-- **Sweep review (c6db9bd): no blocker.** One should-fix: a row that fails validation made the store unopenable. **Fixed before merge:** the sweep skips a row that does not load (reading it fails, as before) and marks the store swept only when every row loaded, so the next open retries. Recorded, not fixed: opening a store now always writes, so a read-only database file no longer opens; and `api/` must not reuse `user_version` for its own migrations below 1.
+- **Sweep review (c6db9bd): no blocker.** One should-fix: a row that fails validation made the store unopenable. **Fixed before merge:** the sweep skips a row that does not load (reading it fails, as before) and marks the store swept only when every row loaded, so the next open retries. Recorded, not fixed: opening a store now always writes, so a read-only database file no longer opens (**fixed 2026-10-09**, entry below); and `api/` must not reuse `user_version` for its own migrations below 1.
 
   Recorded, not fixed:
   - **N2:** one non-idempotent fuzz input in 20,000, a Slack-shaped token glued to a certificate BEGIN line. Contrived; a second fuzz over the encodings found none.
   - **N3:** five or more space-joined hex digests in stored text are now cut as `possible_key_material`. That kind never feeds a verdict, so no finding changes. srcset and CSP hash lists are untouched.
   - Still leak, none ever claimed: `</p><p>`, U+2028, literal `\x0a`, VT/FF/NEL separators, and base64 lines under 40 or over 100 columns. A `ScanResult` whose `CheckRun` was mutated through `__dict__` still dumps the secret in memory, but the CLI re-validates before writing it.
 - **Cost:** redaction now runs on every capture and every validation. A 500 KB ordinary page costs about 35 ms per pass, after a pre-check that skips the base64-run search when no 40-character base64 run exists. The test suite takes about 117 s, up from 16 s: the 151-case harness at the full 256 KB cap, plus validation on assignment and re-validation at every storage boundary.
+
+## 2026-10-09 · A read-only store opens again
+
+Since D21 the first open of a store writes to it (the ADR-028 sweep), so a read-only copy, the kind handed to a customer or an auditor, no longer opened. Our "evidence you can re-check" claim depends on that copy. **Fixed** (operator ruling, 2026-10-09):
+
+- A store whose file or directory cannot be written, or one opened with `read_only=True`, opens with SQLite's `mode=ro` and is copied into memory. The sweep runs on the copy, so rows written before ADR-028 are redacted in memory and the file is never written. The ids are the same as after a writable store's sweep.
+- `ingest`, `transition` and `touch_last_seen` raise `ReadOnlyStoreError`. `scan run --store` and `scan verify` refuse a read-only store before scanning ([runbook §2a](12-cli-runbook.md#2a-persistence-and-scan-verify)).
+- Writable stores keep the one-time cleanup on disk.
+- Tests (`tests/core/test_store_read_only.py`, `tests/cli/test_verify.py`): a read-only store opens, explicitly and when detected; a pre-ADR-028 read-only store is redacted in memory with its file byte-identical; a legacy row does not shadow the newer row; every write raises; a missing read-only path is an error and creates no file. Each failed before the fix.
+- **Limits:** the whole store is copied into memory on a read-only open. Detection relies on `os.access`, so root, which can write anything, never sees a store as read-only unless asked.
 
 ## Next
 

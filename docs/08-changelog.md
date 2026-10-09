@@ -461,3 +461,11 @@ Then restore the entry-point lines in `CLAUDE.md` and `SPEC.md`, and the revert 
 
 **Revert.** Not advised: it re-opens hard constraint 5. If needed, revert the merge commit. That restores web's workaround with it.
 
+## v4.0-pre.7 — a read-only finding store opens (2026-10-09)
+
+**What changed.**
+- A finding store that cannot be written opens read-only: copied into memory, its pre-ADR-028 rows are redacted there, and the file is never written. Writes raise `ReadOnlyStoreError`.
+- `scan run --store` and `scan verify` refuse a read-only store before scanning, exit 1.
+- ADR-028 clause 6 says so.
+
+**Revert.** Revert the merge commit. A read-only store then fails to open again.
