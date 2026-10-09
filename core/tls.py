@@ -56,6 +56,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
 
+import idna
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes
 from cryptography.x509.oid import ExtensionOID, NameOID
@@ -170,7 +171,10 @@ class CertificateInfo:
             # by address. It is never compared with a DNS name or the CN.
             return any(_same_address(address, ip) for ip in self.ip_sans)
         names = list(self.sans)
-        host = _a_label(host.lower())
+        encoded = a_label(host)
+        if encoded is None:
+            return False
+        host = encoded
         for raw in names:
             name = raw.lower().rstrip(".")
             if name == host:
@@ -233,8 +237,8 @@ class TlsObservation:
     def hostname_matches(self) -> bool | None:
         if self.certificate is None or self.servername is None:
             return None
-        if idna_ambiguous(self.servername):
-            return None
+        if a_label(self.servername) is None:
+            return None  # not a valid name (ADR-030): no verdict
         return self.certificate.covers_hostname(self.servername)
 
     def is_definite(self) -> bool:
@@ -661,10 +665,13 @@ class TlsClient:
         if self.ratelimit is not None:
             self.ratelimit.acquire(host)
 
+        # ADR-030: the A-label a browser would send, so the SNI and the name
+        # OpenSSL checks are the browser's, not Python's IDNA 2003 encoding.
+        wire_name = (a_label(servername) or servername) if servername else servername
         raw = self.backend.handshake(
             host,
             port,
-            servername,
+            wire_name,
             min_version=min_version,
             max_version=max_version,
             trust_anchor=self.trust_anchor,
@@ -708,16 +715,22 @@ def _common_name(name: x509.Name) -> str | None:
     return str(values[0].value) if values else None
 
 
-IDNA_DEVIATIONS = frozenset("ß\u03c2\u200c\u200d")
-"""The four characters IDNA 2003 and UTS-46 non-transitional processing map
-differently (ß, final sigma, ZWNJ, ZWJ). Python's `idna` codec is IDNA 2003, and
-`ssl` hands OpenSSL the same encoding, so both hostname readings would share a
-wrong answer for a name containing one (D48 re-review)."""
+def a_label(hostname: str) -> str | None:
+    """The name as a browser encodes it for DNS and for certificate matching (ADR-030).
 
-
-def idna_ambiguous(hostname: str) -> bool:
-    """A name neither reading can judge reliably: refuse rather than guess."""
-    return any(ch in IDNA_DEVIATIONS for ch in hostname.lower())
+    UTS-46 processing, non-transitional, as the WHATWG URL Standard's
+    domain-to-ASCII specifies: `faß.de` is `xn--fa-hia.de`, not IDNA 2003's
+    `fass.de`. An ASCII name is only lowercased. `None` when the name does not
+    encode (a joiner where CONTEXTJ forbids it, say): it is not a valid name, so
+    no reading may judge it.
+    """
+    name = hostname.strip().rstrip(".")
+    if name.isascii():
+        return name.lower()
+    try:
+        return idna.encode(name, uts46=True).decode("ascii")
+    except (idna.IDNAError, UnicodeError):
+        return None
 
 
 def _same_address(address: ipaddress.IPv4Address | ipaddress.IPv6Address, raw: str) -> bool:
@@ -725,17 +738,6 @@ def _same_address(address: ipaddress.IPv4Address | ipaddress.IPv6Address, raw: s
         return ipaddress.ip_address(raw) == address
     except ValueError:
         return False
-
-
-def _a_label(host: str) -> str:
-    """The A-label (punycode) form, which is what certificates carry (RFC 9525
-    §6.3: U-labels are converted to A-labels before comparing)."""
-    if host.isascii():
-        return host
-    try:
-        return host.encode("idna").decode("ascii")
-    except UnicodeError:
-        return host
 
 
 def _parse_certificate(der: bytes) -> CertificateInfo:

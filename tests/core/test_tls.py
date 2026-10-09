@@ -641,15 +641,44 @@ def test_the_hostname_probe_uses_the_configured_trust_anchor():
     assert obs.openssl_hostname_match is False
 
 
-@pytest.mark.parametrize("host", ["faß.de", "ς.example", "a‍b.example", "a‌b.example"])
-def test_a_name_idna_2003_and_uts_46_encode_differently_is_not_judged(host):
-    """D48 re-review: Python's IDNA 2003 codec (ours, and what ssl hands OpenSSL)
-    maps ß, ς, ZWJ and ZWNJ differently from UTS-46, which browsers use. Both
-    readings would agree on a false mismatch, so neither may judge."""
-    from core.tls import idna_ambiguous
+# ADR-030: names are encoded as browsers encode them (UTS-46, non-transitional,
+# WHATWG URL Standard), for our matcher and for the name OpenSSL is handed.
+IDN_CASES = [
+    ("faß.de", "xn--fa-hia.de"),  # ß kept, not mapped to ss (IDNA 2003 gave fass.de)
+    ("ς.example", "xn--3xa.example"),  # final sigma kept (IDNA 2003 gave xn--4xa)
+    ("BÜCHER.example", "xn--bcher-kva.example"),  # UTS-46 maps case; strict 2008 refuses
+    ("हिंदी.भारत", "xn--i1b6e8byah.xn--h2brj9c"),
+    ("தமிழ்.இந்தியா", "xn--rlcus7b3d.xn--xkc2dl3a5ee0h"),
+    ("क्\u200dष.भारत", "xn--11b2ezcw70k.xn--h2brj9c"),  # ZWJ after a virama: allowed
+    ("क्\u200cष.भारत", "xn--11b2ezcs70k.xn--h2brj9c"),  # ZWNJ after a virama: allowed
+]
 
-    assert idna_ambiguous(host)
-    assert not idna_ambiguous("bücher.example") and not idna_ambiguous("x.test")
+
+@pytest.mark.parametrize(("host", "a_label"), IDN_CASES)
+def test_a_unicode_name_is_encoded_as_a_browser_encodes_it(host, a_label):
+    from core.tls import a_label as encode
+
+    assert encode(host) == a_label
+
+
+@pytest.mark.parametrize(("host", "a_label"), IDN_CASES)
+def test_both_readings_match_an_idn_certificate_through_a_real_handshake(host, a_label):
+    with lab_server(common_name=a_label, sans=[a_label]) as srv:
+        obs = client().inspect("127.0.0.1", srv.port, servername=host)
+
+    assert obs.hostname_matches is True
+    assert obs.openssl_hostname_match is True
+
+
+@pytest.mark.parametrize("host", ["a\u200db.example", "a\u200cb.example"])
+def test_a_joiner_where_contextj_forbids_it_is_not_judged(host):
+    """Not a valid name: no client gets as far as a certificate, so no verdict."""
+    from core.tls import a_label
+
+    assert a_label(host) is None
+    with lab_server(common_name="ab.example", sans=["ab.example"]) as srv:
+        obs = client().inspect("127.0.0.1", srv.port, servername=host)
+    assert obs.hostname_matches is None
 
 
 def test_an_ipv6_zone_id_does_not_stop_an_address_match():

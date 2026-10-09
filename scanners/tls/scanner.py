@@ -40,7 +40,7 @@ from core.testssl import (
     LegacyCipherReport,
     TestsslUnavailableError,
 )
-from core.tls import DEFAULT_PORT, TlsClient, TlsObservation, idna_ambiguous
+from core.tls import DEFAULT_PORT, TlsClient, TlsObservation, a_label
 from scanners.tls.checks import (
     CERTIFICATE,
     CHECKS,
@@ -111,7 +111,7 @@ LEGACY_CIPHER_CHECK_IDS = tuple(CHECK_TO_TESTSSL_ID)
 @register
 class TlsScanner(BaseScanner):
     name = "tls"
-    version = "1.3.1"
+    version = "1.4.0"
     supported_modes = frozenset({"light", "standard"})
     target_types = frozenset({"domain", "url", "ip"})
 
@@ -358,22 +358,21 @@ class _Scan:
 
     def _check_identity(self) -> None:
         assert self.cert is not None
-        if self.observation.servername and idna_ambiguous(self.observation.servername):
-            # D48 re-review: IDNA 2003 (ours, and what OpenSSL is handed) and
-            # UTS-46 (browsers) encode this name differently, so both readings
-            # would share a wrong answer. Say so instead of judging.
+        if self.observation.servername and a_label(self.observation.servername) is None:
+            # ADR-030: the name does not encode under UTS-46 (a joiner outside
+            # CONTEXTJ, say). It is not a valid name, so neither reading judges.
             check = CHECKS["tls-hostname-mismatch"]
             self._emit(
                 check,
                 no_verdict_reason="blocked_prerequisite",
                 description=(
-                    f"{self.host} contains a character (ß, ς, ZWNJ or ZWJ) that IDNA 2003 and "
-                    "UTS-46 encode differently. Our matcher and OpenSSL's both use IDNA 2003, "
-                    "so neither can say reliably whether the certificate covers the name."
+                    f"{self.host} is not a valid hostname under UTS-46 processing (the "
+                    "encoding browsers use), so whether the certificate covers it cannot be "
+                    "judged. No browser would get as far as checking a certificate for it."
                 ),
-                impact="Unknown. This is a limit of our name encoding, not an observation.",
+                impact="Unknown. The name itself is invalid, so this is not an observation.",
                 remediation=(
-                    "Check the certificate's names by hand against the A-label a browser uses."
+                    "Use a valid hostname: this one cannot be encoded for DNS or a certificate."
                 ),
                 signals=[self._signal(check, CERTIFICATE, ratio=1.0)],
             )
