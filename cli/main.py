@@ -41,7 +41,7 @@ from core.models import Asset, AssetType, Mode, ScanResult
 from core.ratelimit import RateLimiter
 from core.redaction import redact_text
 from core.registry import discover
-from core.store import FindingStore, VerifyOutcome
+from core.store import FindingStore, VerifyOutcome, is_read_only
 from core.testssl import LiveTestsslClient, RecordingTestsslClient, ReplayTestsslClient
 from core.tls import RecordingTlsBackend, ReplayTlsBackend, SystemTlsBackend, TlsClient
 
@@ -145,6 +145,8 @@ def run(
     ),
 ) -> None:
     """Run one scanner against one target."""
+    if store is not None:
+        _refuse_read_only_store(store, "scan run --store")
     try:
         result = _execute(
             scanner_name=scanner_name,
@@ -287,6 +289,7 @@ def verify(
     Free: verification never touches the cost meter beyond what the
     underlying scan itself already counts.
     """
+    _refuse_read_only_store(store, "scan verify")
     with FindingStore(store) as fstore:
         finding = fstore.get(finding_id, "org_internal")
         if finding is None:
@@ -328,6 +331,15 @@ def verify(
 
     _print_verify(outcome, output_format=output_format)
     if outcome.action == "could_not_verify":
+        raise typer.Exit(1)
+
+
+def _refuse_read_only_store(store: Path, command: str) -> None:
+    """Stop before scanning: these commands write their result to the store."""
+    if is_read_only(store):
+        _echo(
+            f"{store} is read-only; {command} records its result there. Run it on a writable copy."
+        )
         raise typer.Exit(1)
 
 

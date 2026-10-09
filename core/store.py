@@ -34,6 +34,7 @@ reads its outcome, is allowed to close.
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 from dataclasses import dataclass
 from datetime import datetime
@@ -61,11 +62,42 @@ CREATE TABLE IF NOT EXISTS findings (
 _SWEPT = 1
 
 
-class FindingStore:
-    """Findings keyed on their deterministic id, upserted across scans."""
+class ReadOnlyStoreError(RuntimeError):
+    """A write was attempted on a store opened read-only."""
 
-    def __init__(self, path: str | Path) -> None:
+
+def is_read_only(path: Path) -> bool:
+    """True when an existing store file, or its directory, cannot be written.
+
+    Judged on the symlink's target, where SQLite writes its journal. A file or
+    directory with no write bits counts as read-only even for root, who could
+    write it anyway: a 0444 copy says it must not be changed.
+    """
+    if not path.exists():
+        return False
+    target = path.resolve()
+    return any(
+        not os.access(p, os.W_OK) or not p.stat().st_mode & 0o222 for p in (target, target.parent)
+    )
+
+
+class FindingStore:
+    """Findings keyed on their deterministic id, upserted across scans.
+
+    A store that cannot be written (a copy handed to a customer or an auditor, or
+    `read_only=True`) is opened with SQLite's `mode=ro` and copied into memory.
+    The ADR-028 sweep then runs on that copy, so its rows are redacted in memory
+    and nothing is written back. Redaction can be re-run, so this is safe to do on
+    every open. Writes raise `ReadOnlyStoreError`.
+    """
+
+    def __init__(self, path: str | Path, *, read_only: bool | None = None) -> None:
         self.path = str(path)
+        self.read_only = is_read_only(Path(path)) if read_only is None else read_only
+        if self.read_only:
+            self._conn = self._open_in_memory(Path(path))
+            self._sweep_legacy_rows()
+            return
         self._conn = sqlite3.connect(self.path)
         # A deleted or rewritten row must not survive in SQLite's free pages: a row
         # written before ADR-028 may hold a secret, and loading it rewrites it.
@@ -73,6 +105,33 @@ class FindingStore:
         self._conn.execute(_SCHEMA)
         self._conn.commit()
         self._sweep_legacy_rows()
+
+    @staticmethod
+    def _open_in_memory(path: Path) -> sqlite3.Connection:
+        if not path.exists():
+            raise FileNotFoundError(path)
+        source = sqlite3.connect(f"{path.resolve().as_uri()}?mode=ro", uri=True)
+        try:
+            memory = sqlite3.connect(":memory:")
+            source.backup(memory)
+        except sqlite3.OperationalError as exc:
+            memory.close()
+            if "readonly" not in str(exc):
+                raise
+            # A hot journal: a writer died mid-transaction, and reading the file
+            # needs the rollback SQLite cannot do read-only. Reading past it
+            # (`immutable=1`) could read a torn database, so say what to do.
+            raise ReadOnlyStoreError(
+                f"{path} has an unfinished transaction and needs recovery: copy it, "
+                "with its -journal file, somewhere writable and open it there once"
+            ) from None
+        finally:
+            source.close()
+        return memory
+
+    def _require_writable(self) -> None:
+        if self.read_only:
+            raise ReadOnlyStoreError(f"{self.path} is open read-only")
 
     def _sweep_legacy_rows(self) -> None:
         """Clean a store written before ADR-028 once, when it is first opened.
@@ -211,6 +270,7 @@ class FindingStore:
         Never closes anything: a finding this scan did not mention is left
         exactly as it was. See the module docstring for why.
         """
+        self._require_writable()
         stored: list[Finding] = []
         for fresh in findings:
             existing = self.get(fresh.id, fresh.org_id)
@@ -241,6 +301,7 @@ class FindingStore:
         scan_id: str,
     ) -> Finding:
         """Append a status change and bump `last_seen`. Never rewrites history."""
+        self._require_writable()
         existing = self.get(finding_id, org_id)
         if existing is None:
             raise KeyError(f"no stored finding {finding_id!r} for org {org_id!r}")
@@ -262,6 +323,7 @@ class FindingStore:
         self, finding_id: str, org_id: str, *, at: datetime, scan_id: str
     ) -> Finding:
         """Record that a finding was observed again, without changing its status."""
+        self._require_writable()
         existing = self.get(finding_id, org_id)
         if existing is None:
             raise KeyError(f"no stored finding {finding_id!r} for org {org_id!r}")

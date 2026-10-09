@@ -330,3 +330,56 @@ def test_verify_fails_cleanly_for_an_unknown_finding_id(tmp_path):
 
     assert result.exit_code == 1
     assert "no stored finding" in result.stdout
+
+
+# --- a read-only store ---------------------------------------------------
+
+
+def test_verify_on_a_read_only_store_stops_before_scanning(tmp_path, monkeypatch):
+    """verify records its outcome, so a read-only copy is refused up front, unchanged."""
+    import os
+
+    store_path = tmp_path / "s.sqlite3"
+    finding = _finding()
+    _seed(store_path, finding)
+    before = store_path.read_bytes()
+    real = os.access
+    monkeypatch.setattr(
+        "core.store.os.access", lambda p, mode: False if mode & os.W_OK else real(p, mode)
+    )
+
+    def _must_not_run(*_args):
+        raise AssertionError("the scan ran against a read-only store")
+
+    _Slot.fn = _must_not_run
+
+    result = _verify(finding.id, store_path)
+
+    assert result.exit_code == 1
+    assert "is read-only" in result.stdout and "writable copy" in result.stdout
+    assert store_path.read_bytes() == before
+
+
+def test_scan_run_with_a_read_only_store_stops_before_scanning(tmp_path, monkeypatch):
+    import os
+
+    store_path = tmp_path / "s.sqlite3"
+    _seed(store_path, _finding())
+    before = store_path.read_bytes()
+    real = os.access
+    monkeypatch.setattr(
+        "core.store.os.access", lambda p, mode: False if mode & os.W_OK else real(p, mode)
+    )
+
+    def _must_not_run(*_args):
+        raise AssertionError("the scan ran against a read-only store")
+
+    _Slot.fn = _must_not_run
+
+    result = runner.invoke(
+        app, ["run", "faketool", "--target", "x.test", "--store", str(store_path)]
+    )
+
+    assert result.exit_code == 1, result.stdout
+    assert "is read-only" in result.stdout and "writable copy" in result.stdout
+    assert store_path.read_bytes() == before

@@ -121,6 +121,15 @@ $ echo $?
 
 The unit tests in `tests/cli/test_verify.py` drive a fake, test-only scanner through every failure mode this command must never mistake for a fix: still-reported, `inconclusive`, `suppressed` (the rate-limited/WAF-blocked case), `error`, the check not running at all (a missing prerequisite), a raised exception (a timeout), and an authorisation denial.
 
+**A read-only store** (a copy handed to a customer or auditor, a file or directory you cannot write, or one with no write bits, which counts even when you are root) opens for reading. A store left with an unfinished transaction (a `-journal` file beside it) cannot be read read-only: copy both files somewhere writable and open the store there once. Rows written before ADR-028 are redacted in memory as it opens, and nothing is written back. `scan run --store` and `scan verify` write their result, so they refuse a read-only store before scanning:
+
+```console
+$ scan verify sha256:… --store readonly-copy.sqlite3
+readonly-copy.sqlite3 is read-only; scan verify records its result there. Run it on a writable copy.
+$ echo $?
+1
+```
+
 ---
 
 ## 2b. The correlation pass — `scan correlate`
