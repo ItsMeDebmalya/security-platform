@@ -140,6 +140,41 @@ CHECKS: dict[str, Check] = {
             mode="standard",
         ),
         Check(
+            check_id="dmarc-obsolete-tags",
+            title="DMARC record uses tags removed by RFC 9989",
+            severity="low",
+            likelihood_ratio=40.0,
+            justification=(
+                "the tag names are read directly from a record that parsed, and the list of "
+                "removed tags is RFC 9989 Appendix C.5.2"
+            ),
+            passive=True,
+            mode="standard",
+        ),
+        Check(
+            check_id="dmarc-test-mode",
+            title="DMARC policy is in test mode (t=y)",
+            severity="medium",
+            likelihood_ratio=4.0,
+            justification=(
+                "t=y is read directly, but only RFC 9989 receivers act on it; RFC 7489 "
+                "receivers apply the policy as written, so the effect is receiver-dependent"
+            ),
+            passive=True,
+        ),
+        Check(
+            check_id="dmarc-np-weaker",
+            title="DMARC np= is weaker than the subdomain policy",
+            severity="low",
+            likelihood_ratio=4.0,
+            justification=(
+                "np= is read directly, but only RFC 9989 receivers act on it, so the effect is "
+                "receiver-dependent"
+            ),
+            passive=True,
+            mode="standard",
+        ),
+        Check(
             check_id="dmarc-no-rua",
             title="DMARC has no reporting address",
             severity="low",

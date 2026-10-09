@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "corpus-testmode.example",
+  "rcode": "NOERROR",
+  "records": [
+    "10 mx1.mailhost.example."
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "MX",
+  "ttl": 300
+}

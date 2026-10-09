@@ -41,7 +41,7 @@ from scanners.email.checks import CHECKS, COMMON_SELECTORS, DNS_CLASS, Check
 from scanners.email.checks import requires_authorisation as _requires_authorisation
 from scanners.email.discovery import Discovery, discover, is_dmarc_candidate
 from scanners.email.dkim import DkimKeyRecord, parse_dkim_key
-from scanners.email.dmarc import DmarcRecord, parse_dmarc
+from scanners.email.dmarc import DmarcRecord, has_valid_rua, parse_dmarc
 from scanners.email.spf import (
     MAX_DNS_LOOKUPS,
     SpfChain,
@@ -64,7 +64,7 @@ NO_VERDICT_FOR_RCODE = {
 @register
 class EmailScanner(BaseScanner):
     name = "email"
-    version = "1.3.0"
+    version = "1.4.0"
     supported_modes = frozenset({"light", "standard"})
     target_types = frozenset({"domain"})
 
@@ -466,35 +466,89 @@ class _Scan:
 
         self._clear("dmarc-missing")
 
-        if not self.dmarc.valid:
-            self._report_invalid_dmarc(self.dmarc)
+        dmarc = self.dmarc
+        if not dmarc.usable:
+            self._report_invalid_dmarc(dmarc)
             self._not_applicable("dmarc-policy-none")
+            self._not_applicable("dmarc-test-mode")
             return
+        if dmarc.receiver_handling == "discard_tag" or dmarc.legacy_issues:
+            self._report_invalid_dmarc(dmarc)
+        else:
+            self._clear("dmarc-invalid")
 
-        self._clear("dmarc-invalid")
-
-        if self.dmarc.policy == "none":
+        if dmarc.policy == "none":
+            absent = dmarc.p_absent
             self._report(
                 "dmarc-policy-none",
                 self.dmarc_answer,
+                title="DMARC record has no policy tag, so it means p=none" if absent else None,
                 description=(
-                    f"The DMARC policy for {self.domain} is p=none, which asks receivers to "
-                    "take no action on mail that fails authentication." + self._neutral_all_note()
-                ),
+                    (
+                        f"The DMARC record for {self.domain} has no p= tag. RFC 9989 section "
+                        "4.7 treats that as p=none; RFC 7489 applied no DMARC processing to it "
+                        "(or p=none, with a valid rua). Either way, nothing stops forged mail. "
+                        "An operator with this record believes the domain is protected, and it "
+                        "is not."
+                    )
+                    if absent
+                    else (
+                        f"The DMARC policy for {self.domain} is p=none, which asks receivers "
+                        "to take no action on mail that fails authentication."
+                    )
+                )
+                + self._neutral_all_note(),
                 impact=(
                     "Mail forged as this domain is still delivered. p=none is a monitoring "
                     "posture, useful while you find your legitimate senders, but it stops "
                     "nothing."
                 ),
                 remediation=(
-                    "Once your rua reports show every legitimate sender passing, change p=none "
-                    "to p=quarantine, then to p=reject. Move in that order and watch the "
-                    "reports at each step."
+                    "Add p=quarantine (then p=reject) to the record once your reports show every "
+                    "legitimate sender passing."
+                    if absent
+                    else (
+                        "Once your rua reports show every legitimate sender passing, change "
+                        "p=none to p=quarantine, then to p=reject. Move in that order and watch "
+                        "the reports at each step."
+                    )
                 ),
                 validates=_dmarc_policy_is_none,
             )
         else:
             self._clear("dmarc-policy-none")
+        self._check_test_mode(dmarc, self.dmarc_answer)
+
+    def _check_test_mode(self, dmarc: DmarcRecord, answer: DnsResponse) -> None:
+        """t=y (RFC 9989 4.7): apply one level below the stated policy.
+
+        RFC 7489 receivers do not know `t` and apply the policy as written, so
+        the finding is receiver-dependent: worst-case severity, `suspected`.
+        """
+        if not dmarc.testing or dmarc.policy not in ENFORCED:
+            self._clear("dmarc-test-mode")
+            return
+        applied = "quarantine" if dmarc.policy == "reject" else "none"
+        self._report(
+            "dmarc-test-mode",
+            answer,
+            description=(
+                f"The DMARC record sets p={dmarc.policy} with t=y. RFC 9989 section 4.7 asks "
+                f"receivers to apply one level below the stated policy, so failing mail gets "
+                f"{applied}. RFC 7489 receivers do not know the t tag and apply "
+                f"p={dmarc.policy} as written. Which happens depends on the receiver."
+            ),
+            impact=(
+                f"At receivers following RFC 9989, forged mail gets {applied}"
+                + (", so it is delivered." if applied == "none" else ", not rejected.")
+            ),
+            remediation=(
+                "t=y is for testing a policy before you enforce it. Once your reports show "
+                "every legitimate sender passing, remove t=y (or set t=n)."
+            ),
+            analysis={"dmarc": dmarc.to_dict()},
+            validates=lambda again: (rec := _parse_dmarc_answer(again)) is not None and rec.testing,
+        )
 
     def _report_multiple_dmarc(self) -> None:
         """More than one DMARC record at one name: every one is discarded.
@@ -572,30 +626,46 @@ class _Scan:
             self._clear("dmarc-policy-none")
 
     def _report_invalid_dmarc(self, dmarc: DmarcRecord) -> None:
-        """Say what RFC 7489 says a receiver does with this record, and no more.
+        """Say what the two DMARC RFCs say a receiver does with this record.
 
-        The finding used to say "receivers ignore a record like this entirely"
-        for every error. The spec says that for some errors, says the opposite
-        for others (discard the bad tag, keep the record), and says nothing at
-        all for duplicated tags or a misplaced p=. Where it says nothing, so do
-        we: the finding is worded as implementations varying and held at
-        `suspected`.
+        RFC 9989 is primary. Where RFC 7489 gives a different verdict, the
+        finding states both and is `suspected`. Severity is the worst case's
+        (ADR-017): if a receiver could discard the record, that is
+        dmarc-missing's severity, because the domain then has no DMARC at all.
         """
-        errors = "; ".join(dmarc.errors)
-        lead = f"The DMARC record at _dmarc.{self.domain} is not valid: {errors}."
+        problems = "; ".join(dmarc.errors + dmarc.legacy_issues)
+        lead = f"The DMARC record at _dmarc.{self.domain} has a problem: {problems}."
         note = self._neutral_all_note()
         remediation = (
-            "Rewrite the record so it begins 'v=DMARC1; p=<policy>;' - the version tag must "
-            "come first and the policy tag must immediately follow it. Give each tag once. "
-            "Other tags may follow in any order."
+            "Rewrite the record so it begins 'v=DMARC1; p=<policy>;'. Give each tag once, "
+            "with a valid value."
         )
-        hedge_ratio = 4.0
-        hedge_reason = (
-            "the error is read directly from the record, but no spec defines how a receiver "
-            "handles it, so the consequence this finding is about is uncertain"
-        )
+        missing_severity = CHECKS["dmarc-missing"].severity
         handling = dmarc.receiver_handling
-        if handling == "treat_as_none":
+        if handling in ("treat_as_none", "no_processing") and dmarc.np_invalid_only:
+            self._report(
+                "dmarc-invalid",
+                self.dmarc_answer,
+                severity="medium",
+                title="DMARC np= value is invalid, and receivers may handle it differently",
+                description=(
+                    f"{lead} RFC 9989 section 4.10.1 says a receiver given an invalid np= "
+                    + (
+                        "acts as if the record said p=none, because it carries a valid rua."
+                        if handling == "treat_as_none"
+                        else "applies no DMARC processing, because it carries no valid rua."
+                    )
+                    + " RFC 7489 does not define np=, so its receivers ignore the tag and apply "
+                    f"p={dmarc.policy}. Which happens depends on the receiver." + note
+                ),
+                impact=("At receivers following RFC 9989, the domain loses its DMARC enforcement."),
+                remediation=remediation,
+                analysis={"dmarc": dmarc.to_dict()},
+                validates=_dmarc_is_invalid,
+                likelihood_ratio=DUAL_RATIO,
+                justification=DUAL_REASON,
+            )
+        elif handling == "treat_as_none":
             self._report(
                 "dmarc-invalid",
                 self.dmarc_answer,
@@ -603,14 +673,14 @@ class _Scan:
                 title="DMARC record would be treated as p=none by receivers",
                 description=(
                     f"{lead} The record has no usable policy but does carry a valid rua "
-                    "address, and RFC 7489 section 6.6.3 says receivers SHOULD then act as if "
-                    "it said p=none: reports are sent, and failing mail is not blocked. An "
-                    "operator with this record believes the domain is protected, and it is not."
-                    + note
+                    "address, so receivers act as if it said p=none: RFC 9989 section 4.10.1 "
+                    "(MUST) and RFC 7489 section 6.6.3 (SHOULD) agree. Reports are sent, and "
+                    "failing mail is not blocked. An operator with this record believes the "
+                    "domain is protected, and it is not." + note
                 ),
                 impact=(
-                    "Whatever policy was intended, receivers following the RFC treat the domain "
-                    "as monitoring only, so mail forged as this domain is still delivered."
+                    "Whatever policy was intended, receivers treat the domain as monitoring "
+                    "only, so mail forged as this domain is still delivered."
                 ),
                 remediation=remediation,
                 analysis={"dmarc": dmarc.to_dict()},
@@ -618,8 +688,9 @@ class _Scan:
             )
         elif handling in ("no_processing", "ignored"):
             rule = (
-                "RFC 7489 section 6.6.3 says a receiver given a record with no valid policy and "
-                "no valid reporting address applies no DMARC processing"
+                "RFC 9989 section 4.10.1 and RFC 7489 section 6.6.3 both say a receiver given a "
+                "record with no valid policy and no valid reporting address applies no DMARC "
+                "processing"
                 if handling == "no_processing"
                 else (
                     "RFC 7489 section 6.3 and RFC 9989 section 4.7 both say the entire "
@@ -640,55 +711,80 @@ class _Scan:
                 analysis={"dmarc": dmarc.to_dict()},
                 validates=_dmarc_is_invalid,
             )
-        elif handling == "discard_tag":
+        elif handling == "undefined":
             self._report(
                 "dmarc-invalid",
                 self.dmarc_answer,
-                title="DMARC record has a malformed tag",
+                severity=missing_severity,
+                title="DMARC record repeats a tag, and receivers may handle it differently",
                 description=(
-                    f"{lead} RFC 7489 section 6.3 says receivers SHOULD discard a malformed tag "
-                    "in favour of its default value, or ignore it, rather than the whole record. "
-                    "That is a SHOULD, not a MUST, so implementations may vary, and a receiver "
-                    "applying the default may not do what the record intended." + note
+                    f"{lead} A repeated tag makes the tag list invalid (RFC 6376 section 3.2, "
+                    "adopted by RFC 9989 section 4.7 and RFC 7489 section 6.3), but neither "
+                    "DMARC RFC says what a receiver then does. Some may ignore the record, "
+                    "which leaves the domain with no DMARC at all; others may apply the policy "
+                    "they can read." + note
                 ),
                 impact=(
-                    "The policy most receivers apply may differ from the one written, and some "
-                    "receivers may treat the record differently from others."
+                    "At receivers that discard the record, the domain has no DMARC protection."
                 ),
                 remediation=remediation,
                 analysis={"dmarc": dmarc.to_dict()},
                 validates=_dmarc_is_invalid,
-                likelihood_ratio=hedge_ratio,
-                justification=hedge_reason,
+                likelihood_ratio=DUAL_RATIO,
+                justification=DUAL_REASON,
+            )
+        elif dmarc.legacy_issues:
+            self._report(
+                "dmarc-invalid",
+                self.dmarc_answer,
+                severity=missing_severity,
+                title="DMARC record is valid under RFC 9989 but not under RFC 7489",
+                description=(
+                    f"{lead} The record is valid under RFC 9989, which lets tags follow v= in "
+                    "any order (section 4.8). RFC 7489 section 6.3 required p= immediately "
+                    "after v= and did not say what a receiver does otherwise, so a receiver "
+                    "still implementing RFC 7489 may discard the record, leaving the domain "
+                    "with no DMARC at all." + note
+                ),
+                impact="At receivers that discard the record, the domain has no DMARC protection.",
+                remediation="Move p= to straight after v=. It costs nothing under RFC 9989.",
+                analysis={"dmarc": dmarc.to_dict()},
+                validates=lambda again: (
+                    (rec := _parse_dmarc_answer(again)) is not None and bool(rec.legacy_issues)
+                ),
+                likelihood_ratio=DUAL_RATIO,
+                justification=DUAL_REASON,
             )
         else:
             self._report(
                 "dmarc-invalid",
                 self.dmarc_answer,
-                title="DMARC record breaks RFC 7489, and receivers may handle it differently",
+                severity="low",
+                title="DMARC record has a malformed tag, which receivers discard",
                 description=(
-                    f"{lead} RFC 7489 forbids this, but does not define what a receiver does "
-                    "with such a record. Implementations vary: some may ignore the record, "
-                    "others may apply the policy they can read. We cannot tell which happens "
-                    "at any given receiver." + note
+                    f"{lead} Receivers discard the malformed tag and use its default value "
+                    "(RFC 9989 section 4.8, MUST; RFC 7489 section 6.3, SHOULD), so the record "
+                    "works, but it may not do what was intended." + note
                 ),
-                impact=(
-                    "Some receivers may give this domain no DMARC protection at all. Which ones "
-                    "cannot be known from the record."
-                ),
+                impact="The default applies in place of what the tag was meant to say.",
                 remediation=remediation,
                 analysis={"dmarc": dmarc.to_dict()},
                 validates=_dmarc_is_invalid,
-                likelihood_ratio=hedge_ratio,
-                justification=hedge_reason,
             )
 
     def _check_dmarc_standard(self) -> None:
         found = self.discovery
         inherited = self.dmarc is None and found.target_records <= 1 and found.inherited
         record = found.effective if inherited else self.dmarc
-        if record is None or not record.valid:
-            for check_id in ("dmarc-pct-partial", "dmarc-no-rua", "dmarc-alignment"):
+        standard_ids = (
+            "dmarc-pct-partial",
+            "dmarc-obsolete-tags",
+            "dmarc-np-weaker",
+            "dmarc-no-rua",
+            "dmarc-alignment",
+        )
+        if record is None or not record.usable:
+            for check_id in standard_ids:
                 self._not_applicable(check_id)
             return
         answer = found.answer if inherited and found.answer is not None else self.dmarc_answer
@@ -696,29 +792,96 @@ class _Scan:
         ratio = INHERITED_RATIO if inherited else None
         reason = INHERITED_REASON if inherited else None
 
-        if record.pct < 100:
+        if record.pct < 100 and record.policy in ENFORCED:
+            # pct is removed in RFC 9989 (App. C.5.2): its receivers apply the
+            # policy to all failing mail. RFC 7489 receivers sample. Worst-case
+            # severity, suspected (ADR-017).
             self._report(
                 "dmarc-pct-partial",
                 answer,
                 description=(
-                    f"The DMARC policy applies to {record.pct}% of failing mail (pct="
-                    f"{record.pct}). The other {100 - record.pct}% is delivered as if "
-                    "the policy were p=none." + note + self._neutral_all_note()
+                    f"The DMARC record sets p={record.policy} with pct={record.pct}. Under RFC "
+                    "9989, the current standard, pct is removed, so its receivers apply "
+                    f"p={record.policy} to all failing mail. A receiver still implementing RFC "
+                    f"7489 applies it to only {record.pct}%, and delivers the other "
+                    f"{100 - record.pct}% as if the policy were p=none. Which happens depends on "
+                    "the receiver." + note + self._neutral_all_note()
                 ),
                 impact=(
-                    "An attacker sending repeatedly gets through on the unprotected fraction. "
-                    "A partial rollout is a step, not a destination."
+                    f"At RFC 7489 receivers, an attacker sending repeatedly gets through on the "
+                    f"{100 - record.pct}% that is not enforced."
                 ),
                 remediation=(
-                    "Raise pct in stages - 25, 50, then 100 - watching your rua reports at each "
-                    "step, and remove the tag entirely once you reach 100."
+                    "Remove pct. To test a policy before enforcing it, use t=y (RFC 9989), then "
+                    "remove it."
                 ),
                 validates=lambda answer: _dmarc_pct(answer) < 100,
-                likelihood_ratio=ratio,
-                justification=reason,
+                likelihood_ratio=DUAL_RATIO,
+                justification=DUAL_REASON,
             )
         else:
             self._clear("dmarc-pct-partial")
+
+        obsolete = record.obsolete_tags
+        if obsolete:
+            diverges = record.pct < 100
+            self._report(
+                "dmarc-obsolete-tags",
+                answer,
+                severity="low" if diverges else "info",
+                description=(
+                    f"The DMARC record uses tags that RFC 9989 removed: {', '.join(obsolete)}. "
+                    "Receivers implementing the current standard ignore them."
+                    + (
+                        f" pct={record.pct} changes what RFC 7489 receivers do, so the record "
+                        "behaves differently from receiver to receiver."
+                        if diverges
+                        else " None of them changes what any receiver does here."
+                    )
+                    + note
+                ),
+                impact=(
+                    "Receivers disagree about what the record asks for."
+                    if diverges
+                    else "None today; the tags are noise that can mislead whoever edits the record."
+                ),
+                remediation=(
+                    "Remove the obsolete tags. Use t=y instead of pct=0 to test a policy."
+                ),
+                analysis={"dmarc": record.to_dict()},
+                validates=lambda again: (
+                    (rec := _parse_dmarc_answer(again)) is not None and bool(rec.obsolete_tags)
+                ),
+            )
+        else:
+            self._clear("dmarc-obsolete-tags")
+
+        np, sub = record.np, record.effective_subdomain_policy
+        if np in POLICY_RANK and sub in POLICY_RANK and POLICY_RANK[np] < POLICY_RANK[sub]:
+            self._report(
+                "dmarc-np-weaker",
+                answer,
+                description=(
+                    f"The DMARC record sets np={np} for non-existent subdomains, weaker than "
+                    f"the {sub} that existing subdomains get. Under RFC 9989 (section 4.10.1), "
+                    f"mail forged from a made-up subdomain of {self.domain} gets {np}. RFC 7489 "
+                    f"does not define np, so its receivers apply {sub}. Which happens depends "
+                    "on the receiver." + note
+                ),
+                impact=(
+                    "At RFC 9989 receivers, an attacker can invent a subdomain to get the weaker "
+                    "policy."
+                ),
+                remediation=f"Raise np= to at least {sub}, or remove it so subdomains get {sub}.",
+                analysis={"dmarc": record.to_dict()},
+                validates=lambda again: (
+                    (rec := _parse_dmarc_answer(again)) is not None and rec.np == np
+                ),
+                likelihood_ratio=DUAL_RATIO,
+                justification=DUAL_REASON,
+            )
+        else:
+            self._clear("dmarc-np-weaker")
 
         if not record.rua:
             self._report(
@@ -1482,21 +1645,30 @@ _REFERENCES = {
     "spf-multiple-records": ["https://www.rfc-editor.org/rfc/rfc7208#section-4.5"],
     "spf-too-permissive": ["https://www.rfc-editor.org/rfc/rfc7208#section-5.1"],
     "spf-lookup-limit": ["https://www.rfc-editor.org/rfc/rfc7208#section-4.6.4"],
-    "dmarc-missing": ["https://www.rfc-editor.org/rfc/rfc7489"],
-    "dmarc-invalid": ["https://www.rfc-editor.org/rfc/rfc7489#section-6.3"],
-    "dmarc-policy-none": ["https://www.rfc-editor.org/rfc/rfc7489#section-6.3"],
-    "dmarc-pct-partial": ["https://www.rfc-editor.org/rfc/rfc7489#section-6.3"],
-    "dmarc-no-rua": ["https://www.rfc-editor.org/rfc/rfc7489#section-7"],
-    "dmarc-alignment": ["https://www.rfc-editor.org/rfc/rfc7489#section-3.1"],
+    "dmarc-missing": ["https://www.rfc-editor.org/rfc/rfc9989#section-4.10"],
+    "dmarc-invalid": ["https://www.rfc-editor.org/rfc/rfc9989#section-4.7"],
+    "dmarc-policy-none": ["https://www.rfc-editor.org/rfc/rfc9989#section-4.7"],
+    "dmarc-pct-partial": ["https://www.rfc-editor.org/rfc/rfc9989#appendix-A.6"],
+    "dmarc-obsolete-tags": ["https://www.rfc-editor.org/rfc/rfc9989#appendix-C.5.2"],
+    "dmarc-test-mode": ["https://www.rfc-editor.org/rfc/rfc9989#section-4.7"],
+    "dmarc-np-weaker": ["https://www.rfc-editor.org/rfc/rfc9989#section-4.10.1"],
+    "dmarc-no-rua": ["https://www.rfc-editor.org/rfc/rfc9989#section-4.7"],
+    "dmarc-alignment": ["https://www.rfc-editor.org/rfc/rfc9989#section-4.4"],
     "mx-missing": ["https://www.rfc-editor.org/rfc/rfc7505"],
     "dkim-missing": ["https://www.rfc-editor.org/rfc/rfc6376"],
     "dkim-weak-key": ["https://www.rfc-editor.org/rfc/rfc8301"],
     "mta-sts-missing": ["https://www.rfc-editor.org/rfc/rfc8461"],
     "tls-rpt-missing": ["https://www.rfc-editor.org/rfc/rfc8460"],
-    "spoofing-possible": ["https://www.rfc-editor.org/rfc/rfc7489"],
+    "spoofing-possible": ["https://www.rfc-editor.org/rfc/rfc9989"],
 }
 
 
+POLICY_RANK = {"none": 0, "quarantine": 1, "reject": 2}
+DUAL_RATIO = 4.0
+DUAL_REASON = (
+    "the record is read directly, but what a receiver does with it depends on which DMARC "
+    "RFC the receiver implements, so the consequence this finding is about is uncertain"
+)
 INHERITED_RATIO = 4.0
 INHERITED_REASON = (
     "the record applies by RFC 9989's tree walk from an ancestor; RFC 7489 receivers choose "
@@ -1525,36 +1697,112 @@ def _effective_policy(answer: DnsResponse, tag: str) -> str | None:
     return value.lower() if value else None
 
 
-def _dmarc_posture(dmarc: DmarcRecord | None) -> str:
-    """What a receiver following RFC 7489 does with this domain's DMARC record.
+def _dmarc_posture(dmarc: DmarcRecord | None, standard: str = "9989") -> str:
+    """What a receiver does with this domain's DMARC record, under one RFC.
 
     The single place this question is answered. Two checks once each carried
     their own copy of a wrong premise ("?all accepts any sender", "receivers
-    ignore a malformed record"); everything that needs the answer now reads it
-    from here.
+    ignore a malformed record"), so everything that needs the answer reads it
+    from here. `standard` is "9989" (primary) or "7489" (still deployed).
 
-    - `missing` - no record.
-    - `unusable` - no DMARC processing (no valid p and no valid rua, 6.6.3
-      step 6), or the record is ignored outright (v not first, 6.3).
-    - `undefined` - forbidden, but no spec says what a receiver does.
-    - `none` - p=none, or no valid p but a valid rua (6.6.3 step 6: SHOULD act
-      as if p=none).
-    - `partial` - an enforcing policy applied to under 100% of failing mail.
-    - `quarantine` / `reject` - enforced. A malformed optional tag is
-      discarded in favour of its default (6.3), so it is read with the default.
+    - `missing`: no record.
+    - `unusable`: no DMARC processing, or the record is ignored outright.
+    - `undefined`: forbidden, but no RFC says what a receiver does.
+    - `none`: p=none, an absent p (RFC 9989), or treated as p=none.
+    - `partial`: RFC 7489 only. An enforcing policy applied to under 100%.
+    - `quarantine` / `reject`: enforced. Under RFC 9989, t=y lowers it one level.
     """
     if dmarc is None:
         return "missing"
     handling = dmarc.receiver_handling
+    if standard == "7489":
+        if dmarc.np_invalid_only:
+            handling = None  # RFC 7489 does not define np, so it ignores the tag
+        if handling is None and dmarc.legacy_issues:
+            return "undefined"
+        if handling is None and dmarc.p_absent:
+            return "none" if has_valid_rua(dmarc.tags) else "unusable"
     if handling in ("no_processing", "ignored"):
         return "unusable"
     if handling == "undefined":
         return "undefined"
     if handling == "treat_as_none" or dmarc.policy == "none":
         return "none"
+    policy = dmarc.policy or "none"
+    if standard == "9989":
+        if dmarc.testing:
+            policy = {"reject": "quarantine", "quarantine": "none"}.get(policy, policy)
+        return policy
     if dmarc.pct < 100:
         return "partial"
-    return "reject" if dmarc.policy == "reject" else "quarantine"
+    return policy
+
+
+def _dmarc_reason(dmarc: DmarcRecord | None, posture: str, inherited: bool) -> str:
+    """The RFC 9989 reason a forged message is delivered, for an unenforced posture."""
+    if posture == "missing":
+        return (
+            "there is no DMARC record, so a receiver has no instruction to reject mail "
+            "that fails authentication"
+        )
+    if posture == "unusable":
+        if dmarc is not None and dmarc.receiver_handling == "ignored":
+            return (
+                "the DMARC record does not begin with exactly 'v=DMARC1', and RFC 7489 "
+                "section 6.3 and RFC 9989 section 4.7 both say receivers ignore such a record "
+                "entirely"
+            )
+        return (
+            "the DMARC record has no usable policy and no valid rua, and RFC 9989 section "
+            "4.10.1 and RFC 7489 section 6.6.3 both say a receiver then applies no DMARC "
+            "processing"
+        )
+    if posture == "undefined":
+        return (
+            "the DMARC record repeats a tag, which neither DMARC RFC gives receiver handling "
+            "for, so some receivers may not apply it"
+        )
+    if dmarc is not None and dmarc.receiver_handling == "treat_as_none":
+        return (
+            "the DMARC record has no usable policy but a valid rua, so receivers act as if it "
+            "said p=none (RFC 9989 section 4.10.1), which asks them to take no action"
+        )
+    if dmarc is not None and dmarc.p_absent:
+        return (
+            "the DMARC record has no p= tag, which RFC 9989 treats as p=none (RFC 7489 applied "
+            "no DMARC processing), so nothing asks receivers to act"
+        )
+    if dmarc is not None and dmarc.testing and dmarc.policy == "quarantine":
+        return "the record sets p=quarantine with t=y, which RFC 9989 receivers apply as none"
+    if inherited:
+        return "the DMARC policy that applies is none, which asks receivers to take no action"
+    return "the DMARC policy is p=none, which asks receivers to take no action"
+
+
+def _dual_reason(dmarc: DmarcRecord | None, p9: str, p7: str) -> str:
+    """Both readings, when only one RFC leaves the domain unenforced."""
+    if dmarc is not None and p7 == "partial":
+        return (
+            f"the DMARC record sets p={dmarc.policy} with pct={dmarc.pct}: RFC 9989 receivers "
+            f"apply it to all failing mail, but RFC 7489 receivers to only {dmarc.pct}%, so "
+            f"roughly {100 - dmarc.pct}% of forged messages are delivered at those receivers"
+        )
+    if dmarc is not None and dmarc.testing and p9 == "none":
+        return (
+            "the record sets p=quarantine with t=y, which RFC 9989 receivers apply as none; RFC "
+            "7489 receivers ignore t and quarantine"
+        )
+    if dmarc is not None and p7 == "undefined" and dmarc.legacy_issues:
+        return (
+            "p= is not straight after v=, which is valid under RFC 9989 but which RFC 7489 "
+            "required, so an RFC 7489 receiver may discard the record"
+        )
+    if dmarc is not None and dmarc.np_invalid_only:
+        return (
+            "np= is invalid, so RFC 9989 receivers do not enforce the policy; RFC 7489 "
+            f"receivers ignore np and apply p={dmarc.policy}"
+        )
+    return "the DMARC RFCs disagree about whether this record is enforced"
 
 
 def _spoofing_reasons(
@@ -1562,16 +1810,17 @@ def _spoofing_reasons(
 ) -> tuple[list[str], bool]:
     """Why a receiving mail server would deliver a forged message.
 
-    Returns the reasons and whether they are only a hedge: a DMARC record whose
-    handling no spec defines may or may not be applied, so it is a reason to
-    suspect, not to claim.
+    Returns the reasons and whether they are only a hedge. A reason that holds
+    under one DMARC RFC and not the other is receiver-dependent: it is stated
+    with both readings and can only make the finding `suspected`.
 
     Extracted so that validation can re-run exactly the same reasoning against
     an independently fetched record, rather than re-checking a weaker proxy.
     """
     reasons: list[str] = []
     hedged = False
-    posture = _dmarc_posture(dmarc)
+    p9, p7 = _dmarc_posture(dmarc, "9989"), _dmarc_posture(dmarc, "7489")
+    open9, open7 = p9 not in ENFORCED, p7 not in ENFORCED
     discarded = discovery is not None and discovery.target_records > 1
     inherited = discovery is not None and discovery.inherited
     if discarded and dmarc is None:
@@ -1579,7 +1828,7 @@ def _spoofing_reasons(
             "the domain publishes more than one DMARC record, and RFC 7489 and RFC 9989 "
             "both discard them all, so no DMARC policy applies"
         )
-    elif discarded and posture in ENFORCED and discovery is not None:
+    elif discarded and not open9 and discovery is not None:
         # RFC 7489 stops at the discarded records; RFC 9989 walks on to an
         # enforcing ancestor. Receiver-dependent: the worst case is stated.
         hedged = True
@@ -1588,42 +1837,12 @@ def _spoofing_reasons(
             "discards; RFC 7489 receivers then apply no DMARC, while RFC 9989 receivers apply "
             f"_dmarc.{discovery.source}'s policy"
         )
-    elif posture == "missing":
-        reasons.append(
-            "there is no DMARC record, so a receiver has no instruction to reject mail "
-            "that fails authentication"
-        )
-    elif posture == "unusable":
-        reasons.append(
-            "the DMARC record does not begin with exactly 'v=DMARC1', and RFC 7489 "
-            "section 6.3 and RFC 9989 section 4.7 both say receivers ignore such a record "
-            "entirely"
-            if dmarc is not None and dmarc.receiver_handling == "ignored"
-            else "the DMARC record has no usable policy, and RFC 7489 says a receiver then "
-            "applies no DMARC processing (section 6.6.3)"
-        )
-    elif posture == "undefined":
+    elif open9 and open7:
+        hedged = "undefined" in (p9, p7)
+        reasons.append(_dmarc_reason(dmarc, p9, inherited))
+    elif open9 or open7:
         hedged = True
-        reasons.append(
-            "the DMARC record breaks RFC 7489 in a way the RFC gives no receiver handling "
-            "for, and implementations vary, so some receivers may not apply it"
-        )
-    elif posture == "none":
-        reasons.append(
-            "the DMARC record has no usable policy but a valid rua, so RFC 7489 section "
-            "6.6.3 has receivers act as if it said p=none, which asks them to take no action"
-            if dmarc is not None and dmarc.receiver_handling == "treat_as_none"
-            else (
-                "the DMARC policy that applies is none, which asks receivers to take no action"
-                if inherited
-                else "the DMARC policy is p=none, which asks receivers to take no action"
-            )
-        )
-    elif posture == "partial" and dmarc is not None:
-        reasons.append(
-            f"the DMARC policy is applied to only {dmarc.pct}% of failing mail, so "
-            f"roughly {100 - dmarc.pct}% of forged messages are delivered anyway"
-        )
+        reasons.append(_dual_reason(dmarc, p9, p7))
     if inherited and reasons and discovery is not None:
         # A policy from an ancestor: RFC 9989's walk applies it, and an RFC
         # 7489 receiver's Public Suffix List may choose another record.
@@ -1632,6 +1851,7 @@ def _spoofing_reasons(
             f" (the record that applies is inherited from _dmarc.{discovery.source} by RFC "
             "9989's tree walk; an RFC 7489 receiver may choose differently)"
         )
+    posture = p9 if open9 else p7
 
     plus_all = spf is not None and spf.all_qualifier == "+"
     if spf is None and posture not in ENFORCED:

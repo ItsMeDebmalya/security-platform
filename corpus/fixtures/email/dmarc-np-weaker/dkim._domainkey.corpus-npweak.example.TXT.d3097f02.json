@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "dkim._domainkey.corpus-npweak.example",
+  "rcode": "NXDOMAIN",
+  "records": [],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": null
+}

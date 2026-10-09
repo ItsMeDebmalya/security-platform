@@ -29,12 +29,14 @@ def test_a_record_without_the_version_tag_is_not_a_dmarc_record():
     assert not parse_dmarc("p=reject").valid
 
 
-def test_a_record_without_a_policy_is_invalid():
-    """RFC 7489: p is required; without it the record is ignored entirely."""
+def test_a_record_without_a_policy_is_treated_as_p_none():
+    """RFC 9989 4.7 (it was invalid under RFC 7489): an absent p in an
+    otherwise valid record is treated as p=none."""
     record = parse_dmarc("v=DMARC1; rua=mailto:d@example.com")
 
-    assert not record.valid
-    assert "p=" in record.errors[0]
+    assert record.valid
+    assert record.p_absent
+    assert record.policy == "none"
 
 
 @pytest.mark.parametrize("policy", ["none", "quarantine", "reject"])
@@ -124,17 +126,19 @@ def test_the_raw_record_and_parse_tree_are_kept_for_evidence():
     ("record", "handling"),
     [
         ("v=DMARC1; p=reject", None),
-        ("v=DMARC1", "no_processing"),
+        ("v=DMARC1", None),  # RFC 9989: p absent means p=none, not an error
+        ("v=DMARC1; rua=mailto:d@example.com", None),
+        ("v=DMARC1; rua=mailto:d@example.com; p=reject", None),  # RFC 9989: order is free
         ("v=DMARC1; p=bogus", "no_processing"),
-        ("v=DMARC1; rua=mailto:d@example.com", "treat_as_none"),
         ("v=DMARC1; p=reject; sp=bogus; rua=mailto:d@example.com", "treat_as_none"),
+        ("v=DMARC1; p=reject; np=bogus; rua=mailto:d@example.com", "treat_as_none"),
         ("v=DMARC1; p=reject; p=none", "undefined"),
-        ("v=DMARC1; rua=mailto:d@example.com; p=reject", "undefined"),
         ("v=DMARC1; p=reject; pct=abc", "discard_tag"),
         ("v=DMARC1; p=reject; adkim=x", "discard_tag"),
+        ("v=DMARC1; p=reject; t=maybe", "discard_tag"),
     ],
 )
-def test_each_error_is_classified_by_what_rfc_7489_says_a_receiver_does(record, handling):
+def test_each_error_is_classified_by_what_rfc_9989_says_a_receiver_does(record, handling):
     assert parse_dmarc(record).receiver_handling == handling
 
 
@@ -146,3 +150,33 @@ def test_a_version_that_is_not_exactly_dmarc1_makes_the_record_ignored(version):
 
     assert not record.valid
     assert record.receiver_handling == "ignored"
+
+
+def test_a_policy_not_straight_after_the_version_is_a_legacy_issue_only():
+    """RFC 7489 6.3 required p second; RFC 9989 4.8 does not."""
+    record = parse_dmarc("v=DMARC1; rua=mailto:d@example.com; p=reject")
+
+    assert record.valid and record.policy == "reject"
+    assert record.legacy_issues == ["p= is not the tag straight after v= (RFC 7489 required it)"]
+
+
+def test_tags_removed_by_rfc_9989_are_listed():
+    record = parse_dmarc(
+        "v=DMARC1; p=reject; pct=50; rf=afrf; ri=86400; rua=mailto:d@example.com!10m"
+    )
+
+    assert record.obsolete_tags == ["pct", "rf", "ri", "rua size limit"]
+
+
+def test_the_rfc_9989_tags_are_read():
+    record = parse_dmarc("v=DMARC1; p=quarantine; np=none; t=y; psd=n")
+
+    assert record.np == "none"
+    assert record.testing
+    assert record.psd == "n"
+
+
+def test_an_invalid_np_is_flagged_as_the_only_problem():
+    record = parse_dmarc("v=DMARC1; p=reject; np=bogus")
+
+    assert record.np_invalid_only

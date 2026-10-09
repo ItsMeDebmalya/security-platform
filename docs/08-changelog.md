@@ -430,3 +430,17 @@ Then restore the entry-point lines in `CLAUDE.md` and `SPEC.md`, and the revert 
 
 **Revert.** Delete the clause, the checklist item, `cli/rfcs.py` and the Makefile target.
 
+## v4.0-pre.5 — ADR-017 amended: dual reading and worst-case severity; email reads DMARC under RFC 9989 (2026-10-09)
+
+**What changed.**
+- ADR-017 gained two rules. Read both standards where they disagree, capping at `suspected`. Give a receiver-dependent finding the severity of its worst case, with the state carrying the doubt.
+- `email` v1.3.0 finds the applicable DMARC record by RFC 9989's DNS tree walk. v1.4.0 reads DMARC records under RFC 9989 first:
+  - `pct` is dual-read;
+  - an absent `p` means `p=none`;
+  - tag order is free (an RFC 7489-only issue);
+  - `t` and `np` are read.
+- Three new checks: `dmarc-obsolete-tags`, `dmarc-test-mode`, `dmarc-np-weaker`. `dmarc-*` and `spoofing-possible` references now cite RFC 9989.
+- Corpus changes: a real recorded case (`real-obsolete-pct`, cloudinary.com) and two synthetic ones (`dmarc-test-mode`, `dmarc-np-weaker`). `dmarc-partial-rollout`'s expectation gains `dmarc-obsolete-tags`.
+
+**Revert.** Delete the ADR-017 paragraph. Reverting the scanner reintroduces the false claims of ledger D44.
+

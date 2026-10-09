@@ -1,6 +1,6 @@
 {
   "flags": [],
-  "name": "sp-wildcard-probe-510570b1.corpus-weakdkim.example",
+  "name": "sp-wildcard-probe-219b33db.corpus-weakdkim.example",
   "rcode": "NXDOMAIN",
   "records": [],
   "resolver": "1.1.1.1",

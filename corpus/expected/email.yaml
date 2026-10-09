@@ -23,9 +23,13 @@ dmarc-monitoring-only:
   - { check_id: dmarc-policy-none, location: "$" }
   - { check_id: spoofing-possible, location: "$" }
 
+# pct is removed in RFC 9989, so its presence below 100 is also dmarc-obsolete-tags
+# (low). dmarc-pct-partial and spoofing-possible are receiver-dependent:
+# suspected, so excluded from the gate on both sides.
 dmarc-partial-rollout:
   - { check_id: dmarc-pct-partial, location: "$" }
   - { check_id: spoofing-possible, location: "$" }
+  - { check_id: dmarc-obsolete-tags, location: "$" }
 
 dmarc-no-reporting:
   - { check_id: dmarc-no-rua, location: "$" }
@@ -76,4 +80,23 @@ disagree-stale-dkim:
   - { check_id: dkim-weak-key, location: "$" }
   - { check_id: mta-sts-missing, location: "$" }
   - { check_id: tls-rpt-missing, location: "$" }
+
+# cloudinary.com, recorded live 2026-10-08 (run 1's three-resolver pass) and
+# verified by hand in run 2: 1024-bit DKIM keys (k1, s1, s2, mandrill), no
+# MTA-STS, no TLS-RPT, and p=quarantine with pct=1 (a removed tag below 100).
+real-obsolete-pct:
+  - { check_id: dkim-weak-key, location: "$" }
+  - { check_id: mta-sts-missing, location: "$" }
+  - { check_id: tls-rpt-missing, location: "$" }
+  - { check_id: dmarc-obsolete-tags, location: "$" }
+  - { check_id: dmarc-pct-partial, location: "$" }
+  - { check_id: spoofing-possible, location: "$" }
+
+# Synthetic, no real positive yet. Both receiver-dependent, so suspected.
+dmarc-test-mode:
+  - { check_id: dmarc-test-mode, location: "$" }
+  - { check_id: spoofing-possible, location: "$" }
+
+dmarc-np-weaker:
+  - { check_id: dmarc-np-weaker, location: "$" }
 

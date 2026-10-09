@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "s2._domainkey.cloudinary.com",
+  "rcode": "NOERROR",
+  "records": [
+    "k=rsa; t=s; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC2SAZasQtn5m0ph51kqY5nM3MSkaVQS/vkoCDC8Led06pczQ51XnFyhXFQNFVqKkt98bH6yYh4OQYxM9cfC0/5bOUIg+ysXq1+ekGWw3ZqlNbExuxFY+uOt9v7iyGjawZ5+6BblOUW31yp75jM2TRXZLbhAbW+acujv9XYnlIHlwIDAQAB"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": null
+}

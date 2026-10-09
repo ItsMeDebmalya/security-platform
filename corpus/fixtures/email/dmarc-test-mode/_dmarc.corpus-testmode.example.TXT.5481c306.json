@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_dmarc.corpus-testmode.example",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DMARC1; p=quarantine; t=y; rua=mailto:d@corpus-testmode.example"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 300
+}
