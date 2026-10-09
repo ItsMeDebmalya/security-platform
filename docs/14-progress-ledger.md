@@ -1483,7 +1483,64 @@ Operator-approved. The design choices were the operator's: a new field beside `r
 - **Standing figure:** 68 checks: 40 WORKING, **2 BROKEN** (`domain-expiring`, `domain-expired`, D28), **26 UNDETERMINED**. Still **41% (28 of 68) with no evidence that they work**.
 - **A live positive needs a test name with CNAME support.** DuckDNS has none, and a dangling CNAME never goes on a company domain.
 
-## Next
+## 2026-10-10 · Handoff: open items and where to start
+
+*For a new session with no chat history. State as of PR #31. Each item links to where it is owned.*
+
+**Merged this stretch (PRs #22–#31):**
+- **#22** D21 / ADR-028: core redaction.
+- **#23** the differentiators doc.
+- **#24** the value-add backlog (plan only).
+- **#25** read-only finding store.
+- **#26** ADR-029: redaction receipts and `secret-exposed`.
+- **#27** D48: RFC 9525, no CN fallback, IP SANs.
+- **#28** tls RFC citations and legacy-but-deployed exemptions (ADR-017 amended).
+- **#29** ADR-030: UTS-46 hostnames, `idna` signed off.
+- **#30** ADR-031 (service hosts), the canary policy, D51.
+- **#31** D31: takeover fingerprints.
+
+**Versions:** email 1.5.0, tls 1.4.0, domscout 1.2.0, web 1.0.5.
+
+**Standing figure** (owned by SPEC.md): 68 checks, 40 WORKING, 2 BROKEN (`domain-expiring` and `domain-expired`, D28), 26 UNDETERMINED. **41% (28 of 68) have no evidence they work.**
+
+| Item | Status | Blocked on | Where |
+|---|---|---|---|
+| **Canary runs, corpus set** (DuckDNS TXT, GitHub Pages) | Kit prepared (below); **nothing published** | The operator publishing, then confirming | Canary policy, 2026-10-10 entry |
+| **Canary runs, showcase set** (company domains) | Kit prepared (below); **nothing published**; evidence goes to the gitignored `corpus/crosscheck/showcase/` | The operator publishing, then confirming | Same |
+| **ADR-031 / D28** (domain expiry via the IANA RDAP bootstrap) | ADR accepted (90 days). **No code yet** | (1) The operator's sign-off on the IANA bootstrap data-licence entry. (2) The `.test` design question below | ADR-031; D28 row |
+| **IANA bootstrap data licence** | Evidence gathered: the registry ("Bootstrap Service Registry for Domain Name Space", RFC 9224) is listed on `iana.org/protocols`; IANA's licensing terms dedicate the Protocol Registries to CC0 1.0; the page does not name `data.iana.org` itself. File fetched 2026-10-09, `publication` 2026-09-30T23:00:03Z, 592 services | The operator's sign-off | This row |
+| **D28 design question** | The corpus's synthetic domains are `.test`, a special-use name (RFC 6761) with no registry and no bootstrap entry. Under ADR-031 their expiry check becomes `inconclusive` in every case, which would breach domscout's 15% gate. **Recommendation:** treat special-use names as "registration expiry does not apply" (not `inconclusive`), and prove expiry with new cases recorded from real registries for real public domains. Also open: a subdomain target needs its registrable domain for RDAP, which needs a PSL (D49, deferred) | Operator decision | D28 row |
+| **D31** | **Done: UNDETERMINED.** Recorded responses are matched over plain http | A live positive needs a test name with CNAME support | D31 row |
+| **Web corpus re-record** | Scheduled for the next time the web lab is up (`python -m corpus.generators.web record`) | The web lab | 2026-10-09 rulings entry |
+| **Value-add backlog** | All PROPOSED; #2–#4 are quick wins | **The operator's senior**: build the quick wins before or after Tool 4b? | `docs/23-value-add-backlog.md` |
+| **D51** customer-facing wording that service hosts see target names (DPDP) | Owed before beta | n/a | D51 row |
+| **Also open** | D49 (PSL, deferred, MPL-2.0), D50 (nit), D43/D46 (email recall/count notes), D23 (no working HTTPS, high priority for 4b/4c), D26 (request cap vs redirects, before beta), D-DS1/D-DS2 (domscout coverage; the operator-domain live runs). Smaller: the CLI table does not render receipts; `scan verify` cannot close `secret-exposed`; ADR-030's limit (other TLS checks still judge a name that does not encode); tls inconclusive at 11.8%, watched against the 15% gate | n/a | Register |
+
+**Canary kit** (operator-only steps; nothing is done until the operator confirms). The fake key is AWS's documented example `AKIAIOSFODNN7EXAMPLE`. If GitHub push protection refuses it on the Pages repo, use `Bearer sp-canary-not-a-real-token-0001`, a `bearer_token` the redactor detects that is not a provider-format secret.
+- **DuckDNS (corpus):**
+  - Set: `https://www.duckdns.org/update?domains=sp-lab-7k3q&token=<YOUR-DUCKDNS-TOKEN>&txt=sp-canary%20deploy-key%3DAKIAIOSFODNN7EXAMPLE&verbose=true`
+  - Clear afterwards: `...&clear=true`
+  - The token is never asked for and never stored. Per DuckDNS's spec, `domains` is the subname only, and the TXT applies to all sub-subdomains.
+  - Confirm: `dig +short TXT sp-lab-7k3q.duckdns.org @1.1.1.1` and `@8.8.8.8`. Both should print `"sp-canary deploy-key=AKIAIOSFODNN7EXAMPLE"`.
+  - A scan of it also reads `_dmarc.duckdns.org` through the tree walk. That is DuckDNS's public record, not ours.
+- **Company domains (showcase), one per domain:**
+  - Name: `sp-canary-secret.<company domain>`. Type TXT, TTL 300. Value: `"sp-canary deploy-key=AKIAIOSFODNN7EXAMPLE"`.
+  - Confirm with the same two `dig` commands.
+  - Evidence goes only to `corpus/crosscheck/showcase/` (gitignored). It is never committed and never made into fixtures.
+- **GitHub Pages (corpus):**
+  - Public repo `ItsMeDebmalya/sp-canary`, Pages from `main` at `/`.
+  - Files: `index.html` (the page, with `<!-- sp-canary --><script>var deployKey = "AKIAIOSFODNN7EXAMPLE";</script>` and a line saying the key is fake), `README.md` (the same statement), and an empty `.nojekyll`.
+  - Confirm: `curl -s https://itsmedebmalya.github.io/sp-canary/ | grep -c AKIAIOSFODNN7EXAMPLE` prints `1`.
+- **After confirmation (ours):**
+  - Scan through the real public resolvers: `scan run email` and `scan run domscout` on the DuckDNS name, and `scan run web` on the Pages URL.
+  - Hand-verify with `dig` and `curl`.
+  - Record the corpus cases from the DuckDNS and Pages runs only.
+  - Tell the operator to clear the records.
+
+**Where to start:** read CLAUDE.md, then this table. Do nothing that needs one of the operator's pending decisions. D28 code waits for both of its decisions.
+
+## Next (historical; superseded by the handoff above)
+
 
 **Watch (no action now):** `tls` runs at **12.3% inconclusive** on its corpus — inside the 15% gate but the closest of any scanner to it (see the `make corpus` table in SPEC.md). A small rise would fail the gate; look at it before the next TLS change.
 
