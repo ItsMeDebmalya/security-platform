@@ -224,6 +224,30 @@ def cap_text(text: str | None, cap: int) -> tuple[str | None, bool]:
     return redact_text(capped)[0], True
 
 
+def cap_prefix(text: str, cap: int, suffix: str = " ... (truncated)") -> str:
+    """Redact, then keep at most `cap` characters from the start, `suffix` included.
+
+    For text shown to a reader (a description, an excerpt), where only the
+    start is useful. Same rule as `cap_text`: redaction first, a cut never
+    falls inside a marker, and the cut text is redacted again. This is web's
+    Tool 4a `_capped`, which had to be fixed for cap-before-redact, moved to
+    core so no scanner writes its own.
+    """
+    redacted, _ = redact_text(text)
+    text = redacted or ""
+    if len(text) <= cap:
+        return text
+    room = cap - len(suffix)
+    limit = room
+    while limit > 0:
+        limit = _outside_marker(text, limit, prefer_left=True)
+        piece = redact_text(text[:limit].rstrip())[0] or ""
+        if len(piece) <= room:
+            return piece + suffix
+        limit -= len(piece) - room
+    return suffix.strip()[:cap]
+
+
 def _outside_marker(text: str, at: int, *, prefer_left: bool) -> int:
     for marker in _ANY_MARKER.finditer(text, max(0, at - 64), min(len(text), at + 64)):
         if marker.start() < at < marker.end():
@@ -303,9 +327,16 @@ def _public_spans(text: str) -> list[tuple[int, int]]:
     return spans
 
 
+_LONG_B64 = re.compile(r"[A-Za-z0-9+=/]{40}")
+"""A bare key run needs 40 base64 characters in a row. Ordinary pages have none,
+so this C-speed check skips the expensive run search for almost every page."""
+
+
 def _strip_bare_runs(text: str, counts: Counts) -> str:
     """Two or more whole base64 lines with no anchor: a key body whose BEGIN and END
     both fell into a truncation gap. Never inside or beside public key material."""
+    if _LONG_B64.search(text) is None and "\\/" not in text:
+        return text
     spans = _public_spans(text)
 
     def cut(run: re.Match[str]) -> str:

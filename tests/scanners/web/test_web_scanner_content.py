@@ -356,22 +356,6 @@ def test_private_key_in_error_page_excerpt_is_never_stored(site):
     _assert_no_key_body(result)
 
 
-def test_unterminated_private_key_is_stripped_to_the_end():
-    from core.evidence import redact_body
-    from scanners.web.scanner import _redacted, _strip_private_keys
-
-    body = "a -----BEGIN PRIVATE KEY-----\nMIIabc\nMIIdef"
-    stripped = _strip_private_keys(body)
-    assert "MIIabc" not in stripped and "MIIdef" not in stripped
-    assert redact_body(stripped) == ("a [redacted]:private_key", ["private_key"])
-    assert _redacted(body) == "a [redacted]:private_key"
-    two = (
-        "-----BEGIN EC PRIVATE KEY-----\nAAAA\n-----END EC PRIVATE KEY-----\nkeep\n"
-        "-----BEGIN OPENSSH PRIVATE KEY-----\nBBBB\n-----END OPENSSH PRIVATE KEY-----"
-    )
-    assert _redacted(two) == "[redacted]:private_key\nkeep\n[redacted]:private_key"
-
-
 # --- Minor 11: the robots description is bounded ----------------------------
 
 
@@ -390,9 +374,14 @@ def test_robots_description_caps_listed_paths(site):
 AWS_KEY = "AKIAIOSFODNN7EXAMPLE"
 
 
-def _record_then_replay(site, tmp_path, **client_kwargs):
+def _record_then_replay(site, tmp_path, *, legacy=False, **client_kwargs):
     """Scan live through core's RecordingHttpBackend, then again from the fixtures it
-    wrote through ReplayHttpBackend - the corpus / `--replay` path, not FakeSite alone."""
+    wrote through ReplayHttpBackend - the corpus / `--replay` path, not FakeSite alone.
+
+    `legacy=True` rewrites every fixture, between the two scans, into what core wrote
+    *before* ADR-028 (BEGIN line replaced, key body kept, then truncated). Core no
+    longer writes such fixtures, but old recordings exist, so replaying them must
+    still store no key (D21)."""
     from core.authz import Scope
     from core.context import ScanContext
     from core.http import HttpClient, RecordingHttpBackend, ReplayHttpBackend
@@ -402,9 +391,24 @@ def _record_then_replay(site, tmp_path, **client_kwargs):
     target = Asset(type="domain", value=site.host)
     results = []
     for backend in (RecordingHttpBackend(tmp_path, site), ReplayHttpBackend(tmp_path)):
+        if legacy and isinstance(backend, ReplayHttpBackend):
+            _rewrite_as_legacy(site, tmp_path, client_kwargs.get("body_cap"))
         http = HttpClient(scope=scope, backend=backend, **client_kwargs)
         results.append(WebScanner().run(target, "light", ScanContext(http=http, scope=scope)))
     return results
+
+
+def _rewrite_as_legacy(site, directory, body_cap):
+    from core.evidence import DEFAULT_BODY_CAP
+    from tests.core.test_redaction_harness import _old_core_capture
+
+    cap = body_cap or DEFAULT_BODY_CAP
+    for path in directory.rglob("*.json"):
+        data = json.loads(path.read_text())
+        raw = site.responses.get(data["url"], site.default)[2]
+        data["body"] = _old_core_capture(raw, cap)
+        data["body_truncated"] = len(raw) > cap
+        path.write_text(json.dumps(data))
 
 
 def test_private_key_body_is_never_stored_on_record_or_replay(site, tmp_path):
@@ -441,8 +445,8 @@ def test_key_straddling_core_truncation_is_never_stored_on_replay(site, tmp_path
     hardened(site)
     body = "x" * 1000 + "\n" + _pem() + "\n" + "y" * 40
     site.serve("https://x.test/", headers=HARDENED, body=body)
-    live, replayed = _record_then_replay(site, tmp_path, body_cap=400)
-    # precondition: the fixture really is headless - key tail and END, no anchor
+    live, replayed = _record_then_replay(site, tmp_path, legacy=True, body_cap=400)
+    # precondition: the legacy fixture really is headless - key tail and END, no anchor
     bodies = " ".join(b or "" for b in _fixture_bodies(tmp_path))
     assert "END RSA PRIVATE KEY" in bodies and "private_key" not in bodies
     for result in (live, replayed):
@@ -452,49 +456,6 @@ def test_key_straddling_core_truncation_is_never_stored_on_replay(site, tmp_path
 
 def _fixture_bodies(directory):
     return [json.loads(p.read_text()).get("body") for p in directory.rglob("*.json")]
-
-
-def test_strip_cuts_unterminated_blocks_to_the_end_and_keeps_text_after_end():
-    from scanners.web.scanner import _redacted, _strip_private_keys
-
-    # already clean: one marker, nothing after it
-    assert _strip_private_keys("[redacted]:private_key") == "[redacted]:private_key"
-    assert _redacted("[redacted]:private_key") == "[redacted]:private_key"
-    # replayed, terminated: body and END line go, the text after END stays
-    replayed = "[redacted]:private_key\nMIIabc\nMIIdef\n-----END PRIVATE KEY-----\nThe end."
-    assert _redacted(replayed) == "[redacted]:private_key\nThe end."
-    # unterminated (BEGIN or marker): cut to the end of the text - a key has no safe
-    # partial boundary, so the text after it is over-redacted on purpose
-    bare = "a [redacted]:private_key\nMIIabc\nMIIdef\n</pre>\n<p>Contact us at the desk.</p>"
-    assert _redacted(bare) == "a [redacted]:private_key"
-    assert _redacted("a -----BEGIN PRIVATE KEY-----<br>\nMIIabc<br>\nrest") == (
-        "a [redacted]:private_key"
-    )
-    # a JSON-escaped key (service-account file), terminated and unterminated
-    escaped = (
-        '{"k": "-----BEGIN PRIVATE KEY-----\\nMIIabc\\nMIIdef\\n-----END PRIVATE KEY-----\\n"}'
-    )
-    assert _redacted(escaped) == '{"k": "[redacted]:private_key\\n"}'
-    escaped_cut = '{"k": "[redacted]:private_key\\nMIIabc\\nMIIdef", "n": 1}'
-    assert _redacted(escaped_cut) == '{"k": "[redacted]:private_key'
-    # an orphan END line (BEGIN lost to truncation): its key lines go, prose stays
-    orphan = (
-        "intro line here\n... [9 bytes truncated] ...\nIIabc\nMIIdef\n"
-        "-----END PRIVATE KEY-----\nok, done."
-    )
-    assert (
-        _redacted(orphan)
-        == "intro line here\n... [9 bytes truncated] ...\n[redacted]:private_key\nok, done."
-    )
-    # ... with <br>, entity and \/ encodings; a prose line above is given back whole
-    for sep in ("<br>\n", "<BR />", "&#10;", "&#xD;&#xA;", "\\n"):
-        text = f"<p>see below</p>{sep}ab\\/cd{sep}MIIdef{sep}-----END RSA PRIVATE KEY-----{sep}kept"
-        assert _redacted(text) == f"<p>see below</p>{sep}[redacted]:private_key{sep}kept", sep
-    words = "some prose words\nMIIabc\n-----END PRIVATE KEY-----\nkept"
-    assert _redacted(words) == "some prose words\n[redacted]:private_key\nkept"
-    # not idempotent by design: a second pass reads a marker as an unterminated block,
-    # so text already redacted is never stripped again (_emit's pre_redacted)
-    assert _redacted(_redacted(replayed)) == "[redacted]:private_key"
 
 
 def _robots_straddle_body():
@@ -575,9 +536,9 @@ def test_key_body_with_no_surviving_anchor_is_never_stored_on_replay(site, tmp_p
     body = head + key + tail
     assert len(body) > DEFAULT_BODY_CAP
     site.serve("https://x.test/", headers=HARDENED, body=body)
-    live, replayed = _record_then_replay(site, tmp_path)
+    live, replayed = _record_then_replay(site, tmp_path, legacy=True)
     fixture = " ".join(b or "" for b in _fixture_bodies(tmp_path))
-    # precondition: the scenario is real - key lines survive, every anchor is gone
+    # precondition: the legacy fixture is real - key lines survive, every anchor is gone
     assert lines[-10] in fixture
     assert "BEGIN" not in fixture and "PRIVATE KEY" not in fixture and "private_key" not in fixture
     for result in (live, replayed):
@@ -586,50 +547,6 @@ def test_key_body_with_no_surviving_anchor_is_never_stored_on_replay(site, tmp_p
         for line in lines:
             assert line not in dumped and line[-24:] not in dumped, line
         assert "ordinary words in a paragraph" in dumped  # the page text survives
-
-
-def test_bare_base64_runs_are_stripped_but_single_lines_are_not():
-    from scanners.web.scanner import _redacted, _strip_private_keys
-
-    lines = _long_key_lines(4)
-    # a run of 2+ lines (LF, CRLF, indented, JSON-escaped) is key material
-    assert _strip_private_keys(f"a\n{lines[0]}\n{lines[1]}\nb") == "a\n[redacted]:private_key\nb"
-    crlf = f"a\r\n  {lines[0]}  \r\n{lines[1]}\r\nb"
-    assert _strip_private_keys(crlf) == "a\r\n[redacted]:private_key\r\nb"
-    escaped = f'{{"k": "{lines[0]}\\n{lines[1]}\\n{lines[2]}", "n": 1}}'
-    assert _strip_private_keys(escaped) == '{"k": "[redacted]:private_key", "n": 1}'
-    padded = f"{lines[0]}\n{lines[1][:60]}==\n"
-    assert _strip_private_keys(padded) == "[redacted]:private_key\n"
-    # a long single-line data: URI and ordinary prose are untouched
-    data_uri = (
-        '<img src="data:image/png;base64,' + "".join(_long_key_lines(40)) + '">\n'
-        "<p>An ordinary paragraph of text, nothing secret here.</p>\n"
-    )
-    assert _strip_private_keys(data_uri) == data_uri
-    assert _redacted(data_uri) == data_uri
-    # one 64-character base64 line on its own is not a run
-    single = f"<p>hash</p>\n{lines[0]}\n<p>more prose</p>"
-    assert _strip_private_keys(single) == single
-    # lines outside 40-100 columns are not key lines
-    short_run = f"{lines[0][:30]}\n{lines[1][:30]}\n"
-    assert _strip_private_keys(short_run) == short_run
-
-
-def test_bare_run_stripping_is_linear():
-    import time
-
-    from scanners.web.scanner import _strip_private_keys
-
-    line = _long_key_lines(1)[0]
-    for text in (
-        (line + " x\n") * 4000,
-        ("A" * 59 + "\n") * 4000,
-        "A" * 262_144,
-        ("\n" + "A" * 77) * 3000,
-    ):
-        started = time.monotonic()
-        _strip_private_keys(text)
-        assert time.monotonic() - started < 1.0
 
 
 # --- Fix round 3: unterminated keys cut to the end; HTML/JSON-escaped separators --
@@ -662,10 +579,10 @@ def _assert_no_lines(result, lines):
     assert "PRIVATE KEY-----" not in dumped
 
 
-def _scan_both(tmp_path, body, *, path="/", status=200, **client_kwargs):
+def _scan_both(tmp_path, body, *, path="/", status=200, legacy=False, **client_kwargs):
     site = hardened(FakeSite())
     site.serve(f"https://x.test{path}", status=status, headers=HARDENED, body=body)
-    return _record_then_replay(site, tmp_path, **client_kwargs)
+    return _record_then_replay(site, tmp_path, legacy=legacy, **client_kwargs)
 
 
 KEY = _key_lines()
@@ -702,8 +619,15 @@ def test_unterminated_br_key_on_the_404_page_is_never_stored(tmp_path):
         f"<pre>{_pem_with(KEY, '<br>', end=False)}\nTraceback (most recent call last):\n"
         '  File "/app/s.py", line 9\n</pre>'
     )
-    for result in _scan_both(tmp_path, trace, path=PROBE, status=500):
-        assert by_id(result, "web-error-disclosure")
+    live, replayed = _scan_both(tmp_path, trace, path=PROBE, status=500)
+    # Live, the check reads the raw page, so the traceback after the key is seen.
+    assert by_id(live, "web-error-disclosure")
+    # On replay it is not: core cuts an unterminated key to the end of the text in
+    # the fixture too (ADR-028: a key has no safe partial boundary), so the
+    # traceback is not in what replay serves. The secret is still reported.
+    assert not by_id(replayed, "web-error-disclosure")
+    assert any(f.location == PROBE for f in by_id(replayed, "web-secret-in-response"))
+    for result in (live, replayed):
         _assert_no_lines(result, KEY)
 
 
@@ -738,7 +662,7 @@ def test_terminated_key_straddling_a_small_gap_is_never_stored(tmp_path, cap, en
 def test_headless_unterminated_run_of_any_common_width_is_never_stored(tmp_path, width):
     lines = _key_lines(width=width)
     body = "x" * 900 + "\n" + _pem_with(lines, end=False) + "\n<p>tail text</p>"
-    live, replayed = _scan_both(tmp_path, body, body_cap=1200)
+    live, replayed = _scan_both(tmp_path, body, legacy=True, body_cap=1200)
     fixture = " ".join(b or "" for b in _fixture_bodies(tmp_path))
     assert "private_key" not in fixture and "BEGIN" not in fixture  # really headless
     for result in (live, replayed):
@@ -808,23 +732,21 @@ _BEGIN, _END = "-----BEGIN RSA PRIVATE KEY-----", "-----END RSA PRIVATE KEY-----
     ],
 )
 def test_orphan_end_after_the_truncation_marker_never_stores_key_lines(tmp_path, keytext):
-    live, replayed = _scan_both(tmp_path, _tail_straddle(keytext))
+    live, replayed = _scan_both(tmp_path, _tail_straddle(keytext), legacy=True)
     fixture = " ".join(b or "" for b in _fixture_bodies(tmp_path))
     assert "bytes truncated" in fixture and "private_key" not in fixture  # BEGIN in the gap
     assert "END RSA PRIVATE KEY" in fixture  # and END survives in the tail
     for result in (live, replayed):
         _assert_no_lines(result, KEY)
     body = only(replayed, "web-secret-in-response").evidence[0].test.response.body
-    assert "bytes truncated] ...\n[redacted]:private_key" in body  # the cut stays visible
+    assert "bytes truncated] ...\n[redacted:private_key]" in body  # the cut stays visible
     assert body.endswith("y" * 100)  # text after the END line is kept
 
 
-def test_truncation_marker_cut_needs_no_anchor_between():
-    from scanners.web.scanner import _strip_private_keys
-
-    gap = "\n... [123 bytes truncated] ...\n"
-    text = "head" + gap + "odd<x>MIIabc odd<x>MIIdef " + _END + " after"
-    assert _strip_private_keys(text) == "head" + gap + "[redacted]:private_key after"
-    # a complete block after the marker is cut on its own; the prose between stays
-    text = "head" + gap + "prose stays " + _BEGIN + "\nMIIabc\n" + _END + " after"
-    assert _strip_private_keys(text) == "head" + gap + "prose stays " + _BEGIN + " after"
+def test_core_now_records_fixtures_with_no_key_material(tmp_path):
+    """D21: the fixture on disk is clean, not merely the evidence built from it."""
+    _scan_both(tmp_path, "x" * 1000 + "\n" + _pem() + "\n" + "y" * 40, body_cap=400)
+    fixture = " ".join(b or "" for b in _fixture_bodies(tmp_path))
+    assert "END RSA PRIVATE KEY" not in fixture
+    for line in _pem().splitlines()[1:-1]:
+        assert line not in fixture and line[-24:] not in fixture

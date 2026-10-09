@@ -161,7 +161,7 @@ Then `make corpus`. Then `uv run python -m cli.corpus --update-baseline` once th
 - [ ] any new dependency is in `tools/registry.yaml` with a licence
 - [ ] `scanner_version` bumped if results changed
 - [ ] `state` is derived, not hand-set
-- [ ] evidence is redacted and replayable
+- [ ] evidence is redacted and replayable. Core redacts everything it stores (ADR-028), so do not write your own redactor. To shorten text, use `core.redaction.cap_text` or `cap_prefix`, never a raw slice (`text[:n]`), which can split a secret below what redaction recognises. A check reads raw data; it never decides from stored, redacted text
 - [ ] nothing sends a state-changing request to a target
 
 ## 8. Standard mode
