@@ -87,7 +87,7 @@ Live basis: 13 real hosts, every claim hand-verified with `curl`, cross-checked 
 
 ---
 
-## email — Email Security Scanner (Tool 1, v1.4.0)
+## email — Email Security Scanner (Tool 1, v1.4.1)
 
 **DMARC is read under RFC 9989 first** (v1.4.0). Where RFC 7489, still deployed, gives a different verdict, the finding states both and is `suspected`, at the severity of the worst case (ADR-017). **Which DMARC record applies** (v1.3.0) is found by RFC 9989's DNS tree walk (§4.10). A subdomain inherits its parent's `sp=` (or `np=`) policy. An inherited policy is stated under both RFCs and held at `suspected`, because RFC 7489 receivers choose with a Public Suffix List we do not consult (D49). Several DMARC records at one name are all discarded, as both RFCs require.
 

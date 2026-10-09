@@ -1303,6 +1303,33 @@ The five run-2 false claims are gone. `make rfc-check` no longer flags email; tl
 
 **The operator's ERP host** is replaced with `<operator ERP host>` in the current text of five decision-record passages: ADR-016's market note, the testing runbook, and three lines of the 2026-09-02 competitor entry. Their meaning is unchanged. The authorisation row and its evidence file keep the real name, because `core/authz.py` uses them.
 
+## 2026-10-09 · Email v1.4.1 — independent review of the RFC 9989 work: 11 blockers found and fixed over four passes
+
+**Why a review.** The operator ordered it before anything else builds on PR #17, which reclassifies every DMARC record and rests on one reading of RFC 9989. The same standard as D39: an independent reviewer checking the implementation against the RFC text itself (RFC 9989 and RFC 7489 line citations for every finding), not against the code's comments.
+
+| Pass | Blockers | What they were |
+|---|---|---|
+| 1 (PR #17 as merged) | **6** | B1: a wrong-case record beside a valid one was treated as "two records, all discarded", producing a false confirmed spoofing claim. B2: an ignored record was called "unprotected" when an ancestor's applies. **B3: `p=reject` with `pct` was read as "the rest delivered as p=none"; RFC 7489 §6.6.4 quarantines it.** B4: a malformed tag hid the RFC 7489 risk of a misplaced `p=`. B5: inherited enforcing policies cleared where RFC 7489 provably differs. B6: `np` reported on a record that made-up subdomains never get |
+| 2 (my fixes) | **3**, introduced by the fixes | N1: a confirmed reason contradicted itself on `t=y`. N2: the RFC 7489 reason named the wrong defect. N3: a confirmed finding asserted an RFC 7489 reading we cannot know |
+| 3 | **2**, introduced by the fixes | A confirmed reason on aajtak.in, a real recording, credited RFC 9989 with "no processing" for an absent `p`. An inherited invalid `np` attributed RFC 9989's rule to RFC 7489 |
+| 4 | **0** | One should-fix, already present in v1.4.0, fixed before merge: the RFC 7489 reading of an absent `p` with a valid `rua` |
+
+Six should-fixes from pass 1 (S1–S6) and a pass-2 should-fix (N4) were fixed too. Two of the six were only partly fixed until pass 3.
+
+**The lesson.** Five of the eleven blockers were introduced by fixes, and four of those five share one shape: **a sentence that names both RFCs, reused in a place where only one applies.** The fix that held was structural: each RFC's half of a dual-reading sentence comes from that RFC's own posture (`_rfc7489_only_reason`, `_dual_reason`). For the first time in this project, a fix needed its own independent review, and then a review of the fix to the fix.
+
+**Kept open, by agreement with the reviewer:**
+- **D49 (should-fix):** a record at a multi-label public suffix with no `psd` tag, e.g. `co.uk` publishing `p=reject`, makes a subdomain clear silently, where an RFC 7489 receiver would find no record. It cannot be decided from the tree walk. The fix is a Public Suffix List snapshot; the Mozilla list is MPL-2.0, which needs an ADR-003 check and an operator sign-off.
+- **N5 (nit):** the ancestor walk used to decide whether `np` applies is not re-read through the second resolver, and its answers are not in the evidence.
+
+**Gates.** 31 new tests across the four passes. Three older tests that encoded B3 were rewritten to `p=quarantine`, and `dmarc-partial-rollout` no longer expects `spoofing-possible`. `make test` 1299 passed; `make corpus`: email 1.000 / 1.000, 380 checks, 26 claims. Seven real run-2 recordings replay as hand-verified.
+
+**Screening pass for `t=y` / `np=` (operator-approved, nothing run against any target yet):**
+- **Pool and method:** 7,967 domains, the same as before; 5,075 publish one DMARC record.
+- **`t=y`:** one real positive, **grafana.com** (`p=quarantine; t=y`), identical at three resolvers.
+- **Weaker `np=`:** none. 7 domains use `np=`, all at least as strict as their subdomain policy.
+- **Status:** grafana.com awaits operator approval before any scan; `dmarc-np-weaker` stays UNDETERMINED.
+
 ## Next
 
 **Watch (no action now):** `tls` runs at **12.3% inconclusive** on its corpus — inside the 15% gate but the closest of any scanner to it (see the `make corpus` table in SPEC.md). A small rise would fail the gate; look at it before the next TLS change.

@@ -1628,3 +1628,12 @@ def test_t3_the_legacy_reason_does_not_repeat_itself(run_scan):
     text = by_id["spoofing-possible"].description
 
     assert "for that: valid under" not in text
+
+
+def test_t4_an_absent_p_with_a_valid_rua_states_rfc_7489_correctly(run_scan):
+    """RFC 7489 6.6.3 step 6: with a valid rua, act as if p=none."""
+    by_id = _ids(run_scan, "x.example", {"_dmarc.x.example": ["v=DMARC1; rua=mailto:d@x.example"]})
+    text = by_id["spoofing-possible"].description
+
+    assert "RFC 7489 applied no DMARC processing" not in text
+    assert "p=none" in text

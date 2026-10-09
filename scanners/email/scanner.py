@@ -1989,8 +1989,13 @@ def _dmarc_reason(dmarc: DmarcRecord | None, posture: str, inherited: bool) -> s
         )
     if dmarc is not None and dmarc.p_absent:
         return (
-            "the DMARC record has no p= tag, which RFC 9989 treats as p=none (RFC 7489 applied "
-            "no DMARC processing), so nothing asks receivers to act"
+            "the DMARC record has no p= tag, which RFC 9989 treats as p=none (RFC 7489 "
+            + (
+                "also acts as if it said p=none, because it carries a valid rua"
+                if has_valid_rua(dmarc.tags)
+                else "applied no DMARC processing"
+            )
+            + "), so nothing asks receivers to act"
         )
     if dmarc is not None and dmarc.testing and dmarc.policy == "quarantine":
         return "the record sets p=quarantine with t=y, which RFC 9989 receivers apply as none"
