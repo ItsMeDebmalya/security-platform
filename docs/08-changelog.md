@@ -522,3 +522,14 @@ Then restore the entry-point lines in `CLAUDE.md` and `SPEC.md`, and the revert 
 
 **Revert.** Revert the merge commit. The stopgap returns, and `idna` is transitive again.
 
+## v4.0-pre.12 — ADR-031: service hosts (2026-10-10)
+
+**What changed.** A decision only; there is no code yet.
+- Service hosts are read-only public endpoints, computed per target.
+- The RDAP bootstrap (RFC 9224) is vendored, with a 90-day freshness limit, and rdap.org is dropped.
+- An unfollowed redirect is reported as what happened.
+- The confidentiality of target names sent to service hosts is stated, and ledgered as D51.
+- The canary policy for secret checks is in the ledger.
+
+**Revert.** Delete ADR-031. Nothing implements it yet.
+
