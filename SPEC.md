@@ -410,7 +410,7 @@ Verified against the repo and `make corpus` (2026-10-07) — see the run at the 
 | A4 Domain & Subdomain Enum (`domscout`) | **Shipped (Light) v1.1.0 — live-verified on v1.0.0; kinetrix+coverage owed** | precision ≥0.95, recall ≥0.80, inconc ≤0.15 | 1.000 / 1.000, 58 checks, **1 claim**, PASS (v1.1.0) |
 | A5 Deface Monitoring | Not built | not yet set | — |
 | A6 API Scanner | Not built | not yet set | — |
-| A7 Email Security | **Shipped** | precision ≥0.99, recall ≥0.95, inconc ≤0.15 | 1.000 / 1.000, 421 checks, 30 claims (v1.5.0; corrected 2026-10-09, the row still showed v1.4.0's 380/26 although main gave 400/29), 0.5% inconc, PASS. Live (run 2): 0.965 over 144 claims, before D44/D45 were fixed. **Not quotable: corpus-validated, live-unverified (D35)** |
+| A7 Email Security | **Shipped** | precision ≥0.99, recall ≥0.95, inconc ≤0.15 | 1.000 / 1.000, 442 checks, 30 claims (v1.5.0; corrected 2026-10-09, the row still showed v1.4.0's 380/26 although main gave 400/29), 0.5% inconc, PASS. Live (run 2): 0.965 over 144 claims, before D44/D45 were fixed. **Not quotable: corpus-validated, live-unverified (D35)** |
 | A8 Container Scanner | Not built | not yet set | — |
 | A9 Supply Chain Scanner | Not built | not yet set | — |
 | A10 Cloud CSPM | Not built | not yet set | — |

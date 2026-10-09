@@ -306,6 +306,8 @@ class HttpClient:
         self._ratelimit = ratelimit
         self._scan_id = scan_id
         self._org_id = org_id
+        self._exposures: Any = None
+        """The scan's `core.exposure.ExposureLog`, wired in by `ScanContext`."""
         # `transport` (an `httpx.MockTransport` in tests) only makes sense for
         # the default live backend; a caller supplying its own `backend`
         # (Recording/Replay) owns its own transport concerns.
@@ -356,13 +358,17 @@ class HttpClient:
                 latency_ms=raw.elapsed_ms,
             )
 
-        return CapturedResponse(
+        response = CapturedResponse(
             status_code=raw.status_code,
             text=raw.text,
             headers=dict(raw.headers),
             captured=self._capture(raw),
             url=raw.url,
         )
+        if self._exposures is not None:
+            # ADR-029: every public capture is seen, cited by a finding or not
+            self._exposures.observe_http(response.url, response.captured)
+        return response
 
     def _capture(self, raw: RawHttpResponse) -> dict[str, Any]:
         if raw.redactions is not None:

@@ -76,6 +76,11 @@ servfail: []
 secret-in-txt:
   - { check_id: spf-too-permissive, location: "$" }
 
+# Review of ADR-029: the same key in an otherwise clean zone. No finding cites
+# the root TXT answer, so the scan's exposure log is what reports it:
+#   secret-exposed@dns:corpus-secret2.example/TXT (suspected)
+secret-in-txt-clean: []
+
 # icicibank.com: 8.8.8.8 (primary here) served the TXT set without SPF. The SPF
 # record exists (1.1.1.1, 9.9.9.9, and 8.8.8.8 on retry), and DMARC is p=reject,
 # so spf-missing and spoofing-possible are false and must not be claimed. The

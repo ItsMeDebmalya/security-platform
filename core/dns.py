@@ -307,6 +307,8 @@ class DnsClient:
         self._ratelimit = ratelimit
         self._scan_id = scan_id
         self._org_id = org_id
+        self._exposures: Any = None
+        """The scan's `core.exposure.ExposureLog`, wired in by `ScanContext`."""
         self._cache: dict[tuple[str, str, str | None], DnsResponse] = {}
         self._wildcard_probes: dict[tuple[str, str], DnsResponse] = {}
 
@@ -333,6 +335,9 @@ class DnsClient:
         if self._cost is not None:
             self._cost.record_request()
         self._cache[key] = response
+        if self._exposures is not None:
+            # ADR-029: every fresh public answer is seen, cited by a finding or not
+            self._exposures.observe_dns(response)
         return response
 
     def second_resolver(self) -> str | None:

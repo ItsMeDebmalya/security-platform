@@ -43,6 +43,7 @@ from core.measurement import (
 )
 from core.models import Asset, ScanResult
 from core.registry import discover
+from core.scanner import BaseScanner
 from core.testssl import ReplayTestsslClient, StubTestsslClient
 from core.tls import MissingHandshakeError, ReplayTlsBackend, TlsClient
 
@@ -71,6 +72,15 @@ def _load(path: Path) -> Any:
 
 
 def _run_case(scanner_name: str, case: dict[str, Any]) -> ScanResult:
+    scanner, target, ctx = _case_context(scanner_name, case)
+    return scanner.run(target, case.get("mode", "light"), ctx)
+
+
+def _case_context(
+    scanner_name: str, case: dict[str, Any]
+) -> tuple[BaseScanner, Asset, ScanContext]:
+    """The scanner, target and replay context for one case (the ADR-029 contract
+    test reads the context's exposure log after the run)."""
     scanner = discover().get(scanner_name)()
     target = Asset(**case["target"])
     fixtures = ROOT / case["fixtures"]
@@ -104,7 +114,7 @@ def _run_case(scanner_name: str, case: dict[str, Any]) -> ScanResult:
         assets=seed_asset_graph(case.get("seed_assets", []) or []),
         progress=lambda message, fraction: None,
     )
-    return scanner.run(target, case.get("mode", "light"), ctx)
+    return scanner, target, ctx
 
 
 def _score(

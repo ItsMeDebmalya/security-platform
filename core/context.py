@@ -19,6 +19,7 @@ from core.assetgraph import AssetGraph
 from core.authz import Scope
 from core.cost import CostMeter
 from core.dns import DnsClient
+from core.exposure import ExposureLog
 from core.http import HttpClient
 from core.killswitch import KillSwitch
 from core.ratelimit import ConcurrencyCap, RateLimiter
@@ -104,6 +105,8 @@ class ScanContext:
     killswitch: KillSwitch = field(default_factory=KillSwitch)
     cost: CostMeter = field(default_factory=CostMeter)
     progress: ProgressReporter = _noop_progress
+    exposures: ExposureLog = field(default_factory=ExposureLog)
+    """ADR-029: every public capture this scan made, for `secret-exposed`."""
 
     def __post_init__(self) -> None:
         """Wire the ambient services into the clients we were handed.
@@ -125,6 +128,7 @@ class ScanContext:
             self._adopt(client, "killswitch", self.killswitch)
             self._adopt(client, "scan_id", self.scan_id, placeholder="local")
             self._adopt(client, "org_id", self.org_id, placeholder="org_internal")
+            self._adopt(client, "exposures", self.exposures)
 
     @staticmethod
     def _adopt(client: object, name: str, value: object, placeholder: object = None) -> None:

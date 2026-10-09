@@ -157,6 +157,7 @@ class _Scan:
             target=self.target,
             org_id=self.ctx.org_id,
             scan_id=self.ctx.scan_id,
+            log=self.ctx.exposures,
         )
         self.findings.extend(exposures)
         self.checks.extend(exposure_check_runs(exposures))

@@ -238,6 +238,13 @@ CASES: dict[str, tuple[str, object, str]] = {
         ),
         "standard",
     ),
+    # Review of ADR-029: the same key in an otherwise clean zone. No other
+    # finding cites the root TXT answer, so only the scan's exposure log sees it.
+    "secret-in-txt-clean": (
+        "corpus-secret2.example",
+        good("corpus-secret2.example", extra_txt=("deploy-key=AKIAIOSFODNN7EXAMPLE",)),
+        "standard",
+    ),
 }
 
 

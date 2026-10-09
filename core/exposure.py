@@ -22,7 +22,9 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from core.confidence import ConfidenceEngine, Signal
+from core.dns import DnsResponse
 from core.models import Asset, CheckRun, Finding, ScanResult
+from core.redaction import redact_text
 
 CHECK_ID = "secret-exposed"
 REPORTING_CHECKS = frozenset({CHECK_ID, "web-secret-in-response"})
@@ -117,19 +119,118 @@ def reported_resources(findings: Iterable[Finding]) -> set[str]:
         if finding.check_id == CHECK_ID:
             covered.add(finding.location)
         elif finding.check_id in REPORTING_CHECKS:
+            # It reported a credential at the page it tested. The page's own
+            # receipts may be missing (a fixture recorded before ADR-029), so the
+            # tested URL counts, not only a receipt on it.
             for item in finding.evidence:
                 covered.update(exposed_resources(item, finding.target, sides=("test",)))
+                if item.kind == "http_pair":
+                    covered.add(item.test.request.url)
     return covered
 
 
-def _all_exposures(findings: Iterable[Finding], target: Asset) -> dict[str, tuple[set[str], Any]]:
+class ExposureLog:
+    """Every public capture a scan made, kept for one scan, in memory.
+
+    Detection must not depend on an unrelated check keeping the evidence (review
+    of ADR-029): a secret in the TXT record of an otherwise clean zone is cited
+    by no finding. `ScanContext` wires this log into its HTTP and DNS clients, so
+    it sees every response and every fresh DNS answer.
+
+    It records only what is needed to report an exposure: the resource, the
+    credential kinds, and how to build redacted evidence for it. A capture
+    recorded before ADR-029 has no receipts, so its `redactions` kinds are used;
+    a kind is enough to report, and no count is invented.
+    """
+
+    def __init__(self) -> None:
+        self._seen: dict[str, tuple[set[str], Any]] = {}
+
+    def observe_http(self, url: str, captured: dict[str, Any]) -> None:
+        kinds = {
+            str(r.get("kind"))
+            for r in captured.get("redaction_receipts") or []
+            if str(r.get("where", "")).startswith("response.")
+        }
+        if not captured.get("redaction_receipts"):
+            # no receipts at all: a capture recorded before ADR-029
+            kinds |= set(captured.get("redactions") or [])
+        kinds &= EXPOSURE_KINDS
+        if kinds:
+            clean_url = redact_text(url)[0] or url
+            self._add(clean_url, kinds, lambda: _http_evidence(clean_url, captured))
+
+    def observe_dns(self, response: DnsResponse) -> None:
+        kinds: set[str] = set()
+        for record in response.records:
+            kinds |= set(redact_text(record, heuristics=False)[1])
+        kinds &= EXPOSURE_KINDS
+        if kinds:
+            resource = f"dns:{response.name}/{response.rrtype}"
+            self._add(resource, kinds, lambda: _dns_evidence(response))
+
+    def _add(self, resource: str, kinds: set[str], build: Any) -> None:
+        known, first = self._seen.get(resource, (set(), build))
+        self._seen[resource] = (known | kinds, first)
+
+    def exposed(self, target: Asset) -> dict[str, tuple[set[str], Any]]:
+        """Resource -> (kinds, evidence builder), for resources the target served."""
+        out = {}
+        for resource, entry in self._seen.items():
+            name = (
+                resource[4:].rsplit("/", 1)[0]
+                if resource.startswith("dns:")
+                else (urlsplit(resource).hostname or "")
+            )
+            if _within(name, target):
+                out[resource] = entry
+        return out
+
+
+def _http_evidence(url: str, captured: dict[str, Any]) -> Any:
+    from core.evidence import capture_http_pair
+
+    request = {"method": "GET", "url": url, "headers": {}}
+    return capture_http_pair(
+        label=f"response from {url}",
+        control_request=request,
+        control_response=captured,
+        test_request=request,
+        test_response=captured,
+        delta={"note": "one response; an exposure needs no control: it is what was served"},
+    )
+
+
+def _dns_evidence(response: DnsResponse) -> Any:
+    from core.evidence import dns_evidence
+
+    return dns_evidence(
+        label=f"{response.rrtype} at {response.name}",
+        test=response,
+        control=None,
+        control_rationale=(
+            "an exposure needs no control: the record is what the zone publishes to anyone"
+        ),
+    )
+
+
+def _all_exposures(
+    findings: Iterable[Finding], target: Asset, log: ExposureLog | None = None
+) -> dict[str, tuple[set[str], Any]]:
     out: dict[str, tuple[set[str], Any]] = {}
+    if log is not None:
+        for resource, (kinds, build) in log.exposed(target).items():
+            out[resource] = (set(kinds), build)
     for finding in findings:
         for item in finding.evidence:
             for resource, kinds in exposed_resources(item, target).items():
                 known, first = out.get(resource, (set(), item))
                 out[resource] = (known | kinds, first)
     return out
+
+
+def _evidence_of(first: Any) -> Any:
+    return first() if callable(first) else first
 
 
 def secret_exposure_findings(
@@ -140,13 +241,17 @@ def secret_exposure_findings(
     target: Asset,
     org_id: str,
     scan_id: str,
+    log: ExposureLog | None = None,
 ) -> list[Finding]:
-    """One `secret-exposed` finding per exposed resource not already reported."""
+    """One `secret-exposed` finding per exposed resource not already reported.
+
+    Pass the context's `log` (`ctx.exposures`), so captures no finding cites are
+    seen too."""
     covered = reported_resources(findings)
     result = ConfidenceEngine().combine([_SIGNAL])
     now = datetime.now(UTC)
     out: list[Finding] = []
-    for resource, (kinds, item) in sorted(_all_exposures(findings, target).items()):
+    for resource, (kinds, item) in sorted(_all_exposures(findings, target, log).items()):
         if resource in covered:
             continue
         names = ", ".join(sorted(kinds))
@@ -164,7 +269,7 @@ def secret_exposure_findings(
                 confidence_provisional=result.provisional,
                 detection_methods=result.detection_methods,
                 validation={"attempted": False, "outcome": "not_applicable"},
-                evidence=[item],
+                evidence=[_evidence_of(item)],
                 description=(
                     f"Text matching the credential pattern(s) {names} was served at "
                     f"{resource}. It was removed when captured and is not stored; the "
@@ -182,9 +287,11 @@ def secret_exposure_findings(
     return out
 
 
-def unreported_exposures(result: ScanResult) -> list[str]:
-    """Exposed resources in `result` that no reporting check covers (the contract)."""
-    exposed = _all_exposures(result.findings, result.target)
+def unreported_exposures(result: ScanResult, log: ExposureLog | None = None) -> list[str]:
+    """Exposed resources that no reporting check covers (the contract).
+
+    With the scan's `log`, every public capture counts, not only cited evidence."""
+    exposed = _all_exposures(result.findings, result.target, log)
     return sorted(set(exposed) - reported_resources(result.findings))
 
 

@@ -483,7 +483,8 @@ Then restore the entry-point lines in `CLAUDE.md` and `SPEC.md`, and the revert 
 - **Scanners:**
   - `email` v1.5.0 and `domscout` v1.1.0 call the helper. Each gains `secret-exposed`, UNDETERMINED with no real positive yet.
   - `web` v1.0.5 passes the capture's receipts into its evidence. It does not call the helper, because `web-secret-in-response` reports the same thing.
-- **Corpus:** two new cases, `email/secret-in-txt` and `domscout/takeover-secret`, each holding AWS's documented example key. The gates still pass: email has 421 checks and 30 claims, domscout 58 checks and 1 claim.
+- **Corpus:** three new cases, `email/secret-in-txt`, `email/secret-in-txt-clean` and `domscout/takeover-secret`, each holding AWS's documented example key. The gates still pass: email has 442 checks and 30 claims, domscout 58 checks and 1 claim.
+- **Review fixes:** side-dict keys are redacted again, and a scan's `ExposureLog` (`ScanContext.exposures`) sees every public capture, not only cited evidence.
 - **Tests:** `tests/core/test_redaction_receipts.py` and `tests/contract/test_secret_exposure_contract.py`.
 
 **Revert.** Revert the merge commit. Evidence stored with receipts stays valid against the old schema only if the field is dropped, so a revert also needs a migration that strips `redaction_receipts`.

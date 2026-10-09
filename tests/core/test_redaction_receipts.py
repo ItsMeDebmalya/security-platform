@@ -389,3 +389,97 @@ def test_a_response_with_its_capture_receipts_is_not_counted_twice():
         ("aws_access_key_id", 1, "control.response.body"),
         ("aws_access_key_id", 1, "test.response.body"),
     }
+
+
+# --- review of e6eaa45 ------------------------------------------------------------
+
+
+def test_secrets_in_the_keys_of_a_free_form_side_are_still_redacted():
+    """BLOCKER: ADR-028 redacts evidence however it is built, dict keys included."""
+    from core.models import Evidence
+
+    evidence = Evidence.model_validate(
+        {
+            "kind": "tls_handshake",
+            "label": "l",
+            "captured_at": "2026-10-09T00:00:00Z",
+            "control_rationale": "r",
+            "observed_at": "2026-10-09T00:00:00Z",
+            "test": {f"banner {AWS}": "x", GHP: "y"},
+            "control": {AWS: 1},
+        }
+    )
+    dumped = evidence.model_dump_json()
+
+    assert AWS not in dumped and GHP not in dumped
+    got = _receipts(r.model_dump() for r in evidence.redaction_receipts)
+    assert ("aws_access_key_id", 1, "test.data") in got
+    assert ("aws_access_key_id", 1, "control.data") in got
+
+
+def _ctx(handler=None, answers=None):
+    from core.context import ScanContext
+    from core.dns import DnsClient, FakeResolver
+
+    kwargs = {}
+    if handler is not None:
+        kwargs["http"] = _client(handler)
+    if answers is not None:
+        kwargs["dns"] = DnsClient(resolver=FakeResolver(answers), resolvers=["1.1.1.1"])
+    return ScanContext(**kwargs)
+
+
+def test_the_scan_context_logs_every_public_capture_whether_or_not_a_finding_cites_it():
+    ctx = _ctx(
+        handler=_site(f"a {AWS}"),
+        answers={
+            (HOST, "TXT"): _dns(HOST, [f"k={GHP}"]),
+            ("_x.other", "TXT"): _dns("_x.other", [AWS]),
+        },
+    )
+    ctx.http.get(f"https://{HOST}/page")
+    ctx.dns.query(HOST, "TXT")
+    ctx.dns.query("_x.other", "TXT")
+
+    exposed = ctx.exposures.exposed(TARGET)
+
+    assert {r: k for r, (k, _) in exposed.items()} == {
+        f"https://{HOST}/page": {"aws_access_key_id"},
+        f"dns:{HOST}/TXT": {"github_token"},
+    }
+
+
+def test_logged_exposures_become_findings_without_a_citing_finding():
+    from core.exposure import secret_exposure_findings
+
+    ctx = _ctx(answers={(HOST, "TXT"): _dns(HOST, [f"k={AWS}"])})
+    ctx.dns.query(HOST, "TXT")
+
+    (finding,) = secret_exposure_findings(
+        [],
+        scanner="email",
+        scanner_version="9.9.9",
+        target=TARGET,
+        org_id="org_internal",
+        scan_id="01J8AAAAAAAAAAAAAAAAAAAAAA",
+        log=ctx.exposures,
+    )
+
+    assert finding.location == f"dns:{HOST}/TXT"
+    assert AWS not in finding.model_dump_json()
+    assert finding.redaction_receipts  # its own evidence carries the receipt
+
+
+def test_a_capture_recorded_before_adr_029_is_logged_from_its_redaction_kinds(tmp_path):
+    recording = _client(None, RecordingHttpBackend(tmp_path, _client(_site(f"a {AWS}"))._backend))
+    recording.get(f"https://{HOST}/")
+    for path in tmp_path.rglob("*.json"):
+        data = json.loads(path.read_text())
+        data.pop("redaction_receipts")
+        path.write_text(json.dumps(data))
+    from core.context import ScanContext
+
+    ctx = ScanContext(http=_client(None, ReplayHttpBackend(tmp_path)))
+    ctx.http.get(f"https://{HOST}/")
+
+    assert set(ctx.exposures.exposed(TARGET)) == {f"https://{HOST}/"}

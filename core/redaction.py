@@ -236,9 +236,14 @@ def redact_evidence(data: dict[str, Any]) -> dict[str, Any]:
             cleaned = {}
             for part, value in exchange.items():
                 hit = {}
-                cleaned[part] = redact_data(value, heuristics=_heuristics_for(out), counts=hit)
+                # keys as well as values: a key can hold a secret too (review of
+                # ADR-029; main redacted the whole side, keys included)
+                clean_part = redact_data(part, heuristics=_heuristics_for(out), counts=hit)
+                cleaned[clean_part] = redact_data(
+                    value, heuristics=_heuristics_for(out), counts=hit
+                )
                 _merge(counts, hit)
-                add_receipts(receipts, hit, f"{side}.{_field_name(part)}")
+                add_receipts(receipts, hit, f"{side}.{_field_name(clean_part)}")
             out[side] = cleaned
         elif exchange is not None:
             hit = {}
