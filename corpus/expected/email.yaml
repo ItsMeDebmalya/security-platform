@@ -102,3 +102,14 @@ dmarc-test-mode:
 dmarc-np-weaker:
   - { check_id: dmarc-np-weaker, location: "$" }
 
+# grafana.com, recorded 2026-10-09 and hand-verified: p=quarantine; t=y
+# (dmarc-test-mode and spoofing-possible are receiver-dependent, so suspected);
+# 1024-bit DKIM keys at k1, s2 and mandrill; no MTA-STS, no TLS-RPT (both
+# NXDOMAIN); the domain receives mail (Google MX).
+real-test-mode:
+  - { check_id: dmarc-test-mode, location: "$" }
+  - { check_id: spoofing-possible, location: "$" }
+  - { check_id: dkim-weak-key, location: "$" }
+  - { check_id: mta-sts-missing, location: "$" }
+  - { check_id: tls-rpt-missing, location: "$" }
+

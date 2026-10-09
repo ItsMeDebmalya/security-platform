@@ -175,3 +175,14 @@ cases:
     target: { type: domain, value: corpus-npweak.example }
     fixtures: corpus/fixtures/email/dmarc-np-weaker
 
+  # A real t=y record: grafana.com, recorded live 2026-10-09 (email v1.4.1,
+  # Standard mode, post-D39 so resolver labels are true) and hand-verified
+  # with dig at 1.1.1.1, 8.8.8.8 and 9.9.9.9. The only t=y among the 7,967
+  # screened domains.
+  - id: real-test-mode
+    tier: real_recorded
+    source: recorded
+    mode: standard
+    target: { type: domain, value: grafana.com }
+    fixtures: corpus/fixtures/email/real-test-mode
+

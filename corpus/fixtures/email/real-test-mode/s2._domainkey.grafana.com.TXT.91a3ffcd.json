@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "s2._domainkey.grafana.com",
+  "rcode": "NOERROR",
+  "records": [
+    "k=rsa; t=s; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC+V6OHgBg8VNXNPA27bo+sFUlBboE4oNKox5m+epXoJJPhRUHHJ37019Oyktw8DF0IZ/aTfDOk+TRqMPZJl0yrgxEbxzEdmXsW9RbNW3cdevkYsXsaAw/Jvq0zkdehFV2sSM4f5w9RLN/qLnDUuY/GPSP1H3G9uw5iVfA3b87TTwIDAQAB"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 1800
+}

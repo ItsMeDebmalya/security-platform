@@ -1,0 +1,1216 @@
+{
+  "scanner": "email",
+  "scanner_version": "1.4.1",
+  "target": {
+    "type": "domain",
+    "value": "grafana.com"
+  },
+  "mode": "standard",
+  "findings": [
+    {
+      "id": "sha256:3f43b54775fd72be4ae1bfc9b94914a7ddf34d1caa1b190877efb94629b24762",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.4.1",
+      "check_id": "dmarc-test-mode",
+      "renamed_from": [],
+      "title": "DMARC policy is in test mode (t=y)",
+      "target": {
+        "type": "domain",
+        "value": "grafana.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "medium",
+      "confidence": 0.8,
+      "confidence_provisional": true,
+      "state": "suspected",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 4.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "t=y is read directly, but only RFC 9989 receivers act on it; RFC 7489 receivers apply the policy as written, so the effect is receiver-dependent"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _dmarc.grafana.com",
+          "captured_at": "2026-10-09T07:54:44.272646Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.grafana.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=quarantine; sp=none; adkim=r; aspf=r; t=y; rua=mailto:dmarc_agg@vali.email,mailto:grc@grafana.com; ruf=mailto:grc@grafana.com; fo=1; rf=afrf; ri=86400"
+              ],
+              "ttl": 31,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-edd190a2.grafana.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": {
+            "dmarc": {
+              "raw": "v=DMARC1; p=quarantine; sp=none; adkim=r; aspf=r; t=y; rua=mailto:dmarc_agg@vali.email,mailto:grc@grafana.com; ruf=mailto:grc@grafana.com; fo=1; rf=afrf; ri=86400",
+              "valid": true,
+              "tags": {
+                "v": "DMARC1",
+                "p": "quarantine",
+                "sp": "none",
+                "adkim": "r",
+                "aspf": "r",
+                "t": "y",
+                "rua": "mailto:dmarc_agg@vali.email,mailto:grc@grafana.com",
+                "ruf": "mailto:grc@grafana.com",
+                "fo": "1",
+                "rf": "afrf",
+                "ri": "86400"
+              },
+              "errors": [],
+              "receiver_handling": null,
+              "legacy_issues": [],
+              "obsolete_tags": [
+                "rf",
+                "ri"
+              ],
+              "p_absent": false,
+              "policy": "quarantine",
+              "effective_subdomain_policy": "none",
+              "pct": 100,
+              "adkim": "r",
+              "aspf": "r",
+              "rua": [
+                "mailto:dmarc_agg@vali.email",
+                "mailto:grc@grafana.com"
+              ]
+            }
+          }
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-09T07:54:44.272679Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.grafana.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=quarantine; sp=none; adkim=r; aspf=r; t=y; rua=mailto:dmarc_agg@vali.email,mailto:grc@grafana.com; ruf=mailto:grc@grafana.com; fo=1; rf=afrf; ri=86400"
+              ],
+              "ttl": 51,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "grafana.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "The DMARC record sets p=quarantine with t=y. RFC 9989 section 4.7 asks receivers to apply one level below the stated policy, so failing mail gets none. RFC 7489 receivers do not know the t tag and apply p=quarantine as written. Which happens depends on the receiver.",
+      "impact": "At receivers following RFC 9989, forged mail gets none, so it is delivered.",
+      "remediation": "t=y is for testing a policy before you enforce it. Once your reports show every legitimate sender passing, remove t=y (or set t=n).",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc9989#section-4.7"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-09T07:54:44.272683Z",
+      "first_seen_scan_id": "01M4FTGGNKEQ5WM40FE0H428PR",
+      "last_seen": "2026-10-09T07:54:44.272683Z",
+      "last_seen_scan_id": "01M4FTGGNKEQ5WM40FE0H428PR",
+      "cost": {
+        "requests": 22,
+        "wall_ms": 1021,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:4a1bd50b02e1af37e12b16668f80055df1bc5cbb07145765eaa5d6b82856d4f4",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.4.1",
+      "check_id": "dmarc-obsolete-tags",
+      "renamed_from": [],
+      "title": "DMARC record uses tags removed by RFC 9989",
+      "target": {
+        "type": "domain",
+        "value": "grafana.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "info",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "informational",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the tag names are read directly from a record that parsed, and the list of removed tags is RFC 9989 Appendix C.5.2"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _dmarc.grafana.com",
+          "captured_at": "2026-10-09T07:54:44.302947Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.grafana.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=quarantine; sp=none; adkim=r; aspf=r; t=y; rua=mailto:dmarc_agg@vali.email,mailto:grc@grafana.com; ruf=mailto:grc@grafana.com; fo=1; rf=afrf; ri=86400"
+              ],
+              "ttl": 31,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-edd190a2.grafana.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": {
+            "dmarc": {
+              "raw": "v=DMARC1; p=quarantine; sp=none; adkim=r; aspf=r; t=y; rua=mailto:dmarc_agg@vali.email,mailto:grc@grafana.com; ruf=mailto:grc@grafana.com; fo=1; rf=afrf; ri=86400",
+              "valid": true,
+              "tags": {
+                "v": "DMARC1",
+                "p": "quarantine",
+                "sp": "none",
+                "adkim": "r",
+                "aspf": "r",
+                "t": "y",
+                "rua": "mailto:dmarc_agg@vali.email,mailto:grc@grafana.com",
+                "ruf": "mailto:grc@grafana.com",
+                "fo": "1",
+                "rf": "afrf",
+                "ri": "86400"
+              },
+              "errors": [],
+              "receiver_handling": null,
+              "legacy_issues": [],
+              "obsolete_tags": [
+                "rf",
+                "ri"
+              ],
+              "p_absent": false,
+              "policy": "quarantine",
+              "effective_subdomain_policy": "none",
+              "pct": 100,
+              "adkim": "r",
+              "aspf": "r",
+              "rua": [
+                "mailto:dmarc_agg@vali.email",
+                "mailto:grc@grafana.com"
+              ]
+            }
+          }
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-09T07:54:44.302969Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.grafana.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=quarantine; sp=none; adkim=r; aspf=r; t=y; rua=mailto:dmarc_agg@vali.email,mailto:grc@grafana.com; ruf=mailto:grc@grafana.com; fo=1; rf=afrf; ri=86400"
+              ],
+              "ttl": 51,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "grafana.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "The DMARC record uses tags that RFC 9989 removed: rf, ri. Receivers implementing the current standard ignore them. The values used here are what RFC 7489 receivers already assume by default, so the two standards read the record the same way.",
+      "impact": "None today; the tags are noise that can mislead whoever edits the record.",
+      "remediation": "Remove the obsolete tags. Use t=y instead of pct=0 to test a policy.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc9989#appendix-C.5.2"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-09T07:54:44.302977Z",
+      "first_seen_scan_id": "01M4FTGGNKEQ5WM40FE0H428PR",
+      "last_seen": "2026-10-09T07:54:44.302977Z",
+      "last_seen_scan_id": "01M4FTGGNKEQ5WM40FE0H428PR",
+      "cost": {
+        "requests": 23,
+        "wall_ms": 1051,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:9dc7302206e7ee394543bec8984e833051197f5230ea508f9933203ba88951f9",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.4.1",
+      "check_id": "dmarc-alignment",
+      "renamed_from": [],
+      "title": "DMARC uses relaxed alignment",
+      "target": {
+        "type": "domain",
+        "value": "grafana.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "info",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "informational",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the adkim= and aspf= tags are read directly, and default to relaxed"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _dmarc.grafana.com",
+          "captured_at": "2026-10-09T07:54:44.303144Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.grafana.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=quarantine; sp=none; adkim=r; aspf=r; t=y; rua=mailto:dmarc_agg@vali.email,mailto:grc@grafana.com; ruf=mailto:grc@grafana.com; fo=1; rf=afrf; ri=86400"
+              ],
+              "ttl": 31,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-edd190a2.grafana.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-09T07:54:44.303157Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.grafana.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=quarantine; sp=none; adkim=r; aspf=r; t=y; rua=mailto:dmarc_agg@vali.email,mailto:grc@grafana.com; ruf=mailto:grc@grafana.com; fo=1; rf=afrf; ri=86400"
+              ],
+              "ttl": 51,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "grafana.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "DMARC alignment is relaxed (adkim=r, aspf=r). Relaxed alignment accepts any subdomain of grafana.com in the authenticated identifier.",
+      "impact": "Relaxed alignment is the default and is appropriate for most senders. It does mean that anyone able to publish records under a subdomain can pass DMARC for the parent.",
+      "remediation": "If every legitimate sender signs and sends as the exact domain, set adkim=s and aspf=s. If subdomains send mail, relaxed is the correct setting and no change is needed.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc9989#section-4.4"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-09T07:54:44.303160Z",
+      "first_seen_scan_id": "01M4FTGGNKEQ5WM40FE0H428PR",
+      "last_seen": "2026-10-09T07:54:44.303160Z",
+      "last_seen_scan_id": "01M4FTGGNKEQ5WM40FE0H428PR",
+      "cost": {
+        "requests": 23,
+        "wall_ms": 1051,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:68ba07a9f7047ecbf8532a72be27d300e5cb42575c66a4d7d250f6ae203e6346",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.4.1",
+      "check_id": "dkim-weak-key",
+      "renamed_from": [],
+      "title": "DKIM key is below 2048 bits",
+      "target": {
+        "type": "domain",
+        "value": "grafana.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.9677,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 30.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "the modulus length is measured from the key itself; every common selector is read, but a domain may publish others we cannot find"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at k1._domainkey.grafana.com",
+          "captured_at": "2026-10-09T07:54:44.333942Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "k1._domainkey.grafana.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDbNrX2cY/GUKIFx2G/1I00ftdAj713WP9AQ1xir85i89sA2guU0ta4UX1Xzm06XIU6iBP41VwmPwBGRNofhBVR+e6WHUoNyIR4Bn84LVcfZE20rmDeXQblIupNWBqLXM1Q+VieI/eZu/7k9/vOkLSaQQdml4Cv8lb3PcnluMVIhQIDAQAB;"
+              ],
+              "ttl": 86400,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-edd190a2.grafana.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": {
+            "dkim_keys": [
+              {
+                "selector": "k1",
+                "raw": "k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDbNrX2cY/GUKIFx2G/1I00ftdAj713WP9AQ1xir85i89sA2guU0ta4UX1Xzm06XIU6iBP41VwmPwBGRNofhBVR+e6WHUoNyIR4Bn84LVcfZE20rmDeXQblIupNWBqLXM1Q+VieI/eZu/7k9/vOkLSaQQdml4Cv8lb3PcnluMVIhQIDAQAB;",
+                "valid": true,
+                "tags": {
+                  "k": "rsa",
+                  "p": "<216 base64 chars>"
+                },
+                "errors": [],
+                "key_type": "rsa",
+                "key_bits": 1024,
+                "revoked": false,
+                "testing": false
+              },
+              {
+                "selector": "k2",
+                "raw": "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAv2aC2KjGKLOwTweBY5A9RpjsxaBXR9r7OAU6U8/zn92ivImI75naUujWbItRI/QmL1jy5PWGqLwoUA0b90ObWaLDc+i9MtTNmGeWO009hr20fIxhGg6XBT2kjZ1DTThopSe1nAndsupmcBwlQ5Q6LJ+ZAxLcujnPIxM0ZBLmgpkv8u6RfY4eFP8OLvdAW3oSuB0DyLDigQX4Sj8wBO4YIdQH6AAmBeOsidsKAFNFUCpc3vCxtBDR12U+cBg724l3sBkMQ8evnz6idnqxq9QAVYh8k4kJ+RP+6cqTdy7LjIm8xY/bQNpQIpGUAuDo2DjLcCDun9DAI4Q/3z+Q0o9QuQIDAQAB;",
+                "valid": true,
+                "tags": {
+                  "v": "DKIM1",
+                  "k": "rsa",
+                  "p": "<392 base64 chars>"
+                },
+                "errors": [],
+                "key_type": "rsa",
+                "key_bits": 2048,
+                "revoked": false,
+                "testing": false
+              },
+              {
+                "selector": "s1",
+                "raw": "k=rsa; t=s; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuVoFoCx9tzMXLbWuf2ERTkIIjmrTfoUpYv898O2ZjbitS6x26qRaYSAemNxN9pihDQGwk3a2RIJa1tcsPfgGvMJNAwe0rYhOC34Mgq3Di1j4A6rLHjt0NHdUnpCS23vcl9V9Mi8J0syjVDEmK4AwMfXAiAI+6rpNIp1CohlOK2Lp+hZ3DKG44oLLtr+5wZ3jEtKJlPk/UtWd0jRNoGGPdderAJlWC6PqgYzHJi8d48YBKHEM+eL0G6adm2YlHJqteBmVhlBjfzXO2C881hweziEgcsUb0mKSaJxr8XpYJ7iOFAyRSwsWn83naW4PfOBKP578F5R+Y1kvViBe5XEH6wIDAQAB",
+                "valid": true,
+                "tags": {
+                  "k": "rsa",
+                  "t": "s",
+                  "p": "<392 base64 chars>"
+                },
+                "errors": [],
+                "key_type": "rsa",
+                "key_bits": 2048,
+                "revoked": false,
+                "testing": false
+              },
+              {
+                "selector": "s2",
+                "raw": "k=rsa; t=s; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC+V6OHgBg8VNXNPA27bo+sFUlBboE4oNKox5m+epXoJJPhRUHHJ37019Oyktw8DF0IZ/aTfDOk+TRqMPZJl0yrgxEbxzEdmXsW9RbNW3cdevkYsXsaAw/Jvq0zkdehFV2sSM4f5w9RLN/qLnDUuY/GPSP1H3G9uw5iVfA3b87TTwIDAQAB",
+                "valid": true,
+                "tags": {
+                  "k": "rsa",
+                  "t": "s",
+                  "p": "<216 base64 chars>"
+                },
+                "errors": [],
+                "key_type": "rsa",
+                "key_bits": 1024,
+                "revoked": false,
+                "testing": false
+              },
+              {
+                "selector": "mandrill",
+                "raw": "v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCrLHiExVd55zd/IQ/J/mRwSRMAocV/hMB3jXwaHH36d9NaVynQFYV8NaWi69c1veUtRzGt7yAioXqLj7Z4TeEUoOLgrKsn8YnckGs9i3B3tVFB+Ch/4mPhXWiNfNdynHWBcPcbJ8kjEQ2U8y78dHZj1YeRXXVvWob2OaKynO8/lQIDAQAB",
+                "valid": true,
+                "tags": {
+                  "v": "DKIM1",
+                  "k": "rsa",
+                  "p": "<216 base64 chars>"
+                },
+                "errors": [],
+                "key_type": "rsa",
+                "key_bits": 1024,
+                "revoked": false,
+                "testing": false
+              }
+            ]
+          }
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-09T07:54:44.333965Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "k1._domainkey.grafana.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDbNrX2cY/GUKIFx2G/1I00ftdAj713WP9AQ1xir85i89sA2guU0ta4UX1Xzm06XIU6iBP41VwmPwBGRNofhBVR+e6WHUoNyIR4Bn84LVcfZE20rmDeXQblIupNWBqLXM1Q+VieI/eZu/7k9/vOkLSaQQdml4Cv8lb3PcnluMVIhQIDAQAB;"
+              ],
+              "ttl": 21379,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "grafana.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "DKIM keys below 2048 bits are published at k1._domainkey.grafana.com (1024 bits) and s2._domainkey.grafana.com (1024 bits) and mandrill._domainkey.grafana.com (1024 bits). Each meets the RFC 8301 minimum of 1024 bits, below the recommended 2048. The domain also publishes k2._domainkey.grafana.com, s1._domainkey.grafana.com. We cannot tell from DNS which selector it signs its mail with. RFC 6376 section 6.1.2 has a verifier fetch the key named by the signature's s= tag, so a signature may name any selector the domain publishes, the weaker one included.",
+      "impact": "This is a margin, not a break: RFC 8301 permits the key, and recommends 2048 bits for signers. Moving to 2048 bits brings the domain in line with that recommendation.",
+      "remediation": "If a weaker selector is no longer used for signing, remove its record. Otherwise generate a new 2048-bit key with your mail provider, publish it under a new selector, switch signing to it, and remove the old selector once no mail is signed with it.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc8301"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-09T07:54:44.333970Z",
+      "first_seen_scan_id": "01M4FTGGNKEQ5WM40FE0H428PR",
+      "last_seen": "2026-10-09T07:54:44.333970Z",
+      "last_seen_scan_id": "01M4FTGGNKEQ5WM40FE0H428PR",
+      "cost": {
+        "requests": 24,
+        "wall_ms": 1082,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:838ba0090e0055f433f7f8e700cbd67b2d882ca761f59b169dcfdd1dbec97830",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.4.1",
+      "check_id": "mta-sts-missing",
+      "renamed_from": [],
+      "title": "No MTA-STS policy published",
+      "target": {
+        "type": "domain",
+        "value": "grafana.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "a definite TXT answer at _mta-sts with no v=STSv1 term is direct observation"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _mta-sts.grafana.com",
+          "captured_at": "2026-10-09T07:54:44.351318Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_mta-sts.grafana.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-edd190a2.grafana.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-09T07:54:44.351341Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_mta-sts.grafana.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "grafana.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "No MTA-STS policy record is published at _mta-sts.grafana.com.",
+      "impact": "Without MTA-STS a sending server that cannot negotiate TLS will deliver mail in plaintext rather than refusing, so an attacker positioned on the network can strip encryption and read the message.",
+      "remediation": "Publish a TXT record at _mta-sts.grafana.com of the form 'v=STSv1; id=<timestamp>', and serve the matching policy file at https://mta-sts.grafana.com/.well-known/mta-sts.txt. Start the policy in mode: testing, then move to mode: enforce.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc8461"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-09T07:54:44.351346Z",
+      "first_seen_scan_id": "01M4FTGGNKEQ5WM40FE0H428PR",
+      "last_seen": "2026-10-09T07:54:44.351346Z",
+      "last_seen_scan_id": "01M4FTGGNKEQ5WM40FE0H428PR",
+      "cost": {
+        "requests": 26,
+        "wall_ms": 1099,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:f63a65f41403cd42b575f3d45c3a3f5fd9e71abbe53ddf053ac291c83979a489",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.4.1",
+      "check_id": "tls-rpt-missing",
+      "renamed_from": [],
+      "title": "No SMTP TLS reporting configured",
+      "target": {
+        "type": "domain",
+        "value": "grafana.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "low",
+      "confidence": 0.9756,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 40.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "a definite TXT answer at _smtp._tls with no v=TLSRPTv1 term is direct observation"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _smtp._tls.grafana.com",
+          "captured_at": "2026-10-09T07:54:44.372005Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_smtp._tls.grafana.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-edd190a2.grafana.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-09T07:54:44.372020Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_smtp._tls.grafana.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "grafana.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "No SMTP TLS reporting record is published at _smtp._tls.grafana.com.",
+      "impact": "Nobody is told when a sending server fails to establish TLS to your mail servers, so a downgrade attack or a broken certificate goes unnoticed.",
+      "remediation": "Publish a TXT record at _smtp._tls.grafana.com of the form 'v=TLSRPTv1; rua=mailto:tls-reports@grafana.com'.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc8460"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-09T07:54:44.372023Z",
+      "first_seen_scan_id": "01M4FTGGNKEQ5WM40FE0H428PR",
+      "last_seen": "2026-10-09T07:54:44.372023Z",
+      "last_seen_scan_id": "01M4FTGGNKEQ5WM40FE0H428PR",
+      "cost": {
+        "requests": 28,
+        "wall_ms": 1120,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    },
+    {
+      "id": "sha256:f8ea836009284ec06cca1f286f8c31bb977ea4312f3071d17f4b5ac5eb4cc252",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.4.1",
+      "check_id": "spoofing-possible",
+      "renamed_from": [],
+      "title": "Mail can be sent as this domain",
+      "target": {
+        "type": "domain",
+        "value": "grafana.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "high",
+      "confidence": 0.8,
+      "confidence_provisional": true,
+      "state": "suspected",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_record_parse",
+          "likelihood_ratio": 4.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "every reason depends on which DMARC record a receiver applies, and the two DMARC standards, or no standard at all, leave that uncertain"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_resolver"
+      },
+      "evidence": [
+        {
+          "label": "TXT at _dmarc.grafana.com",
+          "captured_at": "2026-10-09T07:54:44.412787Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.grafana.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=quarantine; sp=none; adkim=r; aspf=r; t=y; rua=mailto:dmarc_agg@vali.email,mailto:grc@grafana.com; ruf=mailto:grc@grafana.com; fo=1; rf=afrf; ri=86400"
+              ],
+              "ttl": 31,
+              "flags": []
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-edd190a2.grafana.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null,
+              "flags": []
+            }
+          },
+          "control_rationale": "a random-label probe in the same zone; without it a wildcard would make every lookup under this domain appear to succeed",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8",
+          "captured_at": "2026-10-09T07:54:44.412807Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "_dmarc.grafana.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=quarantine; sp=none; adkim=r; aspf=r; t=y; rua=mailto:dmarc_agg@vali.email,mailto:grc@grafana.com; ruf=mailto:grc@grafana.com; fo=1; rf=afrf; ri=86400"
+              ],
+              "ttl": 51,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "the control for this re-query is the first resolver's answer, captured above",
+          "analysis": null
+        },
+        {
+          "label": "independent re-query via 8.8.8.8 (TXT at grafana.com)",
+          "captured_at": "2026-10-09T07:54:44.412816Z",
+          "redactions": [],
+          "kind": "dns_answer",
+          "test": {
+            "query": {
+              "name": "grafana.com",
+              "rrtype": "TXT",
+              "resolver": "8.8.8.8"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "vmware-cloud-verification-c3a572e3-9218-488c-8365-1651829bfd8b",
+                "atlassian-domain-verification=FQZgAwd1GDttN2Decshl/k/JZgHcNLzX8e3oH4GpURYroI2up4HcRlyFFmxCGsIZ",
+                "google-site-verification=jPV4lX4qpno5PhDWXCcF4GVm-OWCRSivecUv96bjX_Q",
+                "cloudflare_dashboard_sso=3e217f75bd7d513a9362c51b920e8f69",
+                "_globalsign-domain-verification=cp6clnmUyUHPts3443s-P_H6_cQ9zZQod-48wHhdt3",
+                "include:_spf.qualtrics.com include:_spf.salesforce.com ~all",
+                "gradle-verification=LV70SR3KNSOSMUHV55UDSRT1T12OL",
+                "google-site-verification=dYJ-NcY7ms6_agGC4cACnW-zNKX7H5jxz4UIOErUmVE",
+                "00DWC00000BJ5Ib=1TBWC0000000IL7",
+                "v=spf1 include:%{i}._ip.%{h}._ehlo.%{d}._spf.vali.email ~all",
+                "sophos-domain-verification=aa74c086daca1a1f5c821d7b12d9b6f06c46b944f35b7ab9e5973bbc73db764d",
+                "00DW4000008hDmz=1TBW40000000DA9",
+                "cursor-domain-verification-xhfzxm=LtMpK578A1OxaBfPHbSk3m3XY",
+                "google-site-verification=AaTHsZXeR_BFyH-I-QOOK_31IoYqHHCQJ6EcIbY6lDU",
+                "OSSRH-85523",
+                "docusign=dea583bd-85d2-42eb-a9e2-2bd29cd8f329",
+                "onetrust-domain-verification=36570f9246ad4885b041d235763b5b76",
+                "status-page-domain-verification=ltbhwqnfdfx9",
+                "MS=ms31896512",
+                "google-site-verification=q1UkmtkTThs8p_FIjaMc9rsPKjGVYU6YNjwaIU3NqEY",
+                "google-site-verification=coNdwIqxSkbIbqW_7qgpoEIIBEQhqETp6Ab2AwvRoiY",
+                "jamf-site-verification=WOIXRDQzTyPKRvUm2n5hSA",
+                "google-site-verification=-2jPstaunnWUAdgduThO-UlNvQf31w5_Gb6vhvkcQmQ",
+                "google-site-verification=RJET76uUMquAW8TVwhERijWLC-MgWNjutvEjTHSLqtQ",
+                "google-site-verification=qIsRwWjmVcBgGDRE_GNnnN3TkYf-EPQf3c4a1utE9dE",
+                "anthropic-domain-verification-m0mank=ZeVupDB62Ajho1AncsNgdkAvC",
+                "openai-domain-verification=dv-5VifilREhtmqTprvcLOWGOeB"
+              ],
+              "ttl": 3600,
+              "flags": []
+            }
+          },
+          "control": null,
+          "control_rationale": "re-read for the same validation; compare with the first resolver's answer for this name",
+          "analysis": null
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "grafana.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "Simulating the decision a receiving mail server would make for a message forged from grafana.com: it may be delivered at some receivers, because the record sets p=quarantine with t=y, which RFC 9989 receivers apply as none; RFC 7489 receivers ignore t and quarantine.",
+      "impact": "Anyone can send mail that appears to come from this domain and expect it to reach the inbox. That is the mechanism behind invoice fraud and most credential phishing that targets a company's own staff.",
+      "remediation": "Publish an SPF record listing your senders and ending in -all, sign your mail with DKIM, then publish 'v=DMARC1; p=reject; rua=mailto:dmarc@grafana.com' at _dmarc.grafana.com. Move to p=reject only after the rua reports show every legitimate sender passing.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc9989"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-290"
+        ]
+      },
+      "first_seen": "2026-10-09T07:54:44.412818Z",
+      "first_seen_scan_id": "01M4FTGGNKEQ5WM40FE0H428PR",
+      "last_seen": "2026-10-09T07:54:44.412818Z",
+      "last_seen_scan_id": "01M4FTGGNKEQ5WM40FE0H428PR",
+      "cost": {
+        "requests": 29,
+        "wall_ms": 1161,
+        "ai_tokens": 0
+      },
+      "materialises_at": null,
+      "materialises_reason": null,
+      "derivation": "detected",
+      "derived_from": null
+    }
+  ],
+  "errors": [],
+  "telemetry": {
+    "checks_run": [
+      {
+        "check_id": "spf-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-multiple-records",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-invalid",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-invalid",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-policy-none",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-test-mode",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "mx-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dkim-missing",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-too-permissive",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "spf-lookup-limit",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-pct-partial",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-obsolete-tags",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-np-weaker",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-no-rua",
+        "outcome": "clear",
+        "location": "$"
+      },
+      {
+        "check_id": "dmarc-alignment",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "dkim-weak-key",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "mta-sts-missing",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "tls-rpt-missing",
+        "outcome": "reported",
+        "location": "$"
+      },
+      {
+        "check_id": "spoofing-possible",
+        "outcome": "reported",
+        "location": "$"
+      }
+    ],
+    "suppressed": [],
+    "requests": 29,
+    "wall_ms": 1161,
+    "ai_tokens": 0
+  },
+  "started_at": null,
+  "finished_at": "2026-10-09T07:54:44.412921Z",
+  "killed": false,
+  "outcome": "succeeded"
+}
