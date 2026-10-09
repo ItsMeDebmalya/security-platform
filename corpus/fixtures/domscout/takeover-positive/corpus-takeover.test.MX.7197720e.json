@@ -3,7 +3,7 @@
   "name": "corpus-takeover.test",
   "rcode": "NODATA",
   "records": [],
-  "resolver": null,
+  "resolver": "1.1.1.1",
   "rrtype": "MX",
   "ttl": 300
 }

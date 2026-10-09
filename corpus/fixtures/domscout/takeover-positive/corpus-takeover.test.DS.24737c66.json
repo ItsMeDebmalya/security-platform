@@ -5,7 +5,7 @@
   "records": [
     "12345 13 2 0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF"
   ],
-  "resolver": null,
+  "resolver": "1.1.1.1",
   "rrtype": "DS",
   "ttl": 300
 }

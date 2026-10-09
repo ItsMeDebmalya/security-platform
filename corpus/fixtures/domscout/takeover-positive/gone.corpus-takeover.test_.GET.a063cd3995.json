@@ -1,0 +1,10 @@
+{
+  "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Error><Code>NoSuchBucket</Code><Message>The specified bucket does not exist</Message><BucketName>gone.corpus-takeover.test</BucketName><RequestId>XTV5WSZBQ52RR3ZQ</RequestId><HostId>cp2rYhdIBxo2NbMDiWGxXZTB0y8PrVK5WZ3RlI4rVr4SojDdd+6QBA2mgZuMWUNS4VwUKqxyZzI=</HostId></Error>",
+  "body_truncated": false,
+  "elapsed_ms": 1,
+  "headers": {},
+  "redaction_receipts": [],
+  "redactions": [],
+  "status": 404,
+  "url": "http://gone.corpus-takeover.test/"
+}

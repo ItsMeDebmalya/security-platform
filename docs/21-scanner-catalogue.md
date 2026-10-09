@@ -159,7 +159,7 @@ Live basis: badssl.com test hosts and operator infrastructure, plus 67 facts cro
 
 ---
 
-## domscout — DNS & Subdomain Enumeration (Tool 3, v1.1.0)
+## domscout — DNS & Subdomain Enumeration (Tool 3, v1.2.0)
 
 7 checks, all Light, all passive (`secret-exposed` is emitted by core's helper, ADR-029). Every lookup goes to a public service (CT logs, public resolvers, RDAP), never to the target, apart from at most one ordinary HTTPS page load per takeover candidate.
 
@@ -172,7 +172,7 @@ Live basis: badssl.com test hosts and operator infrastructure, plus 67 facts cro
 | `dnssec-status` | DNSSEC is not deployed: no DS/DNSKEY, so DNS answers can be forged in transit | light | low | `confirmed`: DS and DNSKEY re-queried through an independent second resolver agree. Agreement rules out one resolver's glitch, not a shared failure (D36) | WORKING for the unsigned case. The signed path has not been live-verified (ledger D-DS2) |
 | `domain-expiring` | The domain registration expires within 30 days, after which anyone can re-register it | light | medium | `suspected`: a single source, the registry's RDAP record read twice | **BROKEN** (ledger D28): it has never read an expiry date live, for any TLD. It returns `inconclusive` on every domain |
 | `domain-expired` | The domain registration has already expired | light | high | `suspected`: as above | **BROKEN** (ledger D28): the same RDAP fetch, so it cannot fire live |
-| `subdomain-takeover` | A subdomain's CNAME points at a third-party service where anyone could claim the name | light | high | `suspected`, never more: a dangling CNAME plus a provider fingerprint, never proven by claiming the resource | **BROKEN for AWS S3 and Heroku** (ledger D31): both providers resolve every name, so the "does not resolve" fingerprint can never match. The GitHub Pages fingerprint matches the real service's behaviour but has not fired on a live target: UNDETERMINED |
+| `subdomain-takeover` | A subdomain's CNAME points at a third-party service where anyone could claim the name | light | high | `suspected`, never more: a CNAME to the provider plus the provider's own unclaimed-name `404`, fetched over plain http, never proven by claiming the resource | UNDETERMINED for all three providers (D31, v1.2.0): matches the providers' recorded responses (`corpus/crosscheck/d31-provider-responses/`), but has not fired on a live target. A live positive needs a test name with CNAME support |
 | `secret-exposed` | A credential-shaped secret is served in a response from the domain or a subdomain that the scan fetched (today, takeover candidates' pages). It was removed when captured and is never stored; the finding's redaction receipts say what kind and where | light | high | `suspected`: a pattern match on public content, with no validation | UNDETERMINED: no real positive yet. A synthetic corpus case (`takeover-secret`, AWS's documented example key). Every public capture the scan made is checked (ADR-029) |
 
 Live basis: one operator domain, cross-checked against `subfinder` and `sublist3r`+`dnsx`+`httpx` (ledger, Tool 3).

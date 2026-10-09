@@ -33,6 +33,7 @@ What the corpus does and does NOT measure (see the design spec, revised):
 from __future__ import annotations
 
 import json
+import re
 import shutil
 from pathlib import Path
 
@@ -170,6 +171,17 @@ class FakeHttpBackend:
         return RawHttpResponse(status_code=status, headers={}, text=body, url=url, elapsed_ms=1)
 
 
+_D31 = ROOT / "corpus" / "crosscheck" / "d31-provider-responses"
+
+
+def s3_no_such_bucket(bucket_name: str) -> str:
+    """The recorded S3 REST answer for a bucket nobody owns (D31), for `bucket_name`."""
+    recorded = (_D31 / "s3-rest-nosuchbucket.xml").read_text()
+    return re.sub(
+        r"<BucketName>[^<]*</BucketName>", f"<BucketName>{bucket_name}</BucketName>", recorded
+    )
+
+
 def crtsh_urls(domain: str) -> tuple[str, str]:
     return (
         f"https://crt.sh/?q=%25.{domain}&output=json",
@@ -252,13 +264,26 @@ def _cases() -> dict[str, tuple[str, object, FakeHttpBackend, str]]:
         "light",
     )
 
-    # 5. takeover-positive: dangling S3 CNAME (target NXDOMAIN, DNS-only).
+    # 5. takeover-positive: dangling S3 CNAME. D31, recorded 2026-10-10
+    # (corpus/crosscheck/d31-provider-responses/): a bucket endpoint RESOLVES
+    # even when the bucket does not exist, and a custom domain reaches the
+    # unclaimed answer only over plain http, as 404 NoSuchBucket with the custom
+    # name as BucketName. The body below is that recording, with that name in it.
     d = "corpus-takeover.test"
-    subs = cname_subdomain(d, "gone", "bucket-abandoned.s3.amazonaws.com")
+    bucket = "bucket-abandoned.s3.amazonaws.com"
+    subs = {
+        **cname_subdomain(d, "gone", bucket),
+        (bucket, "A"): rr(bucket, "A", "16.182.41.90"),
+    }
     cases["takeover-positive"] = (
         d,
         FakeResolver(apex_zone(d, subdomains=subs)),
-        http_backend(d, ct_names=[f"gone.{d}"], expiry=FAR_FUTURE),
+        http_backend(
+            d,
+            ct_names=[f"gone.{d}"],
+            expiry=FAR_FUTURE,
+            extra={f"http://gone.{d}/": (404, s3_no_such_bucket(f"gone.{d}"))},
+        ),
         "light",
     )
 
@@ -277,7 +302,7 @@ def _cases() -> dict[str, tuple[str, object, FakeHttpBackend, str]]:
             d,
             ct_names=[f"blog.{d}"],
             expiry=FAR_FUTURE,
-            extra={f"https://blog.{d}/": (200, "<html><body>a real published blog</body></html>")},
+            extra={f"http://blog.{d}/": (200, "<html><body>a real published blog</body></html>")},
         ),
         "light",
     )
@@ -300,7 +325,7 @@ def _cases() -> dict[str, tuple[str, object, FakeHttpBackend, str]]:
             ct_names=[f"docs.{d}"],
             expiry=FAR_FUTURE,
             extra={
-                f"https://docs.{d}/": (
+                f"http://docs.{d}/": (
                     404,
                     "<html><body>There isn't a GitHub Pages site here. "
                     "<!-- deploy key AKIAIOSFODNN7EXAMPLE --></body></html>",

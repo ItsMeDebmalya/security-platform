@@ -3,7 +3,8 @@
   "body_truncated": false,
   "elapsed_ms": 1,
   "headers": {},
+  "redaction_receipts": [],
   "redactions": [],
   "status": 200,
-  "url": "https://blog.corpus-liveghp.test/"
+  "url": "http://blog.corpus-liveghp.test/"
 }

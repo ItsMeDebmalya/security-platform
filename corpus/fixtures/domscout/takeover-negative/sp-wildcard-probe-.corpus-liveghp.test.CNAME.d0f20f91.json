@@ -1,9 +1,9 @@
 {
   "flags": [],
-  "name": "sp-wildcard-probe-78aff656.corpus-liveghp.test",
+  "name": "sp-wildcard-probe-d8274ea1.corpus-liveghp.test",
   "rcode": "NXDOMAIN",
   "records": [],
-  "resolver": null,
+  "resolver": "1.1.1.1",
   "rrtype": "CNAME",
   "ttl": null
 }

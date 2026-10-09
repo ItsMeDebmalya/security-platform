@@ -5,7 +5,7 @@
   "records": [
     "257 3 13 AwEAAetc0123456789ABCDEFsignedkeymaterialforcorpususeonly=="
   ],
-  "resolver": null,
+  "resolver": "1.1.1.1",
   "rrtype": "DNSKEY",
   "ttl": 300
 }

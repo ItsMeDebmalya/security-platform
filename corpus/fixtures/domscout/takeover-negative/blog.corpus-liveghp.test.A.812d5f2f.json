@@ -3,7 +3,7 @@
   "name": "blog.corpus-liveghp.test",
   "rcode": "NXDOMAIN",
   "records": [],
-  "resolver": null,
+  "resolver": "1.1.1.1",
   "rrtype": "A",
   "ttl": 300
 }

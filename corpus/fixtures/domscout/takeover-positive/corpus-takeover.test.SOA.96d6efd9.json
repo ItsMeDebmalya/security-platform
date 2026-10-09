@@ -5,7 +5,7 @@
   "records": [
     "ns1.corpus-takeover.test. hostmaster.corpus-takeover.test. 1 2 3 4 5"
   ],
-  "resolver": null,
+  "resolver": "1.1.1.1",
   "rrtype": "SOA",
   "ttl": 300
 }

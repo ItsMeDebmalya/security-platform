@@ -5,7 +5,7 @@
   "records": [
     "bucket-abandoned.s3.amazonaws.com."
   ],
-  "resolver": null,
+  "resolver": "1.1.1.1",
   "rrtype": "CNAME",
   "ttl": 300
 }

@@ -533,3 +533,13 @@ Then restore the entry-point lines in `CLAUDE.md` and `SPEC.md`, and the revert 
 
 **Revert.** Delete ADR-031. Nothing implements it yet.
 
+## v4.0-pre.13 — D31: takeover fingerprints judge recorded provider responses; domscout v1.2.0 (2026-10-10)
+
+**What changed.**
+- The S3, Heroku and GitHub Pages fingerprints judge the provider's `404` unclaimed-name body, fetched over plain `http://`.
+- S3 recognises regional and website endpoints.
+- The evidence is in `corpus/crosscheck/d31-provider-responses/`.
+- `takeover-positive` is rebuilt from the recording, and the GitHub cases fetch over http.
+
+**Revert.** Revert the merge commit. S3 and Heroku then go back to NXDOMAIN-only, which never fires live, and GitHub Pages back to https, which never fires live.
+

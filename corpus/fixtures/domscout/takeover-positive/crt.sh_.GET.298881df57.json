@@ -3,6 +3,7 @@
   "body_truncated": false,
   "elapsed_ms": 1,
   "headers": {},
+  "redaction_receipts": [],
   "redactions": [],
   "status": 200,
   "url": "https://crt.sh/?q=%25.corpus-takeover.test&output=json"
