@@ -558,7 +558,7 @@ For a domain you actually own, the shape is the same but `method: dns_txt` with 
     evidence_file: corpus/authz/your-domain.example-2026-08-24.txt
   verified_at: 2026-08-24
   expires_at: 2026-11-22        # 90 days. Domains change hands.
-  verified_by: operator:satwik
+  verified_by: operator:debmalya
   attestation_ref: null
 ```
 
