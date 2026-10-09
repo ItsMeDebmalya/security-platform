@@ -40,7 +40,7 @@ from core.testssl import (
     LegacyCipherReport,
     TestsslUnavailableError,
 )
-from core.tls import DEFAULT_PORT, TlsClient, TlsObservation
+from core.tls import DEFAULT_PORT, TlsClient, TlsObservation, idna_ambiguous
 from scanners.tls.checks import (
     CERTIFICATE,
     CHECKS,
@@ -355,6 +355,33 @@ class _Scan:
 
     def _check_identity(self) -> None:
         assert self.cert is not None
+        if self.observation.servername and idna_ambiguous(self.observation.servername):
+            # D48 re-review: IDNA 2003 (ours, and what OpenSSL is handed) and
+            # UTS-46 (browsers) encode this name differently, so both readings
+            # would share a wrong answer. Say so instead of judging.
+            check = CHECKS["tls-hostname-mismatch"]
+            self._emit(
+                check,
+                no_verdict_reason="blocked_prerequisite",
+                description=(
+                    f"{self.host} contains a character (ß, ς, ZWNJ or ZWJ) that IDNA 2003 and "
+                    "UTS-46 encode differently. Our matcher and OpenSSL's both use IDNA 2003, "
+                    "so neither can say reliably whether the certificate covers the name."
+                ),
+                impact="Unknown. This is a limit of our name encoding, not an observation.",
+                remediation=(
+                    "Check the certificate's names by hand against the A-label a browser uses."
+                ),
+                signals=[self._signal(check, CERTIFICATE, ratio=1.0)],
+            )
+            self.checks.append(
+                CheckRun(
+                    check_id="tls-hostname-mismatch",
+                    location=self._location(),
+                    outcome="inconclusive",
+                )
+            )
+            return
         if self.observation.hostname_matches is False:
             presented = [*self.cert.sans, *self.cert.ip_sans]
             if presented:

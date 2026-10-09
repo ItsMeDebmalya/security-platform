@@ -662,3 +662,39 @@ def test_a_mismatch_lists_ip_sans_and_never_says_there_are_none():
     (finding,) = [f for f in result.findings if f.check_id == "tls-hostname-mismatch"]
     assert "10.0.0.9" in finding.description
     assert "no subjectAltName" not in finding.description
+
+
+def test_an_idna_ambiguous_host_is_inconclusive_not_a_mismatch():
+    """D48 re-review: refuse to judge rather than claim a mismatch both readings
+    would share by construction."""
+    from dataclasses import replace
+
+    from core.tls import TlsObservation
+
+    with lab_server(common_name="xn--fa-hia.de", sans=["xn--fa-hia.de"]) as srv:
+        observation = TlsClient(scope=LOOPBACK).inspect(
+            "localhost", srv.port, servername="localhost"
+        )
+    assert isinstance(observation, TlsObservation)
+
+    ambiguous = replace(observation, servername="faß.de")
+
+    assert ambiguous.hostname_matches is None
+
+
+def test_the_scanner_reports_an_idna_ambiguous_host_as_inconclusive():
+    from dataclasses import replace
+
+    with lab_server(common_name="xn--fa-hia.de", sans=["xn--fa-hia.de"]) as srv:
+        real = TlsClient(scope=LOOPBACK).inspect("localhost", srv.port, servername="localhost")
+
+    class _Fake(TlsClient):
+        def inspect(self, host, port, *, servername=None, **_):
+            return replace(real, host=host, port=port, servername=servername)
+
+    ctx = ScanContext(tls=_Fake(scope=Scope(frozenset({"faß.de"}))))
+    result = TlsScanner().run(Asset(type="url", value="https://faß.de"), "light", ctx)
+
+    (finding,) = [f for f in result.findings if f.check_id == "tls-hostname-mismatch"]
+    assert finding.state == "inconclusive"
+    assert "IDNA 2003" in finding.description

@@ -161,7 +161,8 @@ class CertificateInfo:
         """
         host = hostname.strip().rstrip(".")
         try:
-            address = ipaddress.ip_address(host.strip("[]"))
+            # brackets and an IPv6 zone id are not part of the address octets
+            address = ipaddress.ip_address(host.strip("[]").split("%", 1)[0])
         except ValueError:
             address = None
         if address is not None:
@@ -231,6 +232,8 @@ class TlsObservation:
     @property
     def hostname_matches(self) -> bool | None:
         if self.certificate is None or self.servername is None:
+            return None
+        if idna_ambiguous(self.servername):
             return None
         return self.certificate.covers_hostname(self.servername)
 
@@ -703,6 +706,18 @@ class TlsClient:
 def _common_name(name: x509.Name) -> str | None:
     values = name.get_attributes_for_oid(NameOID.COMMON_NAME)
     return str(values[0].value) if values else None
+
+
+IDNA_DEVIATIONS = frozenset("ß\u03c2\u200c\u200d")
+"""The four characters IDNA 2003 and UTS-46 non-transitional processing map
+differently (ß, final sigma, ZWNJ, ZWJ). Python's `idna` codec is IDNA 2003, and
+`ssl` hands OpenSSL the same encoding, so both hostname readings would share a
+wrong answer for a name containing one (D48 re-review)."""
+
+
+def idna_ambiguous(hostname: str) -> bool:
+    """A name neither reading can judge reliably: refuse rather than guess."""
+    return any(ch in IDNA_DEVIATIONS for ch in hostname.lower())
 
 
 def _same_address(address: ipaddress.IPv4Address | ipaddress.IPv6Address, raw: str) -> bool:

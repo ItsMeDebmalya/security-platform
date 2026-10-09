@@ -639,3 +639,25 @@ def test_the_hostname_probe_uses_the_configured_trust_anchor():
 
     assert obs.hostname_matches is False
     assert obs.openssl_hostname_match is False
+
+
+@pytest.mark.parametrize("host", ["faß.de", "ς.example", "a‍b.example", "a‌b.example"])
+def test_a_name_idna_2003_and_uts_46_encode_differently_is_not_judged(host):
+    """D48 re-review: Python's IDNA 2003 codec (ours, and what ssl hands OpenSSL)
+    maps ß, ς, ZWJ and ZWNJ differently from UTS-46, which browsers use. Both
+    readings would agree on a false mismatch, so neither may judge."""
+    from core.tls import idna_ambiguous
+
+    assert idna_ambiguous(host)
+    assert not idna_ambiguous("bücher.example") and not idna_ambiguous("x.test")
+
+
+def test_an_ipv6_zone_id_does_not_stop_an_address_match():
+    with lab_server(common_name="x.test", sans=["x.test"]) as srv:
+        cert = inspect(srv).certificate
+    assert cert is not None
+    from dataclasses import replace
+
+    with_ip = replace(cert, ip_sans=["fe80::1"])
+    assert with_ip.covers_hostname("fe80::1%eth0") is True
+    assert with_ip.covers_hostname("[fe80::1]") is True
