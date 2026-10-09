@@ -43,6 +43,7 @@ from core.authz import Scope
 from core.cost import CostMeter
 from core.evidence import DEFAULT_BODY_CAP, redact_body, redact_headers, truncate_body
 from core.killswitch import KillSwitch
+from core.redaction import redact_header_map, redact_text
 from core.replay import (
     FixtureStore,
     fixture_digest,
@@ -206,7 +207,7 @@ class RecordingHttpBackend:
             elapsed_ms=raw.elapsed_ms,
             body_cap=body_cap,
         )
-        payload["url"] = raw.url
+        payload["url"] = redact_text(raw.url)[0] or raw.url
         self._store.write(_fixture_name(method, url), payload)
         return raw
 
@@ -238,14 +239,24 @@ class ReplayHttpBackend:
                     directory=self._store.directory,
                 )
             )
+        # ADR-028 clause 7: a replayed capture is redacted again. Running the
+        # redactor twice is the same as once, so a correct fixture is unchanged;
+        # a fixture written by core before ADR-028 (BEGIN line replaced, key body
+        # kept) is cut here, with `legacy=True` making the old marker an anchor.
+        # It is never re-truncated: that would nest truncation notes.
+        counts: dict[str, int] = {}
+        headers = redact_header_map(dict(data["headers"]), counts)
+        body, body_counts = redact_text(data["body"] or "", legacy=True)
+        stored_url, url_counts = redact_text(data["url"])
+        found = set(data["redactions"]) | set(counts) | set(body_counts) | set(url_counts)
         return RawHttpResponse(
             status_code=data["status"],
-            headers=dict(data["headers"]),
-            text=data["body"] or "",
-            url=data["url"],
+            headers=headers,
+            text=body or "",
+            url=stored_url or data["url"],
             elapsed_ms=data["elapsed_ms"],
             body_truncated=data["body_truncated"],
-            redactions=list(data["redactions"]),
+            redactions=sorted(found),
         )
 
 

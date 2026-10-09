@@ -709,3 +709,48 @@ In both cases the parser, the scope rule and the gate each did their job. The ga
 - **The method that passed the audit is the standard:** real recorded traffic, live hand-verified hosts, and an external cross-check. Only `web` (Tool 4a) was built that way, and only `web` came out clean.
 
 **Reversal cost.** Low. It is a review rule and one contract test, and dropping either changes no shipped behaviour. The cost of not having it is a gate number that is false in production, and that has already happened twice.
+
+---
+
+## ADR-028 — Core redacts secrets by value at every point where text is stored, and never redacts public key material
+
+**Status.** Accepted 2026-10-09 (operator). Closes ledger D21. Implemented on `fix/d21-core-redaction`, with an independent review before merge.
+
+**Context.** Hard constraint 5 says never store customer secrets, and redact at capture time, not at display time. Until this ADR, `core/` fell short of that in four ways, and every scanner inherited them:
+- `redact_headers` matched header **names** only. A secret in a non-sensitive header's **value** (`Server: nginx AKIA…`) was stored.
+- The `private_key` pattern matched only the `-----BEGIN … PRIVATE KEY-----` line, so the key body was stored, in evidence and in recorded fixtures.
+- Finding text was never redacted: titles, descriptions, impact, remediation and locations.
+- Error messages were never redacted: `ScanError`, exception text, CLI output.
+
+`web` worked around all four on the scanner side (Tool 4a, three leak-fix rounds and a 153-case attack harness), which is the wrong place: every scanner has to remember, and `domscout` did not.
+
+**Decision.**
+1. **One redactor, in core** (`core/redaction.py`). Scanners do not redact. It covers:
+   - the token patterns: AWS access key, GitHub token, bearer token, Slack token, Google API key;
+   - **whole PEM private-key blocks**, whatever the label (`RSA`, `EC`, `DSA`, `ENCRYPTED`, `OPENSSH`, PGP `PRIVATE KEY BLOCK`) and whatever separates the lines: newlines, CRLF, escaped `\n`/`\r\n`, `<br>`, `&#10;`/`&#xa;`, JSON-escaped `\/`. A block with no END line is cut to the end of the text. An END line whose BEGIN was lost is taken with the key lines above it, and so is a run of bare 40–100-column base64 lines whose BEGIN and END were both truncated away.
+2. **Secrets, not public key material.** This is the carve-out, and it is load-bearing.
+   - The PEM matcher acts only on labels containing `PRIVATE KEY`. `CERTIFICATE`, `PUBLIC KEY` and every other public label are kept intact, including their base64 bodies.
+   - The bare-base64 heuristic never touches a run inside or adjoining a public PEM block.
+   - The heuristic is applied **only to HTTP bodies, header values and free text**. It is never applied to DNS records, certificate data or any other public key material: a DKIM `p=` value is a public key, and `dkim-weak-key` measures key size from it.
+   - **DNS record text and TLS certificate strings get the token patterns and private-key blocks only.** Deliberately public tokens, such as `google-site-verification=…`, survive.
+3. **Checks evaluate raw data; redaction happens at storage.** A scanner reads the live response, DNS answer or certificate unredacted, in memory, for the duration of one check. What is redacted is what is *kept*: evidence, findings, fixtures, the store, errors, logs. No check may decide anything from redacted text.
+4. **Redact first, then truncate, everywhere in core.** Truncating text is possible only through functions that redact first and cut so that no marker is split. The cut text is then redacted again, because a cut can create a new word boundary. Cap-before-redact, the Tool 4a bug, cannot be written against core.
+5. **Every storage point goes through it:**
+   - HTTP captures (request URL, header names and values, bodies) in evidence and in recorded fixtures, with replayed fixtures re-redacted;
+   - evidence objects however they are built;
+   - `Finding` text fields;
+   - `ScanError` messages;
+   - CLI output, the progress stream, and uncaught exception text.
+6. **One way in.** `Finding` redacts in a model validator. So `Finding.create`, direct construction, `model_validate`/`model_validate_json` deserialisation and **loading from the store** all redact. `model_construct`, which skips validation, is blocked, and `model_copy` re-validates. Loading a store written before this ADR therefore redacts it on the way out.
+7. **Re-running redaction is safe, and markers are inert.**
+   - Running the redactor twice gives the same result as once.
+   - A whole private-key block is replaced by `[redacted:private_key]`, which is never read as the start of anything.
+   - The legacy marker `[redacted]:private_key`, which old core left in place of a BEGIN line while keeping the body, *is* read as a block start, so captures from before this ADR are cut correctly too.
+8. **Over-redaction is the accepted price.** Genuine base64 columns in a web page become a marker in stored evidence. Verdicts never depend on stored text (clause 3), so corpus numbers do not move.
+
+**Consequences.**
+- `web`'s scanner-side workaround is removed only if the 153-case harness, re-run against core directly and then against `web` end-to-end, live and on replay, still reports 0 leaks without it. If any case fails, the workaround stays.
+- A finding whose *location* contained a secret gets a new deterministic id, because the id is computed from the redacted location. Losing history for such a finding is correct: we must not key on a secret.
+- Every scanner's corpus numbers must be unchanged. A change means a check was reading stored text, which clause 3 forbids, and is a defect.
+
+**Reversal cost.** High, and inadvisable: reverting re-opens hard constraint 5 for every scanner.
