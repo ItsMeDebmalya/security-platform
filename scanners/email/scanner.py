@@ -39,6 +39,7 @@ from core.registry import register
 from core.scanner import BaseScanner
 from scanners.email.checks import CHECKS, COMMON_SELECTORS, DNS_CLASS, Check
 from scanners.email.checks import requires_authorisation as _requires_authorisation
+from scanners.email.discovery import Discovery, discover, is_dmarc_candidate
 from scanners.email.dkim import DkimKeyRecord, parse_dkim_key
 from scanners.email.dmarc import DmarcRecord, parse_dmarc
 from scanners.email.spf import (
@@ -63,7 +64,7 @@ NO_VERDICT_FOR_RCODE = {
 @register
 class EmailScanner(BaseScanner):
     name = "email"
-    version = "1.2.2"
+    version = "1.3.0"
     supported_modes = frozenset({"light", "standard"})
     target_types = frozenset({"domain"})
 
@@ -105,9 +106,18 @@ class _Scan:
         self.ctx.progress("reading SPF, DMARC and MX", 0.25)
         self.ctx.check_alive()
         self.spf = fetch_spf(self.domain, self.dns)
-        self.dmarc_answer = self.dns.query(f"_dmarc.{self.domain}", "TXT")
-        self.dmarc = _parse_dmarc_answer(self.dmarc_answer)
         self.mx_answer = self.dns.query(self.domain, "MX")
+        # RFC 9989 4.10: which DMARC record applies, by DNS Tree Walk. Findings
+        # *about* the record at this name read `self.dmarc`; anything that asks
+        # "what does a receiver do with mail from here" reads `self.posture`.
+        self.discovery = discover(
+            self.domain, self.dns, author_exists=self.mx_answer.rcode != "NXDOMAIN"
+        )
+        self.dmarc_answer = self.discovery.target_answer
+        self.dmarc = (
+            _parse_dmarc_answer(self.dmarc_answer) if self.discovery.target_records == 1 else None
+        )
+        self.posture = _posture_record(self.discovery, self.dmarc)
 
         self.ctx.progress("looking for DKIM selectors", 0.5)
         self.ctx.check_alive()
@@ -231,14 +241,27 @@ class _Scan:
 
     def _dmarc_finding_for_posture(self) -> str | None:
         """The DMARC finding that already reports an unenforced policy, if any."""
-        if not self.dmarc_answer.is_definite():
+        if not self.dmarc_answer.is_definite() or not self.discovery.definite:
             return None
-        if self.dmarc is None:
+        if self.discovery.target_records > 1:
+            return "dmarc-invalid"
+        if self.posture is None:
             return "dmarc-missing"
-        if not self.dmarc.valid:
-            return None if _dmarc_posture(self.dmarc) in ENFORCED else "dmarc-invalid"
-        posture = _dmarc_posture(self.dmarc)
+        posture = _dmarc_posture(self.posture)
+        if self.dmarc is not None and not self.dmarc.valid:
+            return None if posture in ENFORCED else "dmarc-invalid"
         return {"none": "dmarc-policy-none", "partial": "dmarc-pct-partial"}.get(posture)
+
+    def _inherited_note(self) -> str:
+        """Both readings, for a policy this domain inherits from an ancestor."""
+        found = self.discovery
+        return (
+            f" No DMARC record is published at _dmarc.{self.domain}. Under RFC 9989's DNS "
+            f"tree walk (section 4.10) the record at _dmarc.{found.source} applies, using its "
+            f"{found.policy_tag}= policy. RFC 7489 receivers find the organizational domain "
+            "with a Public Suffix List, which we do not consult, so we cannot confirm they "
+            "apply the same record."
+        )
 
     def _neutral_all_posture(self) -> tuple[str, str]:
         """Severity for '?all', and the sentence that says why, from DMARC.
@@ -249,12 +272,12 @@ class _Scan:
         to the DMARC finding, which this one names. The sentence still says
         what the posture means.
         """
-        if not self.dmarc_answer.is_definite():
+        if not self.dmarc_answer.is_definite() or not self.discovery.definite:
             return "low", (
                 " The DMARC lookup did not return a definite answer, so whether DMARC stops "
                 "forged mail here is unknown."
             )
-        posture = _dmarc_posture(self.dmarc)
+        posture = _dmarc_posture(self.posture)
         if posture == "reject":
             return "low", (
                 " DMARC is p=reject, which asks receivers to reject mail that fails DMARC, so "
@@ -269,6 +292,11 @@ class _Scan:
                 "delivered, to a spam folder or flagged, where a person may read and act on it."
             )
         other = self._dmarc_finding_for_posture()
+        if other is None:
+            return "low", (
+                " DMARC does not enforce a policy here, so nothing stops forged mail. This "
+                "finding is the SPF side of that weakness."
+            )
         return "low", (
             " DMARC does not enforce a policy here, so nothing stops forged mail. That "
             f"exposure is reported as {other}. This finding is the same weakness seen from "
@@ -385,25 +413,40 @@ class _Scan:
     # --- DMARC --------------------------------------------------------------
 
     def _check_dmarc(self) -> None:
-        if not self.dmarc_answer.is_definite():
+        found = self.discovery
+        if not self.dmarc_answer.is_definite() or (self.dmarc is None and not found.definite):
+            failed = next(q for q in found.queried if not q.is_definite())
             self._inconclusive(
                 "dmarc-missing",
-                self.dmarc_answer,
-                f"The TXT lookup for _dmarc.{self.domain} returned "
-                f"{self.dmarc_answer.rcode}, so we cannot say whether a DMARC record exists.",
+                failed,
+                f"The TXT lookup for {failed.name} returned {failed.rcode}, so we cannot say "
+                "which DMARC record, if any, applies to this domain.",
             )
             self._not_applicable("dmarc-invalid")
             self._not_applicable("dmarc-policy-none")
             return
 
+        if found.target_records > 1:
+            self._report_multiple_dmarc()
+            self._not_applicable("dmarc-policy-none")
+            return
+
+        if self.dmarc is None and found.record is not None:
+            self._check_inherited_dmarc()
+            return
+
         if self.dmarc is None:
+            walked = ", ".join(q.name for q in found.queried)
             self._report(
                 "dmarc-missing",
                 self.dmarc_answer,
                 description=(
-                    f"No DMARC record is published at _dmarc.{self.domain}."
-                    + self._neutral_all_note()
+                    f"No DMARC record applies to {self.domain}. Following RFC 9989's DNS tree "
+                    f"walk (section 4.10) we looked at {walked}, and none publishes one. RFC "
+                    "7489 receivers, which look at the organizational domain, find none "
+                    "either, because it is one of those names." + self._neutral_all_note()
                 ),
+                analysis={"dmarc_discovery": found.to_dict()},
                 impact=(
                     "Receiving mail servers are given no instruction about what to do with mail "
                     "that fails authentication, so forged mail claiming to be from this domain "
@@ -415,7 +458,7 @@ class _Scan:
                     f"{self.domain}'. Start at p=none to collect reports, confirm every "
                     "legitimate sender passes, then move to p=quarantine and p=reject."
                 ),
-                validates=lambda answer: not _has_dmarc(answer),
+                validates=self._still_no_dmarc,
             )
             self._not_applicable("dmarc-invalid")
             self._not_applicable("dmarc-policy-none")
@@ -449,6 +492,81 @@ class _Scan:
                     "reports at each step."
                 ),
                 validates=_dmarc_policy_is_none,
+            )
+        else:
+            self._clear("dmarc-policy-none")
+
+    def _report_multiple_dmarc(self) -> None:
+        """More than one DMARC record at one name: every one is discarded.
+
+        RFC 7489 6.6.3 step 5 ends policy discovery there, so no DMARC applies.
+        RFC 9989 4.10 discards them and continues the walk to the
+        organizational domain. Severity is dmarc-missing's: at this name, the
+        worst case is no record at all.
+        """
+        found = self.discovery
+        if found.record is None:
+            outcome = (
+                "No ancestor publishes a record either, so under both RFCs no DMARC policy "
+                "applies to this domain."
+            )
+        else:
+            outcome = (
+                f"Under RFC 9989 the walk then reaches _dmarc.{found.source}, whose "
+                f"{found.policy_tag}= policy applies. Under RFC 7489 discovery stops here "
+                "and no DMARC applies."
+            )
+        self._report(
+            "dmarc-invalid",
+            self.dmarc_answer,
+            title="More than one DMARC record published, so receivers discard them all",
+            description=(
+                f"_dmarc.{self.domain} publishes {found.target_records} DMARC records. RFC "
+                "7489 section 6.6.3 and RFC 9989 section 4.10 both discard every record at "
+                f"a name that has more than one. {outcome}" + self._neutral_all_note()
+            ),
+            impact=(
+                "Whatever policy the records state, receivers do not apply it. The domain "
+                "has the appearance of DMARC protection and none of the effect."
+            ),
+            remediation=(
+                f"Publish exactly one TXT record at _dmarc.{self.domain} beginning "
+                "'v=DMARC1'. Merge whatever the records were meant to say into it."
+            ),
+            analysis={"dmarc_discovery": found.to_dict()},
+            validates=lambda answer: sum(1 for r in answer.records if is_dmarc_candidate(r)) > 1,
+        )
+
+    def _check_inherited_dmarc(self) -> None:
+        """No record here, but one applies from an ancestor (RFC 9989 4.10)."""
+        found = self.discovery
+        self._clear("dmarc-missing")
+        self._not_applicable("dmarc-invalid")
+        effective = found.effective
+        assert effective is not None and found.answer is not None
+        if effective.valid and effective.policy == "none":
+            tag = found.policy_tag
+            self._report(
+                "dmarc-policy-none",
+                found.answer,
+                description=(
+                    f"The DMARC policy that applies to {self.domain} is none, which asks "
+                    "receivers to take no action on mail that fails authentication."
+                    + self._inherited_note()
+                    + self._neutral_all_note()
+                ),
+                impact=(
+                    "Mail forged as this domain is still delivered wherever this record is the "
+                    "one applied."
+                ),
+                remediation=(
+                    f"At _dmarc.{found.source}, raise {tag}= from none to quarantine, then "
+                    f"reject, or publish a record of its own at _dmarc.{self.domain}."
+                ),
+                analysis={"dmarc_discovery": found.to_dict()},
+                validates=lambda answer: _effective_policy(answer, tag) == "none",
+                likelihood_ratio=INHERITED_RATIO,
+                justification=INHERITED_REASON,
             )
         else:
             self._clear("dmarc-policy-none")
@@ -566,19 +684,26 @@ class _Scan:
             )
 
     def _check_dmarc_standard(self) -> None:
-        if self.dmarc is None or not self.dmarc.valid:
+        found = self.discovery
+        inherited = self.dmarc is None and found.target_records <= 1 and found.inherited
+        record = found.effective if inherited else self.dmarc
+        if record is None or not record.valid:
             for check_id in ("dmarc-pct-partial", "dmarc-no-rua", "dmarc-alignment"):
                 self._not_applicable(check_id)
             return
+        answer = found.answer if inherited and found.answer is not None else self.dmarc_answer
+        note = self._inherited_note() if inherited else ""
+        ratio = INHERITED_RATIO if inherited else None
+        reason = INHERITED_REASON if inherited else None
 
-        if self.dmarc.pct < 100:
+        if record.pct < 100:
             self._report(
                 "dmarc-pct-partial",
-                self.dmarc_answer,
+                answer,
                 description=(
-                    f"The DMARC policy applies to {self.dmarc.pct}% of failing mail (pct="
-                    f"{self.dmarc.pct}). The other {100 - self.dmarc.pct}% is delivered as if "
-                    "the policy were p=none." + self._neutral_all_note()
+                    f"The DMARC policy applies to {record.pct}% of failing mail (pct="
+                    f"{record.pct}). The other {100 - record.pct}% is delivered as if "
+                    "the policy were p=none." + note + self._neutral_all_note()
                 ),
                 impact=(
                     "An attacker sending repeatedly gets through on the unprotected fraction. "
@@ -589,16 +714,19 @@ class _Scan:
                     "step, and remove the tag entirely once you reach 100."
                 ),
                 validates=lambda answer: _dmarc_pct(answer) < 100,
+                likelihood_ratio=ratio,
+                justification=reason,
             )
         else:
             self._clear("dmarc-pct-partial")
 
-        if not self.dmarc.rua:
+        if not record.rua:
             self._report(
                 "dmarc-no-rua",
-                self.dmarc_answer,
+                answer,
                 description=(
                     "The DMARC record has no rua= tag, so no aggregate reports are sent anywhere."
+                    + note
                 ),
                 impact=(
                     "Without reports there is no way to see which senders are failing "
@@ -609,17 +737,19 @@ class _Scan:
                     "daily as XML; a report analyser makes them readable."
                 ),
                 validates=lambda answer: not _dmarc_rua(answer),
+                likelihood_ratio=ratio,
+                justification=reason,
             )
         else:
             self._clear("dmarc-no-rua")
 
-        if self.dmarc.adkim == "r" or self.dmarc.aspf == "r":
+        if record.adkim == "r" or record.aspf == "r":
             self._report(
                 "dmarc-alignment",
-                self.dmarc_answer,
+                answer,
                 description=(
-                    f"DMARC alignment is relaxed (adkim={self.dmarc.adkim}, "
-                    f"aspf={self.dmarc.aspf}). Relaxed alignment accepts any subdomain of "
+                    f"DMARC alignment is relaxed (adkim={record.adkim}, "
+                    f"aspf={record.aspf}). Relaxed alignment accepts any subdomain of "
                     f"{self.domain} in the authenticated identifier."
                 ),
                 impact=(
@@ -684,15 +814,15 @@ class _Scan:
         domain is more likely to be unconfigured than deliberately silent.
         """
         return (
-            self.dmarc is not None
-            and self.dmarc.valid
-            and self.dmarc.policy in ("quarantine", "reject")
+            self.posture is not None
+            and self.posture.valid
+            and self.posture.policy in ("quarantine", "reject")
         )
 
     def _report_missing_mx(self) -> None:
         if self._email_is_deliberately_configured():
             spf_text = self.spf.record.raw if self.spf.record else "no SPF record"
-            policy = self.dmarc.policy if self.dmarc else ""
+            policy = self.posture.policy if self.posture else ""
             posture = (
                 "Its SPF record authorises no senders at all, and its DMARC policy is "
                 f"p={policy}, which together say this domain neither sends nor receives "
@@ -988,7 +1118,11 @@ class _Scan:
         The simulation *is* the verdict, and it is stated as a simulation: we
         are reading published policy, not watching a receiver act on it.
         """
-        if not self.dmarc_answer.is_definite() or not self.spf.definite:
+        if (
+            not self.dmarc_answer.is_definite()
+            or not self.discovery.definite
+            or not self.spf.definite
+        ):
             self._inconclusive(
                 "spoofing-possible",
                 self.dmarc_answer,
@@ -997,7 +1131,9 @@ class _Scan:
             )
             return
 
-        reasons, only_hedge = _spoofing_reasons(self.dmarc, self.spf.record)
+        reasons, only_hedge = _spoofing_reasons(
+            self.posture, self.spf.record, discovery=self.discovery
+        )
         self._spoof_reasons = reasons
 
         if not reasons:
@@ -1026,8 +1162,8 @@ class _Scan:
             validates=self._still_spoofable,
             likelihood_ratio=4.0 if only_hedge else None,
             justification=(
-                "the only reason is a DMARC error no spec gives receiver handling for, so "
-                "whether a receiver applies the record is uncertain"
+                "every reason depends on which DMARC record a receiver applies, and the two "
+                "DMARC standards, or no standard at all, leave that uncertain"
                 if only_hedge
                 else None
             ),
@@ -1061,8 +1197,33 @@ class _Scan:
         self._also_reread.append(spf_again.answer)
         if not spf_again.definite:
             return None
-        reasons, _ = _spoofing_reasons(_parse_dmarc_answer(answer), spf_again.record)
+        found = discover(
+            self.domain,
+            self.dns,
+            author_exists=self.mx_answer.rcode != "NXDOMAIN",
+            resolver=self.dns.second_resolver(),
+        )
+        if not found.definite:
+            return None
+        own = _parse_dmarc_answer(answer) if found.target_records == 1 else None
+        reasons, _ = _spoofing_reasons(
+            _posture_record(found, own), spf_again.record, discovery=found
+        )
         return reasons == self._spoof_reasons
+
+    def _still_no_dmarc(self, _answer: DnsResponse) -> bool | None:
+        """Re-walk the whole tree through the second resolver: still nothing applies."""
+        found = discover(
+            self.domain,
+            self.dns,
+            author_exists=self.mx_answer.rcode != "NXDOMAIN",
+            resolver=self.dns.second_resolver(),
+        )
+        for answer in found.queried[1:]:
+            self._also_reread.append(answer)
+        if not found.definite:
+            return None
+        return found.record is None and found.target_records == 0
 
     # --- emitting -----------------------------------------------------------
 
@@ -1336,6 +1497,34 @@ _REFERENCES = {
 }
 
 
+INHERITED_RATIO = 4.0
+INHERITED_REASON = (
+    "the record applies by RFC 9989's tree walk from an ancestor; RFC 7489 receivers choose "
+    "the organizational domain with a Public Suffix List we do not consult"
+)
+
+
+def _posture_record(found: Discovery, own: DmarcRecord | None) -> DmarcRecord | None:
+    """The record a receiver applies: the walk's, or this name's own ignored one.
+
+    A record here whose version is not exactly DMARC1 is discarded by the walk,
+    but if nothing else applies it is still what explains the posture.
+    """
+    if found.record is not None:
+        return found.effective
+    if found.target_records > 1:
+        return None
+    return own
+
+
+def _effective_policy(answer: DnsResponse, tag: str) -> str | None:
+    record = _parse_dmarc_answer(answer)
+    if record is None:
+        return None
+    value = record.tags.get(tag) or record.tags.get("p")
+    return value.lower() if value else None
+
+
 def _dmarc_posture(dmarc: DmarcRecord | None) -> str:
     """What a receiver following RFC 7489 does with this domain's DMARC record.
 
@@ -1368,7 +1557,9 @@ def _dmarc_posture(dmarc: DmarcRecord | None) -> str:
     return "reject" if dmarc.policy == "reject" else "quarantine"
 
 
-def _spoofing_reasons(dmarc: DmarcRecord | None, spf: SpfRecord | None) -> tuple[list[str], bool]:
+def _spoofing_reasons(
+    dmarc: DmarcRecord | None, spf: SpfRecord | None, *, discovery: Discovery | None = None
+) -> tuple[list[str], bool]:
     """Why a receiving mail server would deliver a forged message.
 
     Returns the reasons and whether they are only a hedge: a DMARC record whose
@@ -1381,7 +1572,23 @@ def _spoofing_reasons(dmarc: DmarcRecord | None, spf: SpfRecord | None) -> tuple
     reasons: list[str] = []
     hedged = False
     posture = _dmarc_posture(dmarc)
-    if posture == "missing":
+    discarded = discovery is not None and discovery.target_records > 1
+    inherited = discovery is not None and discovery.inherited
+    if discarded and dmarc is None:
+        reasons.append(
+            "the domain publishes more than one DMARC record, and RFC 7489 and RFC 9989 "
+            "both discard them all, so no DMARC policy applies"
+        )
+    elif discarded and posture in ENFORCED and discovery is not None:
+        # RFC 7489 stops at the discarded records; RFC 9989 walks on to an
+        # enforcing ancestor. Receiver-dependent: the worst case is stated.
+        hedged = True
+        reasons.append(
+            "the domain publishes more than one DMARC record, which every receiver "
+            "discards; RFC 7489 receivers then apply no DMARC, while RFC 9989 receivers apply "
+            f"_dmarc.{discovery.source}'s policy"
+        )
+    elif posture == "missing":
         reasons.append(
             "there is no DMARC record, so a receiver has no instruction to reject mail "
             "that fails authentication"
@@ -1406,12 +1613,24 @@ def _spoofing_reasons(dmarc: DmarcRecord | None, spf: SpfRecord | None) -> tuple
             "the DMARC record has no usable policy but a valid rua, so RFC 7489 section "
             "6.6.3 has receivers act as if it said p=none, which asks them to take no action"
             if dmarc is not None and dmarc.receiver_handling == "treat_as_none"
-            else "the DMARC policy is p=none, which asks receivers to take no action"
+            else (
+                "the DMARC policy that applies is none, which asks receivers to take no action"
+                if inherited
+                else "the DMARC policy is p=none, which asks receivers to take no action"
+            )
         )
     elif posture == "partial" and dmarc is not None:
         reasons.append(
             f"the DMARC policy is applied to only {dmarc.pct}% of failing mail, so "
             f"roughly {100 - dmarc.pct}% of forged messages are delivered anyway"
+        )
+    if inherited and reasons and discovery is not None:
+        # A policy from an ancestor: RFC 9989's walk applies it, and an RFC
+        # 7489 receiver's Public Suffix List may choose another record.
+        hedged = True
+        reasons[-1] += (
+            f" (the record that applies is inherited from _dmarc.{discovery.source} by RFC "
+            "9989's tree walk; an RFC 7489 receiver may choose differently)"
         )
 
     plus_all = spf is not None and spf.all_qualifier == "+"

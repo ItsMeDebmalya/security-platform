@@ -87,7 +87,9 @@ Live basis: 13 real hosts, every claim hand-verified with `curl`, cross-checked 
 
 ---
 
-## email — Email Security Scanner (Tool 1, v1.2.2)
+## email — Email Security Scanner (Tool 1, v1.3.0)
+
+**Which DMARC record applies** (v1.3.0) is found by RFC 9989's DNS tree walk (§4.10). A subdomain inherits its parent's `sp=` (or `np=`) policy. An inherited policy is stated under both RFCs and held at `suspected`, because RFC 7489 receivers choose with a Public Suffix List we do not consult (D49). Several DMARC records at one name are all discarded, as both RFCs require.
 
 **Live basis (2026-10-08):** email live run 2, 45 domains, all 146 non-informational findings hand-verified, with checkdmarc as the external cross-check ([verification](../corpus/crosscheck/email-live/2026-10-08-run2/verification.md)). **A check that made a false claim on a live target is BROKEN until it is fixed.** DMARC claims are judged against RFC 9989, which obsoletes RFC 7489 (ledger D44).
 

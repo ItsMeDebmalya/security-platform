@@ -1116,3 +1116,71 @@ def test_a_domain_that_receives_mail_still_gets_the_transport_findings(run_scan,
     [found] = [f for f in result.findings if f.check_id == check_id]
 
     assert found.state == "confirmed" and found.severity == "low"
+
+
+# --- RFC 9989 tree walk: no false dmarc-missing on a subdomain ---------------
+
+
+def _sub(parent_dmarc, **kw):
+    answers = zone("mail.example.com", spf="v=spf1 -all", dmarc=None, **kw)
+    answers[("_dmarc.example.com", "TXT")] = answer("_dmarc.example.com", "TXT", parent_dmarc)
+    return answers
+
+
+def test_a_subdomain_whose_parent_publishes_dmarc_is_not_reported_missing(run_scan):
+    result = run_scan("mail.example.com", _sub("v=DMARC1; p=reject"), mode="standard")
+    ids = {f.check_id for f in result.findings}
+
+    assert "dmarc-missing" not in ids
+    assert "spoofing-possible" not in ids
+
+
+def test_an_inherited_p_none_is_reported_and_held_at_suspected(run_scan):
+    """RFC 9989 applies the parent's record. RFC 7489 receivers pick the
+    organizational domain with a Public Suffix List we do not consult, so we
+    cannot confirm they choose the same record: both are stated."""
+    result = run_scan("mail.example.com", _sub("v=DMARC1; p=none"), mode="standard")
+    [found] = [f for f in result.findings if f.check_id == "dmarc-policy-none"]
+
+    assert found.state == "suspected"
+    assert "_dmarc.example.com" in found.description
+    assert "RFC 9989" in found.description and "RFC 7489" in found.description
+
+
+def test_an_inherited_sp_is_what_a_subdomain_gets(run_scan):
+    result = run_scan("mail.example.com", _sub("v=DMARC1; p=reject; sp=none"), mode="standard")
+
+    assert [f for f in result.findings if f.check_id == "dmarc-policy-none"]
+
+
+def test_no_record_anywhere_up_the_tree_is_still_dmarc_missing_and_confirmed(run_scan):
+    answers = zone("mail.example.com", spf="v=spf1 -all", dmarc=None)
+    result = run_scan("mail.example.com", answers, mode="standard")
+    [found] = [f for f in result.findings if f.check_id == "dmarc-missing"]
+
+    assert found.state == "confirmed"
+    assert "_dmarc.example.com" in found.description
+
+
+def test_two_dmarc_records_are_both_discarded_not_read_as_the_first(run_scan):
+    """Both RFC 7489 6.6.3 and RFC 9989 4.10 discard every record when a name
+    has more than one. Reading the first one claimed a policy no receiver applies."""
+    answers = zone("x.example", spf="v=spf1 -all", dmarc="v=DMARC1; p=reject")
+    answers[("_dmarc.x.example", "TXT")] = answer(
+        "_dmarc.x.example", "TXT", "v=DMARC1; p=reject", "v=DMARC1; p=none"
+    )
+    result = run_scan("x.example", answers, mode="standard")
+    by_id = {f.check_id: f for f in result.findings}
+
+    assert by_id["dmarc-invalid"].state == "confirmed"
+    assert by_id["dmarc-invalid"].severity == "high"
+    assert "more than one" in by_id["dmarc-invalid"].description
+    assert by_id["spoofing-possible"].state == "confirmed"
+
+
+def test_an_inherited_sp_none_is_not_described_as_p_none(run_scan):
+    result = run_scan("mail.example.com", _sub("v=DMARC1; p=reject; sp=none"), mode="standard")
+    [spoof] = [f for f in result.findings if f.check_id == "spoofing-possible"]
+
+    assert "p=none" not in spoof.description
+    assert spoof.state == "suspected"
