@@ -518,7 +518,7 @@ Then restore the entry-point lines in `CLAUDE.md` and `SPEC.md`, and the revert 
 - `core.tls.a_label` encodes a non-ASCII hostname with UTS-46 non-transitional processing, using `idna`, now a direct dependency. That is the WHATWG URL Standard's choice.
 - Our matcher, the SNI and OpenSSL's hostname check all use the encoder's output. Python's IDNA 2003 codec no longer runs.
 - A name that does not encode is `inconclusive`. This replaces the D48 stopgap, which made every name with ß, ς, ZWNJ or ZWJ `inconclusive`.
-- `tools/registry.yaml` gains `idna`, awaiting the operator's sign-off.
+- `tools/registry.yaml` gains `idna`, signed off by Debmalya Dey on 2026-10-10.
 
 **Revert.** Revert the merge commit. The stopgap returns, and `idna` is transitive again.
 

@@ -47,7 +47,8 @@
   # Already a transitive dependency (via httpx and anyio); direct since ADR-030.
   # Licence read from installed metadata: License-Expression BSD-3-Clause, and the
   # bundled idna-3.19.dist-info/licenses/LICENSE.md (BSD 3-Clause text).
-  # AWAITING OPERATOR SIGN-OFF: signed_off_by / signed_off_at are left for the operator.
+  signed_off_by: Debmalya Dey
+  signed_off_at: 2026-10-10
   review_evidence: "installed package metadata (License-Expression: BSD-3-Clause) and the bundled licence file in its dist-info"
 
 - name: jsonschema
