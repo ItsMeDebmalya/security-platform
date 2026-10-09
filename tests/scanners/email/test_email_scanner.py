@@ -1599,3 +1599,32 @@ def test_s2_inherited_policy_none_from_np_says_rfc_7489_applies_p(run_scan):
     }["dmarc-policy-none"]
 
     assert "RFC 7489" in found.description and "p=reject" in found.description
+
+
+# --- third pass (2026-10-09) -------------------------------------------------
+
+
+def test_t1_an_absent_p_does_not_say_rfc_9989_applies_no_processing(run_scan):
+    """aajtak.in: 'v=DMARC1'. RFC 9989: p=none. Only RFC 7489: no processing."""
+    by_id = _ids(run_scan, "x.example", {"_dmarc.x.example": ["v=DMARC1"]})
+    text = by_id["spoofing-possible"].description
+
+    assert "RFC 9989 section 4.10.1 and RFC 7489 section 6.6.3 both say" not in text
+    assert "RFC 9989 treats as p=none" in text
+
+
+def test_t2_an_inherited_invalid_np_states_both_readings(run_scan):
+    by_id = _ids(
+        run_scan, "sub.example.com", {"_dmarc.example.com": ["v=DMARC1; p=reject; np=bogus"]}
+    )
+    text = by_id["dmarc-invalid"].description
+
+    assert "RFC 7489 section 6.6.3" not in text
+    assert "RFC 7489 does not define np" in text and "p=reject" in text
+
+
+def test_t3_the_legacy_reason_does_not_repeat_itself(run_scan):
+    by_id = _ids(run_scan, "x.example", {"_dmarc.x.example": ["v=DMARC1; p=reject; rf=iodef"]})
+    text = by_id["spoofing-possible"].description
+
+    assert "for that: valid under" not in text

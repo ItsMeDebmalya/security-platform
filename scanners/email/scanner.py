@@ -660,7 +660,16 @@ class _Scan:
         found = self.discovery
         assert found.answer is not None
         handling = record.receiver_handling
-        if handling == "treat_as_none":
+        if record.np_invalid_only:
+            no_rua = handling == "no_processing"
+            severity = CHECKS["dmarc-missing"].severity if no_rua else "medium"
+            rule = (
+                "under RFC 9989 section 4.10.1 an invalid np= means receivers "
+                + ("apply no DMARC processing" if no_rua else "act as if the record said p=none")
+                + ", but RFC 7489 does not define np, ignores the tag and applies "
+                + f"p={record.policy}. Which happens depends on the receiver"
+            )
+        elif handling == "treat_as_none":
             severity, rule = (
                 "medium",
                 (
@@ -1990,6 +1999,19 @@ def _dmarc_reason(dmarc: DmarcRecord | None, posture: str, inherited: bool) -> s
     return "the DMARC policy is p=none, which asks receivers to take no action"
 
 
+def _rfc7489_only_reason(dmarc: DmarcRecord | None, p7: str) -> str:
+    """Why an RFC 7489 receiver delivers forged mail, citing RFC 7489 alone."""
+    if p7 == "partial" and dmarc is not None:
+        return _rfc7489_partial(dmarc)
+    if p7 == "unusable":
+        return "RFC 7489 receivers apply no DMARC processing to it (RFC 7489 section 6.6.3)"
+    if p7 == "undefined":
+        return "RFC 7489 does not say how its receivers handle the record, so some may ignore it"
+    if p7 == "missing":
+        return "RFC 7489 receivers find no DMARC record to apply"
+    return "RFC 7489 receivers act as if it said p=none"
+
+
 def _rfc7489_partial(dmarc: DmarcRecord) -> str:
     """RFC 7489 6.6.4 for p=quarantine with pct below 100. RFC 7489 only."""
     return (
@@ -2028,8 +2050,8 @@ def _dual_reason(
     if dmarc is not None and p7 == "undefined" and dmarc.legacy_issues:
         # Built from the record's actual issues (re-review N2).
         return (
-            f"{'; '.join(dmarc.legacy_issues)}: valid under RFC 9989, but an RFC 7489 receiver "
-            "may discard the record"
+            "the record is valid under RFC 9989, but "
+            f"{'; '.join(dmarc.legacy_issues)}, so an RFC 7489 receiver may discard it"
         )
     if dmarc is not None and dmarc.np_invalid_only:
         return (
@@ -2076,13 +2098,11 @@ def _spoofing_reasons(
     elif open9 and open7:
         hedged = "undefined" in (p9, p7)
         reason = _dmarc_reason(dmarc, p9, inherited)
-        if p7 != p9:
-            # Both readings deliver forged mail, for different reasons: say both (review S4).
-            reason += "; and " + (
-                _rfc7489_partial(dmarc7489)
-                if p7 == "partial" and dmarc7489 is not None
-                else "under RFC 7489, " + _dmarc_reason(dmarc7489, p7, inherited)
-            )
+        if p7 != p9 and not (dmarc is not None and dmarc.p_absent):
+            # Both readings deliver forged mail, for different reasons: say both
+            # (review S4), in a clause that speaks for RFC 7489 only (third pass).
+            # An absent p already states both readings in the first clause.
+            reason += "; and " + _rfc7489_only_reason(dmarc7489, p7)
         reasons.append(reason)
     elif open9 or open7:
         hedged = True
