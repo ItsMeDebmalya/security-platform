@@ -684,18 +684,18 @@ Nothing new owed. **D1 retired.**
 
 ## 2026-09-02 · Competitive baseline — the free tools were at par, and why
 
-**Trigger:** a real head-to-head, run while building the pitch deck. The operator ran MXToolbox against `kinetrix.in` (email) and an SSL checker against `erp.codez.in` (TLS), and found the free tools surfaced **as much or more** than our shipped scanners. This is the first time an outside reference, rather than our own corpus, judged the tools — and it is exactly the check [ADR-017](02-decisions.md) always implied but never named against competitors.
+**Trigger:** a real head-to-head, run while building the pitch deck. The operator ran MXToolbox against `kinetrix.in` (email) and an SSL checker against `<operator ERP host>` (TLS), and found the free tools surfaced **as much or more** than our shipped scanners. This is the first time an outside reference, rather than our own corpus, judged the tools — and it is exactly the check [ADR-017](02-decisions.md) always implied but never named against competitors.
 
 ### Found
 
-**The gap was mostly self-inflicted, not a lack of capability.** A coverage matrix built from the SSL Labs public API (grade `T`, 35 cipher suites and 13 named-vuln probes enumerated on `erp.codez.in`, no authorisation), SSL.org's output, and our own JSON, sorted into four buckets:
+**The gap was mostly self-inflicted, not a lack of capability.** A coverage matrix built from the SSL Labs public API (grade `T`, 35 cipher suites and 13 named-vuln probes enumerated on `<operator ERP host>`, no authorisation), SSL.org's output, and our own JSON, sorted into four buckets:
 
 1. **At par** — cert validity, expiry, hostname, key, signature, CT. Fine.
 2. **We had it but gated behind authorisation while the incumbents give it free** — protocol enumeration, ciphers, forward secrecy. **The whole market runs these unauthenticated.** This was the 0b.6 classification being over-cautious, and it is the bulk of why our free tier looked thin. → [ADR-023](02-decisions.md#adr-023--passive-is-ordinary-negotiation-only-malformed-input-is-active), fixed in this session.
 3. **We lack it and can add it safely** — named vulnerabilities by *inference* (POODLE/BEAST/FREAK/Logjam/RC4), OCSP, HSTS. → D17–D19.
 4. **We lack it and should** — Heartbleed/ROBOT active oracles send malformed input, out by [ADR-004](02-decisions.md). Not a gap; a principled decline.
 
-**`tls-chain-incomplete` is a real false negative.** Both reference tools flagged the `erp.codez.in` chain incomplete; we returned `clear`. A definition split (behavioural path-building vs "did the server send every cert"), and theirs is the more useful answer. **The corpus never caught it** — the eighth defect to survive precision 1.000, and the first found by a competitor rather than a live run or fixture read. → D17.
+**`tls-chain-incomplete` is a real false negative.** Both reference tools flagged the `<operator ERP host>` chain incomplete; we returned `clear`. A definition split (behavioural path-building vs "did the server send every cert"), and theirs is the more useful answer. **The corpus never caught it** — the eighth defect to survive precision 1.000, and the first found by a competitor rather than a live run or fixture read. → D17.
 
 ### Decided
 
@@ -1272,6 +1272,36 @@ The five run-2 false claims are gone. `make rfc-check` no longer flags email; tl
 **Must-fire rule (ADR-017):**
 - `dmarc-obsolete-tags` fired on real recordings: WORKING.
 - `dmarc-test-mode` and `dmarc-np-weaker` have no real positive among the 45 domains. They ship UNDETERMINED with synthetic corpus cases, as the rule allows. Finding real positives needs a screening pass for `t=y` and `np=`, which needs operator approval.
+
+## 2026-10-09 · Change of ownership: Satwik → Debmalya Dey (an attribution note; history not rewritten)
+
+**The record.** From **2026-10-02**, the project is run by **Debmalya Dey**. **The 32 commits made under the git identity `satwik <satwik@codez.in>` from `cb35ac5` (2026-10-02 18:24 IST) through `9828e85` (2026-10-09 11:10 IST) were authored by Debmalya Dey**, working with Claude Code. The 17 GitHub merge commits in the same range are already attributed to Debmalya Dey by GitHub. Commits before 2026-10-02 (the last is 2026-09-04) are Satwik's. The takeover date was proposed from the evidence below and confirmed by Debmalya Dey on 2026-10-09.
+
+| Evidence | When (IST) |
+|---|---|
+| Last commit before a four-week gap | 2026-09-04 12:33 (`60d05d4`) |
+| First Claude Code session in this project on the operator's machine | 2026-10-02 15:33 |
+| `github.com/ItsMeDebmalya/security-platform` created | 2026-10-02 17:43 |
+| First commit after the gap, `cb35ac5` ("v4 migration setup") | 2026-10-02 18:24 |
+| First pull request, opened by ItsMeDebmalya | 2026-10-07 |
+
+**What changed, and what did not:**
+- **The repo-local git identity is now `Debmalya Dey <debmalyadey01@gmail.com>`** (2026-10-09), set without `--global`, so other projects on the machine keep their own.
+- **No commit was amended or rewritten.** The 32 commits keep their author field; this note is the correction of record.
+- **Current-role references** (template verifiers, repo URLs) now name Debmalya (PR #18).
+- **Historical attestations are unchanged:** sign-offs, ownership verifications and dated records stay in Satwik's name, because they record what he did.
+- **Licence re-review:** Debmalya Dey re-reviewed the 19 registry entries Satwik signed, on the evidence below. Each entry gains `reviewed_by: Debmalya Dey`, `reviewed_at: 2026-10-09` and a `review_evidence` field, beside Satwik's original sign-off, which is unchanged. `make licence-check`: 23 components, no violations.
+
+| Entries | Licence read from |
+|---|---|
+| 15 Python packages | installed package metadata and the bundled licence file |
+| testssl.sh 3.2.4 | the bundled LICENSE (GNU GPL v2) and the script header |
+| juice-shop v19.0.0 | the OCI image licence label (MIT), digest `sha256:2765a26d…` |
+| dvwa:latest | the OCI image label (gpl-3.0). **The tag floats**, so the image inspected is recorded: digest `sha256:830037dfb394a98ef408c34eeb5c4f145aff7bd07d1402470c650bba964591d2` |
+| vampi:latest | `/vampi/LICENSE` in the image (MIT). **The tag floats**: digest `sha256:0a5a224b6e14ae7da6a6ea265178ff71286ff903aec74adee98f660bb0e4ca12` |
+| badssl.com | **GitHub's licence API** for `chromium/badssl.com` (Apache-2.0), **not local metadata**: no local image or package exists |
+
+**The operator's ERP host** is replaced with `<operator ERP host>` in the current text of five decision-record passages: ADR-016's market note, the testing runbook, and three lines of the 2026-09-02 competitor entry. Their meaning is unchanged. The authorisation row and its evidence file keep the real name, because `core/authz.py` uses them.
 
 ## Next
 
