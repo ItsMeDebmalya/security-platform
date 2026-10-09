@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_dmarc.grafana.com",
+  "rcode": "NOERROR",
+  "records": [
+    "v=DMARC1; p=quarantine; sp=none; adkim=r; aspf=r; t=y; rua=mailto:dmarc_agg@vali.email,mailto:grc@grafana.com; ruf=mailto:grc@grafana.com; fo=1; rf=afrf; ri=86400"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 31
+}
