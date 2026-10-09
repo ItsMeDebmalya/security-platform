@@ -815,3 +815,33 @@ In both cases the parser, the scope rule and the gate each did their job. The ga
 - **Limit:** a name that does not encode is still connected to, with Python's IDNA 2003 encoding of it as the SNI. Only the hostname check refuses to judge it; the other TLS checks judge whatever server answered. No browser would connect to such a name at all. Making every TLS check `inconclusive` for an invalid name is the stricter fix, recorded and not yet built.
 
 **Reversal cost.** Low: remove the call and go back to the stopgap.
+
+## ADR-031 — Service hosts: read-only public endpoints, per target, and the RDAP bootstrap is vendored
+
+**Status.** Accepted 2026-10-10 (operator), with a 90-day bootstrap freshness limit. Covers ledger D28. D31 needs no service host. The IANA bootstrap's data-licence entry awaits the operator's sign-off.
+
+**Context.** `BaseScanner.service_hosts` (crt.sh, rdap.org) was added during Tool 3 without an ADR. D28: rdap.org is a bootstrap redirector. It answers `302` to the registry's own RDAP server, `core.http` rightly declines to follow a redirect out of scope, and domscout then parsed the empty body as "carries no expiration event". It has never read an expiry live, for any TLD.
+
+**Decision.**
+1. **A service host is a read-only public service.** GET only, never the target, passive in every mode. Each is declared in code with its purpose and the evidence for its behaviour. Rate limits and cost metering apply to it as to the target.
+2. **Service hosts are per target.** An additive classmethod on `BaseScanner` returns the hosts for one target, and defaults to the static `service_hosts`. For domscout it returns crt.sh plus only the RDAP server for the target's TLD. So a `.in` scan's scope gains `rdap.nixiregistry.in` and no other registry.
+3. **The registry's RDAP server comes from a vendored copy of IANA's bootstrap**, the "Bootstrap Service Registry for Domain Name Space", RFC 9224, `https://data.iana.org/rdap/dns.json`. It is matched label-wise, longest first (RFC 9224 §4). We query the registry directly and drop rdap.org, so there is no redirect to follow. RFC 9224 §8 says clients "SHOULD cache the registry": the vendored copy is that cache, and its refresh rule is the freshness limit.
+4. **Freshness: 90 days**, from the file's own `publication` field. A test fails CI beyond that. **Why 90 days is safe:** a stale bootstrap fails to `inconclusive`, never to a false claim.
+   - A TLD missing from it gets "no RDAP server in IANA's bootstrap" (RFC 9224 §7).
+   - A server that has moved fails to fetch, or redirects out of scope. Either way, no expiry is read.
+   - A stale entry can never make us assert an expiry date that the registry did not serve.
+5. **An unfollowed redirect is reported as what happened**, never parsed as a body: "the registry's RDAP server redirected to `<host>`, which this scan may not contact, so expiry was not read".
+6. **Service-host content is not target-served content.** ADR-029's exposure rule is unchanged.
+7. **A fixture standing in for a service must be recorded, not invented** (ADR-027).
+
+**Confidentiality.** **Service hosts learn which domains we scan.** crt.sh receives every target name in its query, and so will the registry's RDAP server for the target's TLD. That reveals that someone is examining the domain, at that time, from our address. It is the same kind of disclosure as any public DNS or registration lookup, but it is a disclosure about our customer's activity to a third party. Before beta it goes into customer-facing terms (ledger item, DPDP-relevant). Until then it is stated here.
+
+**Rejected.**
+- Following rdap.org's redirect to any host: the scope becomes unbounded.
+- Following it only to bootstrap-listed hosts: this still needs the bootstrap, and adds a hop and a third party.
+
+**Consequences.**
+- domscout's expiry check can read live registries. **A TLD with no bootstrap entry stays `inconclusive`** (seen 2026-10-10: `.io`, `.भारत`/`xn--h2brj9c`, `.இந்தியா`). WHOIS (port 43) is out of scope.
+- The bootstrap needs a data-licence registry entry. Evidence: the registry is listed on `iana.org/protocols` and IANA dedicates the Protocol Registries to CC0 1.0. IANA's licensing page does not name `data.iana.org` itself. The operator signs off.
+
+**Reversal cost.** Low: the classmethod defaults to the static list.
