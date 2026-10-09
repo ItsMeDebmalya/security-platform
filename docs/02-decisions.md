@@ -759,3 +759,32 @@ In both cases the parser, the scope rule and the gate each did their job. The ga
 - **Token patterns need word boundaries.** A token glued inside a longer word (`xxxxAKIA…`) is not recognised, as before ADR-028. A recall limit, not a regression.
 
 **Reversal cost.** High, and inadvisable: reverting re-opens hard constraint 5 for every scanner.
+
+## ADR-029 — Redaction receipts: what was removed is recorded, never what it was; a receipt on public content is a finding
+
+**Status.** Accepted 2026-10-09 (operator). Proposed alongside ADR-028. The field name, its placement and the emitter were decided by the operator on 2026-10-09.
+
+**Context.** ADR-028 removes every secret before storage, so a customer cannot see what was removed or where. The evidence's `redactions` list (frozen contract, a list of kind names such as `"set-cookie"`) says which kinds were removed but not how many or from which part. Also, `web` is the only scanner that reports a secret it found in public content (`web-secret-in-response`). `email` and `domscout` capture public content too (DNS records, MTA-STS policies, the pages of a domain's subdomains) and redact secrets in it without saying so.
+
+**Decision.**
+1. **A new, optional field on every evidence item: `redaction_receipts: [{kind, count, where}]`.** For example, `{"kind": "aws_access_key_id", "count": 1, "where": "test.response.body"}`. It is additive: the existing `redactions` list is unchanged, and old evidence stays valid.
+   - `kind` is the redactor's name for what it removed.
+   - `count` is how many were removed there.
+   - `where` is a field path from a fixed vocabulary: `<side>.<part>.<field>` for HTTP (`test.response.body`, `control.request.url`), `<side>.<part>` for DNS and TLS exchanges (`test.answer`), or a top-level evidence field (`analysis`, `data`).
+2. **A receipt never records the value, a prefix, a suffix, the length or a hash.** A hash of a low-entropy token can be brute-forced, and a length narrows the guess. The schema enforces the three fields with `additionalProperties: false`, and `where` is never built from data: no header name, no URL, no record text.
+3. **A `Finding` rolls up its evidence's receipts** in its own `redaction_receipts`, with `where` prefixed by the evidence index (`evidence.0.test.response.body`). The rollup is computed by the model from the evidence and is never taken from input, so it cannot disagree with the evidence.
+4. **Receipts are made at capture and survive replay.** `core/http.py` records them in the capture and in the fixture, and replays them from it. A fixture recorded before this ADR has no receipts, and none are invented for it. Re-redacting stored text finds nothing new, because redaction is idempotent, so re-validation never double counts.
+5. **A receipt on publicly served content is a finding.**
+   - **Publicly served content** means a response's headers or body, or a DNS answer, served by the target: the target host or a name under the target domain. Our own requests are not public content, and neither are a third party's service hosts (crt.sh, rdap.org) or another zone's records.
+   - **The kinds that count are credentials:** `aws_access_key_id`, `github_token`, `slack_token`, `bearer_token` and `private_key`. These are the same as `web`'s. `google_api_key` is excluded, because browser keys are public by design. So are the sensitive-header kinds (a `Set-Cookie` header is normal) and `possible_key_material`, a heuristic cut that is not a verdict (ADR-028).
+   - **The emitter is a core helper** (`core/exposure.py`). A scanner calls it with its findings, and it returns one `secret-exposed` finding per exposed resource, under the scanner's own name, severity `high`. Its claim is "text matching the credential pattern(s) K was served at R. It was removed when captured and is not stored." Its state is computed by `core/state.py`, like every other finding's.
+   - **`web` does not call it.** `web-secret-in-response` already reports the same thing, so calling it would report every exposure twice.
+6. **A contract test makes forgetting impossible.** If any evidence item in a scan result has a credential receipt on public content, the result must also hold a finding that reports that resource: either `secret-exposed` or `web-secret-in-response`. The test runs every registered scanner over its corpus, so a future scanner is covered without being listed. A fake scanner that captures a secret and does not call the helper must fail it.
+
+**Consequences.**
+- `email` and `domscout` gain secret detection without storing anything. **Their `secret-exposed` checks ship UNDETERMINED** under ADR-017 until each fires on a real positive. Each has a synthetic positive and negative corpus case.
+- **Only evidence that a finding cites is checked.** A secret in a response that no finding cites is neither stored nor reported. It is a recall limit, stated, not a guarantee of absence.
+- **`scan verify` cannot close a `secret-exposed` finding yet.** The helper reports an exposure; it does not run a check that can come back `clear`. So verify says "could not verify", which is the honest outcome.
+- `email`, `domscout` and `web` bump `scanner_version`, because their evidence now carries receipts. `tls` evidence carries the empty field and no receipt in any corpus case, so its version is unchanged.
+
+**Reversal cost.** Low for the finding: drop the helper calls. The field is additive, so removing it is a contract migration in its own right.

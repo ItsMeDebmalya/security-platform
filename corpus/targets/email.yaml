@@ -131,6 +131,14 @@ cases:
     target: { type: domain, value: corpus-broken.example }
     fixtures: corpus/fixtures/email/servfail
 
+  # ADR-029: a credential in a public TXT record (AWS's documented example key).
+  - id: secret-in-txt
+    tier: vulnerable
+    source: frozen
+    mode: standard
+    target: { type: domain, value: corpus-secret.example }
+    fixtures: corpus/fixtures/email/secret-in-txt
+
   # --- second-resolver disagreement, recorded from real resolvers (D39) -----
   # corpus/generators/email_recorded.py, from email live run 1's archived
   # three-resolver measurement. Ground truth hand-verified 2026-10-08 with dig

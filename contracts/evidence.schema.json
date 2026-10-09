@@ -35,6 +35,13 @@
         "type": "string"
       },
       "description": "Fields removed at capture time. We never hold a customer secret."
+    },
+    "redaction_receipts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/redaction_receipt"
+      },
+      "description": "ADR-029 (additive): a receipt per kind and part removed at capture."
     }
   },
   "oneOf": [
@@ -511,6 +518,31 @@
           ]
         }
       }
+    },
+    "redaction_receipt": {
+      "type": "object",
+      "description": "ADR-029: what was removed, how many and from which part, never what it was. No value, prefix, length or hash.",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "pattern": "^[a-z0-9_-]+$"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "where": {
+          "type": "string",
+          "pattern": "^[a-z_]+(\\.[a-z0-9_]+)*$",
+          "description": "A field path from a fixed vocabulary, never built from data."
+        }
+      },
+      "required": [
+        "kind",
+        "count",
+        "where"
+      ],
+      "additionalProperties": false
     }
   },
   "examples": [
@@ -521,6 +553,13 @@
       "redactions": [
         "set-cookie",
         "authorization"
+      ],
+      "redaction_receipts": [
+        {
+          "kind": "set-cookie",
+          "count": 1,
+          "where": "test.response.headers"
+        }
       ],
       "control": {
         "request": {

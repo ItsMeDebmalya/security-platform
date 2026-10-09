@@ -34,6 +34,8 @@ from core.confidence import ConfidenceEngine, Signal
 from core.context import ScanContext
 from core.dns import DnsClient, DnsResponse
 from core.evidence import dns_evidence
+from core.exposure import check_runs as exposure_check_runs
+from core.exposure import secret_exposure_findings
 from core.models import Asset, CheckRun, Finding, Mode, ScanResult, Telemetry
 from core.registry import register
 from core.scanner import BaseScanner
@@ -71,7 +73,7 @@ NO_VERDICT_FOR_RCODE = {
 @register
 class EmailScanner(BaseScanner):
     name = "email"
-    version = "1.4.1"
+    version = "1.5.0"
     supported_modes = frozenset({"light", "standard"})
     target_types = frozenset({"domain"})
 
@@ -146,6 +148,18 @@ class _Scan:
 
         self.ctx.progress("simulating the receiver decision", 0.9)
         self._check_spoofing()
+
+        # ADR-029: a credential receipt on content the target served is a finding.
+        exposures = secret_exposure_findings(
+            self.findings,
+            scanner=self.scanner.name,
+            scanner_version=self.scanner.version,
+            target=self.target,
+            org_id=self.ctx.org_id,
+            scan_id=self.ctx.scan_id,
+        )
+        self.findings.extend(exposures)
+        self.checks.extend(exposure_check_runs(exposures))
 
         self.ctx.progress("done", 1.0)
         cost = self.ctx.cost.snapshot()

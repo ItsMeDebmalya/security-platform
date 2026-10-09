@@ -94,10 +94,25 @@ class Cost(Strict):
 # --- evidence ---------------------------------------------------------------
 
 
+class RedactionReceipt(Strict):
+    """What was removed, how many and from which part (ADR-029), never what it was.
+
+    No value, prefix, length or hash: a hash of a low-entropy token can be brute
+    forced, and a length narrows the guess. `where` is a field path from a fixed
+    vocabulary (`test.response.body`, `test.answer`, `evidence.0.test.response.body`),
+    never built from data.
+    """
+
+    kind: str = Field(pattern=r"^[a-z0-9_-]+$")
+    count: int = Field(ge=1)
+    where: str = Field(pattern=r"^[a-z_]+(\.[a-z0-9_]+)*$")
+
+
 class EvidenceBase(Strict):
     label: str = Field(min_length=1)
     captured_at: datetime
     redactions: list[str] = Field(default_factory=list)
+    redaction_receipts: list[RedactionReceipt] = Field(default_factory=list)
 
     @model_validator(mode="before")
     @classmethod
@@ -402,6 +417,24 @@ class Finding(Strict):
     materialises_reason: str | None = Field(default=None, min_length=1)
     derivation: Derivation = "detected"
     derived_from: str | None = None
+
+    # --- ADR-029: computed from the evidence, never taken from input
+    redaction_receipts: list[RedactionReceipt] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _roll_up_receipts(self) -> Self:
+        """A finding's receipts are its evidence's, prefixed by evidence index.
+
+        Recomputed on every construction and assignment, and written past
+        validation, so an input value is discarded and the rollup cannot
+        disagree with the evidence (ADR-029 clause 3)."""
+        rolled = [
+            RedactionReceipt(kind=r.kind, count=r.count, where=f"evidence.{i}.{r.where}")
+            for i, item in enumerate(self.evidence)
+            for r in getattr(item, "redaction_receipts", [])
+        ]
+        self.__dict__["redaction_receipts"] = rolled
+        return self
 
     @model_validator(mode="before")
     @classmethod

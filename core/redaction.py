@@ -161,15 +161,50 @@ def _heuristics_for(evidence: dict[str, Any]) -> bool:
     return evidence.get("kind") not in PUBLIC_DATA_KINDS
 
 
+Receipts = dict[tuple[str, str], int]
+"""(kind, where) -> how many were removed there (ADR-029)."""
+
+
+def add_receipts(receipts: Receipts, counts: Counts, where: str) -> None:
+    for kind, count in counts.items():
+        if count:
+            receipts[(kind, where)] = receipts.get((kind, where), 0) + count
+
+
+def receipt_list(receipts: Receipts) -> list[dict[str, Any]]:
+    """The stored form: `[{kind, count, where}]`, in a stable order."""
+    return [
+        {"kind": kind, "count": count, "where": where}
+        for (kind, where), count in sorted(receipts.items(), key=lambda kv: (kv[0][1], kv[0][0]))
+    ]
+
+
+def receipts_from(items: Any, prefix: str = "") -> Receipts:
+    """Read stored receipts back, optionally under a `where` prefix."""
+    out: Receipts = {}
+    for item in items or []:
+        if hasattr(item, "model_dump"):
+            item = item.model_dump()
+        if isinstance(item, dict) and item.get("count"):
+            where = f"{prefix}.{item['where']}" if prefix else str(item["where"])
+            out[(str(item["kind"]), where)] = out.get((str(item["kind"]), where), 0) + int(
+                item["count"]
+            )
+    return out
+
+
 def redact_evidence(data: dict[str, Any]) -> dict[str, Any]:
     """Redact a serialised evidence item, whichever way it was built.
 
     HTTP exchanges and every other kind get the full redactor. DNS and TLS
     evidence, which is public records and certificate data, gets token patterns
     and private-key blocks only, so public key material survives (clause 2).
-    The kinds removed are added to `redactions`.
+    The kinds removed are added to `redactions`, and a receipt per kind and part
+    to `redaction_receipts` (ADR-029). Receipts already on the item are kept:
+    re-redacting stored text finds nothing new, so nothing is counted twice.
     """
     counts: Counts = {}
+    receipts = receipts_from(data.get("redaction_receipts"))
     out = dict(data)
     for side in ("control", "test"):
         exchange = out.get(side)
@@ -185,22 +220,49 @@ def redact_evidence(data: dict[str, Any]) -> dict[str, Any]:
                 if isinstance(piece.get("url"), str):
                     piece["url"], hit = redact_text(piece["url"])
                     _merge(counts, hit)
+                    add_receipts(receipts, hit, f"{side}.{part}.url")
                 if isinstance(piece.get("headers"), dict):
-                    piece["headers"] = redact_header_map(piece["headers"], counts)
+                    hit = {}
+                    piece["headers"] = redact_header_map(piece["headers"], hit)
+                    _merge(counts, hit)
+                    add_receipts(receipts, hit, f"{side}.{part}.headers")
                 if isinstance(piece.get("body"), str):
                     piece["body"], hit = redact_text(piece["body"])
                     _merge(counts, hit)
+                    add_receipts(receipts, hit, f"{side}.{part}.body")
                 exchange[part] = piece
             out[side] = exchange
+        elif isinstance(exchange, dict):
+            cleaned = {}
+            for part, value in exchange.items():
+                hit = {}
+                cleaned[part] = redact_data(value, heuristics=_heuristics_for(out), counts=hit)
+                _merge(counts, hit)
+                add_receipts(receipts, hit, f"{side}.{_field_name(part)}")
+            out[side] = cleaned
         elif exchange is not None:
-            out[side] = redact_data(exchange, heuristics=_heuristics_for(out), counts=counts)
+            hit = {}
+            out[side] = redact_data(exchange, heuristics=_heuristics_for(out), counts=hit)
+            _merge(counts, hit)
+            add_receipts(receipts, hit, side)
     for key, value in list(out.items()):
-        if key in ("control", "test", "kind", "captured_at", "redactions"):
+        if key in ("control", "test", "kind", "captured_at", "redactions", "redaction_receipts"):
             continue
-        out[key] = redact_data(value, heuristics=_heuristics_for(out), counts=counts)
+        hit = {}
+        out[key] = redact_data(value, heuristics=_heuristics_for(out), counts=hit)
+        _merge(counts, hit)
+        add_receipts(receipts, hit, _field_name(key))
     if counts:
         out["redactions"] = sorted(set(out.get("redactions") or []) | set(counts))
+    if receipts or "redaction_receipts" in out:
+        out["redaction_receipts"] = receipt_list(receipts)
     return out
+
+
+def _field_name(key: Any) -> str:
+    """A `where` segment: a schema field name, never data (ADR-029 clause 2)."""
+    name = str(key)
+    return name if re.fullmatch(r"[a-z_]+", name) else "data"
 
 
 def redact_text(

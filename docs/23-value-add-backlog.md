@@ -87,7 +87,7 @@
 ## 6. Change alerts and fix evidence
 
 - **What it does.** After each scan, it reports what is **new**, **fixed** and **regressed** since the last one. It produces a verified-fixed record for auditors: the finding, the test that proved it, and the re-run that observed it gone.
-- **Where it came from.** It builds on what exists: deterministic finding ids, the finding store and `scan verify` ([runbook §2a](12-cli-runbook.md#2a-persistence-and-scan-verify)). **It depends on the read-only store fix** (branch `fix/readonly-store`, 2026-10-09), because an auditor receives a read-only copy.
+- **Where it came from.** It builds on what exists: deterministic finding ids, the finding store and `scan verify` ([runbook §2a](12-cli-runbook.md#2a-persistence-and-scan-verify)). **It depends on the read-only store fix** (merged in PR #25, 2026-10-09), because an auditor receives a read-only copy.
 - **Customer value.** It answers "did our fix work?" with evidence, and gives an auditor a record they can re-check rather than a screenshot.
 - **Guardrails.**
   - **"Fixed" means `scan verify` observed the problem gone**, never that a finding was missing from a scan. A missing finding may mean the check did not run (ADR-022, `core/store.py`).

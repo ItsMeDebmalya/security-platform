@@ -148,7 +148,7 @@ Judge = Callable[[dict[str, str], str], tuple[bool, str]]
 @register
 class WebScanner(BaseScanner):
     name = "web"
-    version = "1.0.4"
+    version = "1.0.5"
     supported_modes = frozenset({"light"})
     target_types = frozenset({"domain", "url"})
 
@@ -306,6 +306,8 @@ def _raw(f: Fetched) -> dict[str, Any]:
         "headers": {_redacted(k): _redacted(v) for k, v in f.response.headers.items()},
         "body": f.response.text,
         "elapsed_ms": f.response.captured.get("elapsed_ms"),
+        # ADR-029: the capture's receipts, so live and replay record the same
+        "redaction_receipts": f.response.captured.get("redaction_receipts", []),
     }
 
 

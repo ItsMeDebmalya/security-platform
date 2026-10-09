@@ -33,6 +33,8 @@ from core.confidence import ConfidenceEngine, Signal
 from core.context import ScanContext
 from core.dns import DnsClient, DnsResponse
 from core.evidence import capture_http_pair, dns_evidence
+from core.exposure import check_runs as exposure_check_runs
+from core.exposure import secret_exposure_findings
 from core.http import CapturedResponse, HttpClient
 from core.models import Asset, CheckRun, Finding, Mode, ScanResult, Telemetry
 from core.registry import register
@@ -60,7 +62,7 @@ NO_VERDICT_FOR_RCODE = {
 @register
 class DomscoutScanner(BaseScanner):
     name = "domscout"
-    version = "1.0.0"
+    version = "1.1.0"
     supported_modes = frozenset({"light"})
     target_types = frozenset({"domain"})
     service_hosts = SERVICE_HOSTS
@@ -146,6 +148,18 @@ class _Scan:
 
         self.ctx.progress("checking for dangling subdomains", 0.9)
         self._check_takeover(candidates)
+
+        # ADR-029: a credential receipt on content the target served is a finding.
+        exposures = secret_exposure_findings(
+            self.findings,
+            scanner=self.scanner.name,
+            scanner_version=self.scanner.version,
+            target=self.target,
+            org_id=self.ctx.org_id,
+            scan_id=self.ctx.scan_id,
+        )
+        self.findings.extend(exposures)
+        self.checks.extend(exposure_check_runs(exposures))
 
         self.ctx.progress("done", 1.0)
         cost = self.ctx.cost.snapshot()
@@ -960,4 +974,6 @@ def _as_raw(response: CapturedResponse) -> dict[str, Any]:
         "headers": dict(response.headers),
         "body": response.text,
         "elapsed_ms": response.captured.get("elapsed_ms"),
+        # ADR-029: the capture's receipts, so live and replay record the same
+        "redaction_receipts": response.captured.get("redaction_receipts", []),
     }

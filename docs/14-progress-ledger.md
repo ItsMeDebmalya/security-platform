@@ -1416,6 +1416,23 @@ Since D21 the first open of a store writes to it (the ADR-028 sweep), so a read-
   - A database switched to WAL by another tool leaves `-shm`/`-wal` files in its directory on a read-only open; `FindingStore` never sets WAL.
   - `scan run --store` with a missing path in an unwritable directory runs the scan before failing to create the store.
 
+## 2026-10-09 · ADR-029 — redaction receipts, and a receipt on public content is a finding
+
+Operator-approved. The design choices were the operator's: a new field beside `redactions` rather than replacing it, which keeps the change additive, and a core helper that scanners call rather than a core post-step.
+
+- **The receipt.** Every evidence item now records `{kind, count, where}` for what core removed. A finding rolls them up. **It never records the value, a prefix, a suffix, the length or a hash.** A test asserts this: for three token kinds, no 4-character prefix or suffix, no MD5, SHA-1 or SHA-256 prefix and no base64 of the secret appears anywhere in the stored finding.
+- **Made at capture, surviving replay.** `core/http.py` writes receipts into fixtures, and replay reads them back. While building this, a replay gap turned up. domscout and web pass the *live* body to `capture_http_pair`, so counting there would find the secret live but nothing in a replayed, already-redacted body. **Fixed:** a response passed with its capture's receipts uses those as authoritative. A test asserts that live and replay give the same receipts.
+- **A receipt on public content is a finding.** `email` (v1.5.0) and `domscout` (v1.1.0) call `core.exposure.secret_exposure_findings`. A credential kind in a response or DNS answer served by the target becomes one `secret-exposed` finding per resource, at `high` severity and `suspected`. `web` (v1.0.5) does not call it, because `web-secret-in-response` reports the same thing; a test asserts nothing is reported twice.
+- **The contract** (`tests/contract/test_secret_exposure_contract.py`): every registered scanner with a corpus runs over every case, and no credential receipt on public content may go unreported. A fake scanner that captures a secret and forgets the helper fails it. Before the helper was wired in, the new email case failed it.
+- **Corpus:** `email/secret-in-txt` and `domscout/takeover-secret` both use AWS's documented example key, never a real one. Both gates pass. email went from 400 checks and 29 claims to 421 and 30, the 30th being the new case's `spf-too-permissive`. domscout went from 50 checks to 58, with 1 claim; its suspected rate went from 4.0% to 6.9%, from the two new suspected findings. Precision, recall and inconclusive rates are unchanged.
+- **Standing figure:** 68 checks: 40 WORKING, 3 BROKEN, 25 UNDETERMINED. **41% (28 of 68) have no evidence that they work**, up from 39%, because both new checks have no real positive (ADR-017). A real positive means a target that publishes a credential in DNS, or serves one on a subdomain page. Screening a pool for that would mean looking for other people's leaked keys, so it needs an operator ruling first.
+- **Limits, stated:**
+  - Only evidence a finding cites is checked, so a secret in a response no finding cites is neither stored nor reported.
+  - `scan verify` cannot close a `secret-exposed` finding yet.
+  - **web's corpus fixtures predate ADR-029, so they carry no receipts** and the contract passes vacuously on web's corpus. Re-recording needs the web lab. web's live path is covered by a FakeSite contract test.
+  - The CLI table does not show receipts yet.
+- **Also fixed:** SPEC's email gate row still showed v1.4.0's 380 checks and 26 claims, although main gave 400 and 29. It now shows this change's numbers.
+
 ## Next
 
 **Watch (no action now):** `tls` runs at **12.3% inconclusive** on its corpus — inside the 15% gate but the closest of any scanner to it (see the `make corpus` table in SPEC.md). A small rise would fail the gate; look at it before the next TLS change.
