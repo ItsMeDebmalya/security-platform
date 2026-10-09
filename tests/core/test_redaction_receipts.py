@@ -483,3 +483,63 @@ def test_a_capture_recorded_before_adr_029_is_logged_from_its_redaction_kinds(tm
     ctx.http.get(f"https://{HOST}/")
 
     assert set(ctx.exposures.exposed(TARGET)) == {f"https://{HOST}/"}
+
+
+def test_one_exposure_is_reported_once_whatever_the_url_spelling():
+    """Re-review of ab97721: a redirect hop, its final page, and evidence cited under
+    the request URL gave three findings for two exposures."""
+    from core.context import ScanContext
+    from core.exposure import secret_exposure_findings, unreported_exposures
+    from core.models import CheckRun, ScanResult, Telemetry
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path in ("", "/"):
+            return httpx.Response(301, headers={"Location": f"/login?next={GHP}"})
+        return httpx.Response(200, text=f"key {AWS}")
+
+    ctx = ScanContext(http=_client(handler))
+    response = ctx.http.get(f"https://{HOST}")  # no trailing slash, as a caller may write it
+    request = {"method": "GET", "url": f"https://{HOST}/", "headers": {}}
+    cited = capture_http_pair(
+        label="l",
+        control_request=request,
+        control_response=response.captured,
+        test_request=request,
+        test_response=response.captured,
+    )
+    findings = [_finding_with([cited])]
+
+    exposures = secret_exposure_findings(
+        findings,
+        scanner="email",
+        scanner_version="9.9.9",
+        target=TARGET,
+        org_id="org_internal",
+        scan_id="01J8AAAAAAAAAAAAAAAAAAAAAA",
+        log=ctx.exposures,
+    )
+
+    assert sorted(f.location for f in exposures) == [
+        f"https://{HOST}/",
+        f"https://{HOST}/login?next=[redacted]:github_token",
+    ]
+    result = ScanResult(
+        scanner="email",
+        scanner_version="9.9.9",
+        target=TARGET,
+        mode="light",
+        findings=[*findings, *exposures],
+        errors=[],
+        telemetry=Telemetry(
+            checks_run=[
+                CheckRun(check_id="c", location="$", outcome="reported"),
+                *[
+                    CheckRun(check_id=f.check_id, location=f.location, outcome="reported")
+                    for f in exposures
+                ],
+            ],
+            suppressed=[],
+        ),
+        finished_at=datetime.now(UTC),
+    )
+    assert unreported_exposures(result, ctx.exposures) == []

@@ -57,6 +57,17 @@ REMEDIATION = (
 )
 
 
+def resource_url(url: str) -> str:
+    """One spelling per resource: an empty path is `/`, scheme and host lowercase.
+
+    The same page reached as `https://x.test` and cited as `https://x.test/` must
+    be one exposure, not two (re-review of ADR-029)."""
+    parts = urlsplit(url)
+    path = parts.path or "/"
+    query = f"?{parts.query}" if parts.query else ""
+    return f"{parts.scheme.lower()}://{parts.netloc.lower()}{path}{query}"
+
+
 def _within(name: str, target: Asset) -> bool:
     """Is `name` (a host or a DNS name) the target's own, or under it?"""
     own = target.value.lower().rstrip(".")
@@ -73,7 +84,7 @@ def _side_resource(item: Any, side: str, target: Asset) -> str | None:
     if item.kind == "http_pair":
         url = exchange.request.url
         host = urlsplit(url).hostname
-        return url if host and _within(host, target) else None
+        return resource_url(url) if host and _within(host, target) else None
     if item.kind == "dns_answer":
         name = exchange.query.name
         return f"dns:{name}/{exchange.query.rrtype}" if _within(name, target) else None
@@ -117,7 +128,9 @@ def reported_resources(findings: Iterable[Finding]) -> set[str]:
     covered: set[str] = set()
     for finding in findings:
         if finding.check_id == CHECK_ID:
-            covered.add(finding.location)
+            covered.add(
+                resource_url(finding.location) if "://" in finding.location else finding.location
+            )
         elif finding.check_id in REPORTING_CHECKS:
             # It reported a credential at the page it tested. The page's own
             # receipts may be missing (a fixture recorded before ADR-029), so the
@@ -125,7 +138,7 @@ def reported_resources(findings: Iterable[Finding]) -> set[str]:
             for item in finding.evidence:
                 covered.update(exposed_resources(item, finding.target, sides=("test",)))
                 if item.kind == "http_pair":
-                    covered.add(item.test.request.url)
+                    covered.add(resource_url(item.test.request.url))
     return covered
 
 
@@ -157,7 +170,7 @@ class ExposureLog:
             kinds |= set(captured.get("redactions") or [])
         kinds &= EXPOSURE_KINDS
         if kinds:
-            clean_url = redact_text(url)[0] or url
+            clean_url = resource_url(redact_text(url)[0] or url)
             self._add(clean_url, kinds, lambda: _http_evidence(clean_url, captured))
 
     def observe_dns(self, response: DnsResponse) -> None:
@@ -248,10 +261,17 @@ def secret_exposure_findings(
     Pass the context's `log` (`ctx.exposures`), so captures no finding cites are
     seen too."""
     covered = reported_resources(findings)
+    # With the log, report from it alone: it saw each capture under the URL that
+    # served it, where cited evidence knows only the URL the scanner requested
+    # (a redirect's final page would be reported twice). Without it, use the
+    # cited evidence.
+    source = (
+        _all_exposures([], target, log) if log is not None else _all_exposures(findings, target)
+    )
     result = ConfidenceEngine().combine([_SIGNAL])
     now = datetime.now(UTC)
     out: list[Finding] = []
-    for resource, (kinds, item) in sorted(_all_exposures(findings, target, log).items()):
+    for resource, (kinds, item) in sorted(source.items()):
         if resource in covered:
             continue
         names = ", ".join(sorted(kinds))
