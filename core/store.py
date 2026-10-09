@@ -84,12 +84,21 @@ class FindingStore:
         """
         if self._conn.execute("PRAGMA user_version").fetchone()[0] >= _SWEPT:
             return
+        complete = True
         for row_id, org_id, data in self._conn.execute(
             "SELECT id, org_id, data FROM findings"
         ).fetchall():
-            self._load(row_id, org_id, data)
-        self._conn.execute(f"PRAGMA user_version = {_SWEPT}")
-        self._conn.commit()
+            try:
+                self._load(row_id, org_id, data)
+            except ValueError:
+                # A row that does not load (an older contract, a hand edit) fails
+                # when it is read, as before; it must not stop the store opening.
+                # The store stays unswept, so the next open tries again.
+                self._conn.rollback()
+                complete = False
+        if complete:
+            self._conn.execute(f"PRAGMA user_version = {_SWEPT}")
+            self._conn.commit()
 
     def close(self) -> None:
         self._conn.close()

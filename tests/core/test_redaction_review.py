@@ -243,6 +243,32 @@ def test_the_open_time_sweep_runs_once(tmp_path):
     assert rows == [(raw["id"],)]
 
 
+def test_a_row_that_cannot_load_does_not_stop_the_store_opening(tmp_path):
+    """Sweep review: a bad row is skipped, and the sweep retries on the next open."""
+    from core.store import FindingStore
+
+    path = tmp_path / "s.db"
+    raw = _insert_legacy_row(path, f"/hook/{GHP}")
+    db = sqlite3.connect(path)
+    try:
+        db.execute(
+            "INSERT INTO findings VALUES (?,?,?,?,?,?,?,?)",
+            ("bad", raw["org_id"], "x", "c", "x.test", "$", "open", '{"bad": 1}'),
+        )
+        db.commit()
+    finally:
+        db.close()
+    _mark_unswept(path)
+
+    with FindingStore(path) as store:
+        version = store._conn.execute("PRAGMA user_version").fetchone()[0]
+        ids = {r[0] for r in store._conn.execute("SELECT id FROM findings").fetchall()}
+
+    assert version == 0  # not every row loaded, so the next open sweeps again
+    assert "bad" in ids and raw["id"] not in ids
+    assert GHP not in path.read_bytes().decode("latin-1")
+
+
 # --- should-fix 6: the rest of what core stores ---------------------------------
 
 
