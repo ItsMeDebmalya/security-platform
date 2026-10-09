@@ -91,7 +91,8 @@ def _cases() -> list[tuple[str, str, int | None, list[str]]]:
             1200,
             lw,
         )
-    trace = f'<pre>{pem(L, sep="<br>", end=False)}\nTraceback (most recent call last):\n  File "/app/s.py", line 9\n</pre>'
+    traceback_tail = '\nTraceback (most recent call last):\n  File "/app/s.py", line 9\n</pre>'
+    trace = "<pre>" + pem(L, sep="<br>", end=False) + traceback_tail
     check("error excerpt br unterminated", trace)
     for pad in (H - 1000, H - 500, H - 200):
         check(
