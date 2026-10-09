@@ -86,7 +86,8 @@ class FindingStore:
         ).fetchone()
         if row is None:
             return None
-        return self._load(finding_id, org_id, row[0])
+        finding, superseded = self._load(finding_id, org_id, row[0])
+        return self.get(finding.id, org_id) if superseded else finding
 
     def list_findings(
         self,
@@ -106,23 +107,32 @@ class FindingStore:
         rows = self._conn.execute(
             query.replace("SELECT data", "SELECT id, data"), params
         ).fetchall()
-        return [self._load(r[0], org_id, r[1]) for r in rows]
+        loaded = (self._load(r[0], org_id, r[1]) for r in rows)
+        return [finding for finding, superseded in loaded if not superseded]
 
-    def _load(self, row_id: str, org_id: str, data: str) -> Finding:
+    def _load(self, row_id: str, org_id: str, data: str) -> tuple[Finding, bool]:
         """Load a finding, redacted (ADR-028 clause 6), and clean the row at rest.
 
         A row written before ADR-028 may hold a secret. Loading redacts it; if
         that changed anything, the row is rewritten, under the new id when its
-        location held the secret, so the secret does not stay on disk.
+        location held the secret, so the secret does not stay on disk. If a row
+        already exists under the new id, it is newer and keeps its status and
+        history: the legacy row is only deleted, and the second value is True,
+        meaning "this finding is that other row".
         """
         finding = Finding.model_validate(json.loads(data))
-        if finding.id != row_id or finding.model_dump_json() != data:
-            if finding.id != row_id:
-                self._conn.execute(
-                    "DELETE FROM findings WHERE id = ? AND org_id = ?", (row_id, org_id)
-                )
-            self._put(finding)
-        return finding
+        if finding.id == row_id:
+            if finding.model_dump_json() != data:
+                self._put(finding)
+            return finding, False
+        self._conn.execute("DELETE FROM findings WHERE id = ? AND org_id = ?", (row_id, org_id))
+        if self._conn.execute(
+            "SELECT 1 FROM findings WHERE id = ? AND org_id = ?", (finding.id, org_id)
+        ).fetchone():
+            self._conn.commit()
+            return finding, True
+        self._put(finding)
+        return finding, False
 
     # --- writes ----------------------------------------------------------
 

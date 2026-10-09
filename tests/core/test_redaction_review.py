@@ -13,7 +13,7 @@ import pytest
 from core.models import Finding, HttpPairEvidence, ScanError
 from core.redaction import redact_text
 from tests.core.test_redaction import AWS, GHP, LINES, key_lines, leaked, pem
-from tests.core.test_redaction_storage import _finding_kwargs, _pair
+from tests.core.test_redaction_storage import NOW, _finding_kwargs, _pair
 
 
 def _clean(dumped: str) -> bool:
@@ -111,17 +111,13 @@ def test_a_secret_in_the_instance_key_is_redacted_and_the_id_follows_it():
 # --- should-fix 5: the store is cleaned at rest ------------------------------------
 
 
-def test_a_legacy_row_with_a_secret_location_is_rewritten_at_rest(tmp_path):
+def _insert_legacy_row(path, secret_location: str) -> dict:
+    """Write a row as a pre-ADR-028 store would have: raw location, its raw id."""
+    from core.ids import finding_id
     from core.store import FindingStore
 
-    path = tmp_path / "s.db"
-    secret_location = f"/hook/{GHP}"
-    # write a row as a pre-ADR-028 store would have: raw location, its raw id
-    clean = Finding.create(**_finding_kwargs())
-    raw = clean.model_dump(mode="json")
+    raw = Finding.create(**_finding_kwargs()).model_dump(mode="json")
     raw["location"] = secret_location
-    from core.ids import finding_id
-
     raw["id"] = finding_id(
         scanner=raw["scanner"],
         check_id=raw["check_id"],
@@ -149,6 +145,14 @@ def test_a_legacy_row_with_a_secret_location_is_rewritten_at_rest(tmp_path):
         db.commit()
     finally:
         db.close()
+    return raw
+
+
+def test_a_legacy_row_with_a_secret_location_is_rewritten_at_rest(tmp_path):
+    from core.store import FindingStore
+
+    path = tmp_path / "s.db"
+    raw = _insert_legacy_row(path, f"/hook/{GHP}")
 
     with FindingStore(path) as store:
         found = store.list_findings(raw["org_id"])
@@ -156,6 +160,35 @@ def test_a_legacy_row_with_a_secret_location_is_rewritten_at_rest(tmp_path):
 
     assert len(found) == 1 and GHP not in found[0].location
     assert GHP not in on_disk
+
+
+@pytest.mark.parametrize("read", ["list", "get"])
+def test_a_legacy_row_does_not_overwrite_the_newer_row_it_redacts_onto(tmp_path, read):
+    """Re-review N1: the row already under the redacted id keeps its status and history."""
+    from core.store import FindingStore
+
+    path = tmp_path / "s.db"
+    secret_location = f"/hook/{GHP}"
+    fresh = Finding.create(**_finding_kwargs(location=secret_location))
+    with FindingStore(path) as store:
+        store.ingest([fresh])
+        newer = store.transition(
+            fresh.id, fresh.org_id, to="accepted_risk", at=NOW, by="operator:t", scan_id="s2"
+        )
+    raw = _insert_legacy_row(path, secret_location)
+    assert raw["id"] != fresh.id
+
+    with FindingStore(path) as store:
+        if read == "list":
+            found = store.list_findings(fresh.org_id)
+        else:
+            found = [store.get(raw["id"], fresh.org_id)]
+        rows = store._conn.execute("SELECT id FROM findings").fetchall()
+
+    assert [(f.id, f.status) for f in found] == [(fresh.id, "accepted_risk")]
+    assert found[0].status_history == newer.status_history
+    assert rows == [(fresh.id,)]
+    assert GHP not in path.read_bytes().decode("latin-1")
 
 
 # --- should-fix 6: the rest of what core stores ---------------------------------

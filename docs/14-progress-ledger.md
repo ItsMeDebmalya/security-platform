@@ -1388,6 +1388,13 @@ Operator-approved. One Standard-mode email scan of grafana.com (email v1.4.1), r
   8. Non-standard private-key armour (lowercase, 4 dashes, `PRIVATE-KEY`, SSH2) was missed; and `file_excerpt` and OOB evidence now get the full redactor.
 
   The carve-out held throughout: the reviewer found no loss of certificate, public-key or DKIM material. Every corpus case and every finding was byte-identical to `main`.
+- **Re-review (d74b72e): no blocker remains; the blocker and all eight should-fixes confirmed fixed.** It found one new should-fix, fixed before merge:
+  - **N1, fix 5's rewrite could destroy newer state.** When a legacy row's redacted id already belonged to a stored row, loading upserted the legacy content over it. In the repro, an `accepted_risk` finding went back to `open` and lost its history. Now the existing row wins and the legacy row is only deleted. `list_findings` does not list it twice, and `get` by the legacy id returns the newer row. Tests (list and get) failed before the fix.
+
+  Recorded, not fixed:
+  - **N2:** one non-idempotent fuzz input in 20,000, a Slack-shaped token glued to a certificate BEGIN line. Contrived; a second fuzz over the encodings found none.
+  - **N3:** five or more space-joined hex digests in stored text are now cut as `possible_key_material`. That kind never feeds a verdict, so no finding changes. srcset and CSP hash lists are untouched.
+  - Still leak, none ever claimed: `</p><p>`, U+2028, literal `\x0a`, VT/FF/NEL separators, and base64 lines under 40 or over 100 columns. A `ScanResult` whose `CheckRun` was mutated through `__dict__` still dumps the secret in memory, but the CLI re-validates before writing it.
 - **Cost:** redaction now runs on every capture and every validation. A 500 KB ordinary page costs about 35 ms per pass, after a pre-check that skips the base64-run search when no 40-character base64 run exists. The test suite takes about 117 s, up from 16 s: the 151-case harness at the full 256 KB cap, plus validation on assignment and re-validation at every storage boundary.
 
 ## Next
