@@ -1289,7 +1289,7 @@ The five run-2 false claims are gone. `make rfc-check` no longer flags email; tl
 - **The repo-local git identity is now `Debmalya Dey <debmalyadey01@gmail.com>`** (2026-10-09), set without `--global`, so other projects on the machine keep their own.
 - **No commit was amended or rewritten.** The 32 commits keep their author field; this note is the correction of record.
 - **Current-role references** (template verifiers, repo URLs) now name Debmalya (PR #18).
-- **Historical attestations are unchanged:** sign-offs, ownership verifications and dated records stay in Satwik's name, because they record what he did.
+- **Historical attestations are unchanged:** sign-offs, ownership verifications and dated records stay in Satwik's name, because they record what Satwik did.
 - **Licence re-review:** Debmalya Dey re-reviewed the 19 registry entries Satwik signed, on the evidence below. Each entry gains `reviewed_by: Debmalya Dey`, `reviewed_at: 2026-10-09` and a `review_evidence` field, beside Satwik's original sign-off, which is unchanged. `make licence-check`: 23 components, no violations.
 
 | Entries | Licence read from |
