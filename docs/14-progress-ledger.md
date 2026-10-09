@@ -1390,6 +1390,7 @@ Operator-approved. One Standard-mode email scan of grafana.com (email v1.4.1), r
   The carve-out held throughout: the reviewer found no loss of certificate, public-key or DKIM material. Every corpus case and every finding was byte-identical to `main`.
 - **Re-review (d74b72e): no blocker remains; the blocker and all eight should-fixes confirmed fixed.** It found one new should-fix, fixed before merge:
   - **N1, fix 5's rewrite could destroy newer state.** When a legacy row's redacted id already belonged to a stored row, loading upserted the legacy content over it. In the repro, an `accepted_risk` finding went back to `open` and lost its history. Now the existing row wins and the legacy row is only deleted. `list_findings` does not list it twice, and `get` by the legacy id returns the newer row. Tests (list and get) failed before the fix.
+- **N1 review (c1b27a2): OK on all four items.** It noted an older gap: a legacy row was cleaned only when read. So a re-scan that ingested first left the secret on disk until the next read, and replaced the legacy finding's status with a fresh `open` row. **Fixed before merge:** the first open of a store loads every row through the redactor, then sets `PRAGMA user_version = 1` so it runs once. The test failed before the fix.
 
   Recorded, not fixed:
   - **N2:** one non-idempotent fuzz input in 20,000, a Slack-shaped token glued to a certificate BEGIN line. Contrived; a second fuzz over the encodings found none.

@@ -191,6 +191,58 @@ def test_a_legacy_row_does_not_overwrite_the_newer_row_it_redacts_onto(tmp_path,
     assert GHP not in path.read_bytes().decode("latin-1")
 
 
+def _mark_unswept(path) -> None:
+    db = sqlite3.connect(path)
+    try:
+        db.execute("PRAGMA user_version = 0")
+        db.commit()
+    finally:
+        db.close()
+
+
+def test_opening_a_legacy_store_cleans_it_before_any_write(tmp_path):
+    """Re-review follow-up: an ingest before any read must not leave the secret on disk,
+    nor reopen the legacy finding's status."""
+    from core.store import FindingStore
+
+    path = tmp_path / "s.db"
+    secret_location = f"/hook/{GHP}"
+    raw = _insert_legacy_row(path, secret_location)
+    db = sqlite3.connect(path)
+    try:
+        raw["status"] = "accepted_risk"
+        db.execute(
+            "UPDATE findings SET status = ?, data = ? WHERE id = ?",
+            ("accepted_risk", json.dumps(raw), raw["id"]),
+        )
+        db.commit()
+    finally:
+        db.close()
+    _mark_unswept(path)  # as a store written before ADR-028 would be
+
+    with FindingStore(path) as store:
+        store.ingest([Finding.create(**_finding_kwargs(location=secret_location))])
+        on_disk = path.read_bytes().decode("latin-1")
+        found = store.list_findings(raw["org_id"])
+
+    assert GHP not in on_disk
+    assert [f.status for f in found] == ["accepted_risk"]
+
+
+def test_the_open_time_sweep_runs_once(tmp_path):
+    from core.store import FindingStore
+
+    path = tmp_path / "s.db"
+    with FindingStore(path):
+        pass
+    raw = _insert_legacy_row(path, f"/hook/{GHP}")
+
+    with FindingStore(path) as store:  # already marked swept: rows load lazily
+        rows = store._conn.execute("SELECT id FROM findings").fetchall()
+
+    assert rows == [(raw["id"],)]
+
+
 # --- should-fix 6: the rest of what core stores ---------------------------------
 
 

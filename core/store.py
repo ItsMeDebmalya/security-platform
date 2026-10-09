@@ -57,6 +57,10 @@ CREATE TABLE IF NOT EXISTS findings (
 """
 
 
+# `PRAGMA user_version` once every row has been loaded through ADR-028's redactor.
+_SWEPT = 1
+
+
 class FindingStore:
     """Findings keyed on their deterministic id, upserted across scans."""
 
@@ -67,6 +71,24 @@ class FindingStore:
         # written before ADR-028 may hold a secret, and loading it rewrites it.
         self._conn.execute("PRAGMA secure_delete = ON")
         self._conn.execute(_SCHEMA)
+        self._conn.commit()
+        self._sweep_legacy_rows()
+
+    def _sweep_legacy_rows(self) -> None:
+        """Clean a store written before ADR-028 once, when it is first opened.
+
+        Loading cleans a row, but a write can come first: a re-scan would insert a
+        fresh row under the redacted id, leaving the legacy row's secret on disk and
+        its status replaced. So every row is loaded before anything else touches the
+        store, and `user_version` records that it has been done.
+        """
+        if self._conn.execute("PRAGMA user_version").fetchone()[0] >= _SWEPT:
+            return
+        for row_id, org_id, data in self._conn.execute(
+            "SELECT id, org_id, data FROM findings"
+        ).fetchall():
+            self._load(row_id, org_id, data)
+        self._conn.execute(f"PRAGMA user_version = {_SWEPT}")
         self._conn.commit()
 
     def close(self) -> None:
