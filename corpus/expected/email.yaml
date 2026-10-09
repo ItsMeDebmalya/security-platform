@@ -23,12 +23,14 @@ dmarc-monitoring-only:
   - { check_id: dmarc-policy-none, location: "$" }
   - { check_id: spoofing-possible, location: "$" }
 
+# p=reject with pct=20. RFC 9989 removed pct; RFC 7489 6.6.4 quarantines the mail
+# outside the sample, so failing mail is enforced under both and spoofing-possible
+# is not expected (corrected 2026-10-09 by the PR #17 review, B3).
 # pct is removed in RFC 9989, so its presence below 100 is also dmarc-obsolete-tags
-# (low). dmarc-pct-partial and spoofing-possible are receiver-dependent:
+# (low). dmarc-pct-partial is receiver-dependent:
 # suspected, so excluded from the gate on both sides.
 dmarc-partial-rollout:
   - { check_id: dmarc-pct-partial, location: "$" }
-  - { check_id: spoofing-possible, location: "$" }
   - { check_id: dmarc-obsolete-tags, location: "$" }
 
 dmarc-no-reporting:

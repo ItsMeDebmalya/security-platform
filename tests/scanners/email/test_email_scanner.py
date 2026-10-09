@@ -317,9 +317,11 @@ def test_a_domain_with_an_enforcing_policy_cannot_be_spoofed(findings_for):
     assert findings_for("good.example", good_zone(), "spoofing-possible") == []
 
 
-def test_a_partial_rollout_is_still_spoofable(findings_for):
+def test_a_partial_quarantine_rollout_is_still_spoofable(findings_for):
+    """RFC 7489 6.6.4: outside the sample, quarantine falls back to normal
+    classification. (Under reject the rest is quarantined, so it is not.)"""
     answers = good_zone(
-        "partial.example", dmarc="v=DMARC1; p=reject; pct=10; rua=mailto:d@x.example"
+        "partial.example", dmarc="v=DMARC1; p=quarantine; pct=10; rua=mailto:d@x.example"
     )
 
     assert findings_for("partial.example", answers, "spoofing-possible")
@@ -1212,7 +1214,7 @@ def _one(run_scan, dmarc, check_id, mode="standard", spf="v=spf1 -all"):
 
 def test_partial_pct_states_both_readings_and_is_suspected(run_scan):
     [found] = _one(
-        run_scan, "v=DMARC1; p=reject; pct=1; rua=mailto:d@x.example", "dmarc-pct-partial"
+        run_scan, "v=DMARC1; p=quarantine; pct=1; rua=mailto:d@x.example", "dmarc-pct-partial"
     )
 
     assert found.state == "suspected" and found.severity == "medium"
@@ -1221,7 +1223,7 @@ def test_partial_pct_states_both_readings_and_is_suspected(run_scan):
 
 
 def test_pct_partial_spoofing_is_a_hedge_not_a_claim(run_scan):
-    [found] = _one(run_scan, "v=DMARC1; p=reject; pct=1", "spoofing-possible")
+    [found] = _one(run_scan, "v=DMARC1; p=quarantine; pct=1", "spoofing-possible")
 
     assert found.state == "suspected"
     assert "RFC 7489" in found.description
@@ -1323,3 +1325,193 @@ def test_duplicate_tags_take_dmarc_missings_severity_and_are_suspected(run_scan)
 
     assert found.severity == "high" and found.state == "suspected"
     assert "RFC 9989" in found.description
+
+
+# --- independent review of PR #17 (2026-10-09): blockers and should-fixes ---
+
+
+def _zone2(domain, records, **kw):
+    """records: {"_dmarc.name": [txt, ...]} on top of a zone for `domain`."""
+    answers = zone(domain, spf="v=spf1 -all", dmarc=None, **kw)
+    for name, txts in records.items():
+        answers[(name, "TXT")] = answer(name, "TXT", *txts)
+    return answers
+
+
+def _ids(run_scan, domain, records, mode="standard"):
+    return {f.check_id: f for f in run_scan(domain, _zone2(domain, records), mode=mode).findings}
+
+
+def test_b1_a_wrong_case_record_beside_a_valid_one_is_discarded_first(run_scan):
+    """Both RFCs discard records without an exact v=DMARC1 *before* applying
+    the more-than-one rule, so the single valid p=reject record applies."""
+    by_id = _ids(
+        run_scan, "x.example", {"_dmarc.x.example": ["v=DMARC1; p=reject", "v=dmarc1; p=none"]}
+    )
+
+    assert "spoofing-possible" not in by_id
+    assert "dmarc-missing" not in by_id
+    assert "more than one" not in getattr(by_id.get("dmarc-invalid"), "description", "")
+
+
+def test_b2_an_ignored_record_under_an_applying_ancestor_is_not_called_unprotected(run_scan):
+    by_id = _ids(
+        run_scan,
+        "sub.example.com",
+        {
+            "_dmarc.sub.example.com": ["v=dmarc1; p=reject"],
+            "_dmarc.example.com": ["v=DMARC1; p=reject"],
+        },
+    )
+    found = by_id["dmarc-invalid"]
+
+    assert "unprotected" not in found.description
+    assert "_dmarc.example.com" in found.description
+    assert found.severity == "low"
+
+
+def test_b3_reject_with_partial_pct_quarantines_the_rest_under_rfc_7489(run_scan):
+    """RFC 7489 6.6.4: mail not sampled under reject is quarantined."""
+    by_id = _ids(run_scan, "x.example", {"_dmarc.x.example": ["v=DMARC1; p=reject; pct=50"]})
+    found = by_id["dmarc-pct-partial"]
+
+    assert "quarantine" in found.description
+    assert "as if the policy were p=none" not in found.description
+    assert found.severity == "low"
+    assert "spoofing-possible" not in by_id
+
+
+def test_b3_quarantine_with_partial_pct_gets_normal_classification(run_scan):
+    by_id = _ids(run_scan, "x.example", {"_dmarc.x.example": ["v=DMARC1; p=quarantine; pct=50"]})
+
+    assert "normal" in by_id["dmarc-pct-partial"].description
+    assert by_id["spoofing-possible"].state == "suspected"
+
+
+def test_b4_a_misplaced_p_with_a_malformed_tag_still_hedges_spoofing(run_scan):
+    by_id = _ids(
+        run_scan,
+        "x.example",
+        {"_dmarc.x.example": ["v=DMARC1; adkim=x; p=reject; rua=mailto:d@x.example"]},
+    )
+
+    assert by_id["spoofing-possible"].state == "suspected"
+
+
+def test_b5_an_inherited_psd_record_hedges_spoofing_because_rfc_7489_finds_none(run_scan):
+    by_id = _ids(run_scan, "example.co.uk", {"_dmarc.co.uk": ["v=DMARC1; p=reject; psd=y"]})
+
+    assert by_id["spoofing-possible"].state == "suspected"
+
+
+def test_b5_psd_n_choosing_a_stricter_record_hedges_spoofing(run_scan):
+    by_id = _ids(
+        run_scan,
+        "a.mail.example.com",
+        {
+            "_dmarc.mail.example.com": ["v=DMARC1; p=reject; psd=n"],
+            "_dmarc.example.com": ["v=DMARC1; p=none"],
+        },
+    )
+
+    assert by_id["spoofing-possible"].state == "suspected"
+
+
+def test_b5_an_ordinary_subdomain_of_an_enforcing_parent_is_still_clear(run_scan):
+    """One ancestor record, at a multi-label name, no psd: both RFCs pick it."""
+    by_id = _ids(run_scan, "mail.example.com", {"_dmarc.example.com": ["v=DMARC1; p=reject"]})
+
+    assert "spoofing-possible" not in by_id
+
+
+def test_b6_np_on_a_record_below_the_organizational_domain_is_not_reported(run_scan):
+    by_id = _ids(
+        run_scan,
+        "mail.example.com",
+        {
+            "_dmarc.mail.example.com": ["v=DMARC1; p=reject; np=none"],
+            "_dmarc.example.com": ["v=DMARC1; p=reject"],
+        },
+    )
+
+    assert "dmarc-np-weaker" not in by_id
+
+
+def test_b6_np_on_a_psd_n_record_is_reported(run_scan):
+    by_id = _ids(
+        run_scan,
+        "mail.example.com",
+        {
+            "_dmarc.mail.example.com": ["v=DMARC1; p=reject; np=none; psd=n"],
+            "_dmarc.example.com": ["v=DMARC1; p=reject"],
+        },
+    )
+
+    assert "dmarc-np-weaker" in by_id
+
+
+def test_s1_an_inherited_record_with_a_discarded_tag_still_reports_p_none(run_scan):
+    by_id = _ids(run_scan, "sub.example.com", {"_dmarc.example.com": ["v=DMARC1; p=none; adkim=x"]})
+
+    assert "dmarc-policy-none" in by_id
+
+
+def test_s1_an_inherited_test_mode_is_reported(run_scan):
+    by_id = _ids(
+        run_scan, "sub.example.com", {"_dmarc.example.com": ["v=DMARC1; p=quarantine; t=y"]}
+    )
+
+    assert by_id["dmarc-test-mode"].state == "suspected"
+
+
+def test_s2_rfc_7489_ignores_np_when_reading_an_inherited_policy(run_scan):
+    """A non-existent author: RFC 9989 applies np=reject, RFC 7489 applies p=none."""
+    answers = _zone2("ghost.example.com", {"_dmarc.example.com": ["v=DMARC1; p=none; np=reject"]})
+    answers[("ghost.example.com", "MX")] = answer("ghost.example.com", "MX", rcode="NXDOMAIN")
+    by_id = {
+        f.check_id: f for f in run_scan("ghost.example.com", answers, mode="standard").findings
+    }
+
+    assert by_id["spoofing-possible"].state == "suspected"
+
+
+def test_s3_an_invalid_np_with_no_rua_takes_dmarc_missings_severity(run_scan):
+    by_id = _ids(run_scan, "x.example", {"_dmarc.x.example": ["v=DMARC1; p=reject; np=bogus"]})
+
+    assert by_id["dmarc-invalid"].severity == "high"
+
+
+def test_s4_both_readings_are_stated_when_they_agree_for_different_reasons(run_scan):
+    by_id = _ids(
+        run_scan, "x.example", {"_dmarc.x.example": ["v=DMARC1; p=quarantine; t=y; pct=50"]}
+    )
+
+    assert "RFC 7489" in by_id["spoofing-possible"].description
+
+
+def test_s5_multiple_records_under_an_enforcing_ancestor_do_not_claim_no_effect(run_scan):
+    by_id = _ids(
+        run_scan,
+        "sub.example.com",
+        {
+            "_dmarc.sub.example.com": ["v=DMARC1; p=reject", "v=DMARC1; p=none"],
+            "_dmarc.example.com": ["v=DMARC1; p=reject"],
+        },
+    )
+
+    assert "none of the effect" not in by_id["dmarc-invalid"].impact
+
+
+def test_s6_an_rf_other_than_afrf_lets_an_rfc_7489_receiver_ignore_the_record(run_scan):
+    """RFC 7489 6.3: a receiver seeing another rf value MAY ignore the record."""
+    by_id = _ids(run_scan, "x.example", {"_dmarc.x.example": ["v=DMARC1; p=reject; rf=iodef"]})
+
+    assert by_id["dmarc-invalid"].state == "suspected"
+    assert by_id["dmarc-invalid"].severity == "high"
+    assert "None of them changes" not in by_id["dmarc-obsolete-tags"].description
+
+
+def test_nit_an_upper_case_tag_name_v_is_accepted_by_the_walk(run_scan):
+    by_id = _ids(run_scan, "x.example", {"_dmarc.x.example": ["V=DMARC1; p=reject"]})
+
+    assert "dmarc-missing" not in by_id and "spoofing-possible" not in by_id
