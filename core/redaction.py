@@ -50,18 +50,39 @@ SECRET_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("google_api_key", re.compile(r"\bAIza[0-9A-Za-z_\-]{35}\b")),
 )
 
-_PRIVATE_LABEL = r"[A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?"
-_BEGIN = re.compile(rf"-----BEGIN {_PRIVATE_LABEL}-----")
-_BEGIN_OR_LEGACY = re.compile(rf"-----BEGIN {_PRIVATE_LABEL}-----|{re.escape(LEGACY_KEY_MARKER)}")
-_END = re.compile(rf"-----END {_PRIVATE_LABEL}-----")
-_PUBLIC_BEGIN = re.compile(r"-----BEGIN ((?:(?!PRIVATE KEY)[A-Z0-9 ])+)-----")
-_PUBLIC_END_AHEAD = re.compile(r"-----END (?:(?!PRIVATE KEY)[A-Z0-9 ])+-----")
+# A PEM armour line, as pages actually carry it: 4 or 5 dashes, any case, spaces
+# (or URL-encoded spaces) around and inside the label, `PRIVATE-KEY`, PGP's
+# `PRIVATE KEY BLOCK`, SSH2's `ENCRYPTED PRIVATE KEY` (review of D21, 8).
+_SP = r"(?:[ \t]|%20|\+)"
+_DASH = r"-{4,5}"
+_PRIVATE_LABEL = rf"(?:[A-Za-z0-9_]|{_SP})*?PRIVATE(?:{_SP}|[-_])?KEY(?:{_SP}+BLOCK)?"
 
-_SEP_ATOM = r"(?:\r?\n|\r|\\r\\n|\\n|\\r|(?i:<br\s*/?>)|&#1[03];|(?i:&#x[ad];))"
+
+def _armour(word: str) -> str:
+    return rf"{_DASH}{_SP}*{word}{_SP}+{_PRIVATE_LABEL}{_SP}*{_DASH}"
+
+
+_BEGIN = re.compile(_armour("BEGIN"), re.IGNORECASE)
+_BEGIN_OR_LEGACY = re.compile(_armour("BEGIN") + "|" + re.escape(LEGACY_KEY_MARKER), re.IGNORECASE)
+_END = re.compile(_armour("END"), re.IGNORECASE)
+_PUBLIC_LABEL = r"((?:(?!PRIVATE)[A-Za-z0-9 ])+?)"
+_PUBLIC_BEGIN = re.compile(rf"{_DASH} ?BEGIN {_PUBLIC_LABEL} ?{_DASH}", re.IGNORECASE)
+_PUBLIC_END = re.compile(rf"{_DASH} ?END {_PUBLIC_LABEL} ?{_DASH}", re.IGNORECASE)
+
+# One line break of a key, as a page may carry it: real newlines; escaped once or
+# twice in a JSON/JS string; JSON unicode; URL-encoded; an HTML <br>; a newline
+# character reference, zero-padded or named (review of D21, 7).
+_SEP_ATOM = (
+    r"(?:\r?\n|\r|\\\\r\\\\n|\\\\n|\\r\\n|\\n|\\r|\\u000[aAdD]|%0[aAdD]"
+    r"|(?i:<br\s*/?>)|&#0*1[03];|(?i:&#x0*[ad];)|&NewLine;)"
+)
 _SEP = rf"{_SEP_ATOM}(?:[ \t]*{_SEP_ATOM})*"
 _B64CH = r"(?:[A-Za-z0-9+=]|\\?/)"
 _LINE_END = rf"(?={_SEP_ATOM}|[\"'<`]|\Z)"
-_LINE_START = r"(?:(?<=\n)|(?<=\r)|(?<=\\n)|(?<=\\r)|(?<=[>;\"'`])|\A)"
+_LINE_START = (
+    r"(?:(?<=\n)|(?<=\r)|(?<=\\n)|(?<=\\r)|(?<=\\u000[aAdD])|(?<=%0[aAdD])"
+    r"|(?<=[>;\"'`])|\A)"
+)
 
 
 def _b64_line(lookahead: str) -> str:
@@ -77,9 +98,17 @@ _BARE_KEY_RUN = re.compile(
     rf"|{_LINE_START}{_B64_FULL}(?:{_SEP}{_B64_FULL})+)"
     rf"(?:{_SEP}{_B64_LAST})?"
 )
+_BARE_SPACED_RUN = re.compile(
+    r"(?<![A-Za-z0-9+/=])(?:[A-Za-z0-9+/]{40,100}[ \t]+){2,}[A-Za-z0-9+/]{16,100}={0,2}"
+    r"(?![A-Za-z0-9+/=])"
+)
+"""Key lines joined by spaces or tabs (the `.env` shape), three or more, no anchor."""
+_SEP_TAIL = re.compile(rf"(?:{_SEP_ATOM})\Z")
+_PUBLIC_BODY = re.compile(rf"(?:{_SEP_ATOM}|[ \t]|[A-Za-z0-9+/=]|\\/)*")
 _KEY_CHARS = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=")
-_BR_TAIL = re.compile(r"(?i)<br\s*/?>\Z")
-_ENTITY_BREAKS = frozenset({"&#10;", "&#13;", "&#xa;", "&#xd;"})
+_LONG_B64 = re.compile(r"[A-Za-z0-9+=/]{40}")
+"""A bare key run needs 40 base64 characters in a row. Ordinary pages have none,
+so this C-speed check skips the expensive run search for almost every page."""
 _BOUNDARY = frozenset("\n\r>;\"'`")
 _LEADING_SEPS = re.compile(rf"(?:[ \t]|{_SEP_ATOM})*")
 _FIRST_SEP = re.compile(_SEP_ATOM)
@@ -122,12 +151,22 @@ def redact_header_map(headers: dict[str, str], counts: Counts | None = None) -> 
     return cleaned
 
 
+PUBLIC_DATA_KINDS = frozenset({"dns_answer", "tls_handshake"})
+"""Evidence made of public records and certificates: token patterns and private-key
+blocks only, never the bare-base64 heuristic (ADR-028 clause 2). Every other kind,
+including a file excerpt or an OOB request, gets the full redactor."""
+
+
+def _heuristics_for(evidence: dict[str, Any]) -> bool:
+    return evidence.get("kind") not in PUBLIC_DATA_KINDS
+
+
 def redact_evidence(data: dict[str, Any]) -> dict[str, Any]:
     """Redact a serialised evidence item, whichever way it was built.
 
-    HTTP exchanges get the full redactor; everything else, including DNS
-    records, certificate data and analysis trees, gets token patterns and
-    private-key blocks only, so public key material survives (clause 2).
+    HTTP exchanges and every other kind get the full redactor. DNS and TLS
+    evidence, which is public records and certificate data, gets token patterns
+    and private-key blocks only, so public key material survives (clause 2).
     The kinds removed are added to `redactions`.
     """
     counts: Counts = {}
@@ -154,11 +193,11 @@ def redact_evidence(data: dict[str, Any]) -> dict[str, Any]:
                 exchange[part] = piece
             out[side] = exchange
         elif exchange is not None:
-            out[side] = redact_data(exchange, counts=counts)
+            out[side] = redact_data(exchange, heuristics=_heuristics_for(out), counts=counts)
     for key, value in list(out.items()):
         if key in ("control", "test", "kind", "captured_at", "redactions"):
             continue
-        out[key] = redact_data(value, heuristics=key == "label", counts=counts)
+        out[key] = redact_data(value, heuristics=_heuristics_for(out), counts=counts)
     if counts:
         out["redactions"] = sorted(set(out.get("redactions") or []) | set(counts))
     return out
@@ -319,36 +358,62 @@ def _strip_orphan_key_tails(text: str, anchor: re.Pattern[str], counts: Counts) 
 
 
 def _public_spans(text: str) -> list[tuple[int, int]]:
-    """Every public PEM block (certificate, public key, ...), BEGIN to its END."""
-    spans = []
+    """Every public PEM block (certificate, public key, ...), BEGIN to its END.
+
+    Linear (review of D21, 3): each label's END lines are found once and matched
+    by bisection. A public BEGIN with no END protects only the base64 body that
+    follows it, not the rest of the text (review nit).
+    """
+    ends: dict[str, list[int]] = {}
+    for end in _PUBLIC_END.finditer(text):
+        ends.setdefault(end.group(1).upper(), []).append(end.start())
+    spans: list[tuple[int, int]] = []
     for begin in _PUBLIC_BEGIN.finditer(text):
-        end = text.find(f"-----END {begin.group(1)}-----", begin.end())
-        spans.append((begin.start(), len(text) if end < 0 else end))
-    return spans
+        starts = ends.get(begin.group(1).upper(), [])
+        i = bisect.bisect_left(starts, begin.end())
+        if i < len(starts):
+            spans.append((begin.start(), starts[i]))
+        else:
+            body = _PUBLIC_BODY.match(text, begin.end())
+            spans.append((begin.start(), body.end() if body else begin.end()))
+    spans.sort()
+    merged: list[tuple[int, int]] = []
+    for lo, hi in spans:
+        if merged and lo <= merged[-1][1]:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], hi))
+        else:
+            merged.append((lo, hi))
+    return merged
 
 
-_LONG_B64 = re.compile(r"[A-Za-z0-9+=/]{40}")
-"""A bare key run needs 40 base64 characters in a row. Ordinary pages have none,
-so this C-speed check skips the expensive run search for almost every page."""
+def _in_public(spans: list[tuple[int, int]], lo: int, hi: int) -> bool:
+    i = bisect.bisect_right(spans, (hi, len("x") << 62)) - 1
+    return i >= 0 and spans[i][1] >= lo
 
 
 def _strip_bare_runs(text: str, counts: Counts) -> str:
     """Two or more whole base64 lines with no anchor: a key body whose BEGIN and END
-    both fell into a truncation gap. Never inside or beside public key material."""
+    both fell into a truncation gap. Never inside or beside public key material.
+
+    Counted as `possible_key_material`, not `private_key`: a heuristic cut is a
+    reason to keep text out of storage, never a verdict that a key was exposed
+    (review of D21, 1)."""
     if _LONG_B64.search(text) is None and "\\/" not in text:
         return text
     spans = _public_spans(text)
 
     def cut(run: re.Match[str]) -> str:
-        if any(lo <= run.end() and run.start() <= hi for lo, hi in spans):
+        if _in_public(spans, run.start(), run.end()):
             return run.group()
         after = _LEADING_SEPS.match(text, run.end())
-        if after is not None and _PUBLIC_END_AHEAD.match(text, after.end()):
+        if after is not None and _PUBLIC_END.match(text, after.end()):
             return run.group()  # the tail of a certificate whose BEGIN was cut away
-        counts["private_key"] = counts.get("private_key", 0) + 1
+        counts["possible_key_material"] = counts.get("possible_key_material", 0) + 1
         return BLOCK_MARKER
 
-    return _BARE_KEY_RUN.sub(cut, text)
+    text = _BARE_KEY_RUN.sub(cut, text)
+    spans = _public_spans(text)
+    return _BARE_SPACED_RUN.sub(cut, text)
 
 
 def _ends_with_sep(text: str, lo: int, i: int) -> int:
@@ -358,13 +423,8 @@ def _ends_with_sep(text: str, lo: int, i: int) -> int:
     ch = text[i - 1]
     if ch in "\n\r":
         return 1
-    if ch in "nr" and i - 2 >= lo and text[i - 2] == "\\":
-        return 2
-    if ch == ";" and text[max(lo, i - 5) : i].lower() in _ENTITY_BREAKS:
-        return 5
-    if ch == ">" and (br := _BR_TAIL.search(text, max(lo, i - 16), i)) is not None:
-        return i - br.start()
-    return 0
+    tail = _SEP_TAIL.search(text, max(lo, i - 16), i)
+    return i - tail.start() if tail is not None else 0
 
 
 def _key_tail_start(text: str, lo: int, hi: int) -> int:

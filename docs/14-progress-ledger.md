@@ -1370,7 +1370,25 @@ Operator-approved. One Standard-mode email scan of grafana.com (email v1.4.1), r
   - **Where recorded:** ADR-028's consequences.
 - **The redactor protects text core stores, not text a scanner has already sliced.** `how-to-add-a-scanner` §7 now says to use `cap_text` or `cap_prefix`, never `text[:n]`.
 - **Recall limit, as before:** a token glued inside a longer word (`xxxxAKIA…`) is not recognised. The patterns need word boundaries.
-- **Cost:** redaction now runs on every capture and every validation. A 500 KB ordinary page costs about 35 ms per pass, after a pre-check that skips the base64-run search when no 40-character base64 run exists. The test suite takes 77 s, up from 16 s, mostly the 151-case harness at the full 256 KB cap.
+- **Independent review (before merge): one blocker, fixed.** The "one way in" could be bypassed by:
+  - attribute assignment, because models did not validate assignment;
+  - evidence objects built with `model_construct`, or mutated after construction, because pydantic does not re-validate instances;
+  - the deprecated `Finding.copy`;
+  - `ScanError` construction and assignment.
+
+  None was used by a current caller, so no real secret was stored, but it broke the guarantee. Now every core model validates on assignment and blocks `model_construct`, a finding re-validates its evidence, `copy` and `model_copy` re-validate, and the store and the CLI re-validate at write.
+- **Review should-fixes, all fixed:**
+  1. Heuristic cuts gave new false positives in `web-secret-in-response` (a MIME-wrapped blob, a checksum list). They are now counted as `possible_key_material`, never as a key.
+  2. Replay loses findings for *every* content check after an unterminated key, not only tracebacks. ADR-028 now says so.
+  3. Hostile pages with many public BEGIN lines took quadratic time (168 s at 4 MB). They are now linear: 4× the input takes 4× the time.
+  4. A secret in `instance_key` crashed `Finding.create`. The id now follows it.
+  5. Legacy store rows kept the secret at rest. Loading now rewrites them, and SQLite `secure_delete` is on.
+  6. Unredacted text that core stored: `CheckRun` and `Suppressed` locations, the target, related assets, taxonomy, detection methods, `--out`, and the fixture file name. All are now redacted.
+  7. Separator gaps for orphan END lines and bare runs: zero-padded and named entities, `\u000a`, `%0A`, double-escaped `\n`, space/tab-joined lines, and URL-encoded blocks.
+  8. Non-standard private-key armour (lowercase, 4 dashes, `PRIVATE-KEY`, SSH2) was missed; and `file_excerpt` and OOB evidence now get the full redactor.
+
+  The carve-out held throughout: the reviewer found no loss of certificate, public-key or DKIM material. Every corpus case and every finding was byte-identical to `main`.
+- **Cost:** redaction now runs on every capture and every validation. A 500 KB ordinary page costs about 35 ms per pass, after a pre-check that skips the base64-run search when no 40-character base64 run exists. The test suite takes about 117 s, up from 16 s: the 151-case harness at the full 256 KB cap, plus validation on assignment and re-validation at every storage boundary.
 
 ## Next
 

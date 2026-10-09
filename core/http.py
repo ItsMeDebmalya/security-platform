@@ -173,7 +173,9 @@ def _fixture_name(method: str, url: str) -> str:
     replay - worth revisiting then, not worth a request-body hash now for a
     case nothing exercises.
     """
-    parsed = httpx.URL(url)
+    # The stem is readable, so it is built from the redacted URL: a secret in a
+    # path must not end up in a file name (review of D21, 6).
+    parsed = httpx.URL(redact_text(url)[0] or url)
     stem = sanitize_filename_part(f"{parsed.host}{parsed.path or '/'}")
     key = f"{method.upper()}|{url}"
     return fixture_filename(stem, method.upper(), digest=fixture_digest(key))

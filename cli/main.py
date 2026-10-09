@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import sys
+import threading
 import traceback
 from datetime import UTC, datetime
 from pathlib import Path
@@ -86,7 +87,13 @@ def _redacting_excepthook(
     print(redact_text(text)[0], file=sys.stderr, end="")
 
 
+def _redacting_thread_excepthook(args: threading.ExceptHookArgs) -> None:
+    if args.exc_value is not None:
+        _redacting_excepthook(args.exc_type, args.exc_value, args.exc_traceback)
+
+
 sys.excepthook = _redacting_excepthook
+threading.excepthook = _redacting_thread_excepthook
 
 SEVERITY_ORDER = ["info", "low", "medium", "high", "critical"]
 REPORTED_STATES = frozenset({"confirmed", "highly_likely"})
@@ -163,6 +170,9 @@ def run(
         _echo(f"error: {exc}")
         raise typer.Exit(1) from None
 
+    # Re-validated at the storage boundary, so nothing mutated since it was built
+    # reaches the file or the terminal unredacted (ADR-028; review of D21, 6).
+    result = ScanResult.model_validate(result.model_dump())
     payload = result.model_dump_json(indent=2)
     if out is not None:
         out.write_text(payload + "\n")

@@ -63,6 +63,9 @@ class FindingStore:
     def __init__(self, path: str | Path) -> None:
         self.path = str(path)
         self._conn = sqlite3.connect(self.path)
+        # A deleted or rewritten row must not survive in SQLite's free pages: a row
+        # written before ADR-028 may hold a secret, and loading it rewrites it.
+        self._conn.execute("PRAGMA secure_delete = ON")
         self._conn.execute(_SCHEMA)
         self._conn.commit()
 
@@ -83,7 +86,7 @@ class FindingStore:
         ).fetchone()
         if row is None:
             return None
-        return Finding.model_validate(json.loads(row[0]))
+        return self._load(finding_id, org_id, row[0])
 
     def list_findings(
         self,
@@ -100,12 +103,33 @@ class FindingStore:
         if status is not None:
             query += " AND status = ?"
             params.append(status)
-        rows = self._conn.execute(query, params).fetchall()
-        return [Finding.model_validate(json.loads(r[0])) for r in rows]
+        rows = self._conn.execute(
+            query.replace("SELECT data", "SELECT id, data"), params
+        ).fetchall()
+        return [self._load(r[0], org_id, r[1]) for r in rows]
+
+    def _load(self, row_id: str, org_id: str, data: str) -> Finding:
+        """Load a finding, redacted (ADR-028 clause 6), and clean the row at rest.
+
+        A row written before ADR-028 may hold a secret. Loading redacts it; if
+        that changed anything, the row is rewritten, under the new id when its
+        location held the secret, so the secret does not stay on disk.
+        """
+        finding = Finding.model_validate(json.loads(data))
+        if finding.id != row_id or finding.model_dump_json() != data:
+            if finding.id != row_id:
+                self._conn.execute(
+                    "DELETE FROM findings WHERE id = ? AND org_id = ?", (row_id, org_id)
+                )
+            self._put(finding)
+        return finding
 
     # --- writes ----------------------------------------------------------
 
     def _put(self, finding: Finding) -> None:
+        # Re-validated at the storage boundary: a finding mutated in place since it
+        # was built is redacted before it is written (ADR-028).
+        finding = Finding.model_validate(finding.model_dump())
         self._conn.execute(
             """
             INSERT INTO findings
