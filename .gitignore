@@ -12,3 +12,6 @@ corpus/lab/web/certs/
 # web Light (Tool 4a) live-run evidence: kept out of git, redacted, hashed in raw-manifest.sha256
 corpus/crosscheck/web-light/raw/
 corpus/crosscheck/web-light/collected.md
+
+# Showcase canaries on company domains: evidence kept out of git (canary policy, 2026-10-10)
+corpus/crosscheck/showcase/

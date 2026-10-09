@@ -8,6 +8,22 @@ This repo is being evolved to the v4 architecture.
 Target: docs/18-v4-plan.md | Roadmap: docs/19-v4-roadmap.md | Migration: docs/20-migration-runbook.md
 The tool-first strategy in docs/archive/ is SUPERSEDED. Do not follow it.
 
+**Where things stand (handoff, 2026-10-10).** Start with the ledger's handoff section, which lists every open item and its status: [docs/14-progress-ledger.md, "Handoff: open items"](docs/14-progress-ledger.md#2026-10-10--handoff-open-items-and-where-to-start). In short:
+- **Shipped and merged through PR #31:** email v1.5.0, tls v1.4.0, domscout v1.2.0, web v1.0.5. Recent work: ADR-028 core redaction (D21), the read-only finding store, ADR-029 redaction receipts and `secret-exposed`, D48 (RFC 9525, no Common Name fallback), ADR-030 (UTS-46 hostnames, `idna` signed off), tls RFC citations with legacy-but-deployed exemptions, ADR-031 accepted (service hosts), and D31 (takeover fingerprints; BROKEN → UNDETERMINED).
+- **Standing figure** (owned by [SPEC.md](SPEC.md)): 68 checks, 40 WORKING, 2 BROKEN, 26 UNDETERMINED. **41% have no evidence they work.**
+- **Waiting on the operator:**
+  - IANA RDAP bootstrap data-licence sign-off (evidence in the ledger);
+  - the D28 design question about the corpus's `.test` domains;
+  - publishing the canary records (the kit is in the ledger; nothing is published yet);
+  - the value-add backlog question pending with the operator's senior: build the quick wins before or after Tool 4b?
+- **Next, in order:** D28 (once both D28 decisions are made), then Tool 4b, then `scan all`.
+- **Standing rules from the operator:**
+  - Never push or merge without being told; merge with `--merge`.
+  - Never rewrite history.
+  - Keep the operator's company domains and the ERP host out of docs, evidence and PRs.
+  - Real positives for secret checks come only from canaries, never from screening other people's domains.
+  - An independent review before merging any change to `core/`.
+
 ## NON-NEGOTIABLE: extend, do not rebuild
 
 These already exist in core/ and are validated. EXTEND them, never regenerate:
@@ -24,7 +40,7 @@ If a task seems to require rebuilding any of the above, STOP and ask me.
 
 **Phase 0 is implemented; Tools 1 (Email), 2 (TLS), 3 (DomScout) and 4a (Website Scanner, Light) have shipped and pass their gates.** The Scanner Contract is frozen, `core/` services exist, the CLI runs, and the corpus harness gates on real numbers.
 
-Scanners: `example` (reference), `domscout` (Tool 3 — Light, live-verified; gate numbers in `SPEC.md`), `web` (Tool 4a — Light, live-verified; passive only; gate numbers in `SPEC.md`), `email` (Tool 1 — 17 checks, 1.000/1.000, 16-case corpus), `tls` (Tool 2 — v1.2.0, 19 checks, 1.000/1.000 over 220 corpus checks, cross-checked against testssl.sh; includes the first derived finding and a runtime testssl.sh wrap for legacy ciphers in Standard mode).
+Scanners: `example` (reference), `email` (Tool 1, v1.5.0), `tls` (Tool 2, v1.4.0, cross-checked against testssl.sh, with a runtime testssl.sh wrap for legacy ciphers in Standard mode), `domscout` (Tool 3, Light, v1.2.0), `web` (Tool 4a, Light, passive only, v1.0.5). Check counts, gate numbers and status are owned by `SPEC.md` and `docs/21-scanner-catalogue.md`; do not restate them here.
 
 Commands: `make install`, `make test`, `make lint`, `make typecheck`, `make licence-check`, `make corpus`, `make crosscheck`, `make targets-up`, and `scan run <tool> --target <t>`. Python 3.13.15, pinned in `.python-version`; dependencies via `uv`.
 
