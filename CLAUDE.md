@@ -50,6 +50,7 @@ Read `docs/14-progress-ledger.md` for where things stand — including **standin
 - `docs/how-to-add-a-scanner.md` — the practical guide, written by building the reference scanner
 - `docs/21-scanner-catalogue.md` — **every shipped check**: what it finds, mode, highest state and its evidence, working/broken. Derived from code; regenerate it, don't hand-edit. Status defers to `SPEC.md` and the ledger
 - `docs/22-differentiators.md` — **what we can claim that most scanners can't**, each line TRUE / PARTIAL / PENDING with a link to its evidence (a test, a ledger row or a verification archive). A claim with no evidence link stays out. Numbers live in SPEC.md and the ledger; this file links to them
+- `docs/23-value-add-backlog.md` — **a plan only**: candidate features from the live runs, each with its source, customer value, guardrail, effort and status (PROPOSED). Nothing in it is built or scheduled
 - `docs/08-changelog.md` — v2→v3, v3→v3.1, and the v3.2 additive contract changes made during Phase 0, with revert notes
 - `docs/09-ownership-verification.md` — the legal gate on active scans; methods per target type, audit record, interim allowlist schema
 - `docs/10-measurement.md` — **how precision/recall/inconclusive-rate are computed**; read before touching the corpus harness
