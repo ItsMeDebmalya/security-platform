@@ -64,7 +64,7 @@
   expires_at: 2026-11-22             # 90 days, no exceptions. Domains change
                                      # hands, and a two-year-old TXT check is
                                      # not evidence about today.
-  verified_by: operator:satwik       # a person, or `system` once Phase 6 self-serve
+  verified_by: operator:debmalya       # a person, or `system` once Phase 6 self-serve
                                      # verification exists
 
   attestation_ref: null              # signed authorisation document. Required for
@@ -88,7 +88,7 @@
     evidence_file: corpus/authz/corpus-pnone.example-2026-08-24.txt
   verified_at: 2026-08-24
   expires_at: 2026-11-22
-  verified_by: operator:satwik
+  verified_by: operator:debmalya
   attestation_ref: null
 
 # ---------------------------------------------------------------------------
@@ -106,7 +106,7 @@
     evidence_file: corpus/authz/lapsed.example-2026-01-10.txt
   verified_at: 2026-01-10
   expires_at: 2026-04-10             # in the past -> denied until re-verified
-  verified_by: operator:satwik
+  verified_by: operator:debmalya
   attestation_ref: null
 
 # ---------------------------------------------------------------------------
@@ -126,7 +126,7 @@
     evidence_file: corpus/authz/localhost-2026-08-28.txt
   verified_at: 2026-08-28
   expires_at: 2026-11-26
-  verified_by: operator:satwik
+  verified_by: operator:debmalya
   attestation_ref: null
 
 # ---------------------------------------------------------------------------
@@ -144,7 +144,7 @@
     evidence_file: corpus/authz/former-client.example-2026-08-02.txt
   verified_at: 2026-08-02
   expires_at: 2026-10-31             # still in date, but revocation wins
-  verified_by: operator:satwik
+  verified_by: operator:debmalya
   attestation_ref: null
   revoked_at: 2026-08-10
   revocation_reason: engagement ended at the customer's request
