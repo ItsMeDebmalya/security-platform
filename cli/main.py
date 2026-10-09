@@ -14,8 +14,11 @@ from __future__ import annotations
 
 import json
 import sys
+import threading
+import traceback
 from datetime import UTC, datetime
 from pathlib import Path
+from types import TracebackType
 from typing import Any, cast, get_args
 
 import typer
@@ -36,6 +39,7 @@ from core.dns import (
 from core.http import HttpClient, OutOfScopeError, RecordingHttpBackend, ReplayHttpBackend
 from core.models import Asset, AssetType, Mode, ScanResult
 from core.ratelimit import RateLimiter
+from core.redaction import redact_text
 from core.registry import discover
 from core.store import FindingStore, VerifyOutcome
 from core.testssl import LiveTestsslClient, RecordingTestsslClient, ReplayTestsslClient
@@ -52,7 +56,44 @@ observation that the problem is gone. See docs/03-roadmap.md 0b.8 and
 ADR-022: absence of a verdict is not evidence of a fix.
 """
 
-app = typer.Typer(add_completion=False, help="Run a scanner against a target.")
+app = typer.Typer(
+    add_completion=False,
+    help="Run a scanner against a target.",
+    # Uncaught exceptions go to `_redacting_excepthook`, not typer's printer:
+    # an exception message can carry a response snippet (ADR-028).
+    pretty_exceptions_enable=False,
+)
+
+
+def _echo(message: object = "", **kwargs: Any) -> None:
+    """Everything the CLI prints goes through the redactor (ADR-028 clause 5).
+
+    Token patterns and private-key blocks only: the output includes stored
+    evidence, already redacted, whose public key material must stay intact.
+    """
+    typer.echo(redact_text(str(message), heuristics=False)[0], **kwargs)
+
+
+def report_exception(exc: BaseException) -> None:
+    """Print an exception as one redacted line on stderr."""
+    text = f"{type(exc).__name__}: {exc}"
+    print(redact_text(text)[0], file=sys.stderr)
+
+
+def _redacting_excepthook(
+    kind: type[BaseException], exc: BaseException, tb: TracebackType | None
+) -> None:
+    text = "".join(traceback.format_exception(kind, exc, tb))
+    print(redact_text(text)[0], file=sys.stderr, end="")
+
+
+def _redacting_thread_excepthook(args: threading.ExceptHookArgs) -> None:
+    if args.exc_value is not None:
+        _redacting_excepthook(args.exc_type, args.exc_value, args.exc_traceback)
+
+
+sys.excepthook = _redacting_excepthook
+threading.excepthook = _redacting_thread_excepthook
 
 SEVERITY_ORDER = ["info", "low", "medium", "high", "critical"]
 REPORTED_STATES = frozenset({"confirmed", "highly_likely"})
@@ -63,7 +104,7 @@ SCOPE_PATH = Path("config/authorised_scope.yaml")
 
 
 def _progress(message: str, fraction: float) -> None:
-    print(f"[{fraction:>5.0%}] {message}", file=sys.stderr)
+    print(f"[{fraction:>5.0%}] {redact_text(message)[0]}", file=sys.stderr)
 
 
 @app.command("list")
@@ -73,11 +114,11 @@ def list_scanners(
     """List registered scanners, their versions and supported modes."""
     described = discover().describe()
     if output_format == "json":
-        typer.echo(json.dumps(described, indent=2))
+        _echo(json.dumps(described, indent=2))
         return
-    typer.echo(f"{'name':<12} {'version':<10} {'modes':<24} target types")
+    _echo(f"{'name':<12} {'version':<10} {'modes':<24} target types")
     for entry in described:
-        typer.echo(
+        _echo(
             f"{entry['name']:<12} {entry['version']:<10} "
             f"{','.join(entry['modes']):<24} {','.join(entry['target_types'])}"
         )
@@ -114,26 +155,29 @@ def run(
             scope_file=scope_file,
         )
     except KeyError as exc:
-        typer.echo(str(exc).strip('"'), err=False)
+        _echo(str(exc).strip('"'), err=False)
         raise typer.Exit(1) from None
     except AuthorisationDeniedError as exc:
-        typer.echo(f"authorisation denied: {exc}")
+        _echo(f"authorisation denied: {exc}")
         raise typer.Exit(1) from None
     except OutOfScopeError as exc:
-        typer.echo(f"out of scope: {exc}")
+        _echo(f"out of scope: {exc}")
         raise typer.Exit(1) from None
     except MissingFixtureError as exc:
-        typer.echo(str(exc))
+        _echo(str(exc))
         raise typer.Exit(1) from None
     except ValueError as exc:
-        typer.echo(f"error: {exc}")
+        _echo(f"error: {exc}")
         raise typer.Exit(1) from None
 
+    # Re-validated at the storage boundary, so nothing mutated since it was built
+    # reaches the file or the terminal unredacted (ADR-028; review of D21, 6).
+    result = ScanResult.model_validate(result.model_dump())
     payload = result.model_dump_json(indent=2)
     if out is not None:
         out.write_text(payload + "\n")
     if output_format == "json":
-        typer.echo(payload)
+        _echo(payload)
     else:
         _print_table(result)
 
@@ -171,12 +215,12 @@ def correlate_cmd(
     try:
         rules = load_composition_rules(rules_file)
     except CorrelationRulesError as exc:
-        typer.echo(f"error: {exc}")
+        _echo(f"error: {exc}")
         raise typer.Exit(1) from None
 
     scan_results = [ScanResult.model_validate_json(p.read_text()) for p in results]
     if not scan_results:
-        typer.echo("error: at least one --result is required")
+        _echo("error: at least one --result is required")
         raise typer.Exit(1)
 
     all_findings = [finding for r in scan_results for finding in r.findings]
@@ -200,19 +244,19 @@ def correlate_cmd(
     )
 
     if output_format == "json":
-        typer.echo(json.dumps([s.model_dump(mode="json") for s in stories], indent=2))
+        _echo(json.dumps([s.model_dump(mode="json") for s in stories], indent=2))
         return
 
-    typer.echo(
+    _echo(
         f"\ncorrelated {len(all_findings)} finding(s) from {len(scan_results)} result(s) "
         f"against {len(rules)} rule(s)"
     )
     if not stories:
-        typer.echo("no story findings")
+        _echo("no story findings")
     else:
-        typer.echo(f"\n{'severity':<9} {'conf':<6} {'state':<14} {'check':<32} derived_from")
+        _echo(f"\n{'severity':<9} {'conf':<6} {'state':<14} {'check':<32} derived_from")
         for story in stories:
-            typer.echo(
+            _echo(
                 f"{story.severity:<9} {story.confidence:<6.2f} {story.state:<14} "
                 f"{story.check_id:<32} {story.derived_from}"
             )
@@ -246,7 +290,7 @@ def verify(
     with FindingStore(store) as fstore:
         finding = fstore.get(finding_id, "org_internal")
         if finding is None:
-            typer.echo(f"no stored finding {finding_id!r} in {store}")
+            _echo(f"no stored finding {finding_id!r} in {store}")
             raise typer.Exit(1)
 
         scan_id = str(ULID())
@@ -262,16 +306,16 @@ def verify(
                 scan_id=scan_id,
             )
         except KeyError as exc:
-            typer.echo(str(exc).strip('"'))
+            _echo(str(exc).strip('"'))
             raise typer.Exit(1) from None
         except AuthorisationDeniedError as exc:
-            typer.echo(f"authorisation denied: {exc}")
+            _echo(f"authorisation denied: {exc}")
             raise typer.Exit(1) from None
         except OutOfScopeError as exc:
-            typer.echo(f"out of scope: {exc}")
+            _echo(f"out of scope: {exc}")
             raise typer.Exit(1) from None
         except MissingFixtureError as exc:
-            typer.echo(str(exc))
+            _echo(str(exc))
             raise typer.Exit(1) from None
         except Exception as exc:  # see the docstring: never close on this
             outcome = _could_not_verify(
@@ -385,7 +429,7 @@ def _verify_outcome(
 
 def _print_verify(outcome: VerifyOutcome, *, output_format: str = "table") -> None:
     if output_format == "json":
-        typer.echo(
+        _echo(
             json.dumps(
                 {
                     "finding_id": outcome.finding_id,
@@ -397,8 +441,8 @@ def _print_verify(outcome: VerifyOutcome, *, output_format: str = "table") -> No
             )
         )
         return
-    typer.echo(f"{outcome.check_id}: {outcome.action} - {outcome.reason}")
-    typer.echo(f"status: {outcome.finding.status}")
+    _echo(f"{outcome.check_id}: {outcome.action} - {outcome.reason}")
+    _echo(f"status: {outcome.finding.status}")
 
 
 def _execute(
@@ -495,30 +539,30 @@ def _breaches(result: ScanResult, fail_on: str) -> bool:
 
 
 def _print_table(result: ScanResult) -> None:
-    typer.echo(
+    _echo(
         f"\n{result.scanner} {result.scanner_version} "
         f"{result.mode} {result.target.value} -> {result.outcome}"
     )
     if not result.findings:
-        typer.echo("no findings")
+        _echo("no findings")
     else:
-        typer.echo(f"\n{'severity':<9} {'conf':<6} {'state':<14} {'check':<32} location")
+        _echo(f"\n{'severity':<9} {'conf':<6} {'state':<14} {'check':<32} location")
         for finding in sorted(
             result.findings,
             key=lambda f: SEVERITY_ORDER.index(f.severity) * f.confidence,
             reverse=True,
         ):
-            typer.echo(
+            _echo(
                 f"{finding.severity:<9} {finding.confidence:<6.2f} {finding.state:<14} "
                 f"{finding.check_id:<32} {finding.location}"
             )
     ran = len(result.telemetry.checks_run)
-    typer.echo(
+    _echo(
         f"\n{ran} check(s) ran, {result.inconclusive_rate():.0%} inconclusive, "
         f"{result.telemetry.requests} request(s)"
     )
     for error in result.errors:
-        typer.echo(f"error [{error.stage}]: {error.message}")
+        _echo(f"error [{error.stage}]: {error.message}")
 
 
 if __name__ == "__main__":

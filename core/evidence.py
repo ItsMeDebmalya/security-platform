@@ -2,7 +2,9 @@
 
 **Redact before storage, never before display.** By the time a body reaches
 disk the secrets are already gone, so there is no window in which we hold a
-customer's session token.
+customer's session token. The redactor itself is `core/redaction.py`
+(ADR-028); this module applies it to every capture: URLs, header names and
+values, bodies, DNS records and certificate strings.
 
 Evidence is replayable: every `http_pair` exports as curl, which is what makes
 Request Replay nearly free later.
@@ -10,7 +12,6 @@ Request Replay nearly free later.
 
 from __future__ import annotations
 
-import re
 from datetime import UTC, datetime
 from typing import Any
 
@@ -26,86 +27,58 @@ from core.models import (
     HttpResponse,
     TlsHandshakeEvidence,
 )
+from core.redaction import REDACTED as REDACTED  # re-exported: scanners import it from here
+from core.redaction import SECRET_PATTERNS as SECRET_PATTERNS
+from core.redaction import SENSITIVE_HEADERS as SENSITIVE_HEADERS
+from core.redaction import cap_text, redact_header_map, redact_text
 
-REDACTED = "[redacted]"
 DEFAULT_BODY_CAP = 262_144
 """256 KB. Beyond it we keep the head and the tail and mark the gap."""
 
-SENSITIVE_HEADERS = frozenset(
-    {
-        "authorization",
-        "proxy-authorization",
-        "cookie",
-        "set-cookie",
-        "x-api-key",
-        "x-auth-token",
-        "x-csrf-token",
-        "api-key",
-    }
-)
-
-SECRET_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
-    ("aws_access_key_id", re.compile(r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b")),
-    ("github_token", re.compile(r"\bgh[pousr]_[A-Za-z0-9]{20,}\b")),
-    ("private_key", re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----")),
-    ("bearer_token", re.compile(r"\bBearer\s+[A-Za-z0-9._\-]{16,}")),
-    ("slack_token", re.compile(r"\bxox[baprs]-[A-Za-z0-9-]{10,}\b")),
-    ("google_api_key", re.compile(r"\bAIza[0-9A-Za-z_\-]{35}\b")),
-)
-
 
 def redact_headers(headers: dict[str, str]) -> tuple[dict[str, str], list[str]]:
-    """Replace sensitive header values. Returns the headers and what was hit."""
-    cleaned: dict[str, str] = {}
-    hit: list[str] = []
-    for key, value in headers.items():
-        if key.lower() in SENSITIVE_HEADERS:
-            cleaned[key] = REDACTED
-            hit.append(key.lower())
-        else:
-            cleaned[key] = value
-    return cleaned, hit
+    """Redact headers by name *and* by value (ADR-028, ledger D21).
+
+    A header on `SENSITIVE_HEADERS` is replaced whole. Every other header has
+    its name and value run through the redactor: a secret in `Server:` or
+    `X-Powered-By:` is a secret all the same.
+    """
+    counts: dict[str, int] = {}
+    cleaned = redact_header_map(headers, counts)
+    return cleaned, list(counts)
 
 
 def redact_body(body: str | None) -> tuple[str | None, list[str]]:
-    """Replace anything matching a secret pattern in a body."""
-    if not body:
-        return body, []
-    hit: list[str] = []
-    for name, pattern in SECRET_PATTERNS:
-        body, count = pattern.subn(f"{REDACTED}:{name}", body)
-        if count:
-            hit.append(name)
-    return body, hit
+    """Remove secrets from a body: token patterns and whole private-key blocks."""
+    body, counts = redact_text(body)
+    return body, list(counts)
 
 
 def truncate_body(body: str | None, cap: int = DEFAULT_BODY_CAP) -> tuple[str | None, bool]:
     """Cap a body at `cap` bytes, keeping the head and the tail.
 
-    The middle is replaced by an explicit marker: a silently shortened body
-    would make evidence misleading rather than merely incomplete.
+    It redacts first (ADR-028 clause 4), so truncation can never split a
+    secret and leave part of it behind. The middle is replaced by an explicit
+    marker: a silently shortened body would make evidence misleading rather
+    than merely incomplete.
     """
-    if body is None or len(body) <= cap:
-        return body, False
-    head = cap // 2
-    tail = cap - head
-    omitted = len(body) - cap
-    return f"{body[:head]}\n... [{omitted} bytes truncated] ...\n{body[-tail:]}", True
+    return cap_text(body, cap)
 
 
 def _capture_request(raw: dict[str, Any], cap: int) -> tuple[HttpRequest, list[str]]:
     headers, header_hits = redact_headers(raw.get("headers") or {})
     body, body_hits = redact_body(raw.get("body"))
     body, truncated = truncate_body(body, cap)
+    url, url_counts = redact_text(raw["url"])
     return (
         HttpRequest(
             method=raw["method"],
-            url=raw["url"],
+            url=url or raw["url"],
             headers=headers,
             body=body,
             body_truncated=truncated,
         ),
-        header_hits + body_hits,
+        header_hits + body_hits + list(url_counts),
     )
 
 

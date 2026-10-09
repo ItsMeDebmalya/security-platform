@@ -709,3 +709,53 @@ In both cases the parser, the scope rule and the gate each did their job. The ga
 - **The method that passed the audit is the standard:** real recorded traffic, live hand-verified hosts, and an external cross-check. Only `web` (Tool 4a) was built that way, and only `web` came out clean.
 
 **Reversal cost.** Low. It is a review rule and one contract test, and dropping either changes no shipped behaviour. The cost of not having it is a gate number that is false in production, and that has already happened twice.
+
+---
+
+## ADR-028 — Core redacts secrets by value at every point where text is stored, and never redacts public key material
+
+**Status.** Accepted 2026-10-09 (operator). Closes ledger D21. Implemented on `fix/d21-core-redaction`, with an independent review before merge.
+
+**Context.** Hard constraint 5 says never store customer secrets, and redact at capture time, not at display time. Until this ADR, `core/` fell short of that in four ways, and every scanner inherited them:
+- `redact_headers` matched header **names** only. A secret in a non-sensitive header's **value** (`Server: nginx AKIA…`) was stored.
+- The `private_key` pattern matched only the `-----BEGIN … PRIVATE KEY-----` line, so the key body was stored, in evidence and in recorded fixtures.
+- Finding text was never redacted: titles, descriptions, impact, remediation and locations.
+- Error messages were never redacted: `ScanError`, exception text, CLI output.
+
+`web` worked around all four on the scanner side (Tool 4a, three leak-fix rounds and a 153-case attack harness), which is the wrong place: every scanner has to remember, and `domscout` did not.
+
+**Decision.**
+1. **One redactor, in core** (`core/redaction.py`). Scanners do not redact. It covers:
+   - the token patterns: AWS access key, GitHub token, bearer token, Slack token, Google API key;
+   - **whole PEM private-key blocks**, whatever the label (`RSA`, `EC`, `DSA`, `ENCRYPTED`, `OPENSSH`, PGP `PRIVATE KEY BLOCK`) and whatever separates the lines: newlines, CRLF, escaped `\n`/`\r\n`, `<br>`, `&#10;`/`&#xa;`, JSON-escaped `\/`. A block with no END line is cut to the end of the text. An END line whose BEGIN was lost is taken with the key lines above it, and so is a run of bare 40–100-column base64 lines whose BEGIN and END were both truncated away.
+2. **Secrets, not public key material.** This is the carve-out, and it is load-bearing.
+   - The PEM matcher acts only on labels containing `PRIVATE KEY`. `CERTIFICATE`, `PUBLIC KEY` and every other public label are kept intact, including their base64 bodies.
+   - The bare-base64 heuristic never touches a run inside or adjoining a public PEM block.
+   - The heuristic is applied **only to HTTP bodies, header values and free text**. It is never applied to DNS records, certificate data or any other public key material: a DKIM `p=` value is a public key, and `dkim-weak-key` measures key size from it.
+   - **DNS record text and TLS certificate strings get the token patterns and private-key blocks only.** Deliberately public tokens, such as `google-site-verification=…`, survive.
+3. **Checks evaluate raw data; redaction happens at storage.** A scanner reads the live response, DNS answer or certificate unredacted, in memory, for the duration of one check. What is redacted is what is *kept*: evidence, findings, fixtures, the store, errors, logs. No check may decide anything from redacted text.
+4. **Redact first, then truncate, everywhere in core.** Truncating text is possible only through functions that redact first and cut so that no marker is split. The cut text is then redacted again, because a cut can create a new word boundary. Cap-before-redact, the Tool 4a bug, cannot be written against core.
+5. **Every storage point goes through it:**
+   - HTTP captures (request URL, header names and values, bodies) in evidence and in recorded fixtures, with replayed fixtures re-redacted;
+   - evidence objects however they are built;
+   - `Finding` text fields;
+   - `ScanError` messages;
+   - CLI output, the progress stream, and uncaught exception text.
+6. **One way in.** `Finding` redacts in a model validator, and every model validates on assignment. So `Finding.create`, direct construction, attribute assignment, `model_validate`/`model_validate_json` deserialisation and **loading from the store** all redact. Evidence objects inside a finding are re-validated, so one mutated after it was built is redacted too. `model_construct`, which skips validation, is blocked on every core model, and `model_copy` and the deprecated `copy` re-validate. The store re-validates at write as well, and rewrites at rest any row that loading changed. So a store written before this ADR becomes safe on the way out *and* on disk. If the rewritten row's new id already belongs to a stored row, that row is newer and keeps its status and history; the legacy row is only deleted. The first time a store is opened, every row is loaded this way before anything else touches it (marked by `PRAGMA user_version`, set only once every row has loaded), so a re-scan that writes first cannot leave a legacy secret on disk or reopen a legacy finding's status.
+7. **Re-running redaction is safe, and markers are inert.**
+   - Running the redactor twice gives the same result as once.
+   - A whole private-key block is replaced by `[redacted:private_key]`, which is never read as the start of anything.
+   - The legacy marker `[redacted]:private_key`, which old core left in place of a BEGIN line while keeping the body, *is* read as a block start, so captures from before this ADR are cut correctly too.
+8. **Over-redaction is the accepted price.** Genuine base64 columns in a web page become a marker in stored evidence. Verdicts never depend on stored text (clause 3), so corpus numbers do not move.
+
+**Consequences.**
+- `web`'s scanner-side workaround is removed only if the 153-case harness, re-run against core directly and then against `web` end-to-end, live and on replay, still reports 0 leaks without it. If any case fails, the workaround stays.
+- A finding whose *location* contained a secret gets a new deterministic id, because the id is computed from the redacted location. Losing history for such a finding is correct: we must not key on a secret.
+- Every scanner's corpus numbers must be unchanged. A change means a check was reading stored text, which clause 3 forbids, and is a defect.
+- **Replay can see less than live, for every content check.** A fixture is stored text, so it is redacted, and an unterminated private key is cut to the end of the text there too. **Anything a check reads that comes after such a key** is present live and absent on replay: a traceback (`web-error-disclosure`), an `http:` script (`web-mixed-content`), a script tag (`web-sri-missing`), a version string. The secret itself is still reported on replay. Accepted: a key has no safe partial boundary, and hard constraint 5 outranks replay fidelity for a page that publishes an unterminated private key. Found by the D21 test `test_unterminated_br_key_on_the_404_page_is_never_stored`, and widened by the independent review.
+- **A heuristic cut is not a verdict.** A whole private-key block, or an orphan END line, is counted as `private_key`. A bare base64 run with no armour is counted as `possible_key_material`, which no check treats as an exposed secret. A MIME-wrapped image or a checksum list is kept out of storage, never reported as a key.
+- **A legacy stored finding whose location held a secret is re-keyed on first load.** Its id is computed from the redacted location, the old row is deleted, and SQLite's `secure_delete` overwrites it. References to the old id, such as `scan verify <old id>`, then find nothing.
+- **The redactor protects text core stores, not text a scanner has already cut.** A scanner that slices raw text itself (`text[:200]`) before handing it to a finding can split a key below the size the heuristics recognise. Scanners must use `core.redaction.cap_text` or `cap_prefix` to shorten text, never a raw slice. That is a review rule, checked in `how-to-add-a-scanner`.
+- **Token patterns need word boundaries.** A token glued inside a longer word (`xxxxAKIA…`) is not recognised, as before ADR-028. A recall limit, not a regression.
+
+**Reversal cost.** High, and inadvisable: reverting re-opens hard constraint 5 for every scanner.

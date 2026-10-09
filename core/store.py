@@ -57,14 +57,48 @@ CREATE TABLE IF NOT EXISTS findings (
 """
 
 
+# `PRAGMA user_version` once every row has been loaded through ADR-028's redactor.
+_SWEPT = 1
+
+
 class FindingStore:
     """Findings keyed on their deterministic id, upserted across scans."""
 
     def __init__(self, path: str | Path) -> None:
         self.path = str(path)
         self._conn = sqlite3.connect(self.path)
+        # A deleted or rewritten row must not survive in SQLite's free pages: a row
+        # written before ADR-028 may hold a secret, and loading it rewrites it.
+        self._conn.execute("PRAGMA secure_delete = ON")
         self._conn.execute(_SCHEMA)
         self._conn.commit()
+        self._sweep_legacy_rows()
+
+    def _sweep_legacy_rows(self) -> None:
+        """Clean a store written before ADR-028 once, when it is first opened.
+
+        Loading cleans a row, but a write can come first: a re-scan would insert a
+        fresh row under the redacted id, leaving the legacy row's secret on disk and
+        its status replaced. So every row is loaded before anything else touches the
+        store, and `user_version` records that it has been done.
+        """
+        if self._conn.execute("PRAGMA user_version").fetchone()[0] >= _SWEPT:
+            return
+        complete = True
+        for row_id, org_id, data in self._conn.execute(
+            "SELECT id, org_id, data FROM findings"
+        ).fetchall():
+            try:
+                self._load(row_id, org_id, data)
+            except ValueError:
+                # A row that does not load (an older contract, a hand edit) fails
+                # when it is read, as before; it must not stop the store opening.
+                # The store stays unswept, so the next open tries again.
+                self._conn.rollback()
+                complete = False
+        if complete:
+            self._conn.execute(f"PRAGMA user_version = {_SWEPT}")
+            self._conn.commit()
 
     def close(self) -> None:
         self._conn.close()
@@ -83,7 +117,8 @@ class FindingStore:
         ).fetchone()
         if row is None:
             return None
-        return Finding.model_validate(json.loads(row[0]))
+        finding, superseded = self._load(finding_id, org_id, row[0])
+        return self.get(finding.id, org_id) if superseded else finding
 
     def list_findings(
         self,
@@ -100,12 +135,42 @@ class FindingStore:
         if status is not None:
             query += " AND status = ?"
             params.append(status)
-        rows = self._conn.execute(query, params).fetchall()
-        return [Finding.model_validate(json.loads(r[0])) for r in rows]
+        rows = self._conn.execute(
+            query.replace("SELECT data", "SELECT id, data"), params
+        ).fetchall()
+        loaded = (self._load(r[0], org_id, r[1]) for r in rows)
+        return [finding for finding, superseded in loaded if not superseded]
+
+    def _load(self, row_id: str, org_id: str, data: str) -> tuple[Finding, bool]:
+        """Load a finding, redacted (ADR-028 clause 6), and clean the row at rest.
+
+        A row written before ADR-028 may hold a secret. Loading redacts it; if
+        that changed anything, the row is rewritten, under the new id when its
+        location held the secret, so the secret does not stay on disk. If a row
+        already exists under the new id, it is newer and keeps its status and
+        history: the legacy row is only deleted, and the second value is True,
+        meaning "this finding is that other row".
+        """
+        finding = Finding.model_validate(json.loads(data))
+        if finding.id == row_id:
+            if finding.model_dump_json() != data:
+                self._put(finding)
+            return finding, False
+        self._conn.execute("DELETE FROM findings WHERE id = ? AND org_id = ?", (row_id, org_id))
+        if self._conn.execute(
+            "SELECT 1 FROM findings WHERE id = ? AND org_id = ?", (finding.id, org_id)
+        ).fetchone():
+            self._conn.commit()
+            return finding, True
+        self._put(finding)
+        return finding, False
 
     # --- writes ----------------------------------------------------------
 
     def _put(self, finding: Finding) -> None:
+        # Re-validated at the storage boundary: a finding mutated in place since it
+        # was built is redacted before it is written (ADR-028).
+        finding = Finding.model_validate(finding.model_dump())
         self._conn.execute(
             """
             INSERT INTO findings

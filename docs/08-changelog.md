@@ -444,3 +444,20 @@ Then restore the entry-point lines in `CLAUDE.md` and `SPEC.md`, and the revert 
 
 **Revert.** Delete the ADR-017 paragraph. Reverting the scanner reintroduces the false claims of ledger D44.
 
+## v4.0-pre.6 — ADR-028: core redacts secrets at every storage point (D21) (2026-10-09)
+
+**What changed.**
+- New `core/redaction.py`, the only redactor. It covers token patterns and whole PEM private-key blocks, including the truncation-gap cases from Tool 4a. Public key material is never redacted: certificates, public keys, DNS records and DKIM `p=` values.
+- Redaction is applied at every storage point:
+  - HTTP captures: URL, header names and values, bodies;
+  - recorded and replayed fixtures, with legacy fixtures cut on replay;
+  - evidence however it is built;
+  - `Finding` text: the only way in, so create, construction, deserialisation and store load all redact; `model_construct` is blocked and `model_copy` re-validates;
+  - `ScanError`, CLI output, progress, and uncaught exceptions.
+  - the store at rest: loading rewrites a pre-ADR-028 row that held a secret, with `secure_delete` on. When the rewritten id already belongs to a newer row, that row keeps its status and history and the legacy row is only deleted. A store is swept this way once, when it is first opened (`PRAGMA user_version = 1`).
+- Truncation redacts first: `cap_text` and `cap_prefix` are the only cuts.
+- **`web`'s scanner-side workaround is removed:** `_strip_private_keys` and its PEM machinery, and the `pre_redacted` path. Its unit tests moved to `tests/core/test_redaction_ported.py`. The web tests that depended on old core's fixtures now build legacy fixtures explicitly.
+- `CLAUDE.md` lists ADRs 001–028. `how-to-add-a-scanner` §7 says: never write your own redactor, never slice raw text.
+
+**Revert.** Not advised: it re-opens hard constraint 5. If needed, revert the merge commit. That restores web's workaround with it.
+

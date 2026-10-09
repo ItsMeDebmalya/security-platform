@@ -51,7 +51,7 @@ Below 0.40 confidence nothing is reported.
 
 ---
 
-## web — Website Scanner (Tool 4a, v1.0.3)
+## web — Website Scanner (Tool 4a, v1.0.4)
 
 21 checks, all Light, all passive. At most 12 page requests per scan, though redirect hops can add more (D26).
 

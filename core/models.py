@@ -16,12 +16,14 @@ Two invariants are enforced here rather than left to scanner authors:
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import date, datetime
 from typing import Annotated, Any, ClassVar, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, model_validator
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, field_validator, model_validator
 
 from core.ids import TARGET_LEVEL, finding_id
+from core.redaction import redact_data, redact_evidence, redact_text
 from core.state import State, derive_state
 
 Mode = Literal["light", "standard", "deep"]
@@ -43,7 +45,27 @@ SEMVER = r"^\d+\.\d+\.\d+$"
 
 
 class Strict(BaseModel):
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    # validate_assignment: an assignment after construction is validated, and so
+    # redacted, like construction itself (ADR-028 clause 6; review of D21).
+    model_config = ConfigDict(extra="forbid", populate_by_name=True, validate_assignment=True)
+
+    @classmethod
+    def model_construct(cls, *args: Any, **kwargs: Any) -> Self:
+        raise TypeError(
+            f"{cls.__name__}.model_construct skips validation, and so redaction (ADR-028)"
+        )
+
+    def model_copy(self, *, update: Mapping[str, Any] | None = None, deep: bool = False) -> Self:
+        """A copy is a new object: validated, and so redacted, like any other."""
+        data = self.model_dump()
+        data.update(update or {})
+        return type(self).model_validate(data)
+
+    def copy(
+        self, *, update: Mapping[str, Any] | None = None, deep: bool = False, **_: Any
+    ) -> Self:
+        """pydantic's deprecated v1 `copy`, routed through `model_copy`."""
+        return self.model_copy(update=update, deep=deep)
 
 
 # --- assets and cost --------------------------------------------------------
@@ -76,6 +98,13 @@ class EvidenceBase(Strict):
     label: str = Field(min_length=1)
     captured_at: datetime
     redactions: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _redact_before_storage(cls, data: Any) -> Any:
+        """ADR-028: evidence is redacted however it is built, not only by the capture
+        helpers. Public key material in DNS and TLS evidence is kept (clause 2)."""
+        return redact_evidence(data) if isinstance(data, dict) else data
 
     def has_control(self) -> bool:
         """Whether this evidence carries a control alongside its test.
@@ -302,6 +331,33 @@ class StatusChange(Strict):
 # --- the finding ------------------------------------------------------------
 
 
+def _redacted_value(value: Any) -> Any:
+    """`value` with secrets removed, keeping model instances as instances.
+
+    Unchanged values are returned as they are. On assignment, pydantic does not
+    re-validate the other fields, so anything handed back must already be the
+    right type."""
+    if isinstance(value, list):
+        return [_redacted_value(v) for v in value]
+    if isinstance(value, BaseModel):
+        dumped = value.model_dump()
+        clean = redact_data(dumped, heuristics=True)
+        return value if clean == dumped else type(value).model_validate(clean)
+    clean = redact_data(value, heuristics=True)
+    return value if clean == value else clean
+
+
+_FREE_TEXT_FIELDS = (
+    "title",
+    "description",
+    "impact",
+    "remediation",
+    "materialises_reason",
+    "location",
+    "instance_key",
+)
+
+
 class Finding(Strict):
     id: str = Field(pattern=r"^sha256:[0-9a-f]{64}$")
     org_id: str = Field(min_length=1)
@@ -346,6 +402,63 @@ class Finding(Strict):
     materialises_reason: str | None = Field(default=None, min_length=1)
     derivation: Derivation = "detected"
     derived_from: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _redact_before_storage(cls, data: Any) -> Any:
+        """ADR-028 clause 6: the one way into a Finding redacts its text.
+
+        `_redact_text_field` below does the same for each field on assignment,
+        where pydantic validates only the field assigned.
+
+        This runs for `Finding.create`, direct construction, `model_validate`,
+        `model_validate_json` and so for every finding loaded from the store, so
+        stores written before ADR-028 are redacted on load. A location that held
+        a secret is redacted, and the id, which hashes the location, follows it.
+        """
+        if not isinstance(data, dict):
+            return data
+        out = dict(data)
+        for key in _FREE_TEXT_FIELDS:
+            if isinstance(out.get(key), str):
+                out[key] = redact_text(out[key])[0] or out[key]
+        if isinstance(out.get("references"), list):
+            out["references"] = [
+                redact_text(r)[0] or r if isinstance(r, str) else r for r in out["references"]
+            ]
+        # Evidence objects are re-validated, so one mutated after it was built is
+        # redacted here too (pydantic does not revalidate instances by default).
+        if isinstance(out.get("evidence"), list):
+            out["evidence"] = [
+                type(e).model_validate(e.model_dump()) if isinstance(e, BaseModel) else e
+                for e in out["evidence"]
+            ]
+        target = out.get("target")
+        if isinstance(target, BaseModel):
+            value = getattr(target, "value", None)
+            if isinstance(value, str) and (clean := redact_text(value)[0] or value) != value:
+                out["target"] = type(target).model_validate({**target.model_dump(), "value": clean})
+        elif isinstance(target, dict) and isinstance(target.get("value"), str):
+            out["target"] = {**target, "value": redact_text(target["value"])[0] or target["value"]}
+        for key in ("related_assets", "taxonomy", "detection_methods"):
+            if key in out:
+                out[key] = _redacted_value(out[key])
+        identity = ("location", "instance_key", "target")
+        if any(out.get(k) is not data.get(k) for k in identity) and "id" in out:
+            target = out["target"]
+            out["id"] = finding_id(
+                scanner=out["scanner"],
+                check_id=out["check_id"],
+                target_value=target["value"] if isinstance(target, dict) else target.value,
+                location=out["location"],
+                instance_key=out.get("instance_key"),
+            )
+        return out
+
+    @field_validator(*_FREE_TEXT_FIELDS)
+    @classmethod
+    def _redact_text_field(cls, value: str | None) -> str | None:
+        return redact_text(value)[0] if value else value
 
     @model_validator(mode="after")
     def _materialisation_reason_needs_a_date(self) -> Self:
@@ -471,12 +584,23 @@ class ScanError(Strict):
     fatal: bool = False
     check_id: str | None = None
 
+    @field_validator("message")
+    @classmethod
+    def _redact_message(cls, value: str) -> str:
+        """An error can carry a response snippet; it is stored and printed (ADR-028)."""
+        return redact_text(value)[0] or value
+
 
 class Suppressed(Strict):
     check_id: str
     location: str
     confidence: float = Field(ge=0, le=1)
     reason: str
+
+    @field_validator("location", "reason")
+    @classmethod
+    def _redact(cls, value: str) -> str:
+        return redact_text(value)[0] or value
 
 
 CheckOutcome = Literal["reported", "clear", "inconclusive", "suppressed", "error"]
@@ -494,6 +618,11 @@ class CheckRun(Strict):
     check_id: str = Field(min_length=1)
     outcome: CheckOutcome
     location: str = TARGET_LEVEL
+
+    @field_validator("location")
+    @classmethod
+    def _redact_location(cls, value: str) -> str:
+        return redact_text(value)[0] or value
 
 
 class Telemetry(Strict):
