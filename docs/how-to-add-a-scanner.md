@@ -162,6 +162,7 @@ Then `make corpus`. Then `uv run python -m cli.corpus --update-baseline` once th
 - [ ] `scanner_version` bumped if results changed
 - [ ] `state` is derived, not hand-set
 - [ ] evidence is redacted and replayable. Core redacts everything it stores (ADR-028), so do not write your own redactor. To shorten text, use `core.redaction.cap_text` or `cap_prefix`, never a raw slice (`text[:n]`), which can split a secret below what redaction recognises. A check reads raw data; it never decides from stored, redacted text
+- [ ] **a credential in public content is reported (ADR-029).** At the end of `run`, pass your findings to `core.exposure.secret_exposure_findings` and add what it returns, with `core.exposure.check_runs(...)` in your telemetry. When you build HTTP evidence from an `HttpClient` response, pass the capture's `redaction_receipts` with the response, so live and replay record the same. The contract test (`tests/contract/test_secret_exposure_contract.py`) runs every registered scanner over its corpus and fails a scanner that forgets
 - [ ] nothing sends a state-changing request to a target
 
 ## 8. Standard mode

@@ -36,7 +36,7 @@ Read `docs/14-progress-ledger.md` for where things stand — including **standin
 - `SPEC.md` — **the canonical build specification: what each tool must do, current status, gates.** Authority for "what to build," replacing `docs/reference/product-spec.md` in that role.
 - `docs/00-context.md` — product, strategy, standards
 - `docs/01-architecture.md` — **the Scanner Contract, finding/evidence model, confidence engine**
-- `docs/02-decisions.md` — ADRs 001–028
+- `docs/02-decisions.md` — ADRs 001–029
 - `docs/03-roadmap.md` — phases 0, **0b (foundation for the calendar)**, 1–7 with accuracy gates
 - `docs/04-phase-0-foundations.md`, `docs/05-phase-1-first-tools.md` — task-level plans
 - `docs/06-guidelines.md` — rules for all code

@@ -41,9 +41,16 @@ import httpx
 
 from core.authz import Scope
 from core.cost import CostMeter
-from core.evidence import DEFAULT_BODY_CAP, redact_body, redact_headers, truncate_body
+from core.evidence import DEFAULT_BODY_CAP, truncate_body
 from core.killswitch import KillSwitch
-from core.redaction import redact_header_map, redact_text
+from core.redaction import (
+    Receipts,
+    add_receipts,
+    receipt_list,
+    receipts_from,
+    redact_header_map,
+    redact_text,
+)
 from core.replay import (
     FixtureStore,
     fixture_digest,
@@ -99,6 +106,8 @@ class RawHttpResponse:
     elapsed_ms: int
     body_truncated: bool = False
     redactions: list[str] | None = None
+    redaction_receipts: list[dict[str, Any]] | None = None
+    """ADR-029, with `redactions`: the fixture's recorded receipts on replay."""
 
 
 class HttpBackend(Protocol):
@@ -151,16 +160,21 @@ def _capture_payload(
     """The redacted, size-capped shape stored as evidence - and, for HTTP,
     also the shape stored as a fixture. Shared so recording never drifts from
     the capture `HttpClient` computes for a live run."""
-    clean_headers, header_hits = redact_headers(dict(headers))
-    body, body_hits = redact_body(text)
+    header_counts: dict[str, int] = {}
+    clean_headers = redact_header_map(dict(headers), header_counts)
+    body, body_counts = redact_text(text)
     body, truncated = truncate_body(body, body_cap)
+    receipts: Receipts = {}
+    add_receipts(receipts, header_counts, "response.headers")
+    add_receipts(receipts, body_counts, "response.body")
     return {
         "status": status_code,
         "headers": clean_headers,
         "body": body,
         "body_truncated": truncated,
         "elapsed_ms": elapsed_ms,
-        "redactions": sorted(set(header_hits + body_hits)),
+        "redactions": sorted(set(header_counts) | set(body_counts)),
+        "redaction_receipts": receipt_list(receipts),
     }
 
 
@@ -251,6 +265,12 @@ class ReplayHttpBackend:
         body, body_counts = redact_text(data["body"] or "", legacy=True)
         stored_url, url_counts = redact_text(data["url"])
         found = set(data["redactions"]) | set(counts) | set(body_counts) | set(url_counts)
+        # ADR-029: the recorded receipts, plus anything cut only now (a legacy
+        # fixture's key body). A fixture recorded before ADR-029 has none, and
+        # none are invented for it.
+        receipts = receipts_from(data.get("redaction_receipts"))
+        add_receipts(receipts, counts, "response.headers")
+        add_receipts(receipts, body_counts, "response.body")
         return RawHttpResponse(
             status_code=data["status"],
             headers=headers,
@@ -259,6 +279,7 @@ class ReplayHttpBackend:
             elapsed_ms=data["elapsed_ms"],
             body_truncated=data["body_truncated"],
             redactions=sorted(found),
+            redaction_receipts=receipt_list(receipts),
         )
 
 
@@ -285,6 +306,8 @@ class HttpClient:
         self._ratelimit = ratelimit
         self._scan_id = scan_id
         self._org_id = org_id
+        self._exposures: Any = None
+        """The scan's `core.exposure.ExposureLog`, wired in by `ScanContext`."""
         # `transport` (an `httpx.MockTransport` in tests) only makes sense for
         # the default live backend; a caller supplying its own `backend`
         # (Recording/Replay) owns its own transport concerns.
@@ -335,13 +358,17 @@ class HttpClient:
                 latency_ms=raw.elapsed_ms,
             )
 
-        return CapturedResponse(
+        response = CapturedResponse(
             status_code=raw.status_code,
             text=raw.text,
             headers=dict(raw.headers),
             captured=self._capture(raw),
             url=raw.url,
         )
+        if self._exposures is not None:
+            # ADR-029: every public capture is seen, cited by a finding or not
+            self._exposures.observe_http(response.url, response.captured)
+        return response
 
     def _capture(self, raw: RawHttpResponse) -> dict[str, Any]:
         if raw.redactions is not None:
@@ -355,6 +382,7 @@ class HttpClient:
                 "body_truncated": raw.body_truncated,
                 "elapsed_ms": raw.elapsed_ms,
                 "redactions": list(raw.redactions),
+                "redaction_receipts": list(raw.redaction_receipts or []),
             }
         return _capture_payload(
             status_code=raw.status_code,

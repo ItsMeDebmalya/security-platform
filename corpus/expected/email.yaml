@@ -66,6 +66,21 @@ dkim-not-discoverable: []
 
 servfail: []
 
+# ADR-029: a TXT record holds a credential-shaped key (AWS's documented example,
+# never a real key). `?all` under p=reject is spf-too-permissive (low), and the
+# root TXT answer it cites carries the receipt, so secret-exposed reports it as
+# an honest `suspected` (a pattern match, no validation), which is excused from
+# the gate like every suspected finding. Not asserted here; the ADR-029 contract
+# test asserts it (tests/contract/test_secret_exposure_contract.py):
+#   secret-exposed@dns:corpus-secret.example/TXT (suspected)
+secret-in-txt:
+  - { check_id: spf-too-permissive, location: "$" }
+
+# Review of ADR-029: the same key in an otherwise clean zone. No finding cites
+# the root TXT answer, so the scan's exposure log is what reports it:
+#   secret-exposed@dns:corpus-secret2.example/TXT (suspected)
+secret-in-txt-clean: []
+
 # icicibank.com: 8.8.8.8 (primary here) served the TXT set without SPF. The SPF
 # record exists (1.1.1.1, 9.9.9.9, and 8.8.8.8 on retry), and DMARC is p=reject,
 # so spf-missing and spoofing-possible are false and must not be claimed. The

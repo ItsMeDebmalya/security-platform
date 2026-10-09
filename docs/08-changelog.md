@@ -469,3 +469,23 @@ Then restore the entry-point lines in `CLAUDE.md` and `SPEC.md`, and the revert 
 - ADR-028 clause 6 says so.
 
 **Revert.** Revert the merge commit. A read-only store then fails to open again.
+
+## v4.0-pre.8 — ADR-029: redaction receipts, and a receipt on public content is a finding (2026-10-09)
+
+**What changed.** This is an additive contract migration.
+- **`contracts/evidence.schema.json`** gains an optional `redaction_receipts: [{kind, count, where}]` (`$defs/redaction_receipt`, with `additionalProperties: false`). The existing `redactions` list is unchanged.
+- **`contracts/finding.schema.json`** gains an optional `redaction_receipts`, the evidence's receipts rolled up. The model computes it and never takes it from input.
+- **Core:**
+  - `core/http.py` records receipts at capture, writes them to fixtures and replays them.
+  - `core/evidence.py` keeps a capture's receipts and counts what it redacts itself.
+  - `core/redaction.py` records receipts by field path.
+  - New `core/exposure.py`: `secret_exposure_findings`, `check_runs` and the contract check, `unreported_exposures`.
+- **Scanners:**
+  - `email` v1.5.0 and `domscout` v1.1.0 call the helper. Each gains `secret-exposed`, UNDETERMINED with no real positive yet.
+  - `web` v1.0.5 passes the capture's receipts into its evidence. It does not call the helper, because `web-secret-in-response` reports the same thing.
+- **Corpus:** three new cases, `email/secret-in-txt`, `email/secret-in-txt-clean` and `domscout/takeover-secret`, each holding AWS's documented example key. The gates still pass: email has 442 checks and 30 claims, domscout 58 checks and 1 claim.
+- **Review fixes:** side-dict keys are redacted again, and a scan's `ExposureLog` (`ScanContext.exposures`) sees every public capture, not only cited evidence.
+- **Tests:** `tests/core/test_redaction_receipts.py` and `tests/contract/test_secret_exposure_contract.py`.
+
+**Revert.** Revert the merge commit. Evidence stored with receipts stays valid against the old schema only if the field is dropped, so a revert also needs a migration that strips `redaction_receipts`.
+

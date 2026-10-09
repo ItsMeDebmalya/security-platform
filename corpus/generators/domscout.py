@@ -282,6 +282,34 @@ def _cases() -> dict[str, tuple[str, object, FakeHttpBackend, str]]:
         "light",
     )
 
+    # 6b. takeover-secret (ADR-029): the dangling GitHub Pages subdomain's page
+    # also serves a credential-shaped key, AWS's own documented example key.
+    # The takeover evidence cites that response, so its receipt is reported.
+    d = "corpus-takesecret.test"
+    subs = {
+        **cname_subdomain(d, "docs", "owner.github.io"),
+        ("owner.github.io", "A"): rr("owner.github.io", "A", "185.199.108.153"),
+        ("owner.github.io", "AAAA"): rr("owner.github.io", "AAAA", rcode="NODATA"),
+        ("owner.github.io", "CNAME"): rr("owner.github.io", "CNAME", rcode="NODATA"),
+    }
+    cases["takeover-secret"] = (
+        d,
+        FakeResolver(apex_zone(d, subdomains=subs)),
+        http_backend(
+            d,
+            ct_names=[f"docs.{d}"],
+            expiry=FAR_FUTURE,
+            extra={
+                f"https://docs.{d}/": (
+                    404,
+                    "<html><body>There isn't a GitHub Pages site here. "
+                    "<!-- deploy key AKIAIOSFODNN7EXAMPLE --></body></html>",
+                )
+            },
+        ),
+        "light",
+    )
+
     # 7. wildcard-zone: every A resolves; CT ghosts must not be contributed.
     d = "corpus-wildcard.test"
     cases["wildcard-zone"] = (
@@ -306,8 +334,10 @@ def _cases() -> dict[str, tuple[str, object, FakeHttpBackend, str]]:
     return cases
 
 
-def generate() -> None:
+def generate(only: set[str] | None = None) -> None:
     for case_id, (domain, resolver, backend, mode) in _cases().items():
+        if only is not None and case_id not in only:
+            continue
         directory = FIXTURES / case_id
         if directory.exists():
             shutil.rmtree(directory)
@@ -339,4 +369,6 @@ def generate() -> None:
 
 
 if __name__ == "__main__":
-    generate()
+    import sys
+
+    generate(set(sys.argv[1:]) or None)

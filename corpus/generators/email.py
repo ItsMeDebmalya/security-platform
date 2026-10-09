@@ -226,11 +226,32 @@ CASES: dict[str, tuple[str, object, str]] = {
         "standard",
     ),
     "servfail": ("corpus-broken.example", ServfailResolver(), "standard"),
+    # ADR-029: a credential published in a TXT record. The key is AWS's own
+    # documented example key, never a real one. `?all` makes spf-too-permissive
+    # fire, so the root TXT answer is cited as evidence and its receipt is seen.
+    "secret-in-txt": (
+        "corpus-secret.example",
+        good(
+            "corpus-secret.example",
+            spf="v=spf1 include:_spf.mailhost.example ?all",
+            extra_txt=("deploy-key=AKIAIOSFODNN7EXAMPLE",),
+        ),
+        "standard",
+    ),
+    # Review of ADR-029: the same key in an otherwise clean zone. No other
+    # finding cites the root TXT answer, so only the scan's exposure log sees it.
+    "secret-in-txt-clean": (
+        "corpus-secret2.example",
+        good("corpus-secret2.example", extra_txt=("deploy-key=AKIAIOSFODNN7EXAMPLE",)),
+        "standard",
+    ),
 }
 
 
-def generate() -> None:
+def generate(only: set[str] | None = None) -> None:
     for case_id, (domain, answers, mode) in CASES.items():
+        if only is not None and case_id not in only:
+            continue
         directory = FIXTURES / case_id
         if directory.exists():
             shutil.rmtree(directory)
@@ -253,4 +274,6 @@ def generate() -> None:
 
 
 if __name__ == "__main__":
-    generate()
+    import sys
+
+    generate(set(sys.argv[1:]) or None)

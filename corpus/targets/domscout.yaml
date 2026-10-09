@@ -93,6 +93,15 @@ cases:
     target: { type: domain, value: corpus-takeover.test }
     fixtures: corpus/fixtures/domscout/takeover-positive
 
+  # ADR-029: the dangling subdomain's page also serves a credential (AWS's
+  # documented example key), so its receipt must be reported.
+  - id: takeover-secret
+    tier: vulnerable
+    source: frozen
+    mode: light
+    target: { type: domain, value: corpus-takesecret.test }
+    fixtures: corpus/fixtures/domscout/takeover-secret
+
   # --- inconclusive: the scanner must say "I don't know", not "nothing" -----
 
   - id: servfail

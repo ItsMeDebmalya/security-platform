@@ -148,6 +148,13 @@
     "derived_from": {
       "type": ["string", "null"],
       "description": "The id of the finding this was computed from. Required when derivation is 'derived'; forbidden when it is 'detected'."
+    },
+    "redaction_receipts": {
+      "type": "array",
+      "items": {
+        "$ref": "https://security-platform.invalid/contracts/evidence.schema.json#/$defs/redaction_receipt"
+      },
+      "description": "ADR-029 (additive): the evidence's receipts rolled up, where prefixed by evidence index. Computed by the model, never taken from input."
     }
   },
   "$defs": {

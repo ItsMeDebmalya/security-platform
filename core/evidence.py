@@ -25,12 +25,22 @@ from core.models import (
     HttpPairEvidence,
     HttpRequest,
     HttpResponse,
+    RedactionReceipt,
     TlsHandshakeEvidence,
 )
 from core.redaction import REDACTED as REDACTED  # re-exported: scanners import it from here
 from core.redaction import SECRET_PATTERNS as SECRET_PATTERNS
 from core.redaction import SENSITIVE_HEADERS as SENSITIVE_HEADERS
-from core.redaction import cap_text, redact_header_map, redact_text
+from core.redaction import (
+    Counts,
+    Receipts,
+    add_receipts,
+    cap_text,
+    receipt_list,
+    receipts_from,
+    redact_header_map,
+    redact_text,
+)
 
 DEFAULT_BODY_CAP = 262_144
 """256 KB. Beyond it we keep the head and the tail and mark the gap."""
@@ -65,9 +75,10 @@ def truncate_body(body: str | None, cap: int = DEFAULT_BODY_CAP) -> tuple[str | 
     return cap_text(body, cap)
 
 
-def _capture_request(raw: dict[str, Any], cap: int) -> tuple[HttpRequest, list[str]]:
-    headers, header_hits = redact_headers(raw.get("headers") or {})
-    body, body_hits = redact_body(raw.get("body"))
+def _capture_request(raw: dict[str, Any], cap: int) -> tuple[HttpRequest, dict[str, Counts]]:
+    header_counts: Counts = {}
+    headers = redact_header_map(raw.get("headers") or {}, header_counts)
+    body, body_counts = redact_text(raw.get("body"))
     body, truncated = truncate_body(body, cap)
     url, url_counts = redact_text(raw["url"])
     return (
@@ -78,13 +89,14 @@ def _capture_request(raw: dict[str, Any], cap: int) -> tuple[HttpRequest, list[s
             body=body,
             body_truncated=truncated,
         ),
-        header_hits + body_hits + list(url_counts),
+        {"url": url_counts, "headers": header_counts, "body": body_counts},
     )
 
 
-def _capture_response(raw: dict[str, Any], cap: int) -> tuple[HttpResponse, list[str]]:
-    headers, header_hits = redact_headers(raw.get("headers") or {})
-    body, body_hits = redact_body(raw.get("body"))
+def _capture_response(raw: dict[str, Any], cap: int) -> tuple[HttpResponse, dict[str, Counts]]:
+    header_counts: Counts = {}
+    headers = redact_header_map(raw.get("headers") or {}, header_counts)
+    body, body_counts = redact_text(raw.get("body"))
     body, truncated = truncate_body(body, cap)
     return (
         HttpResponse(
@@ -94,7 +106,7 @@ def _capture_response(raw: dict[str, Any], cap: int) -> tuple[HttpResponse, list
             body_truncated=truncated,
             elapsed_ms=raw.get("elapsed_ms"),
         ),
-        header_hits + body_hits,
+        {"headers": header_counts, "body": body_counts},
     )
 
 
@@ -109,13 +121,33 @@ def capture_http_pair(
     payload_id: str | None = None,
     cap: int = DEFAULT_BODY_CAP,
 ) -> HttpPairEvidence:
-    """Build control-vs-test HTTP evidence, redacted and size-capped."""
+    """Build control-vs-test HTTP evidence, redacted and size-capped.
+
+    A response that is an `HttpClient` capture already holds its receipts
+    (ADR-029); they are kept, under the side they belong to. Whatever is
+    redacted here, from raw text, is counted here.
+    """
     redactions: list[str] = []
+    receipts: Receipts = {}
     pieces = []
-    for raw_req, raw_resp in ((control_request, control_response), (test_request, test_response)):
+    sides = (("control", control_request, control_response), ("test", test_request, test_response))
+    for side, raw_req, raw_resp in sides:
         request, request_hits = _capture_request(raw_req, cap)
         response, response_hits = _capture_response(raw_resp, cap)
-        redactions.extend(request_hits + response_hits)
+        carried = "redaction_receipts" in raw_resp
+        for part, hits in (("request", request_hits), ("response", response_hits)):
+            for field, counts in hits.items():
+                redactions.extend(counts)
+                if not (carried and part == "response"):
+                    add_receipts(receipts, counts, f"{side}.{part}.{field}")
+        if carried:
+            # The capture's receipts were counted on the original text, live or
+            # recorded, so they are authoritative for the response: counting the
+            # text again here would double them live and find nothing on replay.
+            for (kind, where), count in receipts_from(
+                raw_resp["redaction_receipts"], prefix=side
+            ).items():
+                receipts[(kind, where)] = receipts.get((kind, where), 0) + count
         pieces.append(HttpExchange(request=request, response=response))
 
     return HttpPairEvidence(
@@ -127,6 +159,7 @@ def capture_http_pair(
         payload_id=payload_id,
         captured_at=datetime.now(UTC),
         redactions=sorted(set(redactions)),
+        redaction_receipts=[RedactionReceipt(**r) for r in receipt_list(receipts)],
     )
 
 

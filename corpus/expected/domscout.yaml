@@ -26,8 +26,12 @@ dnssec-insecure:
 # reported-positives. Listed here as a note, not as an assertion:
 #   domain-expired     -> domain-expired@$   (suspected)
 #   takeover-positive  -> subdomain-takeover@gone.corpus-takeover.test (suspected)
+#   takeover-secret    -> subdomain-takeover@docs.corpus-takesecret.test (suspected)
+#                         secret-exposed@https://docs.corpus-takesecret.test/ (suspected,
+#                         ADR-029; asserted by tests/contract/test_secret_exposure_contract.py)
 domain-expired: []
 takeover-positive: []
+takeover-secret: []
 
 # All sources fail: every check must resolve to inconclusive, asserted via
 # expect_inconclusive rather than as a reported finding.

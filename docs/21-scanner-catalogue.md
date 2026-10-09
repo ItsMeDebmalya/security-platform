@@ -51,7 +51,7 @@ Below 0.40 confidence nothing is reported.
 
 ---
 
-## web — Website Scanner (Tool 4a, v1.0.4)
+## web — Website Scanner (Tool 4a, v1.0.5)
 
 21 checks, all Light, all passive. At most 12 page requests per scan, though redirect hops can add more (D26).
 
@@ -87,13 +87,13 @@ Live basis: 13 real hosts, every claim hand-verified with `curl`, cross-checked 
 
 ---
 
-## email — Email Security Scanner (Tool 1, v1.4.1)
+## email — Email Security Scanner (Tool 1, v1.5.0)
 
 **DMARC is read under RFC 9989 first** (v1.4.0). Where RFC 7489, still deployed, gives a different verdict, the finding states both and is `suspected`, at the severity of the worst case (ADR-017). **Which DMARC record applies** (v1.3.0) is found by RFC 9989's DNS tree walk (§4.10). A subdomain inherits its parent's `sp=` (or `np=`) policy. An inherited policy is stated under both RFCs and held at `suspected`, because RFC 7489 receivers choose with a Public Suffix List we do not consult (D49). Several DMARC records at one name are all discarded, as both RFCs require.
 
 **Live basis (2026-10-08):** email live run 2, 45 domains, all 146 non-informational findings hand-verified, with checkdmarc as the external cross-check ([verification](../corpus/crosscheck/email-live/2026-10-08-run2/verification.md)). **A check that made a false claim on a live target is BROKEN until it is fixed.** DMARC claims are judged against RFC 9989, which obsoletes RFC 7489 (ledger D44).
 
-17 checks, all passive DNS. Nothing is sent to the domain's mail servers. 9 run in Light, and 8 more in Standard.
+18 checks, all passive DNS. Nothing is sent to the domain's mail servers. 10 run in Light, and 8 more in Standard. `secret-exposed` is not in the scanner's `CHECKS` table: core's helper emits it (`core/exposure.py`, ADR-029).
 
 **`confirmed` means one thing here.** A finding reaches `confirmed` when the same records, re-queried through a **second public resolver**, give the same answer (validation passed). That rules out a glitch at one resolver. **It is not independent corroboration of the record.** Both resolvers read the same authoritative servers, and both validate DNSSEC, so they fail together on a broken zone (ledger D36).
 
@@ -120,6 +120,7 @@ Live basis: 13 real hosts, every claim hand-verified with `curl`, cross-checked 
 | `dkim-weak-key` | An RSA DKIM key under 2048 bits. At 1024–2047 bits it meets RFC 8301's minimum but is below the recommended 2048; under 1024, RFC 8301 verifiers must reject its signatures. Ed25519 keys are not judged by size | standard | low (medium below 1024 bits) | `confirmed`: the size of the weakest key found across **all** 17 common selectors, measured from the key and repeated through the second resolver. When stronger keys are also published, the finding names them and says we cannot tell which one signs | WORKING (live run 2: 21 domains, key sizes confirmed with openssl) |
 | `mta-sts-missing` | No MTA-STS policy, so mail to the domain can be downgraded to unencrypted delivery | standard | low | `confirmed`: a definite answer at `_mta-sts` with no `v=STSv1`, repeated through the second resolver | WORKING (live run 2: 40 domains). Since v1.2.2 (D47) it does not run on a null-MX domain, and is informational on a domain with no MX |
 | `tls-rpt-missing` | No SMTP TLS reporting, so delivery-encryption failures go unseen | standard | low | `confirmed`: a definite answer at `_smtp._tls` with no `v=TLSRPTv1`, repeated through the second resolver | WORKING (live run 2: 40 domains). Since v1.2.2 (D47) it does not run on a null-MX domain, and is informational on a domain with no MX |
+| `secret-exposed` | A credential-shaped secret (AWS key, GitHub/Slack/bearer token, private key) is published in a DNS record under the domain that the scan read. It was removed when captured and is never stored; the finding's redaction receipts say what kind and where | light | high | `suspected`: a pattern match on public content, with no validation | UNDETERMINED: no real positive yet. A synthetic corpus case (`secret-in-txt`, AWS's documented example key). Every public capture the scan made is checked (ADR-029) |
 | `spoofing-possible` | Mail claiming to be from this domain would be accepted by a typical receiver, given its SPF and DMARC. Reasons: no DMARC, an unenforced or partial policy, a DMARC record the RFC says is not applied, or SPF `+all`. No SPF record is an added reason only when DMARC does not enforce. `?all` is not a reason. Recall gaps: ledger D40–D42 | light | high | `confirmed`: the receiver's decision simulated from records read through both resolvers. It is a simulation, not an observed receiver, so its evidence weight is lower. **`suspected`** when the only reason is a DMARC error the RFC gives no receiver handling for | WORKING (v1.4.0, D44 fixed): it uses the same two-RFC posture. A reason that holds under one RFC only is a hedge (`suspected`). Verified by replaying run 2's cloudinary.com, oraclecloud.com, aajtak.in and kerala.gov.in, and live on about.com |
 
 ---
@@ -158,9 +159,9 @@ Live basis: badssl.com test hosts and operator infrastructure, plus 67 facts cro
 
 ---
 
-## domscout — DNS & Subdomain Enumeration (Tool 3, v1.0.0)
+## domscout — DNS & Subdomain Enumeration (Tool 3, v1.1.0)
 
-6 checks, all Light, all passive. Every lookup goes to a public service (CT logs, public resolvers, RDAP), never to the target, apart from at most one ordinary HTTPS page load per takeover candidate.
+7 checks, all Light, all passive (`secret-exposed` is emitted by core's helper, ADR-029). Every lookup goes to a public service (CT logs, public resolvers, RDAP), never to the target, apart from at most one ordinary HTTPS page load per takeover candidate.
 
 **Subdomain discovery is inventory, not a vulnerability.** It is `informational` and never confidence-scored. Discovery seeds from crt.sh only, so subdomains with no certificate in the CT logs are not found (ledger D-DS1).
 
@@ -172,5 +173,6 @@ Live basis: badssl.com test hosts and operator infrastructure, plus 67 facts cro
 | `domain-expiring` | The domain registration expires within 30 days, after which anyone can re-register it | light | medium | `suspected`: a single source, the registry's RDAP record read twice | **BROKEN** (ledger D28): it has never read an expiry date live, for any TLD. It returns `inconclusive` on every domain |
 | `domain-expired` | The domain registration has already expired | light | high | `suspected`: as above | **BROKEN** (ledger D28): the same RDAP fetch, so it cannot fire live |
 | `subdomain-takeover` | A subdomain's CNAME points at a third-party service where anyone could claim the name | light | high | `suspected`, never more: a dangling CNAME plus a provider fingerprint, never proven by claiming the resource | **BROKEN for AWS S3 and Heroku** (ledger D31): both providers resolve every name, so the "does not resolve" fingerprint can never match. The GitHub Pages fingerprint matches the real service's behaviour but has not fired on a live target: UNDETERMINED |
+| `secret-exposed` | A credential-shaped secret is served in a response from the domain or a subdomain that the scan fetched (today, takeover candidates' pages). It was removed when captured and is never stored; the finding's redaction receipts say what kind and where | light | high | `suspected`: a pattern match on public content, with no validation | UNDETERMINED: no real positive yet. A synthetic corpus case (`takeover-secret`, AWS's documented example key). Every public capture the scan made is checked (ADR-029) |
 
 Live basis: one operator domain, cross-checked against `subfinder` and `sublist3r`+`dnsx`+`httpx` (ledger, Tool 3).
