@@ -1515,3 +1515,87 @@ def test_nit_an_upper_case_tag_name_v_is_accepted_by_the_walk(run_scan):
     by_id = _ids(run_scan, "x.example", {"_dmarc.x.example": ["V=DMARC1; p=reject"]})
 
     assert "dmarc-missing" not in by_id and "spoofing-possible" not in by_id
+
+
+# --- re-review of the PR #17 fixes (2026-10-09) ------------------------------
+
+
+def test_n1_the_rfc_7489_clause_does_not_restate_rfc_9989_wrongly(run_scan):
+    by_id = _ids(
+        run_scan, "x.example", {"_dmarc.x.example": ["v=DMARC1; p=quarantine; t=y; pct=50"]}
+    )
+    text = by_id["spoofing-possible"].description
+
+    assert "RFC 9989 receivers quarantine all failing mail" not in text
+    assert "apply as none" in text
+
+
+def test_n2_the_rfc_7489_reason_names_the_actual_issue(run_scan):
+    by_id = _ids(
+        run_scan,
+        "x.example",
+        {"_dmarc.x.example": ["v=DMARC1; p=reject; rf=iodef; rua=mailto:d@x.example"]},
+    )
+    text = by_id["spoofing-possible"].description
+
+    assert "p= is not straight after v=" not in text
+    assert "rf=iodef" in text
+
+
+def test_n3_an_ignored_record_never_asserts_what_an_rfc_7489_receiver_applies(run_scan):
+    by_id = _ids(
+        run_scan,
+        "example.co.uk",
+        {"_dmarc.example.co.uk": ["v=dmarc1; p=none"], "_dmarc.co.uk": ["v=DMARC1; p=reject"]},
+    )
+    found = by_id["dmarc-invalid"]
+
+    assert found.state == "suspected"
+    assert "may" in found.description
+
+
+@pytest.mark.parametrize(
+    "dmarc", ["v=DMARC1; p=reject; ri=3600", "v=DMARC1; p=reject; rua=mailto:a@x.example!1k"]
+)
+def test_n4_obsolete_tags_do_not_claim_default_values_they_do_not_have(run_scan, dmarc):
+    by_id = _ids(run_scan, "x.example", {"_dmarc.x.example": [dmarc]})
+
+    assert "already assume by default" not in by_id["dmarc-obsolete-tags"].description
+
+
+def test_n4_default_valued_obsolete_tags_may_say_so(run_scan):
+    by_id = _ids(
+        run_scan,
+        "x.example",
+        {"_dmarc.x.example": ["v=DMARC1; p=reject; pct=100; rf=afrf; ri=86400"]},
+    )
+
+    assert "by default" in by_id["dmarc-obsolete-tags"].description
+
+
+def test_s1_an_inherited_record_with_no_usable_policy_is_reported(run_scan):
+    by_id = _ids(run_scan, "sub.example.com", {"_dmarc.example.com": ["v=DMARC1; p=bogus"]})
+    found = by_id["dmarc-invalid"]
+
+    assert "_dmarc.example.com" in found.description
+    assert "no DMARC processing" in found.description
+
+
+def test_s2_an_np_divergence_states_both_policies(run_scan):
+    answers = _zone2("ghost.example.com", {"_dmarc.example.com": ["v=DMARC1; p=none; np=reject"]})
+    answers[("ghost.example.com", "MX")] = answer("ghost.example.com", "MX", rcode="NXDOMAIN")
+    text = {
+        f.check_id: f for f in run_scan("ghost.example.com", answers, mode="standard").findings
+    }["spoofing-possible"].description
+
+    assert "np=reject" in text and "p=none" in text
+
+
+def test_s2_inherited_policy_none_from_np_says_rfc_7489_applies_p(run_scan):
+    answers = _zone2("ghost.example.com", {"_dmarc.example.com": ["v=DMARC1; p=reject; np=none"]})
+    answers[("ghost.example.com", "MX")] = answer("ghost.example.com", "MX", rcode="NXDOMAIN")
+    found = {
+        f.check_id: f for f in run_scan("ghost.example.com", answers, mode="standard").findings
+    }["dmarc-policy-none"]
+
+    assert "RFC 7489" in found.description and "p=reject" in found.description
