@@ -6,7 +6,7 @@
     "ns1.corpus-takeover.test.",
     "ns2.corpus-takeover.test."
   ],
-  "resolver": null,
+  "resolver": "1.1.1.1",
   "rrtype": "NS",
   "ttl": 300
 }

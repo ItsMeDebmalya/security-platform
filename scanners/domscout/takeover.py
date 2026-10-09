@@ -11,6 +11,13 @@ document (per ADR-024) — never copied from a GPL tool's fingerprint
 database (CLAUDE.md hard constraint 4, on Wappalyzer/GPL data specifically,
 applies to the same category of risk here).
 
+**What each provider serves is recorded, not assumed** (D31, ADR-027):
+`corpus/crosscheck/d31-provider-responses/`. For an unclaimed name every
+provider's endpoint *resolves*, so no fingerprint decides on DNS alone. And for
+a custom domain the unclaimed page is reachable only over plain HTTP, because
+the provider's certificate does not cover the customer's name. So every
+fingerprint judges a body fetched over `http://` (`scheme`).
+
 A match here is `suspected` at most — the takeover claim is never stronger
 than that this module can support; capping to that state is the scanner's
 job (`core/state.py`), not this module's.
@@ -41,6 +48,9 @@ class TakeoverFingerprint(Protocol):
     @property
     def source(self) -> str: ...
 
+    @property
+    def scheme(self) -> str: ...
+
     def matches_cname(self, target: str) -> bool: ...
 
     def evaluate(
@@ -54,6 +64,9 @@ class _SuffixCnameMixin:
     service: str
     source: str
     suffixes: tuple[str, ...]
+    scheme: str = "http"
+    """Recorded 2026-10-10: over https a custom domain fails the provider's
+    certificate (or the connection is reset), so the unclaimed page is never seen."""
 
     def matches_cname(self, target: str) -> bool:
         lowered = target.lower().rstrip(".")
@@ -93,54 +106,57 @@ class GitHubPagesFingerprint(_SuffixCnameMixin):
 
 
 @dataclass(frozen=True)
-class S3Fingerprint(_SuffixCnameMixin):
-    """AWS S3: a dangling bucket CNAME is provable from DNS alone — the
-    bucket target NXDOMAINs when the bucket has been deleted or was never
-    created, before any HTTP request is made.
+class _BodyFingerprint(_SuffixCnameMixin):
+    """A 404 carrying the provider's own "nothing is here" text is the signal."""
 
-    Source: AWS's own guidance on S3 website endpoints and bucket naming,
-    describing the CNAME-to-bucket-endpoint pattern this fingerprint checks.
-    https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html
-    """
+    body_needle: str = ""
 
     def evaluate(
         self, cname_target_nxdomain: bool, http: CapturedResponse | None
     ) -> FingerprintResult:
-        del http  # DNS alone is conclusive for a dangling S3 CNAME.
-        if cname_target_nxdomain:
+        del cname_target_nxdomain  # recorded: the provider's name resolves either way
+        if http is None:
+            return FingerprintResult(
+                matched=False, needs_http=True, detail="no HTTP response captured"
+            )
+        if http.status_code == 404 and self.body_needle in http.text:
             return FingerprintResult(
                 matched=True,
-                needs_http=False,
-                detail="CNAME target is an S3 bucket endpoint that does not resolve (NXDOMAIN)",
+                needs_http=True,
+                detail=f"HTTP 404 whose body contains '{self.body_needle}'",
             )
         return FingerprintResult(
-            matched=False, needs_http=False, detail="CNAME target resolves; bucket is not dangling"
+            matched=False,
+            needs_http=True,
+            detail=f"HTTP {http.status_code}, not the provider's unclaimed-name response",
         )
 
 
 @dataclass(frozen=True)
-class HerokuFingerprint(_SuffixCnameMixin):
-    """Heroku: like S3, a dangling Heroku app CNAME NXDOMAINs at the DNS
-    layer once the app is destroyed or the domain detached.
-
-    Source: Heroku's own custom-domains documentation, describing the
-    `herokudns.com` / `herokuapp.com` CNAME targets this fingerprint checks.
-    https://devcenter.heroku.com/articles/custom-domains
+class S3Fingerprint(_BodyFingerprint):
+    """AWS S3: an unclaimed bucket answers `404` with `NoSuchBucket`, on the REST
+    endpoint (XML `<Code>NoSuchBucket</Code>`) and the website endpoint (HTML
+    `Code: NoSuchBucket`), both recorded. `AccessDenied` or `NoSuchKey` means the
+    bucket exists.
     """
 
-    def evaluate(
-        self, cname_target_nxdomain: bool, http: CapturedResponse | None
-    ) -> FingerprintResult:
-        del http
-        if cname_target_nxdomain:
-            return FingerprintResult(
-                matched=True,
-                needs_http=False,
-                detail="CNAME target is a Heroku app endpoint that does not resolve (NXDOMAIN)",
-            )
-        return FingerprintResult(
-            matched=False, needs_http=False, detail="CNAME target resolves; app is not dangling"
+    body_needle: str = "NoSuchBucket"
+
+    def matches_cname(self, target: str) -> bool:
+        # bucket.s3.amazonaws.com, bucket.s3.<region>.amazonaws.com,
+        # bucket.s3-website-<region>.amazonaws.com, bucket.s3-website.<region>...
+        labels = target.lower().rstrip(".").split(".")
+        return labels[-2:] == ["amazonaws", "com"] and any(
+            label == "s3" or label.startswith("s3-website") for label in labels[1:-2]
         )
+
+
+@dataclass(frozen=True)
+class HerokuFingerprint(_BodyFingerprint):
+    """Heroku: an unclaimed app or detached domain answers `404` from
+    `heroku-router` with a page titled "No such app" (recorded)."""
+
+    body_needle: str = "<title>No such app</title>"
 
 
 FINGERPRINTS: list[TakeoverFingerprint] = [

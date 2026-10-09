@@ -27,7 +27,7 @@ dnssec-insecure:
 #   domain-expired     -> domain-expired@$   (suspected)
 #   takeover-positive  -> subdomain-takeover@gone.corpus-takeover.test (suspected)
 #   takeover-secret    -> subdomain-takeover@docs.corpus-takesecret.test (suspected)
-#                         secret-exposed@https://docs.corpus-takesecret.test/ (suspected,
+#                         secret-exposed@http://docs.corpus-takesecret.test/ (suspected,
 #                         ADR-029; asserted by tests/contract/test_secret_exposure_contract.py)
 domain-expired: []
 takeover-positive: []

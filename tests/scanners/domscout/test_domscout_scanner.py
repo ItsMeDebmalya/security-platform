@@ -218,41 +218,71 @@ def test_servfail_on_apex_a_is_inconclusive_not_no_subdomains():
 # --- takeover: dangling and non-dangling ----------------------------------
 
 
-def test_dangling_s3_cname_is_reported_as_suspected_takeover():
-    dns_answers = base_dns()
-    sub = f"static.{APEX}"
+_S3_NO_SUCH_BUCKET = (
+    '<?xml version="1.0" encoding="UTF-8"?>\n<Error><Code>NoSuchBucket</Code>'
+    "<Message>The specified bucket does not exist</Message></Error>"
+)
+
+
+def _s3_candidate(dns_answers, sub):
+    """D31: the bucket endpoint resolves, as every real one does (recorded)."""
     dns_answers[(sub, "A")] = answer(sub, "A", rcode="NODATA")
     dns_answers[(sub, "AAAA")] = answer(sub, "AAAA", rcode="NODATA")
     dns_answers[(sub, "CNAME")] = answer(sub, "CNAME", "bucket-x.s3.amazonaws.com.")
     dns_answers[("bucket-x.s3.amazonaws.com", "A")] = answer(
-        "bucket-x.s3.amazonaws.com", "A", rcode="NXDOMAIN"
+        "bucket-x.s3.amazonaws.com", "A", "16.182.41.90"
     )
 
-    http = no_op_http({crtsh_test_url(): (200, crtsh_json([sub]))})
+
+def test_dangling_s3_cname_is_reported_as_suspected_takeover():
+    dns_answers = base_dns()
+    sub = f"static.{APEX}"
+    _s3_candidate(dns_answers, sub)
+    http = no_op_http(
+        {crtsh_test_url(): (200, crtsh_json([sub])), f"http://{sub}/": (404, _S3_NO_SUCH_BUCKET)}
+    )
     result, _ctx = run_scan(dns_answers, http)
 
     takeover_findings = [f for f in result.findings if f.check_id == "subdomain-takeover"]
     assert takeover_findings
     assert takeover_findings[0].state == "suspected"
+    assert takeover_findings[0].evidence[0].test.request.url == f"http://{sub}/"
 
 
 def test_non_dangling_cname_to_live_service_is_silent():
     dns_answers = base_dns()
     sub = f"static.{APEX}"
-    dns_answers[(sub, "A")] = answer(sub, "A", rcode="NODATA")
-    dns_answers[(sub, "AAAA")] = answer(sub, "AAAA", rcode="NODATA")
-    dns_answers[(sub, "CNAME")] = answer(sub, "CNAME", "bucket-x.s3.amazonaws.com.")
-    dns_answers[("bucket-x.s3.amazonaws.com", "A")] = answer(
-        "bucket-x.s3.amazonaws.com", "A", "198.51.100.7"
+    _s3_candidate(dns_answers, sub)
+    http = no_op_http(
+        {
+            crtsh_test_url(): (200, crtsh_json([sub])),
+            f"http://{sub}/": (403, "<Error><Code>AccessDenied</Code></Error>"),
+        }
     )
-
-    http = no_op_http({crtsh_test_url(): (200, crtsh_json([sub]))})
     result, _ctx = run_scan(dns_answers, http)
 
     takeover_findings = [
         f for f in result.findings if f.check_id == "subdomain-takeover" and f.location == sub
     ]
     assert takeover_findings == []
+
+
+def test_an_unclaimed_page_served_only_over_https_is_not_what_we_fetch():
+    """The fetch is http:// (recorded: over https a custom domain fails the
+    provider's certificate). A body served only at https:// is never consulted."""
+    dns_answers = base_dns()
+    sub = f"static.{APEX}"
+    _s3_candidate(dns_answers, sub)
+    http = no_op_http(
+        {crtsh_test_url(): (200, crtsh_json([sub])), f"https://{sub}/": (404, _S3_NO_SUCH_BUCKET)}
+    )
+    result, _ctx = run_scan(dns_answers, http)
+
+    assert not [
+        f
+        for f in result.findings
+        if f.check_id == "subdomain-takeover" and f.location == sub and f.state == "suspected"
+    ]
 
 
 # --- CNAME to third party and MX target: RelatedAsset, not contributed ----

@@ -1,9 +1,11 @@
 {
   "flags": [],
   "name": "bucket-abandoned.s3.amazonaws.com",
-  "rcode": "NXDOMAIN",
-  "records": [],
-  "resolver": null,
+  "rcode": "NOERROR",
+  "records": [
+    "16.182.41.90"
+  ],
+  "resolver": "1.1.1.1",
   "rrtype": "A",
-  "ttl": null
+  "ttl": 300
 }

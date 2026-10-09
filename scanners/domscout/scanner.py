@@ -62,7 +62,7 @@ NO_VERDICT_FOR_RCODE = {
 @register
 class DomscoutScanner(BaseScanner):
     name = "domscout"
-    version = "1.1.0"
+    version = "1.2.0"
     supported_modes = frozenset({"light"})
     target_types = frozenset({"domain"})
     service_hosts = SERVICE_HOSTS
@@ -654,14 +654,17 @@ class _Scan:
         needs_http = fp.evaluate(cname_nxdomain, None).needs_http
 
         http_response: CapturedResponse | None = None
+        # D31: plain http, because for a custom domain the provider's certificate
+        # does not cover the name and the unclaimed page is never reached over https
+        url = f"{fp.scheme}://{name}/"
         if needs_http:
             try:
-                http_response = self.http.get(f"https://{name}/")
+                http_response = self.http.get(url)
             except Exception as exc:
                 self._inconclusive_http(
                     "subdomain-takeover",
                     label=f"HTTP fetch of {name}",
-                    request={"method": "GET", "url": f"https://{name}/"},
+                    request={"method": "GET", "url": url},
                     description=(
                         f"{name} has a CNAME to {target}, matching the {fp.name} takeover "
                         f"pattern, but the response body could not be fetched: "
@@ -680,13 +683,13 @@ class _Scan:
 
         evidence: list[Any]
         if needs_http and http_response is not None:
-            second = self.http.get(f"https://{name}/")
+            second = self.http.get(url)
             evidence = [
                 capture_http_pair(
                     label=f"HTTP fetch of {name}",
-                    control_request={"method": "GET", "url": f"https://{name}/"},
+                    control_request={"method": "GET", "url": url},
                     control_response=_as_raw(second),
-                    test_request={"method": "GET", "url": f"https://{name}/"},
+                    test_request={"method": "GET", "url": url},
                     test_response=_as_raw(http_response),
                     delta={"detail": result.detail},
                 )

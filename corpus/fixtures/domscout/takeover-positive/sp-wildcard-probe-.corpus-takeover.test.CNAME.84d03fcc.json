@@ -1,9 +1,9 @@
 {
   "flags": [],
-  "name": "sp-wildcard-probe-da7cb3ca.corpus-takeover.test",
+  "name": "sp-wildcard-probe-0d44b7d3.corpus-takeover.test",
   "rcode": "NXDOMAIN",
   "records": [],
-  "resolver": null,
+  "resolver": "1.1.1.1",
   "rrtype": "CNAME",
   "ttl": null
 }

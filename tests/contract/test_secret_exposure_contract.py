@@ -205,7 +205,7 @@ def test_web_secret_in_response_satisfies_the_contract_and_is_not_doubled():
         ("email", "secret-in-txt", "dns:corpus-secret.example/TXT"),
         # review of e6eaa45: a clean zone, so no other finding cites the TXT record
         ("email", "secret-in-txt-clean", "dns:corpus-secret2.example/TXT"),
-        ("domscout", "takeover-secret", "https://docs.corpus-takesecret.test/"),
+        ("domscout", "takeover-secret", "http://docs.corpus-takesecret.test/"),
     ],
 )
 def test_the_positive_corpus_cases_fire_secret_exposed(scanner, case_id, location):
