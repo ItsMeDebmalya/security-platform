@@ -77,14 +77,17 @@ _REFERENCES = {
     "tls-cert-not-yet-valid": ["https://www.rfc-editor.org/rfc/rfc5280"],
     "tls-hostname-mismatch": ["https://www.rfc-editor.org/rfc/rfc9525"],
     "tls-cert-self-signed": ["https://www.rfc-editor.org/rfc/rfc5280"],
-    "tls-chain-incomplete": ["https://www.rfc-editor.org/rfc/rfc5246#section-7.4.2"],
+    "tls-chain-incomplete": [
+        "https://www.rfc-editor.org/rfc/rfc9846#section-4.5.1",
+        "https://www.rfc-editor.org/rfc/rfc5246#section-7.4.2",
+    ],
     "tls-protocol-obsolete": ["https://www.rfc-editor.org/rfc/rfc8996"],
     "tls-weak-key": [
         "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-57pt1r5.pdf"
     ],
     "tls-weak-signature": ["https://www.rfc-editor.org/rfc/rfc9155"],
-    "tls-weak-cipher": ["https://www.rfc-editor.org/rfc/rfc7525"],
-    "tls-no-forward-secrecy": ["https://www.rfc-editor.org/rfc/rfc7525#section-6.3"],
+    "tls-weak-cipher": ["https://www.rfc-editor.org/rfc/rfc9325#section-4"],
+    "tls-no-forward-secrecy": ["https://www.rfc-editor.org/rfc/rfc9325#section-7.3"],
     "tls-no-certificate-transparency": ["https://www.rfc-editor.org/rfc/rfc6962"],
     "tls-vuln-beast": [
         "https://nvd.nist.gov/vuln/detail/CVE-2011-3389",
@@ -108,7 +111,7 @@ LEGACY_CIPHER_CHECK_IDS = tuple(CHECK_TO_TESTSSL_ID)
 @register
 class TlsScanner(BaseScanner):
     name = "tls"
-    version = "1.3.0"
+    version = "1.3.1"
     supported_modes = frozenset({"light", "standard"})
     target_types = frozenset({"domain", "url", "ip"})
 
