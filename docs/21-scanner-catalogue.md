@@ -125,7 +125,7 @@ Live basis: 13 real hosts, every claim hand-verified with `curl`, cross-checked 
 
 ---
 
-## tls — SSL/TLS Analyzer (Tool 2, v1.2.0)
+## tls — SSL/TLS Analyzer (Tool 2, v1.3.0)
 
 19 checks, all passive under ADR-023 (ordinary TLS handshakes). 8 run in Light, and 11 more in Standard.
 
@@ -139,7 +139,7 @@ Four Standard checks (`tls-vuln-rc4`, `-sweet32`, `-freak`, `-logjam`) are probe
 | `tls-cert-expired` | The certificate has expired, so browsers show a hard error | light | critical | `highly_likely`: the expiry date we read **and** the trust path's expiry verdict agree. Our reading alone gives `suspected` | WORKING |
 | `tls-cert-expiring-soon` | The certificate expires soon | light | medium | `suspected`: date arithmetic on one reading | UNDETERMINED (lab only) |
 | `tls-cert-not-yet-valid` | The certificate's validity starts in the future, usually a clock or rollout error | light | high | `highly_likely`: our date reading and the trust path agree | UNDETERMINED (lab only) |
-| `tls-hostname-mismatch` | The certificate does not cover the hostname being visited | light | high | `highly_likely`: our RFC 6125 matcher and OpenSSL's hostname check agree | WORKING |
+| `tls-hostname-mismatch` | The certificate does not cover the hostname being visited | light | high | `highly_likely`: our RFC 9525 matcher and OpenSSL's hostname check agree. Since v1.3.0 (D48) neither falls back to the Common Name, so a CN-only certificate is a mismatch | WORKING (the CN-only path is lab-verified only: no live CN-only target is known) |
 | `tls-cert-self-signed` | The certificate is signed by itself, so no browser trusts it | light | high | `highly_likely`: subject equals issuer in the certificate, and the trust path says the same | UNDETERMINED (lab only) |
 | `tls-untrusted-root` | The chain is complete but ends at a root no trust store carries | light | high | `suspected`: one reading, from path building | WORKING |
 | `tls-chain-incomplete` | The certificate chain cannot be built, typically because the server omits its intermediate | light | medium | `suspected`: one reading. We cannot tell a missing intermediate from an issuer our trust store lacks | UNDETERMINED (fixed after a live disagreement, D17; re-verified in the lab only) |

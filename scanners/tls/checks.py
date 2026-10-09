@@ -146,7 +146,7 @@ CHECKS: dict[str, Check] = {
             severity="high",
             likelihood_ratio=30.0,
             justification=(
-                "RFC 6125 matching is well defined, but wildcard and SAN handling is "
+                "RFC 9525 matching is well defined, but wildcard and SAN handling is "
                 "where implementations differ, so this sits below a plain date check"
             ),
             passive=True,

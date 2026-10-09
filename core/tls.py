@@ -145,12 +145,17 @@ class CertificateInfo:
         return (now or dt.datetime.now(dt.UTC)) < self.not_before
 
     def covers_hostname(self, hostname: str) -> bool:
-        """RFC 6125 name matching, including single-label wildcards.
+        """RFC 9525 name matching (§6.3), including single-label wildcards.
 
         `*.example.test` covers `api.example.test` and covers neither
         `a.b.example.test` nor the bare `example.test`.
+
+        Only subjectAltName DNS names count. RFC 9525 §2: "The Common Name RDN
+        MUST NOT be used to identify a service". RFC 6125, which it obsoletes,
+        allowed falling back to the CN when there were no SANs; this did, until
+        D48, and so missed mismatches that current clients reject.
         """
-        names = list(self.sans) or ([self.subject_cn] if self.subject_cn else [])
+        names = list(self.sans)
         host = hostname.lower().rstrip(".")
         for raw in names:
             name = raw.lower().rstrip(".")
@@ -446,8 +451,8 @@ class SystemTlsBackend:
         needs its issuer, so wrong.host.badssl.com produced no verdict at all
         until the system store was included.
 
-        That verdict is a genuinely independent implementation of RFC 6125
-        against our own, so a hostname finding rests on two readings rather
+        That verdict is a separate implementation of RFC 9525 matching from our
+        own, so a hostname finding rests on two readings rather
         than one, and a bug in our wildcard handling shows up as a
         disagreement rather than a silent wrong answer.
         """
@@ -470,6 +475,10 @@ class SystemTlsBackend:
                 # trust fails first and OpenSSL never reaches the hostname.
                 context.load_verify_locations(cafile=trust_anchor)
             context.check_hostname = True
+            # D48: no Common Name fallback, as RFC 9525 §2 requires. Python
+            # defaults this to True, which made OpenSSL's reading share our old
+            # blind spot, so the two readings agreed on a wrong answer (D38).
+            context.hostname_checks_common_name = False
             context.verify_mode = ssl.CERT_REQUIRED
             with (
                 socket.create_connection((host, port), timeout=timeout_s) as raw,

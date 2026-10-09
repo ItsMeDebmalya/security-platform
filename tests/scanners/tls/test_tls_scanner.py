@@ -620,3 +620,22 @@ def test_the_test_and_control_are_not_the_same_observation():
     evidence = found[0].evidence[0]
 
     assert evidence.test["protocol"] != evidence.control["protocol"]
+
+
+def test_a_common_name_only_certificate_is_a_mismatch_and_says_why():
+    """D48: RFC 9525 §2 forbids matching the CN, for both readings, and the
+    description must not call the certificate "valid for" its CN."""
+    import yaml
+
+    from cli.corpus import ROOT, _run_case
+
+    cases = yaml.safe_load((ROOT / "corpus" / "targets" / "tls.yaml").read_text())["cases"]
+    (case,) = [c for c in cases if c["id"] == "cn-only"]
+
+    result = _run_case("tls", case)
+
+    (finding,) = [f for f in result.findings if f.check_id == "tls-hostname-mismatch"]
+    assert finding.state == "highly_likely"  # our matcher and OpenSSL's agree
+    assert "valid for" not in finding.description
+    assert "RFC 9525" in finding.description
+    assert finding.references == ["https://www.rfc-editor.org/rfc/rfc9525"]

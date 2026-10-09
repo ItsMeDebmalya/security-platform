@@ -489,3 +489,13 @@ Then restore the entry-point lines in `CLAUDE.md` and `SPEC.md`, and the revert 
 
 **Revert.** Revert the merge commit. Evidence stored with receipts stays valid against the old schema only if the field is dropped, so a revert also needs a migration that strips `redaction_receipts`.
 
+## v4.0-pre.9 — D48: hostname matching follows RFC 9525, with no Common Name fallback (2026-10-09)
+
+**What changed.**
+- `core/tls.py`: `covers_hostname` matches subjectAltName DNS names only, and OpenSSL's hostname reading is asked with `hostname_checks_common_name = False`. RFC 9525 §2 says "The Common Name RDN MUST NOT be used to identify a service". RFC 6125, which allowed the fallback, is obsoleted by RFC 9525.
+- `tls` v1.3.0: cites RFC 9525. A CN-only certificate's mismatch says why, and no longer calls the certificate "valid for" its CN.
+- Corpus: a new case, `cn-only`. tls now has 228 checks and 6 claims, PASS. The lab minter gains `omit_san`.
+- The ledger records under D38 whether the two hostname readings are now independent.
+
+**Revert.** Revert the merge commit. RFC 6125's Common Name fallback then returns in both readings.
+

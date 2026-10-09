@@ -156,6 +156,34 @@ def test_a_wildcard_certificate_does_not_cover_the_bare_domain():
     assert obs.hostname_matches is False
 
 
+# D48: RFC 9525 §2, "The Common Name RDN MUST NOT be used to identify a service".
+# RFC 6125, which allowed falling back to the CN when there were no SANs, is
+# obsoleted by RFC 9525. Both readings must refuse the fallback, or two readings
+# that share a blind spot agree on a wrong answer (D38).
+
+
+def test_a_certificate_naming_the_host_only_in_its_common_name_does_not_match():
+    with lab_server(common_name="localhost", omit_san=True) as srv:
+        obs = inspect(srv)
+
+    assert obs.certificate is not None and not obs.certificate.sans
+    assert obs.hostname_matches is False
+
+
+def test_openssl_is_asked_without_the_common_name_fallback_too():
+    with lab_server(common_name="localhost", omit_san=True) as srv:
+        obs = inspect(srv)
+
+    assert obs.openssl_hostname_match is False
+
+
+def test_a_san_still_matches_for_both_readings():
+    with lab_server(common_name="ignored.test", sans=["localhost"]) as srv:
+        obs = inspect(srv)
+
+    assert obs.hostname_matches is True and obs.openssl_hostname_match is True
+
+
 # --- the trust verdict ------------------------------------------------------
 
 
