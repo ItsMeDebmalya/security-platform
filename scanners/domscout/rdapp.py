@@ -21,6 +21,10 @@ class RegistrationInfo:
     statuses: list[str]
     created: date | None
     source: str = "rdap"
+    name: str | None = None
+    """The record's own `ldhName`, lowercase. A registry may answer a query for a
+    name under a registered domain with that domain's record (NIXI does, seen
+    2026-10-10), so the record names what it is about."""
 
 
 def _parse_date(raw: object) -> date | None:
@@ -87,8 +91,12 @@ def parse_rdap(json_text: str) -> RegistrationInfo:
     )
 
     registrar = _extract_registrar(body.get("entities"))
+    ldh = body.get("ldhName")
+    name = ldh.lower().rstrip(".") if isinstance(ldh, str) and ldh.strip() else None
 
-    return RegistrationInfo(expiry=expiry, registrar=registrar, statuses=statuses, created=created)
+    return RegistrationInfo(
+        expiry=expiry, registrar=registrar, statuses=statuses, created=created, name=name
+    )
 
 
 def expiry_verdict(

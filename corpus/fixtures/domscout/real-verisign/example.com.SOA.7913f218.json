@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "example.com",
+  "rcode": "NOERROR",
+  "records": [
+    "elliott.ns.cloudflare.com. dns.cloudflare.com. 2416374680 10000 2400 604800 1800"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "SOA",
+  "ttl": 1800
+}

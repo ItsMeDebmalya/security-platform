@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "itar.iana.org",
+  "rcode": "NOERROR",
+  "records": [
+    "2001:500:88:200::12"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "AAAA",
+  "ttl": 3600
+}

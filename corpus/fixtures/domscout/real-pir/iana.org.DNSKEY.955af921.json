@@ -1,0 +1,12 @@
+{
+  "flags": [],
+  "name": "iana.org",
+  "rcode": "NOERROR",
+  "records": [
+    "256 3 13 6IMTP24mO+zsJ7JYnvigaonVC8vJMUdD 7nkT11JFQcfROmOMfWEMaDMCWl3LBWmS 8JuZRc/vXqFd9sthXoO74Q==",
+    "257 3 13 ShmRDG25b0nhrnRcBavHgaSO+vmS+46Z iZ+lQJd3UWXQrl/NWSg+CBBaqSTBD1N9 eHthbudy+9QqEocCRUcHKg=="
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "DNSKEY",
+  "ttl": 2713
+}

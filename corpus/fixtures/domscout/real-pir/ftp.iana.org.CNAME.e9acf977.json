@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "ftp.iana.org",
+  "rcode": "NOERROR",
+  "records": [
+    "ianaftp.vip.icann.org."
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "CNAME",
+  "ttl": 3600
+}

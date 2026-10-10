@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "iana.org",
+  "rcode": "NODATA",
+  "records": [],
+  "resolver": "1.1.1.1",
+  "rrtype": "CNAME",
+  "ttl": null
+}

@@ -1,9 +1,0 @@
-{
-  "body": "{\"events\": [{\"eventAction\": \"expiration\", \"eventDate\": \"2035-01-01T00:00:00Z\"}], \"status\": [], \"entities\": []}",
-  "body_truncated": false,
-  "elapsed_ms": 1,
-  "headers": {},
-  "redactions": [],
-  "status": 200,
-  "url": "https://rdap.org/domain/corpus-cname.test"
-}

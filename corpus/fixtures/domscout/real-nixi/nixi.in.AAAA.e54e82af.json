@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "nixi.in",
+  "rcode": "NOERROR",
+  "records": [
+    "2400:5300:3::127"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "AAAA",
+  "ttl": 300
+}

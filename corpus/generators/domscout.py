@@ -5,7 +5,7 @@ Each case is a synthetic zone with a known-correct answer, recorded by
 HTTP backend — so what is frozen is exactly the queries the scanner makes,
 including the second-resolver DNSSEC validation queries (easy to forget by
 hand, and their absence would silently turn validation into a no-op on
-replay) and the crt.sh / RDAP / takeover HTTP fetches.
+replay) and the crt.sh / takeover HTTP fetches.
 
 Re-run after changing which names or URLs the scanner touches:
 
@@ -21,13 +21,16 @@ What the corpus does and does NOT measure (see the design spec, revised):
   subfinder/crt.sh, never scored.
 - **The gate applies to the real security findings.** Only `dnssec-status`
   reaches a validated `confirmed` claim (independent second resolver); the
-  expiry and takeover findings are honest `suspected` and excused from the
+  takeover findings are honest `suspected` and excused from the
   gate on both sides. So the gate rests on a small claim count — stated
   loudly, exactly as TLS's does.
-- `domain-expiring` (within 30 days) is deliberately NOT a frozen case: the
-  scanner compares against wall-clock today, so a fixed near-future date would
-  rot. `domain-expired` uses a fixed past date and is stable. The expiring
-  path is covered by the scanner unit tests instead.
+- **No RDAP is generated here (D28, ADR-031).** Every case is a `.test` name,
+  a special-use name with no registry, so expiry is `not_applicable` (ADR-032)
+  and no RDAP request is made. RDAP used to be invented here as rdap.org
+  answering `200` with the record; the real service answers `302`, and that
+  fiction hid D28. Expiry is proven by cases recorded from real registries
+  for real public domains (`corpus/targets/domscout.yaml`, `real_recorded`),
+  and its expiring and expired paths by the scanner unit tests.
 """
 
 from __future__ import annotations
@@ -47,8 +50,6 @@ from scanners.domscout import DomscoutScanner
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = ROOT / "corpus" / "fixtures" / "domscout"
 
-FAR_FUTURE = "2035-01-01T00:00:00Z"
-LONG_PAST = "2020-01-01T00:00:00Z"
 SIGNED_DS = "12345 13 2 0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF"
 SIGNED_DNSKEY = "257 3 13 AwEAAetc0123456789ABCDEFsignedkeymaterialforcorpususeonly=="
 
@@ -61,11 +62,6 @@ def rr(
 
 def crtsh_json(names: list[str]) -> str:
     return json.dumps([{"name_value": n} for n in names])
-
-
-def rdap_json(expiry: str | None) -> str:
-    events = [{"eventAction": "expiration", "eventDate": expiry}] if expiry else []
-    return json.dumps({"events": events, "status": [], "entities": []})
 
 
 def apex_zone(
@@ -193,7 +189,6 @@ def http_backend(
     domain: str,
     *,
     ct_names: list[str],
-    expiry: str | None,
     extra: dict[str, tuple[int, str]] | None = None,
     fail: set[str] | None = None,
 ) -> FakeHttpBackend:
@@ -201,7 +196,6 @@ def http_backend(
     responses: dict[str, tuple[int, str]] = {
         test_url: (200, crtsh_json(ct_names)),
         control_url: (200, crtsh_json([])),
-        f"https://rdap.org/domain/{domain}": (200, rdap_json(expiry)),
     }
     responses.update(extra or {})
     return FakeHttpBackend(responses, fail=fail)
@@ -211,12 +205,12 @@ def http_backend(
 def _cases() -> dict[str, tuple[str, object, FakeHttpBackend, str]]:
     cases: dict[str, tuple[str, object, FakeHttpBackend, str]] = {}
 
-    # 1. known-good: signed, expiry far, no subdomains. Report nothing.
+    # 1. known-good: signed, no subdomains. Report nothing.
     d = "corpus-good.test"
     cases["known-good"] = (
         d,
         FakeResolver(apex_zone(d)),
-        http_backend(d, ct_names=[], expiry=FAR_FUTURE),
+        http_backend(d, ct_names=[]),
         "light",
     )
 
@@ -226,7 +220,7 @@ def _cases() -> dict[str, tuple[str, object, FakeHttpBackend, str]]:
     cases["enum-basic"] = (
         d,
         FakeResolver(apex_zone(d, subdomains=subs)),
-        http_backend(d, ct_names=[f"www.{d}", f"api.{d}", f"blog.{d}"], expiry=FAR_FUTURE),
+        http_backend(d, ct_names=[f"www.{d}", f"api.{d}", f"blog.{d}"]),
         "light",
     )
 
@@ -242,7 +236,7 @@ def _cases() -> dict[str, tuple[str, object, FakeHttpBackend, str]]:
     cases["enum-cname"] = (
         d,
         FakeResolver(apex_zone(d, subdomains=subs)),
-        http_backend(d, ct_names=[f"app.{d}", f"www.{d}"], expiry=FAR_FUTURE),
+        http_backend(d, ct_names=[f"app.{d}", f"www.{d}"]),
         "light",
     )
 
@@ -251,16 +245,7 @@ def _cases() -> dict[str, tuple[str, object, FakeHttpBackend, str]]:
     cases["dnssec-insecure"] = (
         d,
         FakeResolver(apex_zone(d, ds=False)),
-        http_backend(d, ct_names=[], expiry=FAR_FUTURE),
-        "light",
-    )
-
-    # 4. domain-expired: fixed past date -> stable. Suspected (single RDAP source).
-    d = "corpus-expired.test"
-    cases["domain-expired"] = (
-        d,
-        FakeResolver(apex_zone(d)),
-        http_backend(d, ct_names=[], expiry=LONG_PAST),
+        http_backend(d, ct_names=[]),
         "light",
     )
 
@@ -281,7 +266,6 @@ def _cases() -> dict[str, tuple[str, object, FakeHttpBackend, str]]:
         http_backend(
             d,
             ct_names=[f"gone.{d}"],
-            expiry=FAR_FUTURE,
             extra={f"http://gone.{d}/": (404, s3_no_such_bucket(f"gone.{d}"))},
         ),
         "light",
@@ -301,7 +285,6 @@ def _cases() -> dict[str, tuple[str, object, FakeHttpBackend, str]]:
         http_backend(
             d,
             ct_names=[f"blog.{d}"],
-            expiry=FAR_FUTURE,
             extra={f"http://blog.{d}/": (200, "<html><body>a real published blog</body></html>")},
         ),
         "light",
@@ -323,7 +306,6 @@ def _cases() -> dict[str, tuple[str, object, FakeHttpBackend, str]]:
         http_backend(
             d,
             ct_names=[f"docs.{d}"],
-            expiry=FAR_FUTURE,
             extra={
                 f"http://docs.{d}/": (
                     404,
@@ -340,7 +322,7 @@ def _cases() -> dict[str, tuple[str, object, FakeHttpBackend, str]]:
     cases["wildcard-zone"] = (
         d,
         WildcardAResolver(d, apex_zone(d), ip="198.51.100.7"),
-        http_backend(d, ct_names=[f"ghost1.{d}", f"ghost2.{d}"], expiry=FAR_FUTURE),
+        http_backend(d, ct_names=[f"ghost1.{d}", f"ghost2.{d}"]),
         "light",
     )
 
@@ -352,7 +334,7 @@ def _cases() -> dict[str, tuple[str, object, FakeHttpBackend, str]]:
         ServfailResolver(),
         FakeHttpBackend(
             {},
-            fail={test_url, control_url, f"https://rdap.org/domain/{d}"},
+            fail={test_url, control_url},
         ),
         "light",
     )
@@ -367,7 +349,8 @@ def generate(only: set[str] | None = None) -> None:
         if directory.exists():
             shutil.rmtree(directory)
         directory.mkdir(parents=True, exist_ok=True)
-        scope = Scope(frozenset({domain, "crt.sh", "rdap.org"}))
+        target = Asset(type="domain", value=domain)
+        scope = Scope(frozenset({domain} | DomscoutScanner.service_hosts_for(target)))
         ctx = ScanContext(
             dns=DnsClient(
                 resolver=RecordingResolver(resolver, directory),

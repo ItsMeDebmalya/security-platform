@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "iana.org",
+  "rcode": "NOERROR",
+  "records": [
+    "sns.dns.icann.org. noc.dns.icann.org. 2026100803 7200 3600 1209600 3600"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "SOA",
+  "ttl": 3600
+}

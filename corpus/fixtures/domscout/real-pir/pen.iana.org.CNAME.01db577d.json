@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "pen.iana.org",
+  "rcode": "NOERROR",
+  "records": [
+    "pen.iana.org.cdn.cloudflare.net."
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "CNAME",
+  "ttl": 3600
+}

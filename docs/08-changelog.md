@@ -543,3 +543,21 @@ Then restore the entry-point lines in `CLAUDE.md` and `SPEC.md`, and the revert 
 
 **Revert.** Revert the merge commit. S3 and Heroku then go back to NXDOMAIN-only, which never fires live, and GitHub Pages back to https, which never fires live.
 
+
+## v4.0-pre.14 — ADR-032: `not_applicable` (additive contract change); D28: domain expiry from the registry; domscout v1.3.0 (2026-10-10)
+
+**What changed in the contract (additive, ADR-032).**
+- `contracts/scanresult.schema.json`: `checks_run[].outcome` gains `not_applicable`, and `checks_run[].reason` (an enum, `special-use-name`) is required exactly when the outcome is `not_applicable`. The schema's example carries one.
+- `core/models.py` mirrors it (`CheckOutcome`, `NotApplicableReason`, `CheckRun.reason`). `ScanResult` refuses a finding where its check declared itself not applicable at the same location. `inconclusive_rate()` leaves `not_applicable` out of the denominator, and `not_applicable_count()` is new.
+- `core/applicability.py` (new) holds the reason registry and the one constructor.
+- Measurement: `not_applicable` is never TP, FP or FN, and has its own count (`not-app` in `make corpus`, `not_applicable` in the results JSON). `scan run` prints it, and `scan verify` treats it as no verdict.
+- Every existing result is unchanged apart from a `reason: null` per check run.
+
+**What changed in ADR-031's implementation (D28).**
+- `BaseScanner.service_hosts_for(target)` is new; `cli/main.py` and `cli/corpus.py` scope with it.
+- domscout v1.3.0 reads expiry from the registry's own RDAP server, found in IANA's vendored bootstrap (`scanners/domscout/data/iana-rdap-dns.json`), and drops rdap.org.
+- Special-use names are `not_applicable`.
+- A TLD missing from the bootstrap, a redirect, a 400/404, any other error, and a record naming an unrelated domain are each `inconclusive`, worded as what happened.
+- The corpus generator no longer invents RDAP. The fabricated `domain-expired` case is removed. Three cases recorded from real registries (Verisign, PIR, NIXI) are added, and the corpus baseline is updated.
+
+**Revert.** Revert the merge commit. That restores rdap.org, which never reads an expiry live (D28), and removes `not_applicable`. Stored results that carry `not_applicable` would then fail validation, so migrate them first (`not_applicable` → drop the run).

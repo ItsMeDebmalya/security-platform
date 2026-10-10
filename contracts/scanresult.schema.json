@@ -52,10 +52,17 @@
               "check_id": { "type": "string", "minLength": 1 },
               "location": { "type": "string" },
               "outcome": {
-                "enum": ["reported", "clear", "inconclusive", "suppressed", "error"],
-                "description": "reported = a finding was emitted; clear = the check ran and found nothing wrong; inconclusive = it ran but reached no verdict; suppressed = below the reporting threshold; error = the check itself failed."
+                "enum": ["reported", "clear", "inconclusive", "suppressed", "error", "not_applicable"],
+                "description": "reported = a finding was emitted; clear = the check ran and found nothing wrong; inconclusive = it ran but reached no verdict; suppressed = below the reporting threshold; error = the check itself failed; not_applicable = the check cannot be asked about this target at all, for a registered reason (ADR-032). not_applicable is never a pass, is outside the inconclusive rate's denominator, and is never a TP, FP or FN."
+              },
+              "reason": {
+                "enum": ["special-use-name", null],
+                "description": "ADR-032: present exactly when outcome is not_applicable, from this fixed list. Adding a reason amends ADR-032. special-use-name = a special-use domain name (RFC 6761), which no registry delegates."
               }
-            }
+            },
+            "if": { "properties": { "outcome": { "const": "not_applicable" } } },
+            "then": { "required": ["reason"], "properties": { "reason": { "type": "string" } } },
+            "else": { "properties": { "reason": { "type": "null" } } }
           }
         },
         "suppressed": {
@@ -93,7 +100,8 @@
       "errors": [],
       "telemetry": {
         "checks_run": [
-          { "check_id": "dmarc-policy-none", "location": "$", "outcome": "suppressed" }
+          { "check_id": "dmarc-policy-none", "location": "$", "outcome": "suppressed" },
+          { "check_id": "domain-expiring", "location": "$", "outcome": "not_applicable", "reason": "special-use-name" }
         ],
         "suppressed": [
           { "check_id": "dmarc-policy-none", "location": "$", "confidence": 0.22, "reason": "below_reporting_threshold" }

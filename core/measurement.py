@@ -13,6 +13,10 @@ numbers stay comparable:
 - **`inconclusive`** is excluded from both sides and *capped*, because
   excluding it without a cap lets a scanner score perfect precision by
   declining to answer.
+- **`not_applicable`** (a check outcome, ADR-032) is outside everything: never
+  a TP, FP or FN, outside the inconclusive rate's denominator, and counted on
+  its own so a report always shows it. Its reasons are a fixed list, so it
+  cannot be used to step around the inconclusive cap.
 
 The gate is three numbers, never two: precision AND recall AND inconclusive
 rate.
@@ -78,6 +82,7 @@ class CaseScore:
     tp_finite: int = 0
     fp_finite: int = 0
     fn_finite: int = 0
+    not_applicable: int = 0
 
 
 def score_case(
@@ -86,8 +91,12 @@ def score_case(
     expected: list[Expected],
     checks_run: int,
     enumeration_check_ids: frozenset[str] = frozenset(),
+    not_applicable: frozenset[tuple[str, str]] = frozenset(),
 ) -> CaseScore:
-    expected_keys = {e.key() for e in expected}
+    """`checks_run` excludes `not_applicable` runs; their (check_id, location)
+    keys come in `not_applicable`, and an expectation on one is neither met nor
+    missed (ADR-032)."""
+    expected_keys = {e.key() for e in expected} - not_applicable
 
     claims = [o for o in observations if o.state in REPORTED_STATES]
     claimed = {o.key() for o in claims}
@@ -131,6 +140,7 @@ def score_case(
         tp_finite=sum(_fam(k) == "finite" for k in tp_keys),
         fp_finite=sum(_fam(k) == "finite" for k in fp_keys),
         fn_finite=sum(_fam(k) == "finite" for k in fn_keys),
+        not_applicable=len(not_applicable),
     )
 
 
@@ -154,6 +164,7 @@ class TierSummary:
     tp_finite: int = 0
     fp_finite: int = 0
     fn_finite: int = 0
+    not_applicable: int = 0
 
     @property
     def recall_enumeration(self) -> float | None:
@@ -240,6 +251,7 @@ class TierSummary:
             "recall": self.recall,
             "suspected_rate": self.suspected_rate,
             "inconclusive_rate": self.inconclusive_rate,
+            "not_applicable": self.not_applicable,
             "false_positives_on_known_good": self.false_positives_on_known_good,
             "claims": {
                 "detected": {
@@ -294,6 +306,7 @@ def summarise(scores_by_tier: dict[str, list[CaseScore]]) -> dict[str, TierSumma
             tp_finite=sum(s.tp_finite for s in scores),
             fp_finite=sum(s.fp_finite for s in scores),
             fn_finite=sum(s.fn_finite for s in scores),
+            not_applicable=sum(s.not_applicable for s in scores),
         )
     return summaries
 

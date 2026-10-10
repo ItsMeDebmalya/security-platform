@@ -27,7 +27,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from typing import Any
+from urllib.parse import urlsplit
 
+from core.applicability import not_applicable
 from core.assetgraph import DiscoveredAsset
 from core.confidence import ConfidenceEngine, Signal
 from core.context import ScanContext
@@ -39,7 +41,8 @@ from core.http import CapturedResponse, HttpClient
 from core.models import Asset, CheckRun, Finding, Mode, ScanResult, Telemetry
 from core.registry import register
 from core.scanner import BaseScanner
-from scanners.domscout import ct, dnssec, rdapp, takeover
+from core.tls import a_label
+from scanners.domscout import ct, dnssec, rdap_bootstrap, rdapp, takeover
 from scanners.domscout.checks import (
     CHECKS,
     CT_LOG,
@@ -62,10 +65,17 @@ NO_VERDICT_FOR_RCODE = {
 @register
 class DomscoutScanner(BaseScanner):
     name = "domscout"
-    version = "1.2.0"
+    version = "1.3.0"
     supported_modes = frozenset({"light"})
     target_types = frozenset({"domain"})
     service_hosts = SERVICE_HOSTS
+
+    @classmethod
+    def service_hosts_for(cls, target: Asset) -> frozenset[str]:
+        """crt.sh, plus only the RDAP server of the target's own registry (ADR-031)."""
+        url = rdap_bootstrap.rdap_url(target.value)
+        host = urlsplit(url).hostname if url else None
+        return cls.service_hosts | ({host} if host else set())
 
     def requires_authorisation(self, mode: Mode) -> bool:
         return _requires_authorisation(mode)
@@ -490,47 +500,101 @@ class _Scan:
     # --- RDAP expiry ----------------------------------------------------
 
     def _check_expiry(self) -> None:
-        url = f"https://rdap.org/domain/{self.domain}"
+        # Operator ruling 2026-10-10, ADR-032: a special-use name has no registry,
+        # so expiry does not apply. Said so explicitly, never a silent pass.
+        if rdap_bootstrap.is_special_use(self.domain):
+            for check_id in ("domain-expiring", "domain-expired"):
+                self.checks.append(
+                    not_applicable(
+                        check_id,
+                        "special-use-name",
+                        declared=CHECKS[check_id].not_applicable_reasons,
+                    )
+                )
+            return
+
+        url = rdap_bootstrap.rdap_url(self.domain)
+        if url is None:
+            published = rdap_bootstrap.bootstrap().publication.date().isoformat()
+            self._inconclusive_http(
+                "domain-expiring",
+                label=f"IANA RDAP bootstrap (vendored, published {published}) for {self.domain}",
+                request={"method": "GET", "url": "https://data.iana.org/rdap/dns.json"},
+                description=(
+                    f"IANA's RDAP bootstrap (published {published}) lists no RDAP server for "
+                    f"{self.domain}'s top-level domain (RFC 9224 §7), so registration expiry "
+                    "could not be read. This scan does not use WHOIS."
+                ),
+                reason="blocked_prerequisite",
+            )
+            self._not_applicable("domain-expired")
+            return
+
+        host = urlsplit(url).hostname
+        label = f"RDAP record for {self.domain} from {host}"
         try:
             test_response = self.http.get(url)
             control_response = self.http.get(url)
         except Exception as exc:
             self._inconclusive_http(
                 "domain-expiring",
-                label=f"RDAP record for {self.domain}",
+                label=label,
                 request={"method": "GET", "url": url},
                 description=(
-                    f"The RDAP record for {self.domain} could not be fetched: "
-                    f"{type(exc).__name__}: {exc}."
+                    f"The registry's RDAP server ({host}) could not be reached for "
+                    f"{self.domain}: {type(exc).__name__}: {exc}."
                 ),
                 reason="blocked_prerequisite",
             )
             self._not_applicable("domain-expired")
             return
 
-        if test_response.status_code == 404:
+        # ADR-031 clause 5: a redirect is reported as what happened, never parsed.
+        if 300 <= test_response.status_code < 400:
+            location = test_response.headers.get("location", "")
+            elsewhere = urlsplit(location).hostname or location or "an unnamed location"
             self._inconclusive_http(
                 "domain-expiring",
-                label=f"RDAP record for {self.domain}",
+                label=label,
                 request={"method": "GET", "url": url},
                 response=test_response,
                 description=(
-                    f"rdap.org returned 404 for {self.domain} — this registry may not be "
-                    "reachable through this bootstrap service."
+                    f"The registry's RDAP server ({host}) redirected to {elsewhere}, which "
+                    "this scan may not contact, so expiry was not read."
                 ),
                 reason="blocked_prerequisite",
             )
             self._not_applicable("domain-expired")
             return
 
-        if test_response.status_code == 429 or test_response.status_code >= 500:
+        # Registries differ for a name they do not hold (seen 2026-10-10 for a
+        # subdomain): Verisign answers 404, PIR 400.
+        if test_response.status_code in (400, 404):
             self._inconclusive_http(
                 "domain-expiring",
-                label=f"RDAP record for {self.domain}",
+                label=label,
                 request={"method": "GET", "url": url},
                 response=test_response,
                 description=(
-                    f"rdap.org returned HTTP {test_response.status_code} for {self.domain}."
+                    f"The registry's RDAP server ({host}) has no registration for "
+                    f"{self.domain} (HTTP {test_response.status_code}). If it is a subdomain, "
+                    "the registered domain above it is what expires; finding that needs the "
+                    "Public Suffix List, which this scan does not use yet (D49)."
+                ),
+                reason="blocked_prerequisite",
+            )
+            self._not_applicable("domain-expired")
+            return
+
+        if test_response.status_code == 429 or test_response.status_code >= 400:
+            self._inconclusive_http(
+                "domain-expiring",
+                label=label,
+                request={"method": "GET", "url": url},
+                response=test_response,
+                description=(
+                    f"The registry's RDAP server ({host}) returned HTTP "
+                    f"{test_response.status_code} for {self.domain}."
                 ),
                 reason=(
                     "rate_limited" if test_response.status_code == 429 else "blocked_prerequisite"
@@ -543,9 +607,37 @@ class _Scan:
         today = datetime.now(UTC).date()
         verdict = rdapp.expiry_verdict(info, today)
 
+        # The record names what it is about. NIXI answers any name under a
+        # registered domain with that domain's record (seen 2026-10-10), so a
+        # date is reported under the name the registry gave, and only when that
+        # name is the target or an ancestor of it. Anything else is not ours.
+        queried = a_label(self.domain) or self.domain
+        registered = info.name or queried
+        if registered != queried and not queried.endswith("." + registered):
+            self._inconclusive_http(
+                "domain-expiring",
+                label=label,
+                request={"method": "GET", "url": url},
+                response=test_response,
+                description=(
+                    f"The registry's RDAP server ({host}) answered the query for "
+                    f"{self.domain} with the record for {registered}, which is neither that "
+                    "name nor above it, so no expiry is attributed to it."
+                ),
+                reason="ambiguous_response",
+            )
+            self._not_applicable("domain-expired")
+            return
+        subject = (
+            self.domain
+            if registered == queried
+            else f"{registered} (the registered domain above {self.domain}, as the registry's "
+            "record names it)"
+        )
+
         evidence = [
             capture_http_pair(
-                label=f"RDAP record for {self.domain}",
+                label=label,
                 control_request={"method": "GET", "url": url},
                 control_response=_as_raw(control_response),
                 test_request={"method": "GET", "url": url},
@@ -561,12 +653,12 @@ class _Scan:
         if verdict == "unknown":
             self._inconclusive_http(
                 "domain-expiring",
-                label=f"RDAP record for {self.domain}",
+                label=label,
                 request={"method": "GET", "url": url},
                 response=test_response,
                 description=(
-                    f"The RDAP record for {self.domain} carries no expiration event, so "
-                    "registration expiry could not be read."
+                    f"The RDAP record for {self.domain} from the registry ({host}) carries no "
+                    "expiration event, so registration expiry could not be read."
                 ),
                 reason="ambiguous_response",
             )
@@ -586,7 +678,7 @@ class _Scan:
                 location="$",
                 evidence=evidence,
                 description=(
-                    f"{self.domain}'s registration expires on {info.expiry.isoformat()}, "
+                    f"{subject}: the registration expires on {info.expiry.isoformat()}, "
                     f"within {rdapp.EXPIRING_WITHIN_DAYS} days. {attestation}"
                 ),
                 impact=(
@@ -607,7 +699,7 @@ class _Scan:
             location="$",
             evidence=evidence,
             description=(
-                f"{self.domain}'s registration expired on {info.expiry.isoformat()}. {attestation}"
+                f"{subject}: the registration expired on {info.expiry.isoformat()}. {attestation}"
             ),
             impact=(
                 "The domain is available for anyone to re-register, taking control of DNS, "

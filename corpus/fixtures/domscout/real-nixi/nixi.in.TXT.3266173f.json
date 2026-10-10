@@ -1,0 +1,16 @@
+{
+  "flags": [],
+  "name": "nixi.in",
+  "rcode": "NOERROR",
+  "records": [
+    "zoho-verification=zb96543507.zmverify.mgovcloud.in",
+    "google-site-verification=m9pY5gsl4vvb_OLtGAWiRvcClhk7lUW4vAvEQN-pQOg",
+    "_globalsign-domain-verification=SJjv2RkamQOfCPm3rp9SRpIkEcxkaFpOobhA07p7yz",
+    "_globalsign-domain-verification=SUckzC2H6YgEw_TjzmSfwYxzSN678WxmxbbzBkQ1UJ",
+    "_globalsign-domain-verification=o_RsiR7oxIcQKoFrgcQzxpW4PaacYpspwe3h1M4xur",
+    "v=spf1 include:20704235.spf08.hubspotemail.net include:343165382.spf03.hubspotemail.net include:mgovcloud.in ~all"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "TXT",
+  "ttl": 300
+}

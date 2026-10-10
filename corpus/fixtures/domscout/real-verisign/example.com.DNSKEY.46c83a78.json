@@ -1,0 +1,14 @@
+{
+  "flags": [],
+  "name": "example.com",
+  "rcode": "NOERROR",
+  "records": [
+    "256 3 13 MjyZielP0GqniI1+j+wAG/3t0ImDDIlj 1CxR0oobkZQHSKH2Fqx6tm2NcYu57POJ 83SzCWLkqIjZHS1mh5wbaw==",
+    "256 3 13 kxipjoIbNZDsWqEKaYaGq6fM/XThrRp1 ue6AV9R/n3eWxpGCeCWJb47PEEEj/Q6V AYFW/7UFo5mXoZfxKYZa3A==",
+    "256 3 13 oJMRESz5E4gYzS/q6XDrvU1qMPYIjCWz JaOau8XNEZeqCYKD5ar0IRd8KqXXFJkq mVfRvMGPmM1x8fGAa2XhSA==",
+    "257 3 13 mdsswUyr3DPW132mOi8V9xESWE8jTo0d xCjjnopKl+GqJxpVXckHAeF+KkxLbxIL fDLUT0rAK9iUzy1L53eKGQ=="
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "DNSKEY",
+  "ttl": 3264
+}

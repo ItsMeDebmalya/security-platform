@@ -818,7 +818,7 @@ In both cases the parser, the scope rule and the gate each did their job. The ga
 
 ## ADR-031 — Service hosts: read-only public endpoints, per target, and the RDAP bootstrap is vendored
 
-**Status.** Accepted 2026-10-10 (operator), with a 90-day bootstrap freshness limit. Covers ledger D28. D31 needs no service host. The IANA bootstrap's data-licence entry awaits the operator's sign-off.
+**Status.** Accepted 2026-10-10 (operator), with a 90-day bootstrap freshness limit. Covers ledger D28. D31 needs no service host. The IANA bootstrap's data-licence entry was signed off by the operator on 2026-10-10. **Implemented 2026-10-10 by D28 (domscout v1.3.0)**; see "Implementation" below.
 
 **Context.** `BaseScanner.service_hosts` (crt.sh, rdap.org) was added during Tool 3 without an ADR. D28: rdap.org is a bootstrap redirector. It answers `302` to the registry's own RDAP server, `core.http` rightly declines to follow a redirect out of scope, and domscout then parsed the empty body as "carries no expiration event". It has never read an expiry live, for any TLD.
 
@@ -845,3 +845,46 @@ In both cases the parser, the scope rule and the gate each did their job. The ga
 - The bootstrap needs a data-licence registry entry. Evidence: the registry is listed on `iana.org/protocols` and IANA dedicates the Protocol Registries to CC0 1.0. IANA's licensing page does not name `data.iana.org` itself. The operator signs off.
 
 **Reversal cost.** Low: the classmethod defaults to the static list.
+
+**Implementation (D28, 2026-10-10).**
+- `BaseScanner.service_hosts_for(target)` is the classmethod (clause 2). `cli/main.py` and `cli/corpus.py` build the HTTP scope from it. domscout's static list is now `crt.sh` alone.
+- The bootstrap is vendored unmodified at `scanners/domscout/data/iana-rdap-dns.json` (`publication` 2026-09-30T23:00:03Z). The lookup is label-wise, longest first, on A-labels (ADR-030's encoder), and prefers https.
+- **Special-use names** (operator ruling 2026-10-10) are read from IANA's Special-Use Domain Names registry (updated 2026-05-22). Expiry for them is `not_applicable` ([ADR-032](#adr-032--not_applicable-a-check-outcome-with-a-fixed-list-of-reasons)). **`example.com`, `example.net` and `example.org` are left out:** RFC 6761 reserves them, but a real registry holds each, with an RDAP record and an expiry, so "no registry delegates it" would be false.
+- **Registries answer a name they do not hold differently** (seen live 2026-10-10, for a subdomain): Verisign answers `404`, PIR `400`, and **NIXI `200` with the registered domain's own record** (`ldhName` `nixi.in` for `www.nixi.in`). So the record's `ldhName` decides what a date is about. A date is reported under that name, and only when it is the target or an ancestor of it; any other name is `inconclusive`. A `400` or `404` is `inconclusive`, worded as "no registration for", with the Public Suffix List gap (D49) named.
+
+---
+
+## ADR-032 — `not_applicable`: a check outcome, with a fixed list of reasons
+
+**Status.** Accepted 2026-10-10 (operator), with the two conditions below written in. An additive change to the frozen contract (`contracts/scanresult.schema.json`). It is reviewed with D28, its first user.
+
+**Context.** D28's ruling (operator, 2026-10-10): a special-use name (RFC 6761) has no registry, so registration expiry does not apply to it. That must be **recorded as such in telemetry, never a silent pass**. The contract could not say it:
+- `clear` is the silent pass the ruling forbids.
+- `suppressed` means "below the reporting threshold" and carries a confidence.
+- An informational finding needs a control-vs-test evidence pair for a query never sent.
+
+**Decision.**
+1. `CheckRun.outcome` gains `not_applicable`: the check cannot be asked about this target at all. `CheckRun` gains `reason`, present **exactly when** the outcome is `not_applicable`.
+2. **Condition 1: no escape hatch.**
+   - Reasons are a fixed list. They are registered in `core/applicability.py` with their wording, enumerated by the schema and mirrored by `core.models.NotApplicableReason`. Free text is refused by the model and by the schema.
+   - Each scanner declares, per check in its `CHECKS` table (`not_applicable_reasons`), which reasons that check may give.
+   - `core.applicability.not_applicable` is the only constructor, and it refuses an unregistered or undeclared reason.
+   - A contract test (`tests/contract/test_not_applicable_contract.py`) runs every registered scanner over its corpus and fails if any `not_applicable` run's reason was not declared by its check, so a hard case cannot be renamed "not applicable" to step around the inconclusive gate.
+   - Adding a reason amends this ADR and the schema.
+3. **Condition 2: always visible, never a pass.**
+   - It is outside the inconclusive rate's denominator (`ScanResult.inconclusive_rate`, `make corpus`), because it judged nothing.
+   - It is **never a TP, FP or FN**: an expectation on a not-applicable check is neither met nor missed.
+   - Every report shows its count: the `not-app` column in `make corpus`, a `not_applicable` field per tier and case in `corpus/results/*.json`, and `N not applicable` with each check and reason in `scan run`'s summary.
+   - It can never close a finding: `scan verify` treats it as no verdict.
+   - A `ScanResult` that reports a finding where the same check declared itself not applicable at the same location is invalid.
+4. **Registered reasons:** `special-use-name` (D28: `domain-expiring` and `domain-expired`).
+
+**Likely second user, not changed here:** D47, MTA-STS and TLS-RPT on a domain that accepts no mail (a null MX). It would need its own reason, declared by those checks, under an amendment of this ADR.
+
+**Rejected.**
+- Reusing `suppressed`: it bends a documented meaning.
+- An informational finding: it has no honest evidence pair.
+- A free-text reason: that is the escape hatch condition 1 closes.
+
+**Reversal cost.** Medium. Removing the outcome means migrating stored results that carry it. Today only domscout's two expiry checks emit it.
+

@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "rdns-public.int.iana.org",
+  "rcode": "NOERROR",
+  "records": [
+    "rdns.vip.icann.org."
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "CNAME",
+  "ttl": 3600
+}
