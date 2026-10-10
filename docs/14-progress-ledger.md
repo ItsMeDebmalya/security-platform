@@ -1586,6 +1586,18 @@ The reviewer had no shared context and worked read-only on the PR head (d4d441a)
 - **Corpus:** email has 449 checks, 18 fewer `reported` runs, and the same 3 inconclusive. Its rate moves from 0.6% to 0.7% for that reason alone, and the baseline is updated.
 - **A `core/` change, so it needs an independent review before merge.**
 
+## 2026-10-10 · Independent review of D52, round 1: NOT CLEAN, fixed
+
+The reviewer had no shared context and worked read-only on b6d7966. No blockers. Every finding was fixed, test-first.
+- **Should-fix:**
+  - **Resolver disagreement.** A name whose two resolvers served different record sets kept only its first digest. A different secret behind it could be folded into the wildcard and its evidence lost. Now each name keeps every digest, and a name with more than one is never folded.
+  - **Only the probe held the secret.** The description read "seen at 1 names: , and …". It now reads "seen only at a random name that cannot exist".
+  - **The description claimed more than was observed.** "Every name under it serves the same record" was false for names with records of their own (RFC 4592). It now says "any name under it without records of its own is served this record", and that each listed name "returned identical content, either from the wildcard or from an identical record of its own".
+- **Nits:**
+  - nested probes folded according to their random labels; the most specific wildcard now wins, deterministically;
+  - the digest input had two readings (two records vs one with a newline); it is now JSON;
+  - the canary handoff row is corrected: the operator removed both canaries.
+
 ## 2026-10-10 · Handoff: open items and where to start
 
 *For a new session with no chat history. State as of PR #32, with the operator's decisions of 2026-10-10 below. Each item links to where it is owned.*
@@ -1615,7 +1627,7 @@ The reviewer had no shared context and worked read-only on the PR head (d4d441a)
 
 | Item | Status | Blocked on | Where |
 |---|---|---|---|
-| **Canary runs, corpus set** (DuckDNS TXT, GitHub Pages) | **Done 2026-10-10:** `email:canary-duckdns` and `web:canary-pages` recorded and hand-verified. The domscout recording is held back (operator's IP in the A record). Found D52 | Removing both records (operator) | Canary runs entry, 2026-10-10 |
+| **Canary runs, corpus set** (DuckDNS TXT, GitHub Pages) | **Done 2026-10-10:** `email:canary-duckdns` and `web:canary-pages` recorded and hand-verified. The domscout recording is held back (operator's IP in the A record). Found D52 | n/a: **both canaries removed by the operator, 2026-10-10** (DuckDNS subdomain deleted, Pages unpublished) | Canary runs entry, 2026-10-10 |
 | **Canary runs, showcase set** (company domains) | **SKIPPED for now** (operator, 2026-10-10); only if a live demo needs it. Evidence would go to the gitignored `corpus/crosscheck/showcase/` | n/a | Same |
 | **ADR-031 / D28** (domain expiry via the IANA RDAP bootstrap) | **Merged 2026-10-10** (PR #35, domscout v1.3.0, with ADR-032), after an independent review (round 1 NOT CLEAN, fixed; round 2 CLEAN). D53 merged in PR #37 (v1.3.1) | n/a | D28 and review entries, 2026-10-10 |
 | **IANA bootstrap data licence** | **SIGNED OFF 2026-10-10** (registry entry `iana-rdap-dns-bootstrap`). Evidence: the registry ("Bootstrap Service Registry for Domain Name Space", RFC 9224) is listed on `iana.org/protocols`; IANA's licensing terms dedicate the Protocol Registries to CC0 1.0; the page does not name `data.iana.org` itself. File fetched 2026-10-09, `publication` 2026-09-30T23:00:03Z, 592 services | n/a | This row |

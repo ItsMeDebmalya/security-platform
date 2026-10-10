@@ -97,3 +97,72 @@ def test_the_contract_counts_every_folded_name_as_reported():
     )
 
     assert unreported_exposures(result, log) == []
+
+
+# --- independent review of D52 (2026-10-10): each finding is a test ---------------
+
+GITHUB_TXT = "token=ghp_" + "a" * 36
+
+
+def test_a_name_whose_resolvers_disagree_is_never_folded():
+    """Finding 1: a different secret behind one name must not vanish into the wildcard."""
+    log = _log(
+        _txt(PROBE, KEY_TXT),
+        _txt(f"a.{ZONE}", KEY_TXT),
+        DnsResponse(
+            name=f"a.{ZONE}",
+            rrtype="TXT",
+            rcode="NOERROR",
+            records=[GITHUB_TXT],
+            resolver="8.8.8.8",
+        ),
+    )
+
+    locations = [f.location for f in _report(log)]
+    assert f"dns:a.{ZONE}/TXT" in locations
+
+
+def test_only_the_probe_holding_the_secret_reads_correctly():
+    """Finding 2: no other queried name returned the wildcard content."""
+    (finding,) = _report(_log(_txt(PROBE, KEY_TXT)))
+
+    assert finding.location == f"dns:*.{ZONE}/TXT"
+    assert "seen at 1 name," not in finding.description
+    assert ": ," not in finding.description
+    assert "only at a random name that cannot exist" in finding.description
+
+
+def test_the_description_claims_only_what_was_observed():
+    """Finding 3: names with records of their own are not served by a wildcard."""
+    (finding,) = _report(_log(_txt(PROBE, KEY_TXT), _txt(f"a.{ZONE}", KEY_TXT)))
+
+    assert "Every name under it serves the same record" not in finding.description
+    assert "without records of its own" in finding.description
+    assert "either from the wildcard or from an identical record" in finding.description
+    assert "seen at 2 names" in finding.description
+
+
+def test_nested_probes_fold_deterministically_to_the_most_specific_wildcard():
+    """Finding 4: the result must not depend on the probes' random labels."""
+    outcomes = set()
+    for hexes in (("00", "ff"), ("ff", "00"), ("5a", "a5")):
+        log = _log(
+            _txt(f"{WILDCARD_PROBE_PREFIX}{hexes[0]}.{ZONE}", KEY_TXT),
+            _txt(f"{WILDCARD_PROBE_PREFIX}{hexes[1]}._dmarc.{ZONE}", KEY_TXT),
+            _txt(f"x._dmarc.{ZONE}", KEY_TXT),
+        )
+        outcomes.add(tuple(f.location for f in _report(log)))
+
+    assert outcomes == {(f"dns:*._dmarc.{ZONE}/TXT", f"dns:*.{ZONE}/TXT")}
+
+
+def test_two_records_are_not_the_same_content_as_one_record_with_a_newline():
+    """Finding 5: the digest input has one reading."""
+    log = _log(
+        DnsResponse(name=PROBE, rrtype="TXT", rcode="NOERROR", records=[KEY_TXT, "v=spf1 -all"]),
+        DnsResponse(
+            name=f"a.{ZONE}", rrtype="TXT", rcode="NOERROR", records=[KEY_TXT + "\nv=spf1 -all"]
+        ),
+    )
+
+    assert f"dns:a.{ZONE}/TXT" in [f.location for f in _report(log)]
