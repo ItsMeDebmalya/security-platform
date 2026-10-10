@@ -1,5 +1,9 @@
 # SHA-256 manifest — web Light live-run evidence (2026-10-07)
 #
+# 2026-10-10 (operator): the operator's company domains in these paths are written as
+# <operator domain A/B/C>. Every hash is unchanged and still proves its file's content; to run
+# `sha256sum -c`, map the placeholders back to the real file names in the operator's local archive.
+#
 # The files listed here are kept OUT of git (see .gitignore) and archived by the operator.
 # They were redacted before hashing: cookie values in curl captures and in Mozilla Observatory's
 # JSON (cookie records and raw Set-Cookie headers) replaced by [redacted]; a scan for AWS/GitHub/
@@ -8,25 +12,25 @@
 #
 # sha256  path (relative to corpus/crosscheck/web-light/)
 3e05c7b928e077634ba2f221f87a1b2fb44eddccf8a3ec6e3d86cf006e883ce8  collected.md
-68b978428a0c20d0eb5584b6f801f29a2c5612b30e5e474eb95f19d549a58c77  raw/codez.in/curl-listings.txt
-1f58c897e81f4fad9ce506c07533f1da6e4da533db8b8e8475525f48632a94ed  raw/codez.in/curl.txt
-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  raw/codez.in/obs.err
-ff87ef824320739986d1478ae538fc399b8bcddf6f6fb1901f2240e44380ec4a  raw/codez.in/observatory-scan-post.json
-edf14444a0c215becea160f73288faa4945712c860df27bd1715c7f13f7441ff  raw/codez.in/observatory.json
-51b7a5877b1fd74271e4d785fd2ff96f4b8060a11d2daff7009cfc88f359a139  raw/codez.in/scan.err
-23b992d717216be40666ad4bbf11f33de0317a5cbf67d3b67b57317416119810  raw/codez.in/scan.json
-7d4622c7630bb66acd686b0812b9b89c381823dd242d452cf072bf97728d998a  raw/codez.in/scan.out
-831b3a1ac6f1cfcacfb8ec2055a9a831d0f5d311cae107282e8337bea67748a9  raw/codez.in/traffic/codez.in_.GET.a5f68beef1.json
-c3856db2cb3b4b61fb5e47eff97bc227795dacfaa8fab46a5537344c7f7c65ac  raw/codez.in/traffic/codez.in_.GET.d7c3fbfed6.json
-6fd86bf05e9c9763039ca96fddb67e72eff6f71d4ed1ec192f31c191542c18b7  raw/codez.in/traffic/codez.in_.well-known_security.txt.GET.2057160114.json
-c0093671bf7e399de9f86c20b83d62c8910b62e5cb33005e00d116f3e51647ef  raw/codez.in/traffic/codez.in_css_.GET.9167740d5b.json
-3ea96714e67b32f20746636aae66d3591d17fd73cddb026d56eff651adc06f61  raw/codez.in/traffic/codez.in_fonts_.GET.b6d64e2fdb.json
-cbd6b3390e6a29c55d17c76cfb0ed742c1060197c838f3fbbd73045198eaea70  raw/codez.in/traffic/codez.in_images_.GET.379173fa15.json
-cca7bdba67930ce2035c3d12363bf0d177f97f442494f16296824bcad10ff35c  raw/codez.in/traffic/codez.in_js_.GET.edab4127a2.json
-d7bb1d778494096c0f5f989f73e4fa94257facb9a1cb4860dfb4c5ad06a6c7aa  raw/codez.in/traffic/codez.in_robots.txt.GET.ee3358fb45.json
-e4ed78c0c2675b47921475e0b67b3096f8b46eb7ebc94734ec1e8032cb41e37e  raw/codez.in/traffic/codez.in_sitemap.xml.GET.8225ad7b17.json
-d0256e4f924c24512327918438b8053864db1a9edd8fbf936fb7e7a92a181c80  raw/codez.in/traffic/codez.in_sp-404-probe-7928a580c2d61346.GET.0330e53b19.json
-f5437d9527fc7afb988e4135fae435564e3ccd39bde6b1e615ec40a3408c52c1  raw/codez.in/traffic/codez.in_sp-404-probe-7928a580c2d61346.GET.597492edb2.json
+68b978428a0c20d0eb5584b6f801f29a2c5612b30e5e474eb95f19d549a58c77  raw/<operator domain A>/curl-listings.txt
+1f58c897e81f4fad9ce506c07533f1da6e4da533db8b8e8475525f48632a94ed  raw/<operator domain A>/curl.txt
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  raw/<operator domain A>/obs.err
+ff87ef824320739986d1478ae538fc399b8bcddf6f6fb1901f2240e44380ec4a  raw/<operator domain A>/observatory-scan-post.json
+edf14444a0c215becea160f73288faa4945712c860df27bd1715c7f13f7441ff  raw/<operator domain A>/observatory.json
+51b7a5877b1fd74271e4d785fd2ff96f4b8060a11d2daff7009cfc88f359a139  raw/<operator domain A>/scan.err
+23b992d717216be40666ad4bbf11f33de0317a5cbf67d3b67b57317416119810  raw/<operator domain A>/scan.json
+7d4622c7630bb66acd686b0812b9b89c381823dd242d452cf072bf97728d998a  raw/<operator domain A>/scan.out
+831b3a1ac6f1cfcacfb8ec2055a9a831d0f5d311cae107282e8337bea67748a9  raw/<operator domain A>/traffic/<operator domain A>_.GET.a5f68beef1.json
+c3856db2cb3b4b61fb5e47eff97bc227795dacfaa8fab46a5537344c7f7c65ac  raw/<operator domain A>/traffic/<operator domain A>_.GET.d7c3fbfed6.json
+6fd86bf05e9c9763039ca96fddb67e72eff6f71d4ed1ec192f31c191542c18b7  raw/<operator domain A>/traffic/<operator domain A>_.well-known_security.txt.GET.2057160114.json
+c0093671bf7e399de9f86c20b83d62c8910b62e5cb33005e00d116f3e51647ef  raw/<operator domain A>/traffic/<operator domain A>_css_.GET.9167740d5b.json
+3ea96714e67b32f20746636aae66d3591d17fd73cddb026d56eff651adc06f61  raw/<operator domain A>/traffic/<operator domain A>_fonts_.GET.b6d64e2fdb.json
+cbd6b3390e6a29c55d17c76cfb0ed742c1060197c838f3fbbd73045198eaea70  raw/<operator domain A>/traffic/<operator domain A>_images_.GET.379173fa15.json
+cca7bdba67930ce2035c3d12363bf0d177f97f442494f16296824bcad10ff35c  raw/<operator domain A>/traffic/<operator domain A>_js_.GET.edab4127a2.json
+d7bb1d778494096c0f5f989f73e4fa94257facb9a1cb4860dfb4c5ad06a6c7aa  raw/<operator domain A>/traffic/<operator domain A>_robots.txt.GET.ee3358fb45.json
+e4ed78c0c2675b47921475e0b67b3096f8b46eb7ebc94734ec1e8032cb41e37e  raw/<operator domain A>/traffic/<operator domain A>_sitemap.xml.GET.8225ad7b17.json
+d0256e4f924c24512327918438b8053864db1a9edd8fbf936fb7e7a92a181c80  raw/<operator domain A>/traffic/<operator domain A>_sp-404-probe-7928a580c2d61346.GET.0330e53b19.json
+f5437d9527fc7afb988e4135fae435564e3ccd39bde6b1e615ec40a3408c52c1  raw/<operator domain A>/traffic/<operator domain A>_sp-404-probe-7928a580c2d61346.GET.597492edb2.json
 5418e6ca71e689291dad2cb6502b2b507b81eed5c1ee9bc56ead0c90d2a8d734  raw/example.com/curl.txt
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  raw/example.com/obs.err
 044248d85256c50f204e2c936c8a88cce656a9c1d5af5af6df85b07b72594679  raw/example.com/observatory-scan-post.json
@@ -75,41 +79,41 @@ ba581325c9da843d4f227af74e40c908fb5b77dec9572db99ab4cf4fe964e472  raw/httpforeve
 b2285746b7f5bd60bdc677bd29e35400e99f8d88f131177793709c1607618a57  raw/httpforever.com/traffic/httpforever.com_js_.GET.4df73d904c.json
 e904dc12978c8829275cdaa7b607e0f3a6457ad4d69972b639716c82f3993374  raw/httpforever.com/traffic/httpforever.com_robots.txt.GET.060652f1e5.json
 e9d6651c84ff35e2a21f586325ddab413afc9c839e25d6abb44eb6c84f6b4712  raw/httpforever.com/traffic/httpforever.com_sp-404-probe-8110013457508343.GET.af2ad23f4d.json
-6bbddfd00c577613008802f5e3b48a0e1be029e53edf209ce66241759185291e  raw/kinetrix.co.in/curl.txt
-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  raw/kinetrix.co.in/obs.err
-eb87a93475831fda6b97f60ac3de18bdba92ca221ad8bfc31d59440be1bb4d4f  raw/kinetrix.co.in/observatory-scan-post.json
-eb87a93475831fda6b97f60ac3de18bdba92ca221ad8bfc31d59440be1bb4d4f  raw/kinetrix.co.in/observatory.json
-51b7a5877b1fd74271e4d785fd2ff96f4b8060a11d2daff7009cfc88f359a139  raw/kinetrix.co.in/scan.err
-66619883e9d19c7d7bf19f61e3520018650fe931a8b612cea1f58924ab626321  raw/kinetrix.co.in/scan.json
-de461d184596c2a0d13b75ba682436e2c3bbc106c5be62c01722b7b27754752c  raw/kinetrix.co.in/scan.out
-ed47a54f7fc925ef6a224692cfdfbd5fe54dfbb64e73aec869d5e20891641fec  raw/kinetrix.co.in/traffic/kinetrix.co.in_.GET.33a92e9dd7.json
-98b84675c34f481427d8bd1fe71277fab0893ad2c774424ec41cebb54f763d24  raw/kinetrix.co.in/traffic/kinetrix.co.in_.GET.f6e0cef6b8.json
-dee569a532bb0f2c127015aeb84e118f3923e86991d9db067d8615f634459732  raw/kinetrix.co.in/traffic/kinetrix.co.in_.well-known_security.txt.GET.568df9b810.json
-e0cc3e9c58c49a143b28fdb160e4fdc3a51030ba65774302b7941a59e08e68fc  raw/kinetrix.co.in/traffic/kinetrix.co.in_cdn-cgi_styles_.GET.9b0bbc7dc6.json
-dfacb9781a11e878f577f753ccc90eb200f663c9119cdfea8df1c6d98aa77a57  raw/kinetrix.co.in/traffic/kinetrix.co.in_robots.txt.GET.e05abaaafd.json
-58ac2338c9b6b79bf1811ddd851bc728bd3f221431eda631f3a060ec5eb9da34  raw/kinetrix.co.in/traffic/kinetrix.co.in_sp-404-probe-2a6a29cc083c421e.GET.89eff7d69f.json
-b53d00da411cf7ce5a9ed254f5aadb196c2d55c7add36afc74be1909eb20ecc7  raw/kinetrix.co.in/traffic/kinetrix.co.in_sp-404-probe-2a6a29cc083c421e.GET.94493c77db.json
-d232c5d1203c8979f80890acc8ff3cb9fb7b89c9d3b5e8cdb946628206d5b362  raw/kinetrix.in/curl.txt
-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  raw/kinetrix.in/obs.err
-16981fc96cd87abb50a5987533607917cd4046a581bdd5b0f57e9e4e7bb30903  raw/kinetrix.in/observatory-scan-post.json
-4daaaa2d8c351f1e50a7f4bbff07cd814936fbfc9d2afc476407d61e3cdbe2d9  raw/kinetrix.in/observatory.json
-51b7a5877b1fd74271e4d785fd2ff96f4b8060a11d2daff7009cfc88f359a139  raw/kinetrix.in/scan.err
-3614bee4fa103223a49f3e37f8ad2ebfbd0c0669732abeb1a835c80ddceaafca  raw/kinetrix.in/scan.json
-40eac35396aef8c2b15a86dfc6d361cbba84853406d5b895f005c0007bef14fc  raw/kinetrix.in/scan.out
-a8ae9b70c23de3f51a136e4ba60f0fa30c8e2d1a14be88916ddf24a68f8bf6ca  raw/kinetrix.in/traffic/kinetrix.in_.GET.5c6a2ddeda.json
-690e5228c4761174094159fcfac3c90ed51c460e7a0b1b914668a45b6e2542d6  raw/kinetrix.in/traffic/kinetrix.in_.GET.f0c17ef370.json
-5d87ac63c279272aca2c37c1b3e8a787d97fb088b991b2bf44448d857d0c591e  raw/kinetrix.in/traffic/kinetrix.in_.well-known_security.txt.GET.df815c03db.json
-d265d06089fc2f32fca456dec79c7809a7d080326c7f831fe8f6f4c533a408a2  raw/kinetrix.in/traffic/kinetrix.in_robots.txt.GET.7d879e7c63.json
-f4d7313e21a088e7b29c10a3ac29d7113721cc3c3b6dc9038b584e8e4bd280d5  raw/kinetrix.in/traffic/kinetrix.in_sp-404-probe-feac7304b641265c.GET.94850c6020.json
-c5df1529e65bf725f73ee4032b88a15f69ed401813881cbba3408a7c22545dae  raw/kinetrix.in/traffic/kinetrix.in_sp-404-probe-feac7304b641265c.GET.a663006952.json
-8e3373b8ee0e22c7f9b48406977aaf337e5fa3fc1c81fdc31cb84a96a3edc579  raw/kinetrix.in/traffic/www.kinetrix.in_.GET.8ccac83149.json
-ef556c4da18bcdfc98bdc3a155201cb051258b6984232298337b51e0d5f40116  raw/kinetrix.in/traffic/www.kinetrix.in_.well-known_security.txt.GET.811561bf57.json
-fdb194339eafad246f71bbcba1eb128c9b9fc5ab3cbffd242c86b175e24f2b79  raw/kinetrix.in/traffic/www.kinetrix.in__astro_.GET.d4b6542827.json
-2f924de834b6438d20437610430aaa93572cd88fabd4d6d01d6025c0e6eaf4f0  raw/kinetrix.in/traffic/www.kinetrix.in_cdn-cgi_scripts_5c5dd728_cloudflare-static_.GET.7b7d931eec.json
-eb9767b1299b5ecb4cfd2a2fce969a1b96e9a37b4020e37f7988b634d52f29c3  raw/kinetrix.in/traffic/www.kinetrix.in_clients_.GET.19cb37727f.json
-c78d1d0a2c08a155bee1c692528002870c9d10560c696e1b65ff9d98b933acf4  raw/kinetrix.in/traffic/www.kinetrix.in_robots.txt.GET.8069c84cbc.json
-a057ad582e5c0c5930a97340bee539d7c53196decf8d0028712366de53693e9f  raw/kinetrix.in/traffic/www.kinetrix.in_sp-404-probe-feac7304b641265c.GET.1389c8218f.json
-22fa367e636dd761b0dae05b78e804bc62fd547488da914e56d5f841046fa46d  raw/kinetrix.in/traffic/www.kinetrix.in_team_.GET.d920f470f2.json
+6bbddfd00c577613008802f5e3b48a0e1be029e53edf209ce66241759185291e  raw/<operator domain C>/curl.txt
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  raw/<operator domain C>/obs.err
+eb87a93475831fda6b97f60ac3de18bdba92ca221ad8bfc31d59440be1bb4d4f  raw/<operator domain C>/observatory-scan-post.json
+eb87a93475831fda6b97f60ac3de18bdba92ca221ad8bfc31d59440be1bb4d4f  raw/<operator domain C>/observatory.json
+51b7a5877b1fd74271e4d785fd2ff96f4b8060a11d2daff7009cfc88f359a139  raw/<operator domain C>/scan.err
+66619883e9d19c7d7bf19f61e3520018650fe931a8b612cea1f58924ab626321  raw/<operator domain C>/scan.json
+de461d184596c2a0d13b75ba682436e2c3bbc106c5be62c01722b7b27754752c  raw/<operator domain C>/scan.out
+ed47a54f7fc925ef6a224692cfdfbd5fe54dfbb64e73aec869d5e20891641fec  raw/<operator domain C>/traffic/<operator domain C>_.GET.33a92e9dd7.json
+98b84675c34f481427d8bd1fe71277fab0893ad2c774424ec41cebb54f763d24  raw/<operator domain C>/traffic/<operator domain C>_.GET.f6e0cef6b8.json
+dee569a532bb0f2c127015aeb84e118f3923e86991d9db067d8615f634459732  raw/<operator domain C>/traffic/<operator domain C>_.well-known_security.txt.GET.568df9b810.json
+e0cc3e9c58c49a143b28fdb160e4fdc3a51030ba65774302b7941a59e08e68fc  raw/<operator domain C>/traffic/<operator domain C>_cdn-cgi_styles_.GET.9b0bbc7dc6.json
+dfacb9781a11e878f577f753ccc90eb200f663c9119cdfea8df1c6d98aa77a57  raw/<operator domain C>/traffic/<operator domain C>_robots.txt.GET.e05abaaafd.json
+58ac2338c9b6b79bf1811ddd851bc728bd3f221431eda631f3a060ec5eb9da34  raw/<operator domain C>/traffic/<operator domain C>_sp-404-probe-2a6a29cc083c421e.GET.89eff7d69f.json
+b53d00da411cf7ce5a9ed254f5aadb196c2d55c7add36afc74be1909eb20ecc7  raw/<operator domain C>/traffic/<operator domain C>_sp-404-probe-2a6a29cc083c421e.GET.94493c77db.json
+d232c5d1203c8979f80890acc8ff3cb9fb7b89c9d3b5e8cdb946628206d5b362  raw/<operator domain B>/curl.txt
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  raw/<operator domain B>/obs.err
+16981fc96cd87abb50a5987533607917cd4046a581bdd5b0f57e9e4e7bb30903  raw/<operator domain B>/observatory-scan-post.json
+4daaaa2d8c351f1e50a7f4bbff07cd814936fbfc9d2afc476407d61e3cdbe2d9  raw/<operator domain B>/observatory.json
+51b7a5877b1fd74271e4d785fd2ff96f4b8060a11d2daff7009cfc88f359a139  raw/<operator domain B>/scan.err
+3614bee4fa103223a49f3e37f8ad2ebfbd0c0669732abeb1a835c80ddceaafca  raw/<operator domain B>/scan.json
+40eac35396aef8c2b15a86dfc6d361cbba84853406d5b895f005c0007bef14fc  raw/<operator domain B>/scan.out
+a8ae9b70c23de3f51a136e4ba60f0fa30c8e2d1a14be88916ddf24a68f8bf6ca  raw/<operator domain B>/traffic/<operator domain B>_.GET.5c6a2ddeda.json
+690e5228c4761174094159fcfac3c90ed51c460e7a0b1b914668a45b6e2542d6  raw/<operator domain B>/traffic/<operator domain B>_.GET.f0c17ef370.json
+5d87ac63c279272aca2c37c1b3e8a787d97fb088b991b2bf44448d857d0c591e  raw/<operator domain B>/traffic/<operator domain B>_.well-known_security.txt.GET.df815c03db.json
+d265d06089fc2f32fca456dec79c7809a7d080326c7f831fe8f6f4c533a408a2  raw/<operator domain B>/traffic/<operator domain B>_robots.txt.GET.7d879e7c63.json
+f4d7313e21a088e7b29c10a3ac29d7113721cc3c3b6dc9038b584e8e4bd280d5  raw/<operator domain B>/traffic/<operator domain B>_sp-404-probe-feac7304b641265c.GET.94850c6020.json
+c5df1529e65bf725f73ee4032b88a15f69ed401813881cbba3408a7c22545dae  raw/<operator domain B>/traffic/<operator domain B>_sp-404-probe-feac7304b641265c.GET.a663006952.json
+8e3373b8ee0e22c7f9b48406977aaf337e5fa3fc1c81fdc31cb84a96a3edc579  raw/<operator domain B>/traffic/www.<operator domain B>_.GET.8ccac83149.json
+ef556c4da18bcdfc98bdc3a155201cb051258b6984232298337b51e0d5f40116  raw/<operator domain B>/traffic/www.<operator domain B>_.well-known_security.txt.GET.811561bf57.json
+fdb194339eafad246f71bbcba1eb128c9b9fc5ab3cbffd242c86b175e24f2b79  raw/<operator domain B>/traffic/www.<operator domain B>__astro_.GET.d4b6542827.json
+2f924de834b6438d20437610430aaa93572cd88fabd4d6d01d6025c0e6eaf4f0  raw/<operator domain B>/traffic/www.<operator domain B>_cdn-cgi_scripts_5c5dd728_cloudflare-static_.GET.7b7d931eec.json
+eb9767b1299b5ecb4cfd2a2fce969a1b96e9a37b4020e37f7988b634d52f29c3  raw/<operator domain B>/traffic/www.<operator domain B>_clients_.GET.19cb37727f.json
+c78d1d0a2c08a155bee1c692528002870c9d10560c696e1b65ff9d98b933acf4  raw/<operator domain B>/traffic/www.<operator domain B>_robots.txt.GET.8069c84cbc.json
+a057ad582e5c0c5930a97340bee539d7c53196decf8d0028712366de53693e9f  raw/<operator domain B>/traffic/www.<operator domain B>_sp-404-probe-feac7304b641265c.GET.1389c8218f.json
+22fa367e636dd761b0dae05b78e804bc62fd547488da914e56d5f841046fa46d  raw/<operator domain B>/traffic/www.<operator domain B>_team_.GET.d920f470f2.json
 cb7fe161442b79f57eba6c7c5a1c38074d6f7c0742db6a85e8f22584f7481acc  raw/mozilla.org/curl.txt
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  raw/mozilla.org/obs.err
 d5ffc98498714b5e1c913cdc70cc0d5952fd7c836a097bd75b5ce99987368a7a  raw/mozilla.org/observatory-scan-post.json

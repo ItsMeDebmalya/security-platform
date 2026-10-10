@@ -5,7 +5,7 @@ ADR-024 disagreement analysis for `web` v1.0.0 (Light) over the 13 hosts in [ver
 ## Method
 
 - **Mozilla Observatory** — `POST https://observatory-api.mdn.mozilla.net/api/v2/scan?host=H`, then `GET …/api/v2/analyze?host=H` for per-test results (12 tests). Each test was mapped to our checks: CSP → csp-missing/csp-weak; redirection → https-redirect-missing; HSTS → hsts-missing/hsts-weak; Referrer-Policy → referrer-policy-*; SRI → sri-missing/mixed-content; X-Content-Type-Options → xcto-missing; X-Frame-Options → clickjacking-unprotected; CORS → cors-wildcard; cookies → deferred (D-W1); COEP/COOP/CORP → declined (spec §3.2).
-- **Observatory `pass: null`** (score 0) means *not applicable* — e.g. `sri-not-implemented-but-all-scripts-loaded-from-secure-origin`. It is **not** a failure. (A first-pass collector counted it as one and produced three false "Observatory-only" SRI hits on codez.in, mozilla.org and example.com; caught before reporting.)
+- **Observatory `pass: null`** (score 0) means *not applicable* — e.g. `sri-not-implemented-but-all-scripts-loaded-from-secure-origin`. It is **not** a failure. (A first-pass collector counted it as one and produced three false "Observatory-only" SRI hits on <operator domain A>, mozilla.org and example.com; caught before reporting.)
 - **securityheaders.com was unavailable**: it answers automated clients (curl, with or without a browser User-Agent, and a fetch tool) with HTTP 403. Of the headers it grades, only `Permissions-Policy` is not also covered by Observatory; it is classified below from the spec instead.
 - **Wappalyzer** was not run as a data source. Per ADR-024 its output may only ever be a coverage checklist, never seed our data; the fingerprint coverage question was answered by the vulnweb hosts instead (verification.md).
 
@@ -28,17 +28,17 @@ ADR-024 disagreement analysis for `web` v1.0.0 (Light) over the 13 hosts in [ver
 
 - **ASP.NET 2.0.50727 — no end-of-life claim.** That runtime string is also what .NET Framework 3.5 SP1 reports, and 3.5 SP1 is supported; claiming EOL from it would have been a false positive.
 - **Apache 2.4.25 — no claim beyond version disclosure.** A supported branch; Tool 4a makes no CVE claims (spec §1).
-- **Unreachable / erroring hosts → all `inconclusive`** (testphp timeout, kinetrix.co.in Cloudflare 525, badssl certificate failures): never a guessed "clear".
+- **Unreachable / erroring hosts → all `inconclusive`** (testphp timeout, <operator domain C> Cloudflare 525, badssl certificate failures): never a guessed "clear".
 
 ## Other observations recorded in the ledger
 
 - **D25 — cost metering ignores failed attempts.** testphp: 90 s of wall time, ~10 connection attempts, `telemetry.requests = 0`. Not cosmetic: a dead host looks free to rate limiting and, later, to billing.
-- **D26 — the 12-GET cap is exceeded by redirect hops** (mozilla.org 23, kinetrix.in 18, codez.in 13). Declaration and behaviour disagree; required decision before beta.
+- **D26 — the 12-GET cap is exceeded by redirect hops** (mozilla.org 23, <operator domain B> 18, <operator domain A> 13). Declaration and behaviour disagree; required decision before beta.
 
 ## For the operator's own domains
 
-- **codez.in**: four open directory listings exposing 381 files; no HSTS, CSP, X-Frame-Options or X-Content-Type-Options.
-- **kinetrix.co.in**: effectively down over HTTPS — Cloudflare 525 (Cloudflare cannot complete a TLS handshake with the origin).
+- **<operator domain A>**: four open directory listings exposing 381 files; no HSTS, CSP, X-Frame-Options or X-Content-Type-Options.
+- **<operator domain C>**: effectively down over HTTPS — Cloudflare 525 (Cloudflare cannot complete a TLS handshake with the origin).
 
 ## Raw evidence
 
