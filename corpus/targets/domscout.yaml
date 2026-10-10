@@ -138,3 +138,16 @@ cases:
     mode: light
     target: { type: domain, value: nixi.in }
     fixtures: corpus/fixtures/domscout/real-nixi
+
+  # --- D53: a subdomain inside a signed zone ---------------------------------
+  # www.nixi.in, recorded live 2026-10-10 and hand-verified with dig at 1.1.1.1:
+  # nixi.in (the SOA owner for www.nixi.in) is signed (DS 31765 8 2, 2 DNSKEYs),
+  # and www.nixi.in has no DS or DNSKEY of its own, because it is not a zone cut.
+  # dnssec-status used to judge www.nixi.in itself and claimed "not signed" at
+  # `confirmed`: a false claim. NIXI's RDAP answers with nixi.in's record.
+  - id: real-subdomain-signed
+    tier: real_recorded
+    source: recorded
+    mode: light
+    target: { type: domain, value: www.nixi.in }
+    fixtures: corpus/fixtures/domscout/real-subdomain-signed

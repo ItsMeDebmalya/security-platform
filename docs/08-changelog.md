@@ -561,3 +561,13 @@ Then restore the entry-point lines in `CLAUDE.md` and `SPEC.md`, and the revert 
 - The corpus generator no longer invents RDAP. The fabricated `domain-expired` case is removed. Three cases recorded from real registries (Verisign, PIR, NIXI) are added, and the corpus baseline is updated.
 
 **Revert.** Revert the merge commit. That restores rdap.org, which never reads an expiry live (D28), and removes `not_applicable`. Stored results that carry `not_applicable` would then fail validation, so migrate them first (`not_applicable` → drop the run).
+
+## v4.0-pre.15 — D53: `dnssec-status` judges the zone a name belongs to; domscout v1.3.1 (2026-10-10)
+
+**What changed.**
+- `dnssec-status` walks up from the target to the nearest name holding a SOA record, never through a CNAME, and reads DS and DNSKEY there, including the second-resolver validation.
+- A finding on a subdomain names the zone. A walk that cannot finish is `inconclusive`.
+- The new corpus case `real-subdomain-signed` (www.nixi.in, recorded live) is the regression case, and the corpus baseline is updated.
+
+**Revert.** Revert the merge commit. A subdomain target is then judged by its own DS and DNSKEY again, which it never has, so the false "not signed" claim comes back.
+

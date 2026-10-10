@@ -40,3 +40,7 @@ servfail: []
 real-verisign: []
 real-pir: []
 real-nixi: []
+
+# D53: www.nixi.in is inside the signed zone nixi.in. Nothing may be claimed:
+# a dnssec-status claim here is the false claim D53 fixed.
+real-subdomain-signed: []
