@@ -17,7 +17,7 @@ The tool-first strategy in docs/archive/ is SUPERSEDED. Do not follow it.
   - **company-domain canaries are skipped** for now.
 - **Waiting on the operator:**
   - the value-add backlog question pending with the operator's senior: build the quick wins before or after Tool 4b?
-- **Next:** D54 (no-follow for service-host requests, `core/http.py`) is in its own PR, awaiting an independent review; D52 is merged (PR #38). **Then stop: Tool 4b and the value-add quick wins wait for the operator**, who is bringing an update from their senior that may change priorities.
+- **Next:** the correctness backlog is clear: **0 BROKEN**, and D52 (PR #38) and D54 (PR #40) are merged after independent review. **The next decision is Tool 4b vs the value-add quick wins, pending the operator's senior's update.** Start neither until the operator says so.
 - **Ledgered, no action:** a WHOIS fallback for NIXI's TLDs (`.भारत` and `.இந்தியா` are not in the RDAP bootstrap).
 - **Standing rules from the operator:**
   - Never push or merge without being told; merge with `--merge`.
