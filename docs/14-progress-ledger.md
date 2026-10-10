@@ -1586,12 +1586,6 @@ The reviewer had no shared context and worked read-only on the PR head (d4d441a)
 - **Corpus:** email has 449 checks, 18 fewer `reported` runs, and the same 3 inconclusive. Its rate moves from 0.6% to 0.7% for that reason alone, and the baseline is updated.
 - **A `core/` change, so it needs an independent review before merge.**
 
-## 2026-10-10 · Company-domain attestations: rule for new scope rows (operator)
-
-- The 2026-08-25 attestations for the company domains (made under `operator:satwik`, "owned and operated by us", `method: self_owned`) are **kept unchanged**. They are audit records, and "us" is the company.
-- **Any new scope row for these domains must rest on written authorisation from the domain owner.** The operator is authorised to act for the domains, not their administrator, so a fresh self-owned attestation is not enough.
-- The scope file and `corpus/authz/` keep the real names: the gate reads them.
-
 ## 2026-10-10 · Handoff: open items and where to start
 
 *For a new session with no chat history. State as of PR #32, with the operator's decisions of 2026-10-10 below. Each item links to where it is owned.*
