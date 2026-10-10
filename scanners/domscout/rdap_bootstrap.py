@@ -68,22 +68,31 @@ class Bootstrap:
     publication: datetime
     services: dict[str, str]
     """Lowercase A-label suffix -> the registry's RDAP base URL (https, ends `/`)."""
+    http_only: frozenset[str] = frozenset()
+    """Suffixes the bootstrap lists with only an `http://` server (kg and mg in the
+    2026-09-30 file). This scan does not use them, and says so."""
 
 
 @cache
 def bootstrap() -> Bootstrap:
     data = json.loads(BOOTSTRAP_FILE.read_text())
     services: dict[str, str] = {}
+    http_only: set[str] = set()
     for labels, urls in data["services"]:
         # RFC 9224 §4: prefer an https URL when the entry lists several.
         https = [u for u in urls if u.lower().startswith("https://")]
         if not https:
+            http_only.update(label.lower().rstrip(".") for label in labels)
             continue
         base = https[0] if https[0].endswith("/") else https[0] + "/"
         for label in labels:
             services[label.lower().rstrip(".")] = base
     publication = datetime.fromisoformat(data["publication"].replace("Z", "+00:00"))
-    return Bootstrap(publication=publication.astimezone(UTC), services=services)
+    return Bootstrap(
+        publication=publication.astimezone(UTC),
+        services=services,
+        http_only=frozenset(http_only),
+    )
 
 
 def _suffixes(name: str) -> list[str]:
@@ -108,6 +117,17 @@ def rdap_base(name: str) -> str | None:
         if suffix in services:
             return services[suffix]
     return None
+
+
+def lists_only_http(name: str) -> bool:
+    """Whether the bootstrap's entry for `name` has only an http:// server."""
+    return any(suffix in bootstrap().http_only for suffix in _suffixes(name))
+
+
+def is_bootstrap_suffix(name: str) -> bool:
+    """A name the bootstrap lists as a whole: a TLD (or a listed suffix), which is
+    never a registered domain."""
+    return name in bootstrap().services or name in bootstrap().http_only
 
 
 def rdap_url(name: str) -> str | None:

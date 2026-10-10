@@ -70,13 +70,14 @@ def test_the_harness_writes_its_results_for_ci_to_compare():
 # --- regression detection ---------------------------------------------------
 
 
-def _report(precision=1.0, recall=1.0, inconclusive=0.0, known_good_fps=0):
+def _report(precision=1.0, recall=1.0, inconclusive=0.0, known_good_fps=0, not_applicable=0):
     return {
         "scanner": "example",
         "overall": {
             "precision": precision,
             "recall": recall,
             "inconclusive_rate": inconclusive,
+            "not_applicable": not_applicable,
         },
         "false_positives_on_known_good": known_good_fps,
     }
@@ -286,3 +287,17 @@ def test_the_harness_scores_a_derived_finding_as_derived(make_finding):
     score = _score(result, expected=[{"check_id": derived.check_id, "location": "$"}])
 
     assert (score.tp, score.tp_detected, score.tp_derived) == (1, 0, 1)
+
+
+def test_a_rising_not_applicable_count_fails_the_build():
+    """ADR-032, review of D28: a rise is visible in CI, not only in the report."""
+    problems = _regressions([_report(not_applicable=3)], [_report(not_applicable=1)])
+
+    assert any("not_applicable count rose 1 -> 3" in p for p in problems)
+
+
+def test_a_baseline_from_before_adr_032_reads_as_zero():
+    old = _report()
+    del old["overall"]["not_applicable"]
+
+    assert _regressions([_report(not_applicable=0)], [old]) == []

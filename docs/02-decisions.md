@@ -850,7 +850,14 @@ In both cases the parser, the scope rule and the gate each did their job. The ga
 - `BaseScanner.service_hosts_for(target)` is the classmethod (clause 2). `cli/main.py` and `cli/corpus.py` build the HTTP scope from it. domscout's static list is now `crt.sh` alone.
 - The bootstrap is vendored unmodified at `scanners/domscout/data/iana-rdap-dns.json` (`publication` 2026-09-30T23:00:03Z). The lookup is label-wise, longest first, on A-labels (ADR-030's encoder), and prefers https.
 - **Special-use names** (operator ruling 2026-10-10) are read from IANA's Special-Use Domain Names registry (updated 2026-05-22). Expiry for them is `not_applicable` ([ADR-032](#adr-032--not_applicable-a-check-outcome-with-a-fixed-list-of-reasons)). **`example.com`, `example.net` and `example.org` are left out** (approved by the operator, 2026-10-10; ADR-032 clause 5): RFC 6761 reserves them, but a real registry holds each, with an RDAP record and an expiry, so "no registry delegates it" would be false.
-- **Registries answer a name they do not hold differently** (seen live 2026-10-10, for a subdomain): Verisign answers `404`, PIR `400`, and **NIXI `200` with the registered domain's own record** (`ldhName` `nixi.in` for `www.nixi.in`). So the record's `ldhName` decides what a date is about. A date is reported under that name, and only when it is the target or an ancestor of it; any other name is `inconclusive`. A `400` or `404` is `inconclusive`, worded as "no registration for", with the Public Suffix List gap (D49) named.
+- **Registries answer a name they do not hold differently** (seen live 2026-10-10, for a subdomain): Verisign answers `404`, PIR `400`, and **NIXI `200` with the registered domain's own record** (`ldhName` `nixi.in` for `www.nixi.in`). So the record's `ldhName` decides what a date is about (operator ruling, 2026-10-10: a finding must name the registered domain the registry's record belongs to, and never claim the subdomain itself expires). After the independent review:
+  - A date is attributed only when `ldhName` is the target or a registered domain above it.
+  - A record with **no `ldhName`** is `inconclusive`. It is never assumed to be about the target.
+  - A record naming **a TLD** (a bootstrap entry) is `inconclusive`. **Known limit:** a public suffix below the TLD, such as `co.in`, cannot be told apart from a registered domain without the Public Suffix List (D49).
+  - **The registered domain is structured, not only prose.** On a subdomain target the finding's location is `registration:<domain>`, and `related_assets` carries it with relation `registered_domain`. Description, impact and remediation all name the registered domain, and the description says the subdomain is not registered on its own. The title stays the check's fixed title, "Domain registration expires soon", and the location carries the domain.
+  - A `400` or `404` is `inconclusive`, worded as "no registration for", with the PSL gap (D49) named.
+  - Any final response from a host other than the registry is a redirect and is never parsed, including one `HttpClient` followed to the target itself. So is any non-`200` status.
+  - A missing TLD is evidenced as a lookup in the vendored file (method `NONE`), never as a request that was not sent. An `http://`-only entry (kg, mg) is said to be one.
 
 ---
 
@@ -868,13 +875,14 @@ In both cases the parser, the scope rule and the gate each did their job. The ga
 2. **Condition 1: no escape hatch.**
    - Reasons are a fixed list. They are registered in `core/applicability.py` with their wording, enumerated by the schema and mirrored by `core.models.NotApplicableReason`. Free text is refused by the model and by the schema.
    - Each scanner declares, per check in its `CHECKS` table (`not_applicable_reasons`), which reasons that check may give.
-   - `core.applicability.not_applicable` is the only constructor, and it refuses an unregistered or undeclared reason.
+   - `core.applicability.not_applicable` is the constructor scanners use, and it refuses an unregistered or undeclared reason.
+   - **Enforced at runtime, not only in tests** (review of D28): `core.applicability.enforce(result)` refuses a result holding a `not_applicable` run whose reason its check did not declare, however the run was built. Every place that produces a result calls it: `scan run` and the corpus harness today, and `api/` must too.
    - A contract test (`tests/contract/test_not_applicable_contract.py`) runs every registered scanner over its corpus and fails if any `not_applicable` run's reason was not declared by its check, so a hard case cannot be renamed "not applicable" to step around the inconclusive gate.
    - Adding a reason amends this ADR and the schema.
 3. **Condition 2: always visible, never a pass.**
    - It is outside the inconclusive rate's denominator (`ScanResult.inconclusive_rate`, `make corpus`), because it judged nothing.
    - It is **never a TP, FP or FN**: an expectation on a not-applicable check is neither met nor missed.
-   - Every report shows its count: the `not-app` column in `make corpus`, a `not_applicable` field per tier and case in `corpus/results/*.json`, and `N not applicable` with each check and reason in `scan run`'s summary.
+   - Every report shows its count: the `not-app` column in `make corpus`, a `not_applicable` field per tier and case in `corpus/results/*.json`, and `N not applicable` with each check and reason in `scan run`'s summary. CI's baseline check fails when the count rises (review of D28).
    - It can never close a finding: `scan verify` treats it as no verdict.
    - A `ScanResult` that reports a finding where the same check declared itself not applicable at the same location is invalid.
 4. **Registered reasons:** `special-use-name` (D28: `domain-expiring` and `domain-expired`).

@@ -8,13 +8,12 @@ that has a corpus; the second half proves the check bites.
 
 from __future__ import annotations
 
-import importlib
 from pathlib import Path
 
 import pytest
 import yaml
 
-from core.applicability import REASONS, undeclared
+from core.applicability import REASONS, declared_reasons, undeclared
 from core.models import CheckRun
 from core.registry import discover
 
@@ -23,11 +22,7 @@ TARGETS = ROOT / "corpus" / "targets"
 
 
 def _declared(scanner: str) -> dict[str, frozenset[str]]:
-    try:
-        checks = importlib.import_module(f"scanners.{scanner}.checks").CHECKS
-    except (ModuleNotFoundError, AttributeError):
-        return {}
-    return {cid: getattr(c, "not_applicable_reasons", frozenset()) for cid, c in checks.items()}
+    return declared_reasons(scanner)
 
 
 def _cases() -> list[tuple[str, dict]]:
@@ -71,3 +66,48 @@ def test_the_contract_accepts_a_declared_reason():
     runs = [CheckRun(check_id="x", outcome="not_applicable", reason="special-use-name")]
 
     assert undeclared(runs, {"x": frozenset({"special-use-name"})}) == []
+
+
+# --- enforced at runtime, not only over the corpus (review of D28, finding 5) -------
+
+
+def _result(scanner: str, run: CheckRun):
+    from datetime import UTC, datetime
+
+    from core.models import Asset, ScanResult, Telemetry
+
+    return ScanResult(
+        scanner=scanner,
+        scanner_version="1.0.0",
+        target=Asset(type="domain", value="x.test"),
+        mode="light",
+        findings=[],
+        errors=[],
+        telemetry=Telemetry(checks_run=[run]),
+        finished_at=datetime.now(UTC),
+    )
+
+
+def test_enforce_refuses_a_reason_built_directly_on_any_code_path():
+    from core.applicability import UndeclaredNotApplicableError, enforce
+
+    run = CheckRun(check_id="dkim-missing", outcome="not_applicable", reason="special-use-name")
+    with pytest.raises(UndeclaredNotApplicableError):
+        enforce(_result("email", run))
+
+
+def test_enforce_passes_a_declared_reason():
+    from core.applicability import enforce
+
+    run = CheckRun(check_id="domain-expiring", outcome="not_applicable", reason="special-use-name")
+    assert enforce(_result("domscout", run)).scanner == "domscout"
+
+
+def test_both_result_producers_call_enforce():
+    import inspect
+
+    import cli.corpus
+    import cli.main
+
+    assert "enforce(scanner.run(" in inspect.getsource(cli.corpus._run_case)
+    assert "enforce(scanner.run(" in inspect.getsource(cli.main)
