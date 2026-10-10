@@ -92,7 +92,7 @@ def parse_rdap(json_text: str) -> RegistrationInfo:
 
     registrar = _extract_registrar(body.get("entities"))
     ldh = body.get("ldhName")
-    name = ldh.lower().rstrip(".") if isinstance(ldh, str) and ldh.strip() else None
+    name = ldh.strip().lower().rstrip(".") if isinstance(ldh, str) and ldh.strip() else None
 
     return RegistrationInfo(
         expiry=expiry, registrar=registrar, statuses=statuses, created=created, name=name

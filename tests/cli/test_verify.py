@@ -242,6 +242,33 @@ def test_stays_open_when_the_check_is_inconclusive(tmp_path):
     assert _status(store_path, finding) == "open"
 
 
+def test_stays_open_when_the_check_is_not_applicable(tmp_path, monkeypatch):
+    """ADR-032: not_applicable judged nothing, so it is never a pass and never closes."""
+    import core.applicability
+
+    monkeypatch.setattr(
+        core.applicability,
+        "declared_reasons",
+        lambda scanner: {CHECK_ID: frozenset({"special-use-name"})},
+    )
+    store_path = tmp_path / "s.sqlite3"
+    finding = _finding()
+    _seed(store_path, finding)
+    _Slot.fn = _result(
+        checks_run=[
+            CheckRun(
+                check_id=CHECK_ID, outcome="not_applicable", reason="special-use-name", location="$"
+            )
+        ]
+    )
+
+    result = _verify(finding.id, store_path)
+
+    assert result.exit_code == 1
+    assert "no verdict" in result.stdout
+    assert _status(store_path, finding) == "open"
+
+
 def test_stays_open_when_rate_limited_or_waf_blocked(tmp_path):
     """Represented as `suppressed`: the check ran but its result was withheld."""
     store_path = tmp_path / "s.sqlite3"

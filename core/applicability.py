@@ -12,9 +12,13 @@ it. So there is no free text:
 - every reason is registered here, with its wording;
 - a scanner declares, per check, which of them that check may use;
 - `not_applicable` is the only constructor, and it refuses anything else;
-- `CheckRun` refuses a reason that is not registered here, and the contract
-  test refuses a `not_applicable` run whose reason its check did not declare
-  (`tests/contract/test_not_applicable_contract.py`).
+- `CheckRun` refuses a reason that is not registered here;
+- `enforce` refuses, at runtime, a result holding a `not_applicable` run whose
+  reason its check did not declare. Every place that produces a result calls it
+  (`scan run`, the corpus harness; `api/` must too), so a check cannot get past
+  it on a code path no corpus case reaches (review of D28, finding 5);
+- the contract test (`tests/contract/test_not_applicable_contract.py`) runs it
+  over every scanner's corpus.
 
 Adding a reason is a schema change (`contracts/scanresult.schema.json`
 enumerates them) and an ADR-032 amendment, never an edit to a scanner alone.
@@ -22,11 +26,12 @@ enumerates them) and an ADR-032 amendment, never an edit to a scanner alone.
 
 from __future__ import annotations
 
+import importlib
 from collections.abc import Iterable, Mapping
 from typing import cast
 
 from core.ids import TARGET_LEVEL
-from core.models import CheckRun, NotApplicableReason
+from core.models import CheckRun, NotApplicableReason, ScanResult
 
 REASONS: dict[str, str] = {
     "special-use-name": (
@@ -64,3 +69,31 @@ def undeclared(
         if run.outcome == "not_applicable"
         and run.reason not in declared_by_check.get(run.check_id, frozenset())
     )
+
+
+class UndeclaredNotApplicableError(ValueError):
+    """A `not_applicable` run with a reason its check did not declare (ADR-032)."""
+
+
+def declared_reasons(scanner: str) -> dict[str, frozenset[str]]:
+    """check_id -> the reasons it declared, from `scanners/<name>/checks.py`'s `CHECKS`.
+
+    A scanner with no such table declares nothing, so it may give no reason."""
+    try:
+        checks = importlib.import_module(f"scanners.{scanner}.checks").CHECKS
+    except (ModuleNotFoundError, AttributeError):
+        return {}
+    return {
+        check_id: frozenset(getattr(check, "not_applicable_reasons", frozenset()))
+        for check_id, check in checks.items()
+    }
+
+
+def enforce(result: ScanResult) -> ScanResult:
+    """The result, if every `not_applicable` run's reason was declared by its check."""
+    bad = undeclared(result.telemetry.checks_run, declared_reasons(result.scanner))
+    if bad:
+        raise UndeclaredNotApplicableError(
+            f"{result.scanner} reports not_applicable with undeclared reasons: {bad} (ADR-032)"
+        )
+    return result
