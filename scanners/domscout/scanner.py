@@ -65,7 +65,7 @@ NO_VERDICT_FOR_RCODE = {
 @register
 class DomscoutScanner(BaseScanner):
     name = "domscout"
-    version = "1.3.1"
+    version = "1.3.2"
     supported_modes = frozenset({"light"})
     target_types = frozenset({"domain"})
     service_hosts = SERVICE_HOSTS
@@ -197,8 +197,9 @@ class _Scan:
         test_url = self._crtsh_url(f"%25.{self.domain}")
         control_url = self._crtsh_url(self.domain)
         try:
-            test_response = self.http.get(test_url)
-            control_response = self.http.get(control_url)
+            # D54: a service host is only ever reached at its own address.
+            test_response = self.http.get(test_url, follow_redirects=False)
+            control_response = self.http.get(control_url, follow_redirects=False)
         except Exception as exc:
             self._inconclusive_http(
                 "subdomains-ct-log",
@@ -227,6 +228,37 @@ class _Scan:
                 reason=(
                     "rate_limited" if test_response.status_code == 429 else "blocked_prerequisite"
                 ),
+            )
+            return []
+
+        # Review of D54: crt.sh is never followed, so a 3xx (or any other non-200)
+        # is reported as what happened, never parsed. A redirect body of `[]` would
+        # otherwise read as "no subdomains".
+        if test_response.status_code != 200:
+            location = test_response.headers.get("location", "")
+            elsewhere = urlsplit(location).hostname
+            if elsewhere and elsewhere != "crt.sh":
+                where = f"to {elsewhere}"
+            elif location:
+                where = "within crt.sh"
+            else:
+                where = "to an unnamed location"
+            what = (
+                f"redirected {where}; a service host's redirect is never followed (ADR-031)"
+                if 300 <= test_response.status_code < 400
+                else f"returned HTTP {test_response.status_code}"
+            )
+            self._inconclusive_http(
+                "subdomains-ct-log",
+                label=f"crt.sh search for %.{self.domain}",
+                request={"method": "GET", "url": test_url},
+                response=test_response,
+                description=(
+                    f"crt.sh {what} for the subdomain search on {self.domain}. This does "
+                    "not show the domain has no subdomains — only that this source could "
+                    "not be read."
+                ),
+                reason="blocked_prerequisite",
             )
             return []
 
@@ -619,8 +651,10 @@ class _Scan:
             self._skip("domain-expired")
 
         try:
-            test_response = self.http.get(url)
-            control_response = self.http.get(url)
+            # D54 / ADR-031: never follow a registry's redirect, so the scanned site
+            # is never fetched in its place.
+            test_response = self.http.get(url, follow_redirects=False)
+            control_response = self.http.get(url, follow_redirects=False)
         except Exception as exc:
             unread(
                 f"The registry's RDAP server ({host}) could not be reached for "
@@ -629,22 +663,29 @@ class _Scan:
             return
 
         # ADR-031 clause 5: a redirect is reported as what happened, never parsed.
-        # `HttpClient` follows a redirect to any in-scope host, the target included,
-        # so a final URL on another host is a redirect too (review of D28, finding 4).
+        # D54: a registry's redirect is never followed (`follow_redirects=False`,
+        # and `HttpClient` refuses to follow from a declared service host), so with
+        # either guard in place the final host is the registry's. It is still
+        # checked, in case a client with neither is ever passed in.
         final_host = urlsplit(test_response.url).hostname
         if 300 <= test_response.status_code < 400 or final_host != host:
             location = test_response.headers.get("location", "")
             elsewhere = final_host if final_host != host else urlsplit(location).hostname
-            if elsewhere == host:
-                what = "kept redirecting within its own server and served no record"
-            elif final_host != host:
+            if final_host != host:
                 what = (
                     f"redirected to {final_host}, which is not the registry, so what it "
                     "served is not read as the registry's record"
                 )
+            elif elsewhere in (None, host):
+                what = (
+                    "redirected within its own server; a registry's redirect is never "
+                    "followed (ADR-031), and no record was served"
+                )
             else:
-                where = elsewhere or "an unnamed location"
-                what = f"redirected to {where}, which this scan may not contact"
+                what = (
+                    f"redirected to {elsewhere}; a registry's redirect is never followed "
+                    "(ADR-031), so nothing was fetched there"
+                )
             unread(
                 f"The registry's RDAP server ({host}) {what}, so expiry was not read.",
                 test_response,

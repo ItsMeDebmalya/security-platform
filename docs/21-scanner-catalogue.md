@@ -159,7 +159,7 @@ Live basis: badssl.com test hosts and operator infrastructure, plus 67 facts cro
 
 ---
 
-## domscout — DNS & Subdomain Enumeration (Tool 3, v1.3.1)
+## domscout — DNS & Subdomain Enumeration (Tool 3, v1.3.2)
 
 7 checks, all Light, all passive (`secret-exposed` is emitted by core's helper, ADR-029). Every lookup goes to a public service (CT logs, public resolvers, RDAP), never to the target, apart from at most one ordinary HTTPS page load per takeover candidate.
 

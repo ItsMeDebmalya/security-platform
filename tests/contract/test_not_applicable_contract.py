@@ -111,3 +111,32 @@ def test_both_result_producers_call_enforce():
 
     assert "enforce(scanner.run(" in inspect.getsource(cli.corpus._run_case)
     assert "enforce(scanner.run(" in inspect.getsource(cli.main)
+
+
+def test_the_corpus_harness_declares_service_hosts_to_the_http_client():
+    """D54: replayed scans get the same no-follow guarantee as live ones."""
+    from cli.corpus import _case_context
+
+    (case,) = [c for s, c in CASES if s == "domscout" and c["id"] == "real-nixi"]
+    scanner, target, ctx = _case_context("domscout", case)
+
+    assert ctx.http._service_hosts == scanner.service_hosts_for(target)
+    assert "rdap.nixiregistry.in" in ctx.http._service_hosts
+
+
+def test_every_scan_client_is_built_with_for_scan():
+    """Review of D54: scope and service hosts come from one declaration everywhere a
+    scan's client is built, so they cannot be wired apart."""
+    import inspect
+    import re
+
+    import cli.corpus
+    import cli.main
+    import corpus.generators.domscout
+    import corpus.generators.web
+
+    for module in (cli.main, cli.corpus, corpus.generators.domscout, corpus.generators.web):
+        source = inspect.getsource(module)
+        assert "HttpClient.for_scan(" in source
+        # Any direct construction, however it is assigned, defeats the pairing.
+        assert not re.search(r"\bHttpClient\(", source), module.__name__

@@ -154,7 +154,7 @@ def test_a_redirect_is_reported_as_a_redirect_never_parsed_as_a_body():
     (finding,) = _expiry_finding(result)
     assert finding.state == "inconclusive"
     assert "redirected to rdap.elsewhere.example" in finding.description
-    assert "may not contact" in finding.description
+    assert "a registry's redirect is never followed" in finding.description
     assert "expiration event" not in finding.description
 
 
@@ -290,11 +290,15 @@ def test_a_redirect_followed_to_another_in_scope_host_is_not_parsed():
         VERISIGN + "corpus-x.com": (302, "", {"location": target_url}),
         target_url: (200, _record("CORPUS-X.COM", 5), {}),
     }
-    result, _ = _scan("corpus-x.com", responses)
+    result, backend = _scan("corpus-x.com", responses)
 
     (finding,) = _expiry_finding(result)
     assert finding.state == "inconclusive"
-    assert "redirected to corpus-x.com, which is not the registry" in finding.description
+    # D54: the redirect is not followed, so the target is never fetched at all.
+    assert target_url not in backend.calls
+    assert "redirected to corpus-x.com; a registry's redirect is never followed" in (
+        finding.description
+    )
 
 
 def test_a_redirect_loop_on_the_registry_s_own_host_says_so():
@@ -302,7 +306,7 @@ def test_a_redirect_loop_on_the_registry_s_own_host_says_so():
     result, _ = _scan("corpus-x.com", {VERISIGN + "corpus-x.com": loop})
 
     (finding,) = _expiry_finding(result)
-    assert "kept redirecting within its own server" in finding.description
+    assert "redirected within its own server" in finding.description
 
 
 def test_a_missing_tld_cites_the_vendored_lookup_never_a_request():
@@ -373,3 +377,68 @@ def test_a_control_read_that_fails_keeps_the_record_out_of_evidence():
     (finding,) = _expiry_finding(result)
     assert finding.state == "inconclusive"
     assert "second read" in finding.description
+
+
+def test_a_crt_sh_redirect_is_reported_as_a_redirect_never_parsed():
+    """Review of D54, finding 2: a 3xx from crt.sh is not an empty CT log."""
+
+    class Redirecting(Backend):
+        def send(self, method, url, *, body_cap, **kwargs):
+            if url.startswith("https://crt.sh/"):
+                self.calls.append(url)
+                return RawHttpResponse(
+                    status_code=302,
+                    headers={"location": "https://elsewhere.example/"},
+                    text="[]",
+                    url=url,
+                    elapsed_ms=1,
+                )
+            return super().send(method, url, body_cap=body_cap, **kwargs)
+
+    backend = Redirecting({})
+    target = Asset(type="domain", value="corpus-x.test")
+    scope = Scope(
+        frozenset(Scope.for_target(target).hosts | DomscoutScanner.service_hosts_for(target))
+    )
+    ctx = ScanContext(
+        dns=DnsClient(
+            resolver=FakeResolver(_dns("corpus-x.test")), resolvers=["1.1.1.1", "8.8.8.8"]
+        ),
+        http=HttpClient(scope=scope, backend=backend),
+        scope=scope,
+    )
+    result = DomscoutScanner().run(target, "light", ctx)
+
+    (ct,) = [f for f in result.findings if f.check_id == "subdomains-ct-log"]
+    assert ct.state == "inconclusive"
+    assert "redirected" in ct.description
+    assert "could not be parsed" not in ct.description
+
+
+def test_a_relative_crt_sh_redirect_says_it_stayed_within_crt_sh():
+    class Relative(Backend):
+        def send(self, method, url, *, body_cap, **kwargs):
+            if url.startswith("https://crt.sh/"):
+                self.calls.append(url)
+                return RawHttpResponse(
+                    status_code=308,
+                    headers={"location": "/elsewhere"},
+                    text="",
+                    url=url,
+                    elapsed_ms=1,
+                )
+            return super().send(method, url, body_cap=body_cap, **kwargs)
+
+    target = Asset(type="domain", value="corpus-x.test")
+    ctx = ScanContext(
+        dns=DnsClient(
+            resolver=FakeResolver(_dns("corpus-x.test")), resolvers=["1.1.1.1", "8.8.8.8"]
+        ),
+        http=HttpClient.for_scan(
+            target, service_hosts=DomscoutScanner.service_hosts_for(target), backend=Relative({})
+        ),
+    )
+    result = DomscoutScanner().run(target, "light", ctx)
+
+    (ct,) = [f for f in result.findings if f.check_id == "subdomains-ct-log"]
+    assert "redirected within crt.sh" in ct.description

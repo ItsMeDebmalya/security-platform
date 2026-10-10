@@ -87,13 +87,11 @@ def _case_context(
     target = Asset(**case["target"])
     fixtures = ROOT / case["fixtures"]
     testssl_fixtures = case.get("testssl_fixtures")
-    # The HTTP scope is the target host unioned with the scanner's declared
-    # service hosts (crt.sh, rdap.org for domscout; empty for email/tls, so
-    # their scope is unchanged). The replay backend never touches the network;
+    # The HTTP scope is the target host unioned with the scanner's service hosts
+    # for this target (crt.sh and the target's registry for domscout; empty for
+    # email/tls), and those hosts never follow a redirect (`HttpClient.for_scan`,
+    # D54). The replay backend never touches the network;
     # a scanner that makes no HTTP request (email/tls) never exercises it.
-    http_scope = Scope(
-        frozenset(Scope.for_target(target).hosts | scanner.service_hosts_for(target))
-    )
     ctx = ScanContext(
         # A case may name its resolver order (primary first). Cases recorded
         # from real resolvers that disagreed use it to choose which answer is
@@ -102,7 +100,11 @@ def _case_context(
             resolver=ReplayResolver(fixtures),
             resolvers=list(case.get("resolvers") or ["1.1.1.1", "8.8.8.8"]),
         ),
-        http=HttpClient(scope=http_scope, backend=ReplayHttpBackend(fixtures)),
+        http=HttpClient.for_scan(
+            target,
+            service_hosts=scanner.service_hosts_for(target),
+            backend=ReplayHttpBackend(fixtures),
+        ),
         tls=TlsClient(scope=Scope.for_target(target), backend=ReplayTlsBackend(fixtures)),
         # D20: only cases that record legacy-cipher fixtures (`testssl_fixtures`
         # in targets/tls.yaml) get a working testssl client. Every other case -
