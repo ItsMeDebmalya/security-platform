@@ -1651,7 +1651,7 @@ The reviewer had no shared context and worked read-only on 37f9dd7. It called th
   - the `for_scan` pin test now refuses any direct `HttpClient(` construction, and the web generator uses `for_scan` too, with its scope unchanged;
   - a relative crt.sh redirect reads "redirected within crt.sh".
 - **Scanning a service host itself** (domscout on `crt.sh`) refuses a redirect to its own apex, which is conservative and harmless. No change.
-- **Short re-review requested** for these changes (test-first; 2097 tests pass; corpus and baselines unchanged).
+- **Round 3 at 6ffc347: CLEAN.** Probe G is closed and no legitimate flow breaks: `www` and the takeover candidates stay inside the target's own scope. Two cosmetic nits were then fixed without changing behaviour: a docstring order, and an ADR-031 qualifier, since a name under a service host that is also the target's own is followed, correctly. **PR #40 merged.**
 
 ## 2026-10-10 · Handoff: open items and where to start
 

@@ -304,12 +304,13 @@ class HttpClient:
     ) -> None:
         self._scope = scope
         self._service_hosts = frozenset(h.lower().rstrip(".") for h in service_hosts)
+        """ADR-031 (D54): a request to one of these never follows a redirect, so it
+        only ever reaches the host it was declared for, never the scanned site."""
         self._follow_scope = follow_scope or scope
         """Where a redirect may be followed. `for_scan` sets it to the target's own
         scope, so a target request is never followed to a service host or to a name
-        under one, whose answer would pass for the target's (review of D54, round 2)."""
-        """ADR-031 (D54): a request to one of these never follows a redirect, so it
-        only ever reaches the host it was declared for, never the scanned site."""
+        under one (unless that name is also the target's own), whose answer would
+        pass for the target's (review of D54, round 2)."""
         self._body_cap = body_cap
         self._cost = cost
         self._killswitch = killswitch
