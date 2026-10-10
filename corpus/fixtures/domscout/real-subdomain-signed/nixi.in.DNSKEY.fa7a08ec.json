@@ -1,0 +1,12 @@
+{
+  "flags": [],
+  "name": "nixi.in",
+  "rcode": "NOERROR",
+  "records": [
+    "256 3 8 AwEAAa+ry9rxR2NcPExNoL0QwCac2JVS 0WZk5VQxRgGvbmnIqS/hsS+M7Bymw5sM ElZAJY9unnTnNbkFUWoLpxdDEF4PcZTP xo3b4b7jv019fw416TMWD2G984weAgNv aTjm9tFknTzoXM3f3gRGGO0I3wMwp3FO tI5qY0YtX9fiqsOL",
+    "257 3 8 AwEAAZFnMtSdMEj7iiwG+mvOUdrS8yLJ 8AyJALhlGXy61uR9JRI1qaIVHo9xAzvD IZK2VwxfEb2E5nC9z0mQDOO7TNcf55hi Xzdb0HVw2HVd+u0o1EJLYMbxbuZ4vWe8 NRCz1t+ZlGPK1hVjX6un/grcVuTX3sPt RjA1qqI1PGYqR1D30I9PXuenYjfQCXDU WUwKVHAVhntLDb9GmxPJEDmP1UzWTQdh I2B864nRb0oSG3HnV912zNV8Ru4ApkJe 7xwr5yi1uKS+ZoANfS9i3PRR1zaVQRDZ Sm1ePQGTweouXRZ4rNytyAhjP+wFGIjL kVCNN9au708gW4pktIFkpUf1858="
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "DNSKEY",
+  "ttl": 300
+}

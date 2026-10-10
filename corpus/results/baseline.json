@@ -161,6 +161,19 @@
         "not_applicable": 0,
         "tier": "real_recorded",
         "tp": 0
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [],
+        "fn": 0,
+        "fp": 0,
+        "id": "real-subdomain-signed",
+        "inconclusive": 1,
+        "inconclusive_delivered": true,
+        "not_applicable": 0,
+        "tier": "real_recorded",
+        "tp": 0
       }
     ],
     "false_positives_on_known_good": 0,
@@ -172,8 +185,8 @@
       "recall_label": "absolute (the true set is knowable for this scanner)"
     },
     "overall": {
-      "cases": 12,
-      "checks_run": 54,
+      "cases": 13,
+      "checks_run": 60,
       "claims": {
         "derived": {
           "fp": 0,
@@ -189,11 +202,11 @@
       "false_positives_on_known_good": 0,
       "fn": 0,
       "fp": 0,
-      "inconclusive_rate": 0.018518518518518517,
+      "inconclusive_rate": 0.03333333333333333,
       "not_applicable": 18,
       "precision": 1.0,
       "recall": 1.0,
-      "suspected_rate": 0.05555555555555555,
+      "suspected_rate": 0.05,
       "tier": "all",
       "tp": 1
     },
@@ -228,8 +241,8 @@
         "tp": 0
       },
       "real_recorded": {
-        "cases": 3,
-        "checks_run": 18,
+        "cases": 4,
+        "checks_run": 24,
         "claims": {
           "derived": {
             "fp": 0,
@@ -245,7 +258,7 @@
         "false_positives_on_known_good": 0,
         "fn": 0,
         "fp": 0,
-        "inconclusive_rate": 0.05555555555555555,
+        "inconclusive_rate": 0.08333333333333333,
         "not_applicable": 0,
         "precision": null,
         "recall": null,

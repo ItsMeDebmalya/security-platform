@@ -344,3 +344,32 @@ def test_ldhname_whitespace_is_stripped():
     )
 
     assert [r.outcome for r in _runs(result, "domain-expiring")] == ["clear"]
+
+
+def test_a_control_read_that_fails_keeps_the_record_out_of_evidence():
+    """Review of D28, round 2: the second read is checked like the first."""
+
+    class Flaky(Backend):
+        def send(self, method, url, *, body_cap, **kwargs):
+            response = super().send(method, url, body_cap=body_cap, **kwargs)
+            if url == VERISIGN + "corpus-x.com" and self.calls.count(url) == 2:
+                return RawHttpResponse(status_code=503, headers={}, text="", url=url, elapsed_ms=1)
+            return response
+
+    backend = Flaky({VERISIGN + "corpus-x.com": (200, _record("CORPUS-X.COM", 5), {})})
+    target = Asset(type="domain", value="corpus-x.com")
+    scope = Scope(
+        frozenset(Scope.for_target(target).hosts | DomscoutScanner.service_hosts_for(target))
+    )
+    ctx = ScanContext(
+        dns=DnsClient(
+            resolver=FakeResolver(_dns("corpus-x.com")), resolvers=["1.1.1.1", "8.8.8.8"]
+        ),
+        http=HttpClient(scope=scope, backend=backend),
+        scope=scope,
+    )
+    result = DomscoutScanner().run(target, "light", ctx)
+
+    (finding,) = _expiry_finding(result)
+    assert finding.state == "inconclusive"
+    assert "second read" in finding.description

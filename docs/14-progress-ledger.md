@@ -827,7 +827,8 @@ They cluster, which matters more than the individual entries:
 | **D50** | Nit: the ancestor walk behind `dmarc-np-weaker` is not validated | Recorded 2026-10-09 (review of PR #17, N5). `_record_governs_made_up_subdomains` walks the ancestors through the primary resolver only. Those answers are neither re-read by validation nor added to the evidence. On a domain with more than 8 labels, the walk from `x.<domain>` would also shorten differently. Low reach: it only runs when a record's `np=` is weaker than its subdomain policy, which no screened domain has | `email` `dmarc-np-weaker` |
 | **D51** | **Before beta: tell customers that service hosts learn which domains we scan (DPDP-relevant)** | Recorded 2026-10-10 (operator, with ADR-031). crt.sh receives every target name in its query, and so will the TLD registry's RDAP server once D28 lands. That discloses to a third party that the domain is being examined, when, and from our address. ADR-031 states it as a confidentiality consideration. It is not yet in any customer-facing terms. **Owed before beta:** customer-facing wording in the terms or privacy notice, reviewed for India's DPDP Act. | Customer-facing terms; `api/` onboarding |
 | **D52** | **`secret-exposed` reports one wildcard DNS record once per name queried** | Recorded 2026-10-10 (canary runs). DuckDNS serves the canary TXT at every name under `sp-lab-7k3q.duckdns.org`. `email` queries the root, `_dmarc`, 18 DKIM selectors and the wildcard probe, and `core.exposure` reports each answer as its own exposed resource: **20 findings for one record**. Each is literally true (each name does serve the key), so no false claim and the check stays WORKING, but ADR-029 means one finding per exposure. The scan already knows the wildcard (its probe answered with the same TXT). Fixing it is a `core/` change (collapse answers equal to the wildcard probe's onto one resource), so it needs its own review. The contract test pins the count at 20 so a fix changes it on purpose. `domscout` is not affected: it reads only the root TXT | `core/exposure.py`; `email` |
-| **D53** | **`dnssec-status` makes a false claim on a subdomain target: it judges a name that is not a zone apex** | Found 2026-10-10 (D28 live runs). For `www.nixi.in` it reported "not signed" as `confirmed`, and for `www.example.com` as `suspected`, although both zones are signed (`nixi.in` has a DS and 2 DNSKEYs; `example.com` has a DS). The check queries DS and DNSKEY at the target name itself, and a name below the zone apex has neither. **A false claim on a live target, so `dnssec-status` is BROKEN until fixed** (SPEC's rule). The apex case is unaffected, and the corpus apexes and <operator domain A> were correct. **Fix (not done):** find the zone apex first (the SOA owner in the answer's authority section) and judge that zone, saying which zone was judged. A targeted change to `_check_dnssec`, with a recorded subdomain case. The `www.example.com` and `www.nixi.in` recordings were kept out of the corpus for this reason | `domscout` `dnssec-status` |
+| **D53** | **FIXED 2026-10-10 (domscout v1.3.1): BROKEN → WORKING.** The check now finds the zone the name belongs to (the nearest name holding a SOA; a CNAME is never an apex) and judges DS/DNSKEY there, naming the zone. `real-subdomain-signed` (www.nixi.in, re-recorded live) is the regression case; it failed on the original recording first. Was: **`dnssec-status` makes a false claim on a subdomain target: it judges a name that is not a zone apex** | Found 2026-10-10 (D28 live runs). For `www.nixi.in` it reported "not signed" as `confirmed`, and for `www.example.com` as `suspected`, although both zones are signed (`nixi.in` has a DS and 2 DNSKEYs; `example.com` has a DS). The check queries DS and DNSKEY at the target name itself, and a name below the zone apex has neither. **A false claim on a live target, so `dnssec-status` is BROKEN until fixed** (SPEC's rule). The apex case is unaffected, and the corpus apexes and <operator domain A> were correct. **Fix (not done):** find the zone apex first (the SOA owner in the answer's authority section) and judge that zone, saying which zone was judged. A targeted change to `_check_dnssec`, with a recorded subdomain case. The `www.example.com` and `www.nixi.in` recordings were kept out of the corpus for this reason | `domscout` `dnssec-status` |
+| **D54** | **A registry's redirect can make `HttpClient` send requests to the target** | Recorded 2026-10-10 (review of D28, round 2). `HttpClient` follows a redirect to any in-scope host, and a scan's scope includes the target. So if a registry's RDAP server redirected to the target, the target would be fetched (twice: test and control) before domscout sees the response. **Nothing it serves is parsed** (D28 checks the final host), but it contradicts "RDAP lookups never go to the target". Not seen live, since registries do not redirect to customers' hosts. **Fix (not done):** a no-follow option for service-host requests in `core/http.py`, which needs its own review | `core/http.py`; domscout `_check_expiry` |
 | **D-W1** | Cookie checks and cookie-name fingerprints for `web` | Deferred from Tool 4a. Blocked on D21: they need value-only `Set-Cookie` redaction and multi-value header preservation in `core/evidence.py`, a core change with its own review. Real-world evidence that the gap matters: `testasp`/`testaspnet.vulnweb.com` set session cookies without `Secure`, and Mozilla Observatory docked 40 points for it (2026-10-07), while `web` said nothing | Cookie-flag findings; cookie-name technology fingerprints |
 | **D-W2** | A frozen real challenge-page recording for `web` | Real-world evidence is recorded in the 2026-10-07 checkpoint-1 section (`www.ox.ac.uk` Cloudflare challenge; `www.tesla.com`, `www.fda.gov`, `www.usda.gov` Akamai blocks). Not frozen as corpus fixtures because they are third-party pages, and a hand-written lab page would encode our assumptions. Needs a challenge recorded from an operator-controlled CDN. Until then the `waf_block` path is unit-tested only | A corpus-level proof of the `waf_block` path |
 | **D-W3** | Re-review `web`'s fingerprint and EOL data every 180 days | Vendor dates and fingerprint strings go stale. CI enforces the cadence through the freshness check in `tests/scanners/web/test_data.py`; the re-review itself is a manual, sourced task | Stale EOL claims |
@@ -1519,6 +1520,19 @@ Operator-approved. The design choices were the operator's: a new field beside `r
 - **Tests:** the ADR-032 model, schema and measurement tests were written first and failed. The domscout expiry tests were written alongside the code, not before it.
 - **Needs the independent review before merge** (`core/` and `contracts/` change), together with D28.
 
+## 2026-10-10 · D53 fixed (domscout v1.3.1)
+
+- **Cause, as the operator suspected:** `_check_dnssec` queried DS and DNSKEY at the exact name scanned. DS records exist only at delegations, so a name inside a signed zone has none of its own, and `www.nixi.in` was claimed "not signed" at `confirmed`.
+- **Fix (domscout only, no `core/` change):** `_zone_apex` walks up from the target to the nearest name with a SOA record.
+  - A name with a CNAME is skipped: it cannot be an apex, and dnspython follows the CNAME, so its SOA would be the target zone's.
+  - A walk that cannot finish is `inconclusive`.
+  - DS, DNSKEY and the second-resolver validation are read at that zone. A finding on a subdomain says "<name> is in the zone <zone>, which ...".
+  - For an apex target the path is unchanged and reuses the CNAME and SOA it already read.
+- **Test-first:** five tests failed before the fix, the real-recording case among them, failing on the false `dnssec-status` finding. Four are synthetic: signed zone, unsigned zone named, CNAME never an apex, walk inconclusive.
+- **The fixed scanner asks about `nixi.in`, so the real case was re-recorded live.** It is clear. Checked with dig at 1.1.1.1: `nixi.in` has a SOA, no CNAME, DS 31765 8 2, and DNSKEYs.
+- **Corpus:** domscout has 60 checks and 3.3% inconclusive (crt.sh's real 502 on both `.in` cases), and passes. The baseline was updated for that rise.
+- **Status:** `dnssec-status` goes from BROKEN back to WORKING: the apex positive (live, earlier) stands, and the subdomain false claim is fixed and live-verified. **Standing figure: 68 checks, 42 WORKING, 0 BROKEN, 26 UNDETERMINED; 38% (26 of 68) without evidence that they work.**
+
 ## 2026-10-10 · Company domains replaced by placeholders (docs only)
 
 - The operator's company domains are named in SPEC.md and this ledger as `<operator domain A>`, `<operator domain B>` and `<operator domain C>`, the same way the ERP host is `<operator ERP host>`. Current files only; history is not rewritten.
@@ -1548,6 +1562,17 @@ The reviewer had no shared context and worked read-only on the PR head (d4d441a)
 - Each finding has a test. 2063 tests pass, and the corpus and baseline are unchanged.
 - **Re-review requested.**
 
+## 2026-10-10 · Review of D28, round 2: CLEAN; PR #35 merged; the nits
+
+- **Re-review at e40477b: CLEAN.** All ten round-1 findings were verified fixed by the same reviewer, re-running its probe tests. **PR #35 was merged at exactly that head** (`--match-head-commit`). The reviewer could not check whether the vendored bootstrap is byte-identical to IANA's file; `cmp` against a fresh fetch (2026-10-10) shows it is.
+- **Its six nits, handled on the D53 branch:**
+  - the SPEC A4 table row was stale (v1.2.0, 58 checks): fixed;
+  - ADR-031 claimed the title names the registered domain; it is the fixed check title, so the ADR is reworded;
+  - the control (second) read is now validated like the first: a failing or redirected control keeps the record out of a finding (test-first);
+  - "`scan run` would print a traceback on an `enforce` failure" did not hold: both `scan run` (`except ValueError`) and `scan verify` (`except Exception`, never closes) handle it, and now have tests;
+  - a redirect could make `HttpClient` fetch the target: ledgered as **D54** (needs a `core/http.py` change);
+  - the `eap.arpa` entry was taken directly from IANA's registry XML (RFC 9965).
+
 ## 2026-10-10 · Handoff: open items and where to start
 
 *For a new session with no chat history. State as of PR #32, with the operator's decisions of 2026-10-10 below. Each item links to where it is owned.*
@@ -1573,7 +1598,7 @@ The reviewer had no shared context and worked read-only on the PR head (d4d441a)
 
 **Versions:** email 1.5.0, tls 1.4.0, domscout 1.2.0, web 1.0.5.
 
-**Standing figure** (owned by SPEC.md): 68 checks, 41 WORKING, 1 BROKEN (`dnssec-status`, D53), 26 UNDETERMINED. **40% (27 of 68) have no evidence they work** (after the canary runs and D28).
+**Standing figure** (owned by SPEC.md): 68 checks, 42 WORKING, 0 BROKEN, 26 UNDETERMINED. **38% (26 of 68) have no evidence they work** (after the canary runs, D28 and D53).
 
 | Item | Status | Blocked on | Where |
 |---|---|---|---|
@@ -1609,7 +1634,7 @@ The reviewer had no shared context and worked read-only on the PR head (d4d441a)
   - Record the corpus cases from the DuckDNS and Pages runs only.
   - Tell the operator to clear the records.
 
-**Where to start:** read CLAUDE.md, then this table. **D28 and ADR-032 are implemented and await their independent review** (entry above). After that: D53 (`dnssec-status` on subdomains, BROKEN), then D52 (wildcard over-reporting in `secret-exposed`). The corpus canary runs are done.
+**Where to start:** read CLAUDE.md, then this table. **D28 and ADR-032 are implemented and await their independent review** (entry above). D53 is fixed on `fix/d53-dnssec-zone-apex` (stacked on D28). Next: D52 (wildcard over-reporting in `secret-exposed`). The corpus canary runs are done.
 
 ## Next (historical; superseded by the handoff above)
 

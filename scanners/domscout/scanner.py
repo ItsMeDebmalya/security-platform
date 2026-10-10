@@ -65,7 +65,7 @@ NO_VERDICT_FOR_RCODE = {
 @register
 class DomscoutScanner(BaseScanner):
     name = "domscout"
-    version = "1.3.0"
+    version = "1.3.1"
     supported_modes = frozenset({"light"})
     target_types = frozenset({"domain"})
     service_hosts = SERVICE_HOSTS
@@ -394,14 +394,57 @@ class _Scan:
 
     # --- DNSSEC -------------------------------------------------------------
 
+    def _zone_apex(self) -> tuple[str | None, DnsResponse | None]:
+        """The zone `self.domain` belongs to: the nearest name, itself or above,
+        that holds a SOA record. Returns (apex, None), or (None, the answer that
+        stopped the walk).
+
+        D53: DS records exist only at delegations, so a name inside a signed
+        zone has none of its own. A name with a CNAME is never an apex (a CNAME
+        cannot sit beside a SOA), and dnspython follows the CNAME, so its SOA
+        answer would be the target zone's."""
+        labels = self.domain.split(".")
+        for i in range(len(labels)):
+            name = ".".join(labels[i:])
+            own = name == self.domain
+            cname = self.resolved[name].cname if own else self.dns.query(name, "CNAME")
+            if not cname.is_definite():
+                return None, cname
+            if cname.records:
+                continue
+            soa = self.apex_soa if own else self.dns.query(name, "SOA")
+            if not soa.is_definite():
+                return None, soa
+            if soa.records:
+                return name, None
+        return None, None
+
     def _check_dnssec(self) -> None:
-        ds = self.dns.query(self.domain, "DS")
-        dnskey = self.dns.query(self.domain, "DNSKEY")
+        zone, stopped = self._zone_apex()
+        if zone is None:
+            stopped = stopped or self.apex_soa
+            self._inconclusive(
+                "dnssec-status",
+                answer=stopped,
+                description=(
+                    f"The zone {self.domain} belongs to could not be found: the "
+                    f"{stopped.rrtype} lookup for {stopped.name} did not return a definite "
+                    "answer, so DNSSEC delegation state could not be determined."
+                ),
+            )
+            return
+        # How the finding names what was judged: the target, or the zone it is in.
+        subject = (
+            self.domain if zone == self.domain else f"{self.domain} is in the zone {zone}, which"
+        )
+
+        ds = self.dns.query(zone, "DS")
+        dnskey = self.dns.query(zone, "DNSKEY")
         state = dnssec.dnssec_state(ds, dnskey)
 
         evidence = [
             dns_evidence(
-                label=f"DS at {self.domain}, DNSKEY at {self.domain}",
+                label=f"DS at {zone}, DNSKEY at {zone}",
                 test=ds,
                 control=dnskey,
                 control_rationale=(
@@ -417,7 +460,7 @@ class _Scan:
                 "dnssec-status",
                 answer=ds if not ds.is_definite() else dnskey,
                 description=(
-                    f"The DS or DNSKEY lookup for {self.domain} did not return a definite "
+                    f"The DS or DNSKEY lookup for {zone} did not return a definite "
                     "answer, so DNSSEC delegation state could not be determined."
                 ),
             )
@@ -432,15 +475,16 @@ class _Scan:
         # merely suspected — the one domscout finding that earns a validated
         # claim (the email pattern). A resolver that strips DNSSEC records
         # would disagree here, which is exactly what validation is for.
-        validation = self._validate_dnssec(state)
+        validation = self._validate_dnssec(state, zone)
 
         description = {
             "insecure": (
-                f"{self.domain} publishes no DS record at the parent and no DNSKEY at the "
+                f"{subject} publishes no DS record at the parent and no DNSKEY at the "
                 "child — the zone is not signed with DNSSEC."
             ),
             "bogus": (
-                f"The parent zone delegates trust to a DS record for {self.domain}, but the "
+                (f"{self.domain} is in the zone {zone}. " if zone != self.domain else "")
+                + f"The parent zone delegates trust to a DS record for {zone}, but the "
                 "zone serves no DNSKEY — a broken delegation, not merely an unsigned zone."
             ),
         }[state]
@@ -474,7 +518,7 @@ class _Scan:
             validation=validation,
         )
 
-    def _validate_dnssec(self, state: str) -> dict[str, Any]:
+    def _validate_dnssec(self, state: str, zone: str) -> dict[str, Any]:
         """Re-query DS/DNSKEY through an independent resolver.
 
         Passed only when the second resolver reaches the same reported state.
@@ -488,8 +532,8 @@ class _Scan:
                 "outcome": "unavailable",
                 "method": "second_resolver_dnssec",
             }
-        ds = self.dns.query(self.domain, "DS", resolver=second)
-        dnskey = self.dns.query(self.domain, "DNSKEY", resolver=second)
+        ds = self.dns.query(zone, "DS", resolver=second)
+        dnskey = self.dns.query(zone, "DNSKEY", resolver=second)
         agreed = dnssec.dnssec_state(ds, dnskey) == state
         return {
             "attempted": True,
@@ -625,6 +669,19 @@ class _Scan:
                 f"{test_response.status_code} for {self.domain}, not a record.",
                 test_response,
                 "rate_limited" if test_response.status_code == 429 else "blocked_prerequisite",
+            )
+            return
+
+        # The control (the second read) goes into the evidence pair, so it is held
+        # to the same standard as the first (review of D28, round 2).
+        control_host = urlsplit(control_response.url).hostname
+        if control_response.status_code != 200 or control_host != host:
+            unread(
+                f"The registry's RDAP server ({host}) served the record once, but the "
+                f"second read returned HTTP {control_response.status_code}"
+                + (f" from {control_host}" if control_host != host else "")
+                + ", so the record is not used.",
+                test_response,
             )
             return
 

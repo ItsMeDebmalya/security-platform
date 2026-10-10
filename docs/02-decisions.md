@@ -854,7 +854,7 @@ In both cases the parser, the scope rule and the gate each did their job. The ga
   - A date is attributed only when `ldhName` is the target or a registered domain above it.
   - A record with **no `ldhName`** is `inconclusive`. It is never assumed to be about the target.
   - A record naming **a TLD** (a bootstrap entry) is `inconclusive`. **Known limit:** a public suffix below the TLD, such as `co.in`, cannot be told apart from a registered domain without the Public Suffix List (D49).
-  - **The registered domain is structured, not only prose.** On a subdomain target the finding's location is `registration:<domain>`, and `related_assets` carries it with relation `registered_domain`. Title, description, impact and remediation all name the registered domain, and the description says the subdomain is not registered on its own.
+  - **The registered domain is structured, not only prose.** On a subdomain target the finding's location is `registration:<domain>`, and `related_assets` carries it with relation `registered_domain`. Description, impact and remediation all name the registered domain, and the description says the subdomain is not registered on its own. The title stays the check's fixed title, "Domain registration expires soon", and the location carries the domain.
   - A `400` or `404` is `inconclusive`, worded as "no registration for", with the PSL gap (D49) named.
   - Any final response from a host other than the registry is a redirect and is never parsed, including one `HttpClient` followed to the target itself. So is any non-`200` status.
   - A missing TLD is evidenced as a lookup in the vendored file (method `NONE`), never as a request that was not sent. An `http://`-only entry (kg, mg) is said to be one.
