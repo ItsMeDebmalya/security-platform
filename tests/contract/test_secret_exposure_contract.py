@@ -217,3 +217,37 @@ def test_the_positive_corpus_cases_fire_secret_exposed(scanner, case_id, locatio
     exposed = [f for f in result.findings if f.check_id == "secret-exposed"]
     assert [f.location for f in exposed] == [location]
     assert "AKIAIOSFODNN7EXAMPLE" not in result.model_dump_json()
+
+
+# --- canaries, recorded live from the operator's test names (2026-10-10) ------------
+
+
+def test_the_dns_canary_fires_secret_exposed_at_its_txt_record():
+    """sp-lab-7k3q.duckdns.org's TXT holds AWS's example key, through real resolvers.
+
+    DuckDNS serves that TXT at every name under the label, so each DKIM selector,
+    `_dmarc` and the wildcard probe answer with it too. Today each is reported:
+    D52, one wildcard record reported once per name queried. The count is pinned
+    so a fix for D52 changes it on purpose."""
+    from cli.corpus import _run_case
+
+    (case,) = [c for s, c in CASES if s == "email" and c["id"] == "canary-duckdns"]
+    result = _run_case("email", case)
+
+    locations = [f.location for f in result.findings if f.check_id == "secret-exposed"]
+    assert "dns:sp-lab-7k3q.duckdns.org/TXT" in locations
+    assert len(locations) == 20  # D52
+    assert {f.state for f in result.findings if f.check_id == "secret-exposed"} == {"suspected"}
+    assert "AKIAIOSFODNN7EXAMPLE" not in result.model_dump_json()
+
+
+def test_the_pages_canary_fires_web_secret_in_response_once():
+    from cli.corpus import _run_case
+
+    (case,) = [c for s, c in CASES if s == "web" and c["id"] == "canary-pages"]
+    result = _run_case("web", case)
+
+    secret = [f for f in result.findings if f.check_id == "web-secret-in-response"]
+    assert [(f.location, f.state) for f in secret] == [("/sp-canary/", "suspected")]
+    assert "secret-exposed" not in [f.check_id for f in result.findings]
+    assert "AKIAIOSFODNN7EXAMPLE" not in result.model_dump_json()

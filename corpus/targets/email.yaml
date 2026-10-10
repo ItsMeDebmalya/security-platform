@@ -202,3 +202,16 @@ cases:
     target: { type: domain, value: grafana.com }
     fixtures: corpus/fixtures/email/real-test-mode
 
+
+  # ADR-029 canary (corpus policy, 2026-10-10): the operator's DuckDNS test name
+  # holds one TXT record with AWS's documented example key. Recorded live
+  # 2026-10-10 (email v1.5.0, Light) through 1.1.1.1 and 8.8.8.8, and
+  # hand-verified with dig at both. DuckDNS serves that TXT at every name under
+  # the label (a wildcard), so every DKIM selector and _dmarc answers with it.
+  # The tree walk also reads _dmarc.duckdns.org and _dmarc.org (both empty).
+  - id: canary-duckdns
+    tier: real_recorded
+    source: recorded
+    mode: light
+    target: { type: domain, value: sp-lab-7k3q.duckdns.org }
+    fixtures: corpus/fixtures/email/canary-duckdns

@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "sp-lab-7k3q.duckdns.org",
+  "rcode": "NOERROR",
+  "records": [
+    "50 sp-lab-7k3q.duckdns.org."
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "MX",
+  "ttl": 600
+}

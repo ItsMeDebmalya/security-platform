@@ -20,3 +20,7 @@ cases:
   - {id: eol, tier: vulnerable, source: frozen, mode: light, target: {type: domain, value: eol.web.test}, fixtures: corpus/fixtures/web/eol}
   - {id: django-debug, tier: vulnerable, source: frozen, mode: light, target: {type: domain, value: django-debug.web.test}, fixtures: corpus/fixtures/web/django-debug}
   - {id: pytrace, tier: vulnerable, source: frozen, mode: light, target: {type: domain, value: pytrace.web.test}, fixtures: corpus/fixtures/web/pytrace}
+  # ADR-029 canary: the operator's GitHub Pages site, holding AWS's documented
+  # example key in an inline script. Recorded live 2026-10-10 (web v1.0.5) and
+  # hand-verified with curl. Not from the lab, so web.py never regenerates it.
+  - {id: canary-pages, tier: real_recorded, source: recorded, mode: light, target: {type: url, value: "https://itsmedebmalya.github.io/sp-canary/"}, fixtures: corpus/fixtures/web/canary-pages}
