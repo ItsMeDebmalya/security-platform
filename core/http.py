@@ -288,6 +288,7 @@ class HttpClient:
         self,
         *,
         scope: Scope,
+        service_hosts: frozenset[str] = frozenset(),
         transport: httpx.BaseTransport | None = None,
         backend: HttpBackend | None = None,
         user_agent: str = DEFAULT_USER_AGENT,
@@ -300,6 +301,9 @@ class HttpClient:
         org_id: str = "org_internal",
     ) -> None:
         self._scope = scope
+        self._service_hosts = frozenset(h.lower() for h in service_hosts)
+        """ADR-031 (D54): a request to one of these never follows a redirect, so it
+        only ever reaches the host it was declared for, never the scanned site."""
         self._body_cap = body_cap
         self._cost = cost
         self._killswitch = killswitch
@@ -315,14 +319,22 @@ class HttpClient:
             transport=transport, user_agent=user_agent, timeout_s=timeout_s
         )
 
-    def get(self, url: str, **kwargs: Any) -> CapturedResponse:
-        return self.request("GET", url, **kwargs)
+    def get(self, url: str, *, follow_redirects: bool = True, **kwargs: Any) -> CapturedResponse:
+        return self.request("GET", url, follow_redirects=follow_redirects, **kwargs)
 
-    def request(self, method: str, url: str, **kwargs: Any) -> CapturedResponse:
+    def request(
+        self, method: str, url: str, *, follow_redirects: bool = True, **kwargs: Any
+    ) -> CapturedResponse:
+        # D54: a declared service host's redirect is returned, never followed, so
+        # a registry's RDAP server cannot send our request to the scanned site.
+        if self._is_service_host(httpx.URL(url).host):
+            follow_redirects = False
         for _ in range(MAX_REDIRECTS):
             response = self._send_once(method, url, **kwargs)
             location = response.headers.get("location")
             if response.status_code not in (301, 302, 303, 307, 308) or not location:
+                return response
+            if not follow_redirects:
                 return response
 
             target = str(httpx.URL(response.url).join(location))
@@ -333,6 +345,10 @@ class HttpClient:
                 return response
             url, method = target, "GET" if response.status_code == 303 else method
         return response
+
+    def _is_service_host(self, host: str) -> bool:
+        host = host.lower().rstrip(".")
+        return any(host == h or host.endswith("." + h) for h in self._service_hosts)
 
     def _send_once(self, method: str, url: str, **kwargs: Any) -> CapturedResponse:
         host = httpx.URL(url).host

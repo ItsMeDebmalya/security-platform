@@ -102,7 +102,11 @@ def _case_context(
             resolver=ReplayResolver(fixtures),
             resolvers=list(case.get("resolvers") or ["1.1.1.1", "8.8.8.8"]),
         ),
-        http=HttpClient(scope=http_scope, backend=ReplayHttpBackend(fixtures)),
+        http=HttpClient(
+            scope=http_scope,
+            service_hosts=scanner.service_hosts_for(target),
+            backend=ReplayHttpBackend(fixtures),
+        ),
         tls=TlsClient(scope=Scope.for_target(target), backend=ReplayTlsBackend(fixtures)),
         # D20: only cases that record legacy-cipher fixtures (`testssl_fixtures`
         # in targets/tls.yaml) get a working testssl client. Every other case -

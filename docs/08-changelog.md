@@ -571,3 +571,12 @@ Then restore the entry-point lines in `CLAUDE.md` and `SPEC.md`, and the revert 
 
 **Revert.** Revert the merge commit. A subdomain target is then judged by its own DS and DNSKEY again, which it never has, so the false "not signed" claim comes back.
 
+## v4.0-pre.17 — D54: service-host requests never follow redirects (ADR-031 amended); domscout v1.3.2 (2026-10-10)
+
+**What changed.**
+- `core/http.py`: `HttpClient` takes `service_hosts`, and a request to one of them never follows a redirect. `request()`/`get()` take `follow_redirects` (default `True`, so target requests behave as before).
+- `cli/main.py`, `cli/corpus.py` and the domscout generator pass `scanner.service_hosts_for(target)`. domscout passes `follow_redirects=False` on its RDAP and crt.sh calls.
+- A registry's redirect is reported as never followed. The corpus is unchanged.
+
+**Revert.** Revert the merge commit. A registry's redirect to an in-scope host, such as the scanned site, is then followed again, though never parsed (D28).
+

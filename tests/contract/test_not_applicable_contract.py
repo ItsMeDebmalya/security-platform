@@ -111,3 +111,14 @@ def test_both_result_producers_call_enforce():
 
     assert "enforce(scanner.run(" in inspect.getsource(cli.corpus._run_case)
     assert "enforce(scanner.run(" in inspect.getsource(cli.main)
+
+
+def test_the_corpus_harness_declares_service_hosts_to_the_http_client():
+    """D54: replayed scans get the same no-follow guarantee as live ones."""
+    from cli.corpus import _case_context
+
+    (case,) = [c for s, c in CASES if s == "domscout" and c["id"] == "real-nixi"]
+    scanner, target, ctx = _case_context("domscout", case)
+
+    assert ctx.http._service_hosts == scanner.service_hosts_for(target)
+    assert "rdap.nixiregistry.in" in ctx.http._service_hosts

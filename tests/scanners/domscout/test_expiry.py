@@ -154,7 +154,7 @@ def test_a_redirect_is_reported_as_a_redirect_never_parsed_as_a_body():
     (finding,) = _expiry_finding(result)
     assert finding.state == "inconclusive"
     assert "redirected to rdap.elsewhere.example" in finding.description
-    assert "may not contact" in finding.description
+    assert "a registry's redirect is never followed" in finding.description
     assert "expiration event" not in finding.description
 
 
@@ -290,11 +290,15 @@ def test_a_redirect_followed_to_another_in_scope_host_is_not_parsed():
         VERISIGN + "corpus-x.com": (302, "", {"location": target_url}),
         target_url: (200, _record("CORPUS-X.COM", 5), {}),
     }
-    result, _ = _scan("corpus-x.com", responses)
+    result, backend = _scan("corpus-x.com", responses)
 
     (finding,) = _expiry_finding(result)
     assert finding.state == "inconclusive"
-    assert "redirected to corpus-x.com, which is not the registry" in finding.description
+    # D54: the redirect is not followed, so the target is never fetched at all.
+    assert target_url not in backend.calls
+    assert "redirected to corpus-x.com; a registry's redirect is never followed" in (
+        finding.description
+    )
 
 
 def test_a_redirect_loop_on_the_registry_s_own_host_says_so():
@@ -302,7 +306,7 @@ def test_a_redirect_loop_on_the_registry_s_own_host_says_so():
     result, _ = _scan("corpus-x.com", {VERISIGN + "corpus-x.com": loop})
 
     (finding,) = _expiry_finding(result)
-    assert "kept redirecting within its own server" in finding.description
+    assert "redirected within its own server" in finding.description
 
 
 def test_a_missing_tld_cites_the_vendored_lookup_never_a_request():

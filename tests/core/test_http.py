@@ -137,3 +137,76 @@ def test_a_captured_response_is_ready_to_become_evidence():
 
     assert captured["status"] == 200
     assert captured["headers"]["set-cookie"] == "[redacted]"
+
+
+# --- D54: a service-host request reaches only the declared host ------------------
+
+REGISTRY = "rdap.registry.example"
+WITH_SERVICE = Scope(frozenset(SCOPE.hosts | {REGISTRY}))
+
+
+def _recording(sent: list[str], answers):
+    def handler(request):
+        sent.append(str(request.url))
+        return answers(request)
+
+    return handler
+
+
+def test_a_service_host_redirect_to_the_target_is_never_followed():
+    """ADR-031: a registry's redirect must never send a request to the scanned site."""
+    sent: list[str] = []
+
+    def answers(request):
+        if request.url.host == REGISTRY:
+            return httpx.Response(302, headers={"location": "https://example.com/rdap"})
+        return httpx.Response(200, text="the target's own page")
+
+    client = _client(
+        _recording(sent, answers), scope=WITH_SERVICE, service_hosts=frozenset({REGISTRY})
+    )
+    response = client.get(f"https://{REGISTRY}/domain/example.com")
+
+    assert response.status_code == 302
+    assert sent == [f"https://{REGISTRY}/domain/example.com"]
+
+
+def test_a_service_host_redirect_within_its_own_host_is_not_followed_either():
+    sent: list[str] = []
+
+    def answers(request):
+        return httpx.Response(302, headers={"location": f"https://{REGISTRY}/elsewhere"})
+
+    client = _client(
+        _recording(sent, answers), scope=WITH_SERVICE, service_hosts=frozenset({REGISTRY})
+    )
+
+    assert client.get(f"https://{REGISTRY}/domain/x").status_code == 302
+    assert len(sent) == 1
+
+
+def test_follow_redirects_false_returns_the_redirect_itself():
+    sent: list[str] = []
+
+    def answers(request):
+        if request.url.path == "/start":
+            return httpx.Response(302, headers={"location": "https://example.com/end"})
+        return httpx.Response(200, text="arrived")
+
+    response = _client(_recording(sent, answers)).get(
+        "https://example.com/start", follow_redirects=False
+    )
+
+    assert response.status_code == 302
+    assert sent == ["https://example.com/start"]
+
+
+def test_target_requests_still_follow_in_scope_redirects_with_service_hosts_declared():
+    def handler(request):
+        if request.url.path == "/start":
+            return httpx.Response(302, headers={"location": "https://example.com/end"})
+        return httpx.Response(200, text="arrived")
+
+    client = _client(handler, scope=WITH_SERVICE, service_hosts=frozenset({REGISTRY}))
+
+    assert client.get("https://example.com/start").text == "arrived"

@@ -517,6 +517,8 @@ def _execute(
             scope=Scope(
                 frozenset(Scope.for_target(target).hosts | scanner.service_hosts_for(target))
             ),
+            # D54: requests to these never follow a redirect (ADR-031).
+            service_hosts=scanner.service_hosts_for(target),
             ratelimit=target_limit,
             backend=http_backend,
         ),

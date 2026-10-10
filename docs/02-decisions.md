@@ -831,6 +831,7 @@ In both cases the parser, the scope rule and the gate each did their job. The ga
    - A server that has moved fails to fetch, or redirects out of scope. Either way, no expiry is read.
    - A stale entry can never make us assert an expiry date that the registry did not serve.
 5. **An unfollowed redirect is reported as what happened**, never parsed as a body: "the registry's RDAP server redirected to `<host>`, which this scan may not contact, so expiry was not read".
+   - **Amended (D54, operator, 2026-10-10): service-host requests never follow redirects.** A service-host request only ever reaches the host it was declared for. `HttpClient` takes the scan's `service_hosts`, and a request to one of them returns its redirect instead of following it, even to a host the scan may otherwise contact, such as the scanned site itself. `request()` also takes an explicit `follow_redirects=False`, which domscout passes on every RDAP and crt.sh call. A registry's redirect is reported as "redirected to `<host>`; a registry's redirect is never followed".
 6. **Service-host content is not target-served content.** ADR-029's exposure rule is unchanged.
 7. **A fixture standing in for a service must be recorded, not invented** (ADR-027).
 
