@@ -208,7 +208,7 @@ printf 'google.com\nmicrosoft.com\npaypal.com\npython.org\ngo.dev\nnpmjs.com\n' 
 
 ```bash
 # your own infrastructure, where the real findings are
-uv run scan run email --target kinetrix.in --mode standard
+uv run scan run email --target <operator domain B> --mode standard
 uv run scan run tls   --target https://your-host.example --mode standard
 ```
 
@@ -232,7 +232,7 @@ Today that is three TLS checks; email has none. Light needs nothing at all.
 # you cannot publish DNS (Cloudflare zone managed elsewhere): attest instead
 ./scripts/authorise-domain.sh --self-owned \
   "owned and operated by us; DNS managed outside our direct control" \
-  codez.in <operator ERP host> kinetrix.in
+  <operator domain A> <operator ERP host> <operator domain B>
 
 ./scripts/authorise-domain.sh --check example.com   # 5-second feedback loop
 ```

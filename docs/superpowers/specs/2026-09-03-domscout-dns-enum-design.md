@@ -250,8 +250,8 @@ This is the only `core/` edit; scanner logic lives entirely in `scanners/domscou
   is built from public first-party "no site here" strings and public advisories, not copied from a
   GPL tool's database.
 
-**Live verification (ADR-017), before done:** run against `codez.in`, `kinetrix.in`,
-`kinetrix.co.in` (operator-owned, so authorisation-clean) and hand-verify. Add a DNSSEC-signed
+**Live verification (ADR-017), before done:** run against `<operator domain A>`, `<operator domain B>`,
+`<operator domain C>` (operator-owned, so authorisation-clean) and hand-verify. Add a DNSSEC-signed
 reference domain (e.g. `internet.nl`) for the finite checks, which have knowable answers there. The
 corpus proves regression, not correctness — six real defects have survived corpora at 1.000; a
 competitor found the eighth.

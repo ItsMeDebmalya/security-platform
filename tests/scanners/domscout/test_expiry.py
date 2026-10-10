@@ -89,7 +89,7 @@ def _record(name: str | None, days: int | None) -> str:
         ("amazon.in", {"crt.sh", "rdap.nixiregistry.in"}),
         ("example.com", {"crt.sh", "rdap.verisign.com"}),
         ("corpus-x.test", {"crt.sh"}),
-        ("codez.io", {"crt.sh"}),
+        ("corpus-x.io", {"crt.sh"}),
     ],
 )
 def test_service_hosts_are_crt_sh_plus_only_the_target_s_own_registry(domain, hosts):
@@ -168,7 +168,7 @@ def test_a_name_the_registry_does_not_hold_says_so_and_names_the_psl_gap():
 
 
 def test_a_tld_missing_from_the_bootstrap_sends_no_request_and_is_inconclusive():
-    result, backend = _scan("codez.io")
+    result, backend = _scan("corpus-x.io")
 
     (finding,) = _expiry_finding(result)
     assert finding.state == "inconclusive"
@@ -307,7 +307,7 @@ def test_a_redirect_loop_on_the_registry_s_own_host_says_so():
 
 def test_a_missing_tld_cites_the_vendored_lookup_never_a_request():
     """Finding 6: nothing was fetched, and the evidence must not say otherwise."""
-    result, _ = _scan("codez.io")
+    result, _ = _scan("corpus-x.io")
 
     (finding,) = _expiry_finding(result)
     request = finding.evidence[0].test.request

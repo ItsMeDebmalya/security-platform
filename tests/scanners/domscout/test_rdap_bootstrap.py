@@ -56,7 +56,7 @@ def test_the_longest_suffix_wins(monkeypatch):
     assert rb.rdap_base("amazon.in") == "https://a.example/"
 
 
-@pytest.mark.parametrize("name", ["codez.io", "हिंदी.भारत", "தமிழ்.இந்தியா", "nothing.arpa"])
+@pytest.mark.parametrize("name", ["corpus-x.io", "हिंदी.भारत", "தமிழ்.இந்தியா", "nothing.arpa"])
 def test_a_tld_missing_from_the_bootstrap_has_no_server(name):
     """Seen 2026-10-10: `.io` and NIXI's IDN TLDs are not in IANA's bootstrap."""
     assert rb.rdap_base(name) is None
