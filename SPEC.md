@@ -407,7 +407,7 @@ Verified against the repo and `make corpus` (2026-10-07) — see the run at the 
 | A1 Website Scanner | **A1 Light (4a, `web` v1.0.5) shipped — live-verified; Standard not built; 4b (AI exposure) next** | **Light:** precision ≥0.95, recall ≥0.85 (corpus-relative), inconc ≤0.15. **Standard:** precision ≥0.90 (`confirmed`≥0.98), recall ≥0.75 (benchmark tier) | Light: 1.000 / 1.000 (recall corpus-relative), 234 checks, **10 claims**, 0.9% inconc, PASS |
 | A2 Network Scanner | Not built | not yet set | — |
 | A3 SSL/TLS Analyzer | **Shipped v1.4.0** | precision ≥0.98, recall ≥0.95, inconc ≤0.15 | 1.000 / 1.000, 228 checks, 6 claims (all `highly_likely`; no `tls` check can reach `confirmed`), PASS |
-| A4 Domain & Subdomain Enum (`domscout`) | **Shipped (Light) v1.2.0 — live-verified on v1.0.0; operator domains B/C + coverage owed** | precision ≥0.95, recall ≥0.80, inconc ≤0.15 | 1.000 / 1.000, 58 checks, **1 claim**, PASS (v1.2.0) |
+| A4 Domain & Subdomain Enum (`domscout`) | **Shipped (Light) v1.3.1 — live-verified (expiry at three registries, D28; DNSSEC on a subdomain, D53); operator domains B/C + coverage owed** | precision ≥0.95, recall ≥0.80, inconc ≤0.15 | 1.000 / 1.000, 60 checks, 3.3% inconclusive, 18 not applicable, **1 claim**, PASS (v1.3.1) |
 | A5 Deface Monitoring | Not built | not yet set | — |
 | A6 API Scanner | Not built | not yet set | — |
 | A7 Email Security | **Shipped** | precision ≥0.99, recall ≥0.95, inconc ≤0.15 | 1.000 / 1.000, 442 checks, 30 claims (v1.5.0; corrected 2026-10-09, the row still showed v1.4.0's 380/26 although main gave 400/29), 0.5% inconc, PASS. Live (run 2): 0.965 over 144 claims, before D44/D45 were fixed. **Not quotable: corpus-validated, live-unverified (D35)** |

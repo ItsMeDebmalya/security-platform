@@ -672,6 +672,19 @@ class _Scan:
             )
             return
 
+        # The control (the second read) goes into the evidence pair, so it is held
+        # to the same standard as the first (review of D28, round 2).
+        control_host = urlsplit(control_response.url).hostname
+        if control_response.status_code != 200 or control_host != host:
+            unread(
+                f"The registry's RDAP server ({host}) served the record once, but the "
+                f"second read returned HTTP {control_response.status_code}"
+                + (f" from {control_host}" if control_host != host else "")
+                + ", so the record is not used.",
+                test_response,
+            )
+            return
+
         info = rdapp.parse_rdap(test_response.text)
         today = datetime.now(UTC).date()
         verdict = rdapp.expiry_verdict(info, today)

@@ -410,3 +410,40 @@ def test_scan_run_with_a_read_only_store_stops_before_scanning(tmp_path, monkeyp
     assert result.exit_code == 1, result.stdout
     assert "is read-only" in result.stdout and "writable copy" in result.stdout
     assert store_path.read_bytes() == before
+
+
+def test_scan_run_refuses_an_undeclared_not_applicable_cleanly():
+    """ADR-032 (review of D28): a reason the check did not declare stops the scan
+    with a message, not a traceback, and nothing is reported."""
+    _Slot.fn = _result(
+        checks_run=[
+            CheckRun(
+                check_id=CHECK_ID, outcome="not_applicable", reason="special-use-name", location="$"
+            )
+        ]
+    )
+
+    result = runner.invoke(app, ["run", "faketool", "--target", "x.test"])
+
+    assert result.exit_code == 1
+    assert "undeclared reasons" in result.stdout
+    assert result.exception is None or isinstance(result.exception, SystemExit)
+
+
+def test_verify_never_closes_on_an_undeclared_not_applicable(tmp_path):
+    store_path = tmp_path / "s.sqlite3"
+    finding = _finding()
+    _seed(store_path, finding)
+    _Slot.fn = _result(
+        checks_run=[
+            CheckRun(
+                check_id=CHECK_ID, outcome="not_applicable", reason="special-use-name", location="$"
+            )
+        ]
+    )
+
+    result = _verify(finding.id, store_path)
+
+    assert result.exit_code == 1
+    assert "UndeclaredNotApplicableError" in result.stdout
+    assert _status(store_path, finding) == "open"
