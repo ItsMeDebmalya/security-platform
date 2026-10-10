@@ -571,3 +571,13 @@ Then restore the entry-point lines in `CLAUDE.md` and `SPEC.md`, and the revert 
 
 **Revert.** Revert the merge commit. A subdomain target is then judged by its own DS and DNSKEY again, which it never has, so the false "not signed" claim comes back.
 
+## v4.0-pre.16 — D52: a wildcard DNS record holding a secret is one exposure (ADR-029 amended); email v1.5.1 (2026-10-10)
+
+**What changed.**
+- `core/exposure.py`: DNS exposures with the same record content as the scan's wildcard probe are folded into one `secret-exposed` finding at `dns:*.<parent>/<type>`, which says how many names it was seen at.
+- The parent's own answer, and identical content without a probe hit, stay separate.
+- The ADR-029 contract counts folded names as reported. email bumps to v1.5.1.
+- On the DuckDNS canary there are now 2 findings instead of 20. email's corpus has 18 fewer `reported` runs, so its inconclusive rate moves from 0.6% to 0.7% with the same 3 inconclusive. The baseline is updated.
+
+**Revert.** Revert the merge commit. A wildcard record is then reported once per name queried again.
+
