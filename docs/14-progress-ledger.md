@@ -1485,7 +1485,14 @@ Operator-approved. The design choices were the operator's: a new field beside `r
 
 ## 2026-10-10 · Handoff: open items and where to start
 
-*For a new session with no chat history. State as of PR #31. Each item links to where it is owned.*
+*For a new session with no chat history. State as of PR #32, with the operator's decisions of 2026-10-10 below. Each item links to where it is owned.*
+
+**Operator decisions, 2026-10-10 (these supersede the matching rows in the table):**
+- **IANA RDAP bootstrap: SIGNED OFF** by Debmalya Dey, 2026-10-10. The Protocol Registries are dedicated to CC0 1.0. **Caveat:** IANA's licensing page does not name `data.iana.org` explicitly. The entry is in `tools/registry.yaml` (`iana-rdap-dns-bootstrap`, `isolation: data`) with that note.
+- **D28 `.test` domains: APPROVED.** Special-use names (RFC 6761) get an explicit "expiry does not apply" result, recorded as such in telemetry, **never a silent pass**. Expiry is proven with new corpus cases recorded from real registries for real public domains. **D28 is now unblocked:** implement it to the test plan.
+- **`.भारत` and `.இந்தியா` are not in the bootstrap** (checked 2026-10-10), so their expiry is `inconclusive`. **Possible future item:** a WHOIS fallback for NIXI's TLDs, which are market-relevant. **No action now.**
+- **Company-domain TXT canaries: SKIPPED for now.** Only the corpus canaries (DuckDNS and GitHub Pages) will be published. Company records only if a live demo ever needs them, under the showcase rules.
+- **The GitHub Pages canary files** are kept outside the repo at `~/sp-canary/` (`index.html`, `README.md`, `.nojekyll`). The operator publishes them.
 
 **Merged this stretch (PRs #22–#31):**
 - **#22** D21 / ADR-028: core redaction.
@@ -1506,10 +1513,10 @@ Operator-approved. The design choices were the operator's: a new field beside `r
 | Item | Status | Blocked on | Where |
 |---|---|---|---|
 | **Canary runs, corpus set** (DuckDNS TXT, GitHub Pages) | Kit prepared (below); **nothing published** | The operator publishing, then confirming | Canary policy, 2026-10-10 entry |
-| **Canary runs, showcase set** (company domains) | Kit prepared (below); **nothing published**; evidence goes to the gitignored `corpus/crosscheck/showcase/` | The operator publishing, then confirming | Same |
-| **ADR-031 / D28** (domain expiry via the IANA RDAP bootstrap) | ADR accepted (90 days). **No code yet** | (1) The operator's sign-off on the IANA bootstrap data-licence entry. (2) The `.test` design question below | ADR-031; D28 row |
-| **IANA bootstrap data licence** | Evidence gathered: the registry ("Bootstrap Service Registry for Domain Name Space", RFC 9224) is listed on `iana.org/protocols`; IANA's licensing terms dedicate the Protocol Registries to CC0 1.0; the page does not name `data.iana.org` itself. File fetched 2026-10-09, `publication` 2026-09-30T23:00:03Z, 592 services | The operator's sign-off | This row |
-| **D28 design question** | The corpus's synthetic domains are `.test`, a special-use name (RFC 6761) with no registry and no bootstrap entry. Under ADR-031 their expiry check becomes `inconclusive` in every case, which would breach domscout's 15% gate. **Recommendation:** treat special-use names as "registration expiry does not apply" (not `inconclusive`), and prove expiry with new cases recorded from real registries for real public domains. Also open: a subdomain target needs its registrable domain for RDAP, which needs a PSL (D49, deferred) | Operator decision | D28 row |
+| **Canary runs, showcase set** (company domains) | **SKIPPED for now** (operator, 2026-10-10); only if a live demo needs it. Evidence would go to the gitignored `corpus/crosscheck/showcase/` | n/a | Same |
+| **ADR-031 / D28** (domain expiry via the IANA RDAP bootstrap) | ADR accepted (90 days). Licence signed off and `.test` decided (2026-10-10). **No code yet: unblocked, the next task** | n/a | ADR-031; D28 row |
+| **IANA bootstrap data licence** | **SIGNED OFF 2026-10-10** (registry entry `iana-rdap-dns-bootstrap`). Evidence: the registry ("Bootstrap Service Registry for Domain Name Space", RFC 9224) is listed on `iana.org/protocols`; IANA's licensing terms dedicate the Protocol Registries to CC0 1.0; the page does not name `data.iana.org` itself. File fetched 2026-10-09, `publication` 2026-09-30T23:00:03Z, 592 services | n/a | This row |
+| **D28 design question** | **APPROVED 2026-10-10:** special-use names get an explicit "expiry does not apply". Background: the corpus's synthetic domains are `.test`, a special-use name (RFC 6761) with no registry and no bootstrap entry. Under ADR-031 their expiry check becomes `inconclusive` in every case, which would breach domscout's 15% gate. **Recommendation:** treat special-use names as "registration expiry does not apply" (not `inconclusive`), and prove expiry with new cases recorded from real registries for real public domains. Also open: a subdomain target needs its registrable domain for RDAP, which needs a PSL (D49, deferred) | n/a | D28 row |
 | **D31** | **Done: UNDETERMINED.** Recorded responses are matched over plain http | A live positive needs a test name with CNAME support | D31 row |
 | **Web corpus re-record** | Scheduled for the next time the web lab is up (`python -m corpus.generators.web record`) | The web lab | 2026-10-09 rulings entry |
 | **Value-add backlog** | All PROPOSED; #2–#4 are quick wins | **The operator's senior**: build the quick wins before or after Tool 4b? | `docs/23-value-add-backlog.md` |
@@ -1523,7 +1530,7 @@ Operator-approved. The design choices were the operator's: a new field beside `r
   - The token is never asked for and never stored. Per DuckDNS's spec, `domains` is the subname only, and the TXT applies to all sub-subdomains.
   - Confirm: `dig +short TXT sp-lab-7k3q.duckdns.org @1.1.1.1` and `@8.8.8.8`. Both should print `"sp-canary deploy-key=AKIAIOSFODNN7EXAMPLE"`.
   - A scan of it also reads `_dmarc.duckdns.org` through the tree walk. That is DuckDNS's public record, not ours.
-- **Company domains (showcase), one per domain:**
+- **Company domains (showcase), SKIPPED for now; kept for a future live demo. One per domain:**
   - Name: `sp-canary-secret.<company domain>`. Type TXT, TTL 300. Value: `"sp-canary deploy-key=AKIAIOSFODNN7EXAMPLE"`.
   - Confirm with the same two `dig` commands.
   - Evidence goes only to `corpus/crosscheck/showcase/` (gitignored). It is never committed and never made into fixtures.
@@ -1537,7 +1544,7 @@ Operator-approved. The design choices were the operator's: a new field beside `r
   - Record the corpus cases from the DuckDNS and Pages runs only.
   - Tell the operator to clear the records.
 
-**Where to start:** read CLAUDE.md, then this table. Do nothing that needs one of the operator's pending decisions. D28 code waits for both of its decisions.
+**Where to start:** read CLAUDE.md, then this table. **Next task: implement D28** (ADR-031) to its test plan, with the 2026-10-10 decisions. It is a `core/`-adjacent change (`BaseScanner`'s per-target service hosts), so it needs an independent review before merge. The canary runs wait for the operator to say the records are live.
 
 ## Next (historical; superseded by the handoff above)
 

@@ -346,3 +346,23 @@
   isolation: service
   signed_off_by: Debmalya Dey
   signed_off_at: 2026-10-07
+
+# --- Data sets -------------------------------------------------------------
+
+- name: iana-rdap-dns-bootstrap
+  version: "publication 2026-09-30T23:00:03Z"
+  licence: CC0 1.0 (IANA Protocol Registries)
+  spdx: CC0-1.0
+  source: https://data.iana.org/rdap/dns.json
+  purpose: "ADR-031 / D28: map a domain's TLD to its registry's RDAP server (RFC 9224), vendored with a 90-day freshness limit"
+  isolation: data
+  # The "Bootstrap Service Registry for Domain Name Space" (RFC 9224) is listed on
+  # https://www.iana.org/protocols, and IANA's licensing terms dedicate the Protocol
+  # Registries to CC0 1.0 (https://www.iana.org/help/licensing-terms).
+  # CAVEAT: that licensing page does not name data.iana.org explicitly; the registry's
+  # own page lists https://data.iana.org/rdap/dns.json as its file.
+  # Not yet vendored into the repo: D28 implements it.
+  signed_off_by: Debmalya Dey
+  signed_off_at: 2026-10-10
+  review_evidence: "iana.org/protocols lists the registry; iana.org/help/licensing-terms (CC0 1.0 for the Protocol Registries); the caveat above"
+
