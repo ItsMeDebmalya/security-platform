@@ -290,6 +290,7 @@ class HttpClient:
         *,
         scope: Scope,
         service_hosts: frozenset[str] = frozenset(),
+        follow_scope: Scope | None = None,
         transport: httpx.BaseTransport | None = None,
         backend: HttpBackend | None = None,
         user_agent: str = DEFAULT_USER_AGENT,
@@ -303,6 +304,10 @@ class HttpClient:
     ) -> None:
         self._scope = scope
         self._service_hosts = frozenset(h.lower().rstrip(".") for h in service_hosts)
+        self._follow_scope = follow_scope or scope
+        """Where a redirect may be followed. `for_scan` sets it to the target's own
+        scope, so a target request is never followed to a service host or to a name
+        under one, whose answer would pass for the target's (review of D54, round 2)."""
         """ADR-031 (D54): a request to one of these never follows a redirect, so it
         only ever reaches the host it was declared for, never the scanned site."""
         self._body_cap = body_cap
@@ -325,8 +330,9 @@ class HttpClient:
         """The client for one scan: scope is the target plus its service hosts, and
         the same declaration makes them no-follow. Derived together so they cannot
         be wired apart (review of D54). `api/` and any worker must build it here."""
-        scope = Scope(frozenset(Scope.for_target(target).hosts | service_hosts))
-        return cls(scope=scope, service_hosts=service_hosts, **kwargs)
+        own = Scope.for_target(target)
+        scope = Scope(frozenset(own.hosts | service_hosts))
+        return cls(scope=scope, service_hosts=service_hosts, follow_scope=own, **kwargs)
 
     def get(self, url: str, *, follow_redirects: bool = True, **kwargs: Any) -> CapturedResponse:
         return self.request("GET", url, follow_redirects=follow_redirects, **kwargs)
@@ -351,7 +357,7 @@ class HttpClient:
             # for the target's (ADR-031 clause 6; review of D54).
             if self._is_service_host(host):
                 return response
-            if not self._scope.permits(host):
+            if not self._follow_scope.permits(host):
                 # Not an error: the redirect itself is a fact worth reporting.
                 # We simply decline to follow it out of scope.
                 return response

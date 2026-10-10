@@ -1643,6 +1643,16 @@ The reviewer had no shared context and worked read-only on 37f9dd7. It called th
   - a comment no longer overstates.
 - **Re-review requested.**
 
+## 2026-10-10 · Independent review of D54, round 2: CLEAN, and the one remaining gap closed
+
+- **Round 2 at 1566050 was CLEAN.** The reviewer re-ran its probes: the rule holds at every hop, including relative and protocol-relative redirects, and an explicit `follow_redirects=True` cannot override it.
+- **Its one should-fix predated this PR, but it made the new ADR-031 sentence untrue, so it is fixed here.** The scope admits subdomains, so a target request could still be followed to `www.crt.sh` or `x.rdap.<registry>`, and that third party's body was judged as the target's. `HttpClient.for_scan` now also sets `follow_scope` to the target's own scope, and a redirect is followed only into it.
+- **Nits, fixed:**
+  - the `for_scan` pin test now refuses any direct `HttpClient(` construction, and the web generator uses `for_scan` too, with its scope unchanged;
+  - a relative crt.sh redirect reads "redirected within crt.sh".
+- **Scanning a service host itself** (domscout on `crt.sh`) refuses a redirect to its own apex, which is conservative and harmless. No change.
+- **Short re-review requested** for these changes (test-first; 2097 tests pass; corpus and baselines unchanged).
+
 ## 2026-10-10 · Handoff: open items and where to start
 
 *For a new session with no chat history. State as of PR #32, with the operator's decisions of 2026-10-10 below. Each item links to where it is owned.*

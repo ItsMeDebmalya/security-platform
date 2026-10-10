@@ -279,3 +279,27 @@ def test_for_scan_builds_scope_and_service_hosts_from_one_declaration():
     assert client._service_hosts == frozenset({REGISTRY})
     assert client.get(f"https://{REGISTRY}/").status_code == 200
     assert client.get("https://www.example.com/").status_code == 200
+
+
+# --- independent review of D54, round 2 -----------------------------------------
+
+
+def test_a_target_request_is_never_followed_under_a_service_host():
+    """Scope admits subdomains, so `www.<service host>` must be refused as a redirect
+    target too: only the target's own scope may be followed into."""
+    sent: list[str] = []
+
+    def answers(request):
+        if request.url.host == "example.com":
+            return httpx.Response(302, headers={"location": f"https://www.{REGISTRY}/x"})
+        return httpx.Response(200, text="a third party's body")
+
+    client = HttpClient.for_scan(
+        Asset(type="domain", value="example.com"),
+        service_hosts=frozenset({REGISTRY}),
+        transport=httpx.MockTransport(_recording(sent, answers)),
+    )
+    response = client.get("https://example.com/")
+
+    assert sent == ["https://example.com/"]
+    assert response.status_code == 302

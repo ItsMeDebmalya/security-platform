@@ -128,12 +128,15 @@ def test_every_scan_client_is_built_with_for_scan():
     """Review of D54: scope and service hosts come from one declaration everywhere a
     scan's client is built, so they cannot be wired apart."""
     import inspect
+    import re
 
     import cli.corpus
     import cli.main
     import corpus.generators.domscout
+    import corpus.generators.web
 
-    for module in (cli.main, cli.corpus, corpus.generators.domscout):
+    for module in (cli.main, cli.corpus, corpus.generators.domscout, corpus.generators.web):
         source = inspect.getsource(module)
         assert "HttpClient.for_scan(" in source
-        assert "http=HttpClient(" not in source
+        # Any direct construction, however it is assigned, defeats the pairing.
+        assert not re.search(r"\bHttpClient\(", source), module.__name__

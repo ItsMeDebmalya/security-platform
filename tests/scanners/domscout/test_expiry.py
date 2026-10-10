@@ -413,3 +413,32 @@ def test_a_crt_sh_redirect_is_reported_as_a_redirect_never_parsed():
     assert ct.state == "inconclusive"
     assert "redirected" in ct.description
     assert "could not be parsed" not in ct.description
+
+
+def test_a_relative_crt_sh_redirect_says_it_stayed_within_crt_sh():
+    class Relative(Backend):
+        def send(self, method, url, *, body_cap, **kwargs):
+            if url.startswith("https://crt.sh/"):
+                self.calls.append(url)
+                return RawHttpResponse(
+                    status_code=308,
+                    headers={"location": "/elsewhere"},
+                    text="",
+                    url=url,
+                    elapsed_ms=1,
+                )
+            return super().send(method, url, body_cap=body_cap, **kwargs)
+
+    target = Asset(type="domain", value="corpus-x.test")
+    ctx = ScanContext(
+        dns=DnsClient(
+            resolver=FakeResolver(_dns("corpus-x.test")), resolvers=["1.1.1.1", "8.8.8.8"]
+        ),
+        http=HttpClient.for_scan(
+            target, service_hosts=DomscoutScanner.service_hosts_for(target), backend=Relative({})
+        ),
+    )
+    result = DomscoutScanner().run(target, "light", ctx)
+
+    (ct,) = [f for f in result.findings if f.check_id == "subdomains-ct-log"]
+    assert "redirected within crt.sh" in ct.description

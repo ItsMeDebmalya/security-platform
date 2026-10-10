@@ -147,9 +147,15 @@ def record() -> None:
         directory = FIXTURES / case
         shutil.rmtree(directory, ignore_errors=True)
         directory.mkdir(parents=True)
-        scope = Scope(frozenset({host}))
+        target = Asset(type="domain", value=host)
+        scope = Scope.for_target(target)
         ctx = ScanContext(
-            http=HttpClient(scope=scope, backend=RecordingHttpBackend(directory, backend)),
+            # web declares no service hosts; built like every scan client (D54).
+            http=HttpClient.for_scan(
+                target,
+                service_hosts=WebScanner.service_hosts_for(target),
+                backend=RecordingHttpBackend(directory, backend),
+            ),
             scope=scope,
             progress=lambda message, fraction: None,
         )

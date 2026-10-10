@@ -236,9 +236,15 @@ class _Scan:
         # otherwise read as "no subdomains".
         if test_response.status_code != 200:
             location = test_response.headers.get("location", "")
-            elsewhere = urlsplit(location).hostname or location or "an unnamed location"
+            elsewhere = urlsplit(location).hostname
+            if elsewhere and elsewhere != "crt.sh":
+                where = f"to {elsewhere}"
+            elif location:
+                where = "within crt.sh"
+            else:
+                where = "to an unnamed location"
             what = (
-                f"redirected to {elsewhere}; a service host's redirect is never followed (ADR-031)"
+                f"redirected {where}; a service host's redirect is never followed (ADR-031)"
                 if 300 <= test_response.status_code < 400
                 else f"returned HTTP {test_response.status_code}"
             )
