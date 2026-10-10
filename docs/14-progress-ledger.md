@@ -1573,6 +1573,17 @@ The reviewer had no shared context and worked read-only on the PR head (d4d441a)
   - a redirect could make `HttpClient` fetch the target: ledgered as **D54** (needs a `core/http.py` change);
   - the `eap.arpa` entry was taken directly from IANA's registry XML (RFC 9965).
 
+## 2026-10-10 · Company-domain attestations: rule for new scope rows (operator)
+
+- The 2026-08-25 attestations for the company domains (made under `operator:satwik`, "owned and operated by us", `method: self_owned`) are **kept unchanged**. They are audit records, and "us" is the company.
+- **Any new scope row for these domains must rest on written authorisation from the domain owner.** The operator is authorised to act for the domains, not their administrator, so a fresh self-owned attestation is not enough.
+- The scope file and `corpus/authz/` keep the real names: the gate reads them.
+
+- **Placeholders extended (operator, 2026-10-10):** these files now use `<operator domain A/B/C>` too, keeping their findings and surrounding text: the web-light crosscheck (`crosscheck.md`, `verification.md`, `raw-manifest.sha256`), `docs/17-testing-runbook.md` and `docs/superpowers/`. Current files only; history is not rewritten.
+  - **The manifest's hashes are unchanged**, and each still proves its file's content. Its paths now carry placeholders, so `sha256sum -c` needs the real file names from the operator's local archive. Its header says so.
+  - Two domscout tests used a sample name derived from a company domain (a fake `.io` name). It is now `corpus-x.io`.
+- **The only current files with the real names** are `config/authorised_scope.yaml` and `corpus/authz/`, which are functional.
+
 ## 2026-10-10 · Handoff: open items and where to start
 
 *For a new session with no chat history. State as of PR #32, with the operator's decisions of 2026-10-10 below. Each item links to where it is owned.*

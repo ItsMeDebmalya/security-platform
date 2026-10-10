@@ -306,7 +306,7 @@ count, always.
 
 ### 6.4 Live verification (ADR-017) — before "done"
 
-Operator infrastructure (`codez.in`, `kinetrix.in`, `kinetrix.co.in`) plus a handful
+Operator infrastructure (`<operator domain A>`, `<operator domain B>`, `<operator domain C>`) plus a handful
 of public sites (Light is passive — [13-test-targets.md](../../13-test-targets.md) §5). Every
 finding hand-verified with `curl -sI` / `curl -s`. A live finding that turns out wrong becomes a
 corpus case.
@@ -341,7 +341,7 @@ ledger.
 ## 8. Out of scope
 
 Tool 4b (AI exposure); `scan all`; cookie checks (D-W1); any `core/` edit; Standard-mode checks;
-asset-graph contribution. Tool 3's owed items in the ledger's "Next" (`service_hosts` ADR, kinetrix
+asset-graph contribution. Tool 3's owed items in the ledger's "Next" (`service_hosts` ADR, <operator domains B and C>
 live runs, whole-branch review, PR) remain open and are not closed by this work.
 
 ## 9. Open items to settle during implementation

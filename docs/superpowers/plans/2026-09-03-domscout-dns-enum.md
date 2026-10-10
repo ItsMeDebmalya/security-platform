@@ -25,7 +25,7 @@
 - **A new detection needs a positive AND a negative corpus case, an `independence_class`, and a justified prior.** No exceptions.
 - **Recall labels are mandatory:** enumeration recall is `corpus_relative` and must never be published as absolute; finite-check recall is true recall.
 - **Bump `scanner_version` whenever results change** (it starts at `1.0.0`).
-- **Commit as** `satwik <satwik@codez.in>`; trailers per the active session instruction (`Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>` and `Claude-Session: https://claude.ai/code/session_01TDbfdXwHkteDbQntXr5sq7`).
+- **Commit as** `satwik <satwik@<operator domain A>>`; trailers per the active session instruction (`Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>` and `Claude-Session: https://claude.ai/code/session_01TDbfdXwHkteDbQntXr5sq7`).
 
 ---
 
@@ -505,7 +505,7 @@ def test_discovers_resolving_subdomain_and_contributes_asset(fake_ctx):
 
 - [ ] **Step 1:** Guide the operator to install `subfinder` on WSL (one command, ProjectDiscovery release), and confirm `subfinder -version`. **Ask the operator to run it** — do not assume it is installed.
 - [ ] **Step 2:** Implement a disagreement report: run domscout + `subfinder` + crt.sh on a domain, print `unique-to-domscout`, `unique-to-each-competitor`, `intersection`. Not gated (external dependency); recorded like the TLS cross-check.
-- [ ] **Step 3:** Live-verify against `codez.in`, `kinetrix.in`, `kinetrix.co.in` (operator-owned) + a DNSSEC-signed reference (`internet.nl`) for the finite checks. Hand-verify every claim; record findings and any disagreement in the ledger (Task 11). Any competitor-unique name is a candidate FN to investigate, not an automatic bug.
+- [ ] **Step 3:** Live-verify against `<operator domain A>`, `<operator domain B>`, `<operator domain C>` (operator-owned) + a DNSSEC-signed reference (`internet.nl`) for the finite checks. Hand-verify every claim; record findings and any disagreement in the ledger (Task 11). Any competitor-unique name is a candidate FN to investigate, not an automatic bug.
 - [ ] **Step 4:** Commit `domscout: subfinder disagreement cross-check + live-verification record`.
 
 ---
