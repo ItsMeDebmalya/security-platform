@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "nixi.in",
+  "rcode": "NOERROR",
+  "records": [
+    "ns-cloud-d1.googledomains.com. cloud-dns-hostmaster.google.com. 1 21600 3600 259200 300"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "SOA",
+  "ttl": 21600
+}

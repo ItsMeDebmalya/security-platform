@@ -54,6 +54,9 @@ class Check:
     No default, deliberately: a check with no opinion here fails to
     construct rather than reading as passive by omission."""
     mode: str = "light"
+    not_applicable_reasons: frozenset[str] = frozenset()
+    """ADR-032: the registered reasons (`core.applicability.REASONS`) this check
+    may give for `not_applicable`. Empty means it never may."""
 
 
 CHECKS: dict[str, Check] = {
@@ -102,6 +105,7 @@ CHECKS: dict[str, Check] = {
             likelihood_ratio=40.0,
             justification="the expiry date is read directly from the registry's own RDAP record",
             passive=True,
+            not_applicable_reasons=frozenset({"special-use-name"}),
         ),
         Check(
             check_id="domain-expired",
@@ -113,6 +117,7 @@ CHECKS: dict[str, Check] = {
                 "record, is unambiguous"
             ),
             passive=True,
+            not_applicable_reasons=frozenset({"special-use-name"}),
         ),
         Check(
             check_id="subdomain-takeover",
@@ -134,11 +139,13 @@ ENUMERATION_CHECK_IDS = frozenset({"subdomains-ct-log", "dns-records"})
 """The two checks that build the subdomain inventory the other four check
 IDs above reason about, rather than reporting a posture finding themselves."""
 
-SERVICE_HOSTS = frozenset({"crt.sh", "rdap.org"})
-"""The public services this scanner talks to, beyond the target's own
-authoritative DNS - declared on `BaseScanner.service_hosts` so the outbound
-scope check permits them without treating them as part of the target's own
-scope (docs/03-roadmap.md 0b.6)."""
+SERVICE_HOSTS = frozenset({"crt.sh"})
+"""The public services this scanner talks to for every target, beyond the
+target's own authoritative DNS - declared on `BaseScanner.service_hosts` so the
+outbound scope check permits them without treating them as part of the
+target's own scope (docs/03-roadmap.md 0b.6). The registry's RDAP server is
+added per target (`DomscoutScanner.service_hosts_for`, ADR-031): rdap.org is
+gone, because it only redirects to the registry (D28)."""
 
 
 def requires_authorisation(mode: Mode) -> bool:

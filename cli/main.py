@@ -24,6 +24,7 @@ from typing import Any, cast, get_args
 import typer
 from ulid import ULID
 
+from core.applicability import enforce
 from core.assetgraph import AssetGraph, seed_asset_graph
 from core.authz import AuthorisationDeniedError, AuthorisedScope, Scope
 from core.context import ScanContext
@@ -48,7 +49,7 @@ from core.tls import RecordingTlsBackend, ReplayTlsBackend, SystemTlsBackend, Tl
 VERIFY_BY = "scan verify"
 """`StatusChange.by` for transitions this command makes."""
 
-NO_VERDICT_OUTCOMES = frozenset({"inconclusive", "suppressed", "error"})
+NO_VERDICT_OUTCOMES = frozenset({"inconclusive", "suppressed", "error", "not_applicable"})
 """CheckRun outcomes that mean the check ran but reached no verdict.
 
 None of these may close a finding - only `outcome == "clear"` is a positive
@@ -513,7 +514,9 @@ def _execute(
         authz_ref=authz_ref,
         dns=DnsClient(resolver=resolver, resolvers=DEFAULT_RESOLVERS, ratelimit=resolver_limit),
         http=HttpClient(
-            scope=Scope(frozenset(Scope.for_target(target).hosts | scanner.service_hosts)),
+            scope=Scope(
+                frozenset(Scope.for_target(target).hosts | scanner.service_hosts_for(target))
+            ),
             ratelimit=target_limit,
             backend=http_backend,
         ),
@@ -523,7 +526,8 @@ def _execute(
         ratelimit=target_limit,
         progress=_progress,
     )
-    return scanner.run(target, _as_mode(mode), ctx)
+    # ADR-032: a not_applicable reason the check did not declare fails here.
+    return enforce(scanner.run(target, _as_mode(mode), ctx))
 
 
 def _as_mode(mode: str) -> Mode:
@@ -568,11 +572,15 @@ def _print_table(result: ScanResult) -> None:
                 f"{finding.severity:<9} {finding.confidence:<6.2f} {finding.state:<14} "
                 f"{finding.check_id:<32} {finding.location}"
             )
-    ran = len(result.telemetry.checks_run)
+    not_applicable = result.not_applicable_count()
+    ran = len(result.telemetry.checks_run) - not_applicable
     _echo(
         f"\n{ran} check(s) ran, {result.inconclusive_rate():.0%} inconclusive, "
-        f"{result.telemetry.requests} request(s)"
+        f"{not_applicable} not applicable, {result.telemetry.requests} request(s)"
     )
+    for run in result.telemetry.checks_run:
+        if run.outcome == "not_applicable":
+            _echo(f"not applicable: {run.check_id} ({run.reason})")
     for error in result.errors:
         _echo(f"error [{error.stage}]: {error.message}")
 

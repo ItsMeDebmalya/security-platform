@@ -26,4 +26,15 @@ def test_every_check_has_a_justification() -> None:
 
 
 def test_service_hosts() -> None:
-    assert frozenset({"crt.sh", "rdap.org"}) == SERVICE_HOSTS
+    """rdap.org is gone (D28): it only redirects. The registry is added per target."""
+    assert frozenset({"crt.sh"}) == SERVICE_HOSTS
+
+
+def test_only_the_expiry_checks_may_be_not_applicable_and_only_for_special_use() -> None:
+    declared = {
+        cid: c.not_applicable_reasons for cid, c in CHECKS.items() if c.not_applicable_reasons
+    }
+    assert declared == {
+        "domain-expiring": frozenset({"special-use-name"}),
+        "domain-expired": frozenset({"special-use-name"}),
+    }

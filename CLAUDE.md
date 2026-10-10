@@ -10,7 +10,7 @@ The tool-first strategy in docs/archive/ is SUPERSEDED. Do not follow it.
 
 **Where things stand (handoff, 2026-10-10).** Start with the ledger's handoff section, which lists every open item and its status: [docs/14-progress-ledger.md, "Handoff: open items"](docs/14-progress-ledger.md#2026-10-10--handoff-open-items-and-where-to-start). In short:
 - **Shipped and merged through PR #31:** email v1.5.0, tls v1.4.0, domscout v1.2.0, web v1.0.5. Recent work: ADR-028 core redaction (D21), the read-only finding store, ADR-029 redaction receipts and `secret-exposed`, D48 (RFC 9525, no Common Name fallback), ADR-030 (UTS-46 hostnames, `idna` signed off), tls RFC citations with legacy-but-deployed exemptions, ADR-031 accepted (service hosts), and D31 (takeover fingerprints; BROKEN → UNDETERMINED).
-- **Standing figure** (owned by [SPEC.md](SPEC.md)): 68 checks, 42 WORKING, 2 BROKEN, 24 UNDETERMINED. **38% have no evidence they work.**
+- **Standing figure** (owned by [SPEC.md](SPEC.md)): 68 checks, 41 WORKING, 1 BROKEN, 26 UNDETERMINED. **40% have no evidence they work.**
 - **Decided 2026-10-10:**
   - the IANA RDAP bootstrap licence is **signed off** (CC0 1.0; the caveat is in `tools/registry.yaml`);
   - D28's `.test` question is **approved**: special-use names get an explicit "expiry does not apply", never a silent pass, and expiry is proven with real recorded registry cases;
@@ -18,7 +18,7 @@ The tool-first strategy in docs/archive/ is SUPERSEDED. Do not follow it.
 - **Waiting on the operator:**
   - removing the corpus canaries (DuckDNS TXT and GitHub Pages), now recorded: see the ledger's canary-runs entry;
   - the value-add backlog question pending with the operator's senior: build the quick wins before or after Tool 4b?
-- **Next, in order:** **D28 (unblocked; needs an independent review)**, then D52 (wildcard over-reporting in `secret-exposed`), then Tool 4b, then `scan all`.
+- **Next, in order:** **the independent review of D28 + ADR-032** (branch `fix/d28-rdap-bootstrap`, a `core/` and `contracts/` change), then D53 (`dnssec-status` false claim on subdomains, BROKEN), then D52 (wildcard over-reporting in `secret-exposed`), then Tool 4b, then `scan all`.
 - **Ledgered, no action:** a WHOIS fallback for NIXI's TLDs (`.भारत` and `.இந்தியா` are not in the RDAP bootstrap).
 - **Standing rules from the operator:**
   - Never push or merge without being told; merge with `--merge`.
@@ -55,7 +55,7 @@ Read `docs/14-progress-ledger.md` for where things stand — including **standin
 - `SPEC.md` — **the canonical build specification: what each tool must do, current status, gates.** Authority for "what to build," replacing `docs/reference/product-spec.md` in that role.
 - `docs/00-context.md` — product, strategy, standards
 - `docs/01-architecture.md` — **the Scanner Contract, finding/evidence model, confidence engine**
-- `docs/02-decisions.md` — ADRs 001–031
+- `docs/02-decisions.md` — ADRs 001–032
 - `docs/03-roadmap.md` — phases 0, **0b (foundation for the calendar)**, 1–7 with accuracy gates
 - `docs/04-phase-0-foundations.md`, `docs/05-phase-1-first-tools.md` — task-level plans
 - `docs/06-guidelines.md` — rules for all code

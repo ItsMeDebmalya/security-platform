@@ -1,9 +1,0 @@
-{
-  "flags": [],
-  "name": "sp-wildcard-probe-4318298b.corpus-expired.test",
-  "rcode": "NXDOMAIN",
-  "records": [],
-  "resolver": null,
-  "rrtype": "CNAME",
-  "ttl": null
-}

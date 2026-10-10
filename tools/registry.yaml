@@ -361,7 +361,9 @@
   # Registries to CC0 1.0 (https://www.iana.org/help/licensing-terms).
   # CAVEAT: that licensing page does not name data.iana.org explicitly; the registry's
   # own page lists https://data.iana.org/rdap/dns.json as its file.
-  # Not yet vendored into the repo: D28 implements it.
+  # Vendored by D28 (2026-10-10) at scanners/domscout/data/iana-rdap-dns.json,
+  # unmodified. Refresh: re-fetch the file and update `version` above; a test
+  # fails CI once `publication` is more than 90 days old (ADR-031).
   signed_off_by: Debmalya Dey
   signed_off_at: 2026-10-10
   review_evidence: "iana.org/protocols lists the registry; iana.org/help/licensing-terms (CC0 1.0 for the Protocol Registries); the caveat above"

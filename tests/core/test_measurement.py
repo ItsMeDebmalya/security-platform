@@ -346,3 +346,33 @@ def test_to_dict_carries_the_detected_derived_breakdown():
     claims = summary.to_dict()["claims"]
     assert claims["detected"]["tp"] == 1
     assert claims["derived"]["tp"] == 1
+
+
+# --- not_applicable (ADR-032) ------------------------------------------------
+
+
+def test_a_not_applicable_check_is_never_a_true_positive_false_positive_or_miss():
+    score = score_case(
+        observations=[],
+        expected=_expected(("domain-expiring", "$")),
+        checks_run=0,
+        not_applicable=frozenset({("domain-expiring", "$")}),
+    )
+
+    assert (score.tp, score.fp, score.fn) == (0, 0, 0)
+    assert score.not_applicable == 1
+
+
+def test_not_applicable_is_counted_on_its_own_and_summed_per_tier():
+    one = score_case(
+        observations=[],
+        expected=[],
+        checks_run=2,
+        not_applicable=frozenset({("domain-expiring", "$"), ("domain-expired", "$")}),
+    )
+
+    summary = summarise({"frozen": [one, one]})["frozen"]
+
+    assert summary.not_applicable == 4
+    assert summary.to_dict()["not_applicable"] == 4
+    assert summary.inconclusive_rate == 0.0

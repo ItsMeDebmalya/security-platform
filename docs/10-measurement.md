@@ -29,6 +29,7 @@ These are the claims we are making to the user. They alone count in the gate.
 | `suspected` | Excluded from the gate. Tracked separately as *suspected rate*. |
 | `informational` | Excluded entirely. Not a vulnerability claim. |
 | `inconclusive` | Excluded from numerator and denominator. Tracked as *inconclusive rate*. |
+| A check whose outcome is `not_applicable` (ADR-032) | Excluded from everything: never a TP, FP or FN, and **outside the inconclusive rate's denominator**, because it judged nothing. Counted on its own and **always shown**, in the `not-app` column of `make corpus` and in `scan run`'s summary. Never a pass: it cannot close a finding. |
 
 ```
 precision = TP / (TP + FP)
@@ -52,6 +53,8 @@ precision ≥ target   AND   recall ≥ target   AND   inconclusive_rate ≤ 0.1
 where `inconclusive_rate = inconclusive / (all checks that ran)`, measured on the known-good and known-vulnerable corpus tiers where a definite answer is expected.
 
 A rising inconclusive rate on frozen fixtures is a regression and fails CI, exactly like falling precision. On *live* targets a high rate may be legitimate (WAFs, blocks) — which is why the gate is measured on the frozen tier.
+
+**`not_applicable` is not a way around this guard (ADR-032).** It is for a target the check cannot be asked about at all, such as registration expiry for a special-use name, which has no registry. Its reasons are a fixed list: registered in `core/applicability.py`, enumerated by the schema, and declared per check in the scanner's `CHECKS` table. A contract test (`tests/contract/test_not_applicable_contract.py`) fails if any corpus run uses a reason its check did not declare. A hard case is `inconclusive`, never `not_applicable`.
 
 ---
 
@@ -117,11 +120,13 @@ A bucket needs **≥ 30 labelled outcomes** before a fitted calibration replaces
 ## What `make corpus` prints
 
 ```
-scanner  tier    checks  TP  FP  FN  precision  recall  suspected%  inconclusive%  gate
-email    frozen     412  38   0   1     1.000    0.974        4.1%           2.2%  PASS
-tls      frozen     280  61   1   3     0.984    0.953        6.4%           5.0%  PASS
-web      bench     1104 402  71  96     0.850    0.807        11.2%          9.8%  FAIL (precision)
+scanner  tier    checks  TP  FP  FN  precision  recall  suspected%  inconclusive%  not-app  gate
+email    frozen     412  38   0   1     1.000    0.974        4.1%           2.2%        0  PASS
+tls      frozen     280  61   1   3     0.984    0.953        6.4%           5.0%        0  PASS
+web      bench     1104 402  71  96     0.850    0.807        11.2%          9.8%        0  FAIL (precision)
 ```
+
+(Illustrative numbers. `checks` excludes `not_applicable` runs; `not-app` counts them.)
 
 Written to `corpus/results/latest.json`. CI compares against the committed baseline and fails on:
 

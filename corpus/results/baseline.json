@@ -10,6 +10,7 @@
         "id": "known-good",
         "inconclusive": 0,
         "inconclusive_delivered": false,
+        "not_applicable": 2,
         "tier": "known_good",
         "tp": 0
       },
@@ -22,6 +23,7 @@
         "id": "takeover-negative",
         "inconclusive": 0,
         "inconclusive_delivered": false,
+        "not_applicable": 2,
         "tier": "known_good",
         "tp": 0
       },
@@ -34,6 +36,7 @@
         "id": "wildcard-zone",
         "inconclusive": 0,
         "inconclusive_delivered": false,
+        "not_applicable": 2,
         "tier": "known_good",
         "tp": 0
       },
@@ -46,6 +49,7 @@
         "id": "enum-basic",
         "inconclusive": 0,
         "inconclusive_delivered": false,
+        "not_applicable": 2,
         "tier": "vulnerable",
         "tp": 0
       },
@@ -58,6 +62,7 @@
         "id": "enum-cname",
         "inconclusive": 0,
         "inconclusive_delivered": false,
+        "not_applicable": 2,
         "tier": "vulnerable",
         "tp": 0
       },
@@ -75,20 +80,9 @@
         "id": "dnssec-insecure",
         "inconclusive": 0,
         "inconclusive_delivered": false,
+        "not_applicable": 2,
         "tier": "vulnerable",
         "tp": 1
-      },
-      {
-        "errors": [],
-        "expect_inconclusive": false,
-        "expected": [],
-        "fn": 0,
-        "fp": 0,
-        "id": "domain-expired",
-        "inconclusive": 0,
-        "inconclusive_delivered": false,
-        "tier": "vulnerable",
-        "tp": 0
       },
       {
         "errors": [],
@@ -99,6 +93,20 @@
         "id": "takeover-positive",
         "inconclusive": 0,
         "inconclusive_delivered": false,
+        "not_applicable": 2,
+        "tier": "vulnerable",
+        "tp": 0
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [],
+        "fn": 0,
+        "fp": 0,
+        "id": "takeover-secret",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "not_applicable": 2,
         "tier": "vulnerable",
         "tp": 0
       },
@@ -111,7 +119,47 @@
         "id": "servfail",
         "inconclusive": 0,
         "inconclusive_delivered": true,
+        "not_applicable": 2,
         "tier": "vulnerable",
+        "tp": 0
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [],
+        "fn": 0,
+        "fp": 0,
+        "id": "real-verisign",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "not_applicable": 0,
+        "tier": "real_recorded",
+        "tp": 0
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [],
+        "fn": 0,
+        "fp": 0,
+        "id": "real-pir",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "not_applicable": 0,
+        "tier": "real_recorded",
+        "tp": 0
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [],
+        "fn": 0,
+        "fp": 0,
+        "id": "real-nixi",
+        "inconclusive": 1,
+        "inconclusive_delivered": true,
+        "not_applicable": 0,
+        "tier": "real_recorded",
         "tp": 0
       }
     ],
@@ -124,8 +172,8 @@
       "recall_label": "absolute (the true set is knowable for this scanner)"
     },
     "overall": {
-      "cases": 9,
-      "checks_run": 50,
+      "cases": 12,
+      "checks_run": 54,
       "claims": {
         "derived": {
           "fp": 0,
@@ -141,10 +189,11 @@
       "false_positives_on_known_good": 0,
       "fn": 0,
       "fp": 0,
-      "inconclusive_rate": 0.0,
+      "inconclusive_rate": 0.018518518518518517,
+      "not_applicable": 18,
       "precision": 1.0,
       "recall": 1.0,
-      "suspected_rate": 0.04,
+      "suspected_rate": 0.05555555555555555,
       "tier": "all",
       "tp": 1
     },
@@ -154,7 +203,7 @@
     "tiers": {
       "known_good": {
         "cases": 3,
-        "checks_run": 19,
+        "checks_run": 13,
         "claims": {
           "derived": {
             "fp": 0,
@@ -171,15 +220,42 @@
         "fn": 0,
         "fp": 0,
         "inconclusive_rate": 0.0,
+        "not_applicable": 6,
         "precision": null,
         "recall": null,
         "suspected_rate": 0.0,
         "tier": "known_good",
         "tp": 0
       },
+      "real_recorded": {
+        "cases": 3,
+        "checks_run": 18,
+        "claims": {
+          "derived": {
+            "fp": 0,
+            "precision": null,
+            "tp": 0
+          },
+          "detected": {
+            "fp": 0,
+            "precision": null,
+            "tp": 0
+          }
+        },
+        "false_positives_on_known_good": 0,
+        "fn": 0,
+        "fp": 0,
+        "inconclusive_rate": 0.05555555555555555,
+        "not_applicable": 0,
+        "precision": null,
+        "recall": null,
+        "suspected_rate": 0.0,
+        "tier": "real_recorded",
+        "tp": 0
+      },
       "vulnerable": {
         "cases": 6,
-        "checks_run": 31,
+        "checks_run": 23,
         "claims": {
           "derived": {
             "fp": 0,
@@ -196,9 +272,10 @@
         "fn": 0,
         "fp": 0,
         "inconclusive_rate": 0.0,
+        "not_applicable": 12,
         "precision": 1.0,
         "recall": 1.0,
-        "suspected_rate": 0.06451612903225806,
+        "suspected_rate": 0.13043478260869565,
         "tier": "vulnerable",
         "tp": 1
       }
@@ -215,6 +292,7 @@
         "id": "known-good",
         "inconclusive": 0,
         "inconclusive_delivered": false,
+        "not_applicable": 0,
         "tier": "known_good",
         "tp": 0
       },
@@ -227,6 +305,7 @@
         "id": "null-mx",
         "inconclusive": 0,
         "inconclusive_delivered": false,
+        "not_applicable": 0,
         "tier": "known_good",
         "tp": 0
       },
@@ -239,6 +318,7 @@
         "id": "dmarc-relaxed-alignment",
         "inconclusive": 0,
         "inconclusive_delivered": false,
+        "not_applicable": 0,
         "tier": "known_good",
         "tp": 0
       },
@@ -259,14 +339,6 @@
             "location": "$"
           },
           {
-            "check_id": "mta-sts-missing",
-            "location": "$"
-          },
-          {
-            "check_id": "tls-rpt-missing",
-            "location": "$"
-          },
-          {
             "check_id": "spoofing-possible",
             "location": "$"
           }
@@ -276,8 +348,9 @@
         "id": "nothing-configured",
         "inconclusive": 1,
         "inconclusive_delivered": true,
+        "not_applicable": 0,
         "tier": "vulnerable",
-        "tp": 6
+        "tp": 4
       },
       {
         "errors": [],
@@ -297,6 +370,7 @@
         "id": "dmarc-monitoring-only",
         "inconclusive": 0,
         "inconclusive_delivered": false,
+        "not_applicable": 0,
         "tier": "vulnerable",
         "tp": 2
       },
@@ -309,7 +383,7 @@
             "location": "$"
           },
           {
-            "check_id": "spoofing-possible",
+            "check_id": "dmarc-obsolete-tags",
             "location": "$"
           }
         ],
@@ -318,8 +392,9 @@
         "id": "dmarc-partial-rollout",
         "inconclusive": 0,
         "inconclusive_delivered": false,
+        "not_applicable": 0,
         "tier": "vulnerable",
-        "tp": 2
+        "tp": 1
       },
       {
         "errors": [],
@@ -335,6 +410,7 @@
         "id": "dmarc-no-reporting",
         "inconclusive": 0,
         "inconclusive_delivered": false,
+        "not_applicable": 0,
         "tier": "vulnerable",
         "tp": 1
       },
@@ -356,8 +432,9 @@
         "id": "dmarc-malformed",
         "inconclusive": 0,
         "inconclusive_delivered": false,
+        "not_applicable": 0,
         "tier": "vulnerable",
-        "tp": 2
+        "tp": 0
       },
       {
         "errors": [],
@@ -373,6 +450,7 @@
         "id": "spf-invalid",
         "inconclusive": 0,
         "inconclusive_delivered": false,
+        "not_applicable": 0,
         "tier": "vulnerable",
         "tp": 1
       },
@@ -390,6 +468,7 @@
         "id": "spf-duplicate",
         "inconclusive": 0,
         "inconclusive_delivered": false,
+        "not_applicable": 0,
         "tier": "vulnerable",
         "tp": 1
       },
@@ -411,6 +490,7 @@
         "id": "spf-permissive",
         "inconclusive": 0,
         "inconclusive_delivered": false,
+        "not_applicable": 0,
         "tier": "vulnerable",
         "tp": 2
       },
@@ -428,6 +508,7 @@
         "id": "spf-lookup-limit",
         "inconclusive": 0,
         "inconclusive_delivered": false,
+        "not_applicable": 0,
         "tier": "vulnerable",
         "tp": 1
       },
@@ -445,6 +526,7 @@
         "id": "dkim-weak-key",
         "inconclusive": 0,
         "inconclusive_delivered": false,
+        "not_applicable": 0,
         "tier": "vulnerable",
         "tp": 1
       },
@@ -466,6 +548,7 @@
         "id": "no-transport-security",
         "inconclusive": 0,
         "inconclusive_delivered": false,
+        "not_applicable": 0,
         "tier": "vulnerable",
         "tp": 2
       },
@@ -478,6 +561,7 @@
         "id": "dkim-not-discoverable",
         "inconclusive": 1,
         "inconclusive_delivered": true,
+        "not_applicable": 0,
         "tier": "vulnerable",
         "tp": 0
       },
@@ -490,8 +574,230 @@
         "id": "servfail",
         "inconclusive": 0,
         "inconclusive_delivered": true,
+        "not_applicable": 0,
         "tier": "vulnerable",
         "tp": 0
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [
+          {
+            "check_id": "spf-too-permissive",
+            "location": "$"
+          }
+        ],
+        "fn": 0,
+        "fp": 0,
+        "id": "secret-in-txt",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "not_applicable": 0,
+        "tier": "vulnerable",
+        "tp": 1
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [],
+        "fn": 0,
+        "fp": 0,
+        "id": "secret-in-txt-clean",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "not_applicable": 0,
+        "tier": "vulnerable",
+        "tp": 0
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [
+          {
+            "check_id": "dkim-weak-key",
+            "location": "$"
+          },
+          {
+            "check_id": "mta-sts-missing",
+            "location": "$"
+          },
+          {
+            "check_id": "tls-rpt-missing",
+            "location": "$"
+          }
+        ],
+        "fn": 0,
+        "fp": 0,
+        "id": "disagree-stale-spf",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "not_applicable": 0,
+        "tier": "real_disagreement",
+        "tp": 3
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [
+          {
+            "check_id": "dkim-weak-key",
+            "location": "$"
+          },
+          {
+            "check_id": "mta-sts-missing",
+            "location": "$"
+          },
+          {
+            "check_id": "tls-rpt-missing",
+            "location": "$"
+          }
+        ],
+        "fn": 0,
+        "fp": 0,
+        "id": "disagree-stale-dkim",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "not_applicable": 0,
+        "tier": "real_disagreement",
+        "tp": 3
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [
+          {
+            "check_id": "dkim-weak-key",
+            "location": "$"
+          },
+          {
+            "check_id": "mta-sts-missing",
+            "location": "$"
+          },
+          {
+            "check_id": "tls-rpt-missing",
+            "location": "$"
+          },
+          {
+            "check_id": "dmarc-obsolete-tags",
+            "location": "$"
+          },
+          {
+            "check_id": "dmarc-pct-partial",
+            "location": "$"
+          },
+          {
+            "check_id": "spoofing-possible",
+            "location": "$"
+          }
+        ],
+        "fn": 0,
+        "fp": 0,
+        "id": "real-obsolete-pct",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "not_applicable": 0,
+        "tier": "real_recorded",
+        "tp": 4
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [
+          {
+            "check_id": "dmarc-test-mode",
+            "location": "$"
+          },
+          {
+            "check_id": "spoofing-possible",
+            "location": "$"
+          }
+        ],
+        "fn": 0,
+        "fp": 0,
+        "id": "dmarc-test-mode",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "not_applicable": 0,
+        "tier": "vulnerable",
+        "tp": 0
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [
+          {
+            "check_id": "dmarc-np-weaker",
+            "location": "$"
+          }
+        ],
+        "fn": 0,
+        "fp": 0,
+        "id": "dmarc-np-weaker",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "not_applicable": 0,
+        "tier": "vulnerable",
+        "tp": 0
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [
+          {
+            "check_id": "dmarc-test-mode",
+            "location": "$"
+          },
+          {
+            "check_id": "spoofing-possible",
+            "location": "$"
+          },
+          {
+            "check_id": "dkim-weak-key",
+            "location": "$"
+          },
+          {
+            "check_id": "mta-sts-missing",
+            "location": "$"
+          },
+          {
+            "check_id": "tls-rpt-missing",
+            "location": "$"
+          }
+        ],
+        "fn": 0,
+        "fp": 0,
+        "id": "real-test-mode",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "not_applicable": 0,
+        "tier": "real_recorded",
+        "tp": 3
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [
+          {
+            "check_id": "spf-missing",
+            "location": "$"
+          },
+          {
+            "check_id": "dmarc-missing",
+            "location": "$"
+          },
+          {
+            "check_id": "spoofing-possible",
+            "location": "$"
+          }
+        ],
+        "fn": 0,
+        "fp": 0,
+        "id": "canary-duckdns",
+        "inconclusive": 1,
+        "inconclusive_delivered": true,
+        "not_applicable": 0,
+        "tier": "real_recorded",
+        "tp": 3
       }
     ],
     "false_positives_on_known_good": 0,
@@ -503,8 +809,8 @@
       "recall_label": "absolute (the true set is knowable for this scanner)"
     },
     "overall": {
-      "cases": 16,
-      "checks_run": 240,
+      "cases": 25,
+      "checks_run": 467,
       "claims": {
         "derived": {
           "fp": 0,
@@ -514,18 +820,19 @@
         "detected": {
           "fp": 0,
           "precision": 1.0,
-          "tp": 21
+          "tp": 33
         }
       },
       "false_positives_on_known_good": 0,
       "fn": 0,
       "fp": 0,
-      "inconclusive_rate": 0.008333333333333333,
+      "inconclusive_rate": 0.006423982869379015,
+      "not_applicable": 0,
       "precision": 1.0,
       "recall": 1.0,
-      "suspected_rate": 0.0,
+      "suspected_rate": 0.07066381156316917,
       "tier": "all",
-      "tp": 21
+      "tp": 33
     },
     "passed": true,
     "reason": "pass",
@@ -533,7 +840,7 @@
     "tiers": {
       "known_good": {
         "cases": 3,
-        "checks_run": 51,
+        "checks_run": 58,
         "claims": {
           "derived": {
             "fp": 0,
@@ -550,15 +857,16 @@
         "fn": 0,
         "fp": 0,
         "inconclusive_rate": 0.0,
+        "not_applicable": 0,
         "precision": null,
         "recall": null,
         "suspected_rate": 0.0,
         "tier": "known_good",
         "tp": 0
       },
-      "vulnerable": {
-        "cases": 13,
-        "checks_run": 189,
+      "real_disagreement": {
+        "cases": 2,
+        "checks_run": 36,
         "claims": {
           "derived": {
             "fp": 0,
@@ -568,18 +876,71 @@
           "detected": {
             "fp": 0,
             "precision": 1.0,
-            "tp": 21
+            "tp": 6
           }
         },
         "false_positives_on_known_good": 0,
         "fn": 0,
         "fp": 0,
-        "inconclusive_rate": 0.010582010582010581,
+        "inconclusive_rate": 0.0,
+        "not_applicable": 0,
         "precision": 1.0,
         "recall": 1.0,
-        "suspected_rate": 0.0,
+        "suspected_rate": 0.027777777777777776,
+        "tier": "real_disagreement",
+        "tp": 6
+      },
+      "real_recorded": {
+        "cases": 3,
+        "checks_run": 65,
+        "claims": {
+          "derived": {
+            "fp": 0,
+            "precision": null,
+            "tp": 0
+          },
+          "detected": {
+            "fp": 0,
+            "precision": 1.0,
+            "tp": 10
+          }
+        },
+        "false_positives_on_known_good": 0,
+        "fn": 0,
+        "fp": 0,
+        "inconclusive_rate": 0.015384615384615385,
+        "not_applicable": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "suspected_rate": 0.36923076923076925,
+        "tier": "real_recorded",
+        "tp": 10
+      },
+      "vulnerable": {
+        "cases": 17,
+        "checks_run": 308,
+        "claims": {
+          "derived": {
+            "fp": 0,
+            "precision": null,
+            "tp": 0
+          },
+          "detected": {
+            "fp": 0,
+            "precision": 1.0,
+            "tp": 17
+          }
+        },
+        "false_positives_on_known_good": 0,
+        "fn": 0,
+        "fp": 0,
+        "inconclusive_rate": 0.006493506493506494,
+        "not_applicable": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "suspected_rate": 0.025974025974025976,
         "tier": "vulnerable",
-        "tp": 21
+        "tp": 17
       }
     }
   },
@@ -594,6 +955,7 @@
         "id": "resolves",
         "inconclusive": 0,
         "inconclusive_delivered": false,
+        "not_applicable": 0,
         "tier": "known_good",
         "tp": 0
       },
@@ -611,6 +973,7 @@
         "id": "no-a-record",
         "inconclusive": 0,
         "inconclusive_delivered": false,
+        "not_applicable": 0,
         "tier": "vulnerable",
         "tp": 1
       },
@@ -628,6 +991,7 @@
         "id": "nxdomain",
         "inconclusive": 0,
         "inconclusive_delivered": false,
+        "not_applicable": 0,
         "tier": "vulnerable",
         "tp": 1
       },
@@ -640,6 +1004,7 @@
         "id": "servfail",
         "inconclusive": 0,
         "inconclusive_delivered": true,
+        "not_applicable": 0,
         "tier": "vulnerable",
         "tp": 0
       }
@@ -671,6 +1036,7 @@
       "fn": 0,
       "fp": 0,
       "inconclusive_rate": 0.0,
+      "not_applicable": 0,
       "precision": 1.0,
       "recall": 1.0,
       "suspected_rate": 0.0,
@@ -700,6 +1066,7 @@
         "fn": 0,
         "fp": 0,
         "inconclusive_rate": 0.0,
+        "not_applicable": 0,
         "precision": null,
         "recall": null,
         "suspected_rate": 0.0,
@@ -725,6 +1092,7 @@
         "fn": 0,
         "fp": 0,
         "inconclusive_rate": 0.0,
+        "not_applicable": 0,
         "precision": 1.0,
         "recall": 1.0,
         "suspected_rate": 0.0,
@@ -744,6 +1112,7 @@
         "id": "healthy",
         "inconclusive": 4,
         "inconclusive_delivered": true,
+        "not_applicable": 0,
         "tier": "known_good",
         "tp": 0
       },
@@ -761,6 +1130,7 @@
         "id": "expired",
         "inconclusive": 0,
         "inconclusive_delivered": false,
+        "not_applicable": 0,
         "tier": "vulnerable",
         "tp": 1
       },
@@ -778,6 +1148,7 @@
         "id": "expiring-soon",
         "inconclusive": 0,
         "inconclusive_delivered": false,
+        "not_applicable": 0,
         "tier": "vulnerable",
         "tp": 0
       },
@@ -795,6 +1166,7 @@
         "id": "expiring-urgent",
         "inconclusive": 0,
         "inconclusive_delivered": false,
+        "not_applicable": 0,
         "tier": "vulnerable",
         "tp": 0
       },
@@ -812,6 +1184,7 @@
         "id": "not-yet-valid",
         "inconclusive": 0,
         "inconclusive_delivered": false,
+        "not_applicable": 0,
         "tier": "vulnerable",
         "tp": 1
       },
@@ -829,6 +1202,7 @@
         "id": "wrong-hostname",
         "inconclusive": 0,
         "inconclusive_delivered": false,
+        "not_applicable": 0,
         "tier": "vulnerable",
         "tp": 1
       },
@@ -846,6 +1220,7 @@
         "id": "self-signed",
         "inconclusive": 0,
         "inconclusive_delivered": false,
+        "not_applicable": 0,
         "tier": "vulnerable",
         "tp": 1
       },
@@ -863,6 +1238,7 @@
         "id": "untrusted-root",
         "inconclusive": 0,
         "inconclusive_delivered": false,
+        "not_applicable": 0,
         "tier": "vulnerable",
         "tp": 0
       },
@@ -880,6 +1256,7 @@
         "id": "weak-key",
         "inconclusive": 4,
         "inconclusive_delivered": true,
+        "not_applicable": 0,
         "tier": "vulnerable",
         "tp": 0
       },
@@ -901,6 +1278,7 @@
         "id": "sha1-signature",
         "inconclusive": 4,
         "inconclusive_delivered": true,
+        "not_applicable": 0,
         "tier": "vulnerable",
         "tp": 1
       },
@@ -918,6 +1296,7 @@
         "id": "incomplete-chain",
         "inconclusive": 0,
         "inconclusive_delivered": false,
+        "not_applicable": 0,
         "tier": "vulnerable",
         "tp": 0
       },
@@ -935,6 +1314,7 @@
         "id": "no-forward-secrecy",
         "inconclusive": 4,
         "inconclusive_delivered": true,
+        "not_applicable": 0,
         "tier": "vulnerable",
         "tp": 0
       },
@@ -952,6 +1332,7 @@
         "id": "obsolete-protocol",
         "inconclusive": 4,
         "inconclusive_delivered": true,
+        "not_applicable": 0,
         "tier": "vulnerable",
         "tp": 0
       },
@@ -964,6 +1345,7 @@
         "id": "unreachable",
         "inconclusive": 0,
         "inconclusive_delivered": true,
+        "not_applicable": 0,
         "tier": "vulnerable",
         "tp": 0
       },
@@ -985,6 +1367,7 @@
         "id": "expired-and-incomplete-chain",
         "inconclusive": 0,
         "inconclusive_delivered": false,
+        "not_applicable": 0,
         "tier": "vulnerable",
         "tp": 0
       },
@@ -1010,8 +1393,27 @@
         "id": "beast-vulnerable",
         "inconclusive": 4,
         "inconclusive_delivered": true,
+        "not_applicable": 0,
         "tier": "vulnerable",
         "tp": 0
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [
+          {
+            "check_id": "tls-hostname-mismatch",
+            "location": "localhost:14416"
+          }
+        ],
+        "fn": 0,
+        "fp": 0,
+        "id": "cn-only",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "not_applicable": 0,
+        "tier": "vulnerable",
+        "tp": 1
       },
       {
         "errors": [],
@@ -1027,6 +1429,7 @@
         "id": "legacy-cipher-rc4",
         "inconclusive": 1,
         "inconclusive_delivered": true,
+        "not_applicable": 0,
         "tier": "vulnerable",
         "tp": 0
       },
@@ -1044,6 +1447,7 @@
         "id": "legacy-cipher-sweet32",
         "inconclusive": 1,
         "inconclusive_delivered": true,
+        "not_applicable": 0,
         "tier": "vulnerable",
         "tp": 0
       },
@@ -1061,6 +1465,7 @@
         "id": "legacy-cipher-logjam",
         "inconclusive": 1,
         "inconclusive_delivered": true,
+        "not_applicable": 0,
         "tier": "vulnerable",
         "tp": 0
       },
@@ -1073,6 +1478,7 @@
         "id": "legacy-cipher-clean",
         "inconclusive": 0,
         "inconclusive_delivered": false,
+        "not_applicable": 0,
         "tier": "known_good",
         "tp": 0
       }
@@ -1086,8 +1492,8 @@
       "recall_label": "absolute (the true set is knowable for this scanner)"
     },
     "overall": {
-      "cases": 20,
-      "checks_run": 220,
+      "cases": 21,
+      "checks_run": 228,
       "claims": {
         "derived": {
           "fp": 0,
@@ -1097,18 +1503,19 @@
         "detected": {
           "fp": 0,
           "precision": 1.0,
-          "tp": 5
+          "tp": 6
         }
       },
       "false_positives_on_known_good": 0,
       "fn": 0,
       "fp": 0,
-      "inconclusive_rate": 0.12272727272727273,
+      "inconclusive_rate": 0.11842105263157894,
+      "not_applicable": 0,
       "precision": 1.0,
       "recall": 1.0,
-      "suspected_rate": 0.07727272727272727,
+      "suspected_rate": 0.07456140350877193,
       "tier": "all",
-      "tp": 5
+      "tp": 6
     },
     "passed": true,
     "reason": "pass",
@@ -1133,6 +1540,7 @@
         "fn": 0,
         "fp": 0,
         "inconclusive_rate": 0.10526315789473684,
+        "not_applicable": 0,
         "precision": null,
         "recall": null,
         "suspected_rate": 0.0,
@@ -1140,8 +1548,8 @@
         "tp": 0
       },
       "vulnerable": {
-        "cases": 18,
-        "checks_run": 182,
+        "cases": 19,
+        "checks_run": 190,
         "claims": {
           "derived": {
             "fp": 0,
@@ -1151,18 +1559,19 @@
           "detected": {
             "fp": 0,
             "precision": 1.0,
-            "tp": 5
+            "tp": 6
           }
         },
         "false_positives_on_known_good": 0,
         "fn": 0,
         "fp": 0,
-        "inconclusive_rate": 0.12637362637362637,
+        "inconclusive_rate": 0.12105263157894737,
+        "not_applicable": 0,
         "precision": 1.0,
         "recall": 1.0,
-        "suspected_rate": 0.09340659340659341,
+        "suspected_rate": 0.08947368421052632,
         "tier": "vulnerable",
-        "tp": 5
+        "tp": 6
       }
     }
   },
@@ -1177,6 +1586,7 @@
         "id": "known-good",
         "inconclusive": 0,
         "inconclusive_delivered": false,
+        "not_applicable": 0,
         "tier": "known_good",
         "tp": 0
       },
@@ -1210,6 +1620,7 @@
         "id": "bare",
         "inconclusive": 0,
         "inconclusive_delivered": false,
+        "not_applicable": 0,
         "tier": "vulnerable",
         "tp": 5
       },
@@ -1227,6 +1638,7 @@
         "id": "hsts-weak",
         "inconclusive": 0,
         "inconclusive_delivered": false,
+        "not_applicable": 0,
         "tier": "vulnerable",
         "tp": 1
       },
@@ -1252,6 +1664,7 @@
         "id": "csp-weak",
         "inconclusive": 0,
         "inconclusive_delivered": false,
+        "not_applicable": 0,
         "tier": "vulnerable",
         "tp": 3
       },
@@ -1264,6 +1677,7 @@
         "id": "csp-meta",
         "inconclusive": 0,
         "inconclusive_delivered": false,
+        "not_applicable": 0,
         "tier": "vulnerable",
         "tp": 0
       },
@@ -1281,6 +1695,7 @@
         "id": "listing",
         "inconclusive": 0,
         "inconclusive_delivered": false,
+        "not_applicable": 0,
         "tier": "vulnerable",
         "tp": 1
       },
@@ -1293,6 +1708,7 @@
         "id": "mixed-sri",
         "inconclusive": 0,
         "inconclusive_delivered": false,
+        "not_applicable": 0,
         "tier": "vulnerable",
         "tp": 0
       },
@@ -1305,6 +1721,7 @@
         "id": "secret",
         "inconclusive": 0,
         "inconclusive_delivered": false,
+        "not_applicable": 0,
         "tier": "vulnerable",
         "tp": 0
       },
@@ -1317,6 +1734,7 @@
         "id": "eol",
         "inconclusive": 0,
         "inconclusive_delivered": false,
+        "not_applicable": 0,
         "tier": "vulnerable",
         "tp": 0
       },
@@ -1329,6 +1747,7 @@
         "id": "django-debug",
         "inconclusive": 0,
         "inconclusive_delivered": false,
+        "not_applicable": 0,
         "tier": "vulnerable",
         "tp": 0
       },
@@ -1341,8 +1760,31 @@
         "id": "pytrace",
         "inconclusive": 2,
         "inconclusive_delivered": true,
+        "not_applicable": 0,
         "tier": "vulnerable",
         "tp": 0
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [
+          {
+            "check_id": "web-clickjacking-unprotected",
+            "location": "/sp-canary/"
+          },
+          {
+            "check_id": "web-xcto-missing",
+            "location": "/sp-canary/"
+          }
+        ],
+        "fn": 0,
+        "fp": 0,
+        "id": "canary-pages",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "not_applicable": 0,
+        "tier": "real_recorded",
+        "tp": 2
       }
     ],
     "false_positives_on_known_good": 0,
@@ -1354,8 +1796,8 @@
       "recall_label": "corpus-relative only - never publish this as absolute"
     },
     "overall": {
-      "cases": 11,
-      "checks_run": 234,
+      "cases": 12,
+      "checks_run": 255,
       "claims": {
         "derived": {
           "fp": 0,
@@ -1365,18 +1807,19 @@
         "detected": {
           "fp": 0,
           "precision": 1.0,
-          "tp": 10
+          "tp": 12
         }
       },
       "false_positives_on_known_good": 0,
       "fn": 0,
       "fp": 0,
-      "inconclusive_rate": 0.008547008547008548,
+      "inconclusive_rate": 0.00784313725490196,
+      "not_applicable": 0,
       "precision": 1.0,
       "recall": 1.0,
-      "suspected_rate": 0.03418803418803419,
+      "suspected_rate": 0.043137254901960784,
       "tier": "all",
-      "tp": 10
+      "tp": 12
     },
     "passed": true,
     "reason": "pass",
@@ -1401,11 +1844,38 @@
         "fn": 0,
         "fp": 0,
         "inconclusive_rate": 0.0,
+        "not_applicable": 0,
         "precision": null,
         "recall": null,
         "suspected_rate": 0.0,
         "tier": "known_good",
         "tp": 0
+      },
+      "real_recorded": {
+        "cases": 1,
+        "checks_run": 21,
+        "claims": {
+          "derived": {
+            "fp": 0,
+            "precision": null,
+            "tp": 0
+          },
+          "detected": {
+            "fp": 0,
+            "precision": 1.0,
+            "tp": 2
+          }
+        },
+        "false_positives_on_known_good": 0,
+        "fn": 0,
+        "fp": 0,
+        "inconclusive_rate": 0.0,
+        "not_applicable": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "suspected_rate": 0.14285714285714285,
+        "tier": "real_recorded",
+        "tp": 2
       },
       "vulnerable": {
         "cases": 10,
@@ -1426,6 +1896,7 @@
         "fn": 0,
         "fp": 0,
         "inconclusive_rate": 0.009433962264150943,
+        "not_applicable": 0,
         "precision": 1.0,
         "recall": 1.0,
         "suspected_rate": 0.03773584905660377,

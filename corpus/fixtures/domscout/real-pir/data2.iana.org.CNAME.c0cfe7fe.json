@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "data2.iana.org",
+  "rcode": "NOERROR",
+  "records": [
+    "data2.iana.org.cdn.cloudflare.net."
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "CNAME",
+  "ttl": 60
+}

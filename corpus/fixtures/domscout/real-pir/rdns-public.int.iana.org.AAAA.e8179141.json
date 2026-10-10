@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "rdns-public.int.iana.org",
+  "rcode": "NOERROR",
+  "records": [
+    "2620:0:2d0:201::91"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "AAAA",
+  "ttl": 30
+}

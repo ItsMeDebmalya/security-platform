@@ -27,6 +27,7 @@ from typing import Any
 import typer
 import yaml
 
+from core.applicability import enforce
 from core.assetgraph import seed_asset_graph
 from core.authz import Scope
 from core.context import ScanContext
@@ -73,7 +74,8 @@ def _load(path: Path) -> Any:
 
 def _run_case(scanner_name: str, case: dict[str, Any]) -> ScanResult:
     scanner, target, ctx = _case_context(scanner_name, case)
-    return scanner.run(target, case.get("mode", "light"), ctx)
+    # ADR-032: a not_applicable reason the check did not declare fails here.
+    return enforce(scanner.run(target, case.get("mode", "light"), ctx))
 
 
 def _case_context(
@@ -89,7 +91,9 @@ def _case_context(
     # service hosts (crt.sh, rdap.org for domscout; empty for email/tls, so
     # their scope is unchanged). The replay backend never touches the network;
     # a scanner that makes no HTTP request (email/tls) never exercises it.
-    http_scope = Scope(frozenset(Scope.for_target(target).hosts | scanner.service_hosts))
+    http_scope = Scope(
+        frozenset(Scope.for_target(target).hosts | scanner.service_hosts_for(target))
+    )
     ctx = ScanContext(
         # A case may name its resolver order (primary first). Cases recorded
         # from real resolvers that disagreed use it to choose which answer is
@@ -134,8 +138,13 @@ def _score(
             for f in result.findings
         ],
         expected=[Expected(**e) for e in expected],
-        checks_run=len(result.telemetry.checks_run),
+        checks_run=len(result.telemetry.checks_run) - result.not_applicable_count(),
         enumeration_check_ids=enumeration_check_ids,
+        not_applicable=frozenset(
+            (run.check_id, run.location)
+            for run in result.telemetry.checks_run
+            if run.outcome == "not_applicable"
+        ),
     )
 
 
@@ -189,6 +198,7 @@ def run_scanner_corpus(
                 tp_finite=score.tp_finite,
                 fp_finite=score.fp_finite,
                 fn_finite=score.fn_finite,
+                not_applicable=score.not_applicable,
             )
 
         outcomes.append(
@@ -248,6 +258,7 @@ def run_scanner_corpus(
                 "fp": o.score.fp,
                 "fn": o.score.fn,
                 "inconclusive": o.score.inconclusive,
+                "not_applicable": o.score.not_applicable,
                 "expected": expected_by_case_id.get(o.case_id, []),
                 "expect_inconclusive": o.inconclusive_expected,
                 "inconclusive_delivered": o.inconclusive_delivered,
@@ -282,7 +293,7 @@ def _reason(gate_reason: str, unmet: list[str], errored: list[str], known_good_f
 def _print_report(reports: list[dict[str, Any]]) -> None:
     header = (
         f"{'scanner':<10} {'checks':>7} {'TP':>4} {'FP':>4} {'FN':>4} "
-        f"{'precision':>10} {'recall':>8} {'susp%':>7} {'inconc%':>8}  gate"
+        f"{'precision':>10} {'recall':>8} {'susp%':>7} {'inconc%':>8} {'not-app':>8}  gate"
     )
     print(header)
     print("-" * len(header))
@@ -292,7 +303,8 @@ def _print_report(reports: list[dict[str, Any]]) -> None:
             f"{report['scanner']:<10} {overall['checks_run']:>7} {overall['tp']:>4} "
             f"{overall['fp']:>4} {overall['fn']:>4} "
             f"{_fmt(overall['precision']):>10} {_fmt(overall['recall']):>8} "
-            f"{overall['suspected_rate']:>6.1%} {overall['inconclusive_rate']:>7.1%}  "
+            f"{overall['suspected_rate']:>6.1%} {overall['inconclusive_rate']:>7.1%} "
+            f"{overall['not_applicable']:>8}  "
             f"{'PASS' if report['passed'] else 'FAIL'}"
         )
         print(f"{'':<10} recall is {report['gate']['recall_label']}")
@@ -328,6 +340,13 @@ def _regressions(current: list[dict[str, Any]], baseline: list[dict[str, Any]]) 
             problems.append(
                 f"{name}: inconclusive rate rose "
                 f"{before['inconclusive_rate']:.3f} -> {now['inconclusive_rate']:.3f}"
+            )
+        # ADR-032: not_applicable is outside the inconclusive gate, so a rise in it
+        # must be seen by CI on its own (review of D28, finding 10).
+        if now.get("not_applicable", 0) > before.get("not_applicable", 0):
+            problems.append(
+                f"{name}: not_applicable count rose "
+                f"{before.get('not_applicable', 0)} -> {now.get('not_applicable', 0)}"
             )
         if report["false_positives_on_known_good"] > previous.get(
             "false_positives_on_known_good", 0

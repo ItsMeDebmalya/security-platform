@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "dnstest.int.iana.org",
+  "rcode": "NOERROR",
+  "records": [
+    "10.32.10.92"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "A",
+  "ttl": 30
+}

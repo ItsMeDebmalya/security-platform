@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "example.com",
+  "rcode": "NOERROR",
+  "records": [
+    "2371 13 2 c988ec423e3880eb8dd8a46fe06ca230ee23f35b578d64e78b29c3e1c83d245a"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "DS",
+  "ttl": 79670
+}

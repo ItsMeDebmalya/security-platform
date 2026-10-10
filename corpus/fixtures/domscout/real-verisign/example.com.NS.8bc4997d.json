@@ -1,0 +1,12 @@
+{
+  "flags": [],
+  "name": "example.com",
+  "rcode": "NOERROR",
+  "records": [
+    "hera.ns.cloudflare.com.",
+    "elliott.ns.cloudflare.com."
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "NS",
+  "ttl": 80924
+}

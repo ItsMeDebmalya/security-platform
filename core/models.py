@@ -636,7 +636,11 @@ class Suppressed(Strict):
         return redact_text(value)[0] or value
 
 
-CheckOutcome = Literal["reported", "clear", "inconclusive", "suppressed", "error"]
+CheckOutcome = Literal["reported", "clear", "inconclusive", "suppressed", "error", "not_applicable"]
+
+NotApplicableReason = Literal["special-use-name"]
+"""ADR-032: the only reasons a check may give for `not_applicable`. Mirrors the
+schema's enum and `core.applicability.REASONS`, which holds their wording."""
 
 
 class CheckRun(Strict):
@@ -651,11 +655,19 @@ class CheckRun(Strict):
     check_id: str = Field(min_length=1)
     outcome: CheckOutcome
     location: str = TARGET_LEVEL
+    reason: NotApplicableReason | None = None
+    """ADR-032: set exactly when `outcome` is `not_applicable`, from a fixed list."""
 
     @field_validator("location")
     @classmethod
     def _redact_location(cls, value: str) -> str:
         return redact_text(value)[0] or value
+
+    @model_validator(mode="after")
+    def _reason_only_for_not_applicable(self) -> Self:
+        if (self.outcome == "not_applicable") != (self.reason is not None):
+            raise ValueError("a reason is given exactly when the outcome is not_applicable")
+        return self
 
 
 class Telemetry(Strict):
@@ -720,6 +732,24 @@ class ScanResult(Strict):
                 "reached no verdict emits an inconclusive finding rather than vanishing."
             )
 
+        # ADR-032: a check that does not apply judged nothing, so it cannot also
+        # have reported something at the same place.
+        inapplicable = {
+            (c.check_id, c.location)
+            for c in self.telemetry.checks_run
+            if c.outcome == "not_applicable"
+        }
+        contradicted = sorted(
+            f"{f.check_id}@{f.location}"
+            for f in self.findings
+            if (f.check_id, f.location) in inapplicable
+        )
+        if contradicted:
+            raise ValueError(
+                f"checks report findings where they declared themselves not applicable: "
+                f"{contradicted}"
+            )
+
         suppressed = {s.check_id for s in self.telemetry.suppressed}
         undocumented = sorted(
             {c.check_id for c in self.telemetry.checks_run if c.outcome == "suppressed"}
@@ -732,11 +762,18 @@ class ScanResult(Strict):
         return self
 
     def inconclusive_rate(self) -> float:
-        """inconclusive / (all checks that ran), per docs/10-measurement.md."""
-        if not self.telemetry.checks_run:
+        """inconclusive / (all checks that ran), per docs/10-measurement.md.
+
+        A `not_applicable` check judged nothing, so it is not in the denominator
+        (ADR-032); `not_applicable_count` reports it on its own."""
+        judged = [c for c in self.telemetry.checks_run if c.outcome != "not_applicable"]
+        if not judged:
             return 0.0
-        inconclusive = sum(1 for c in self.telemetry.checks_run if c.outcome == "inconclusive")
-        return inconclusive / len(self.telemetry.checks_run)
+        inconclusive = sum(1 for c in judged if c.outcome == "inconclusive")
+        return inconclusive / len(judged)
+
+    def not_applicable_count(self) -> int:
+        return sum(1 for c in self.telemetry.checks_run if c.outcome == "not_applicable")
 
 
 class ScannerRef(Strict):

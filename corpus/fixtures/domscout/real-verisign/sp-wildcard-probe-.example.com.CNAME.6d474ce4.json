@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "sp-wildcard-probe-ebc981d9.example.com",
+  "rcode": "NODATA",
+  "records": [],
+  "resolver": "1.1.1.1",
+  "rrtype": "CNAME",
+  "ttl": null
+}

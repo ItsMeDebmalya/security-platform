@@ -159,7 +159,7 @@ Live basis: badssl.com test hosts and operator infrastructure, plus 67 facts cro
 
 ---
 
-## domscout — DNS & Subdomain Enumeration (Tool 3, v1.2.0)
+## domscout — DNS & Subdomain Enumeration (Tool 3, v1.3.0)
 
 7 checks, all Light, all passive (`secret-exposed` is emitted by core's helper, ADR-029). Every lookup goes to a public service (CT logs, public resolvers, RDAP), never to the target, apart from at most one ordinary HTTPS page load per takeover candidate.
 
@@ -169,9 +169,9 @@ Live basis: badssl.com test hosts and operator infrastructure, plus 67 facts cro
 |---|---|---|---|---|---|
 | `subdomains-ct-log` | Inventory of subdomains named in Certificate Transparency logs that still resolve | light | info | `informational` | WORKING. The frozen fixtures' crt.sh response shape is unverified (ledger D34) |
 | `dns-records` | Inventory of the DNS records observed for the domain and its subdomains | light | info | `informational` | WORKING |
-| `dnssec-status` | DNSSEC is not deployed: no DS/DNSKEY, so DNS answers can be forged in transit | light | low | `confirmed`: DS and DNSKEY re-queried through an independent second resolver agree. Agreement rules out one resolver's glitch, not a shared failure (D36) | WORKING for the unsigned case. The signed path has not been live-verified (ledger D-DS2) |
-| `domain-expiring` | The domain registration expires within 30 days, after which anyone can re-register it | light | medium | `suspected`: a single source, the registry's RDAP record read twice | **BROKEN** (ledger D28): it has never read an expiry date live, for any TLD. It returns `inconclusive` on every domain |
-| `domain-expired` | The domain registration has already expired | light | high | `suspected`: as above | **BROKEN** (ledger D28): the same RDAP fetch, so it cannot fire live |
+| `dnssec-status` | DNSSEC is not deployed: no DS/DNSKEY, so DNS answers can be forged in transit | light | low | `confirmed`: DS and DNSKEY re-queried through an independent second resolver agree. Agreement rules out one resolver's glitch, not a shared failure (D36) | **BROKEN** (ledger D53): on a subdomain target it judges a name that is not a zone apex, and claimed `www.nixi.in` unsigned (`confirmed`) although `nixi.in` is signed. The apex unsigned case was live-verified (<operator domain A>); the signed path is not (D-DS2) |
+| `domain-expiring` | The domain registration expires within 30 days, after which anyone can re-register it | light | medium | `suspected`: a single source, the registry's RDAP record read twice, from the registry's own server (IANA bootstrap, ADR-031). `not_applicable` for a special-use name (ADR-032) | UNDETERMINED (D28 fixed, v1.3.0): reads the expiry live at Verisign, PIR and NIXI, hand-verified (`corpus/crosscheck/d28-registry-responses/`), but no real domain within 30 days has been scanned |
+| `domain-expired` | The domain registration has already expired | light | high | `suspected`: as above | UNDETERMINED (D28 fixed, v1.3.0): the same read, live; no real expired registration has been scanned |
 | `subdomain-takeover` | A subdomain's CNAME points at a third-party service where anyone could claim the name | light | high | `suspected`, never more: a CNAME to the provider plus the provider's own unclaimed-name `404`, fetched over plain http, never proven by claiming the resource | UNDETERMINED for all three providers (D31, v1.2.0): matches the providers' recorded responses (`corpus/crosscheck/d31-provider-responses/`), but has not fired on a live target. A live positive needs a test name with CNAME support |
 | `secret-exposed` | A credential-shaped secret is served in a response from the domain or a subdomain that the scan fetched (today, takeover candidates' pages). It was removed when captured and is never stored; the finding's redaction receipts say what kind and where | light | high | `suspected`: a pattern match on public content, with no validation | UNDETERMINED: fired once, correctly, on the DuckDNS canary's TXT (2026-10-10), but that recording holds the operator's IP and is not committed, so there is no evidence on record yet (`corpus/crosscheck/canary-2026-10-10/`). A synthetic corpus case (`takeover-secret`). Every public capture the scan made is checked (ADR-029) |
 

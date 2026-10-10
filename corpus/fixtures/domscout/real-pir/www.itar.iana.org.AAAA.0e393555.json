@@ -1,0 +1,9 @@
+{
+  "flags": [],
+  "name": "www.itar.iana.org",
+  "rcode": "NXDOMAIN",
+  "records": [],
+  "resolver": "1.1.1.1",
+  "rrtype": "AAAA",
+  "ttl": null
+}

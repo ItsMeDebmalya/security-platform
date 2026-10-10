@@ -14,8 +14,9 @@
 #    (a comparison, never a score).
 #  * The gate applies only to the real security findings. Only `dnssec-status`
 #    reaches a validated `confirmed` claim (independent second resolver); the
-#    expiry and takeover findings are honest `suspected` and excused from the
-#    gate on both sides. So the number rests on a SMALL claim count — read it
+#    takeover findings are honest `suspected` and excused from the
+#    gate on both sides. Expiry on a `.test` name is `not_applicable` (ADR-032):
+#    expiry is proven only by the `real_recorded` cases below. So the number rests on a SMALL claim count — read it
 #    with the susp% column, exactly as TLS's is read.
 #  * `recall_definition: absolute` refers to the gated security findings, whose
 #    answers are knowable per domain. It is NOT a claim about subdomain
@@ -79,13 +80,6 @@ cases:
     target: { type: domain, value: corpus-nodnssec.test }
     fixtures: corpus/fixtures/domscout/dnssec-insecure
 
-  - id: domain-expired
-    tier: vulnerable
-    source: frozen
-    mode: light
-    target: { type: domain, value: corpus-expired.test }
-    fixtures: corpus/fixtures/domscout/domain-expired
-
   - id: takeover-positive
     tier: vulnerable
     source: frozen
@@ -111,3 +105,36 @@ cases:
     target: { type: domain, value: corpus-broken.test }
     fixtures: corpus/fixtures/domscout/servfail
     expect_inconclusive: true
+
+  # --- D28: expiry read from real registries (ADR-031) ----------------------
+  # Recorded live 2026-10-10 (domscout v1.3.0) through the vendored IANA
+  # bootstrap, straight to each registry. Each expiry date hand-verified against
+  # `curl -L https://rdap.org/domain/<d>` (the registry rdap.org redirects to):
+  #   example.com -> rdap.verisign.com                 2027-08-13
+  #   iana.org    -> rdap.publicinterestregistry.org   2027-12-08
+  #   nixi.in     -> rdap.nixiregistry.in              2026-12-30
+  # No claim is expected. The verdict is judged against today, so nixi.in
+  # replays as `domain-expiring` (suspected, excused) from 2026-11-30 and as
+  # `domain-expired` after 2026-12-30; tests/scanners/domscout/test_expiry.py
+  # asserts only that each expiry is read. crt.sh answered 502 for nixi.in on
+  # five tries (recorded as it happened: `subdomains-ct-log` inconclusive).
+  - id: real-verisign
+    tier: real_recorded
+    source: recorded
+    mode: light
+    target: { type: domain, value: example.com }
+    fixtures: corpus/fixtures/domscout/real-verisign
+
+  - id: real-pir
+    tier: real_recorded
+    source: recorded
+    mode: light
+    target: { type: domain, value: iana.org }
+    fixtures: corpus/fixtures/domscout/real-pir
+
+  - id: real-nixi
+    tier: real_recorded
+    source: recorded
+    mode: light
+    target: { type: domain, value: nixi.in }
+    fixtures: corpus/fixtures/domscout/real-nixi

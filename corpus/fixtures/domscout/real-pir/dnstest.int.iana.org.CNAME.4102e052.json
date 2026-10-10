@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "dnstest.int.iana.org",
+  "rcode": "NOERROR",
+  "records": [
+    "ianadnstest.int.vip.icann.org."
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "CNAME",
+  "ttl": 3600
+}

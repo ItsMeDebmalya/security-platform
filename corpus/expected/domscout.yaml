@@ -20,19 +20,23 @@ enum-cname: []
 dnssec-insecure:
   - { check_id: dnssec-status, location: "$" }
 
-# domain-expired and subdomain-takeover fire as honest `suspected` findings
-# (single RDAP source; a takeover is never proven by taking it), which are
-# excused from the gate on both sides — so they are not listed as expected
-# reported-positives. Listed here as a note, not as an assertion:
-#   domain-expired     -> domain-expired@$   (suspected)
+# subdomain-takeover fires as an honest `suspected` finding (a takeover is
+# never proven by taking it), which is excused from the gate on both sides, so
+# it is not listed as an expected reported-positive. Listed here as a note:
 #   takeover-positive  -> subdomain-takeover@gone.corpus-takeover.test (suspected)
 #   takeover-secret    -> subdomain-takeover@docs.corpus-takesecret.test (suspected)
 #                         secret-exposed@http://docs.corpus-takesecret.test/ (suspected,
 #                         ADR-029; asserted by tests/contract/test_secret_exposure_contract.py)
-domain-expired: []
 takeover-positive: []
 takeover-secret: []
 
 # All sources fail: every check must resolve to inconclusive, asserted via
 # expect_inconclusive rather than as a reported finding.
 servfail: []
+
+# D28: real registries, recorded 2026-10-10. Expiry read and not near; both
+# apexes are DNSSEC-signed (DS and DNSKEY present, hand-verified with dig), so
+# nothing is claimed. See corpus/targets/domscout.yaml for the dates.
+real-verisign: []
+real-pir: []
+real-nixi: []

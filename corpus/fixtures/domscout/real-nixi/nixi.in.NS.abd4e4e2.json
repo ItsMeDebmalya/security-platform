@@ -1,0 +1,14 @@
+{
+  "flags": [],
+  "name": "nixi.in",
+  "rcode": "NOERROR",
+  "records": [
+    "ns-cloud-d1.googledomains.com.",
+    "ns-cloud-d2.googledomains.com.",
+    "ns-cloud-d3.googledomains.com.",
+    "ns-cloud-d4.googledomains.com."
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "NS",
+  "ttl": 21600
+}

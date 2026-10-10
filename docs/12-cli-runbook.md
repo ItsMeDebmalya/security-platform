@@ -212,6 +212,8 @@ medium    0.98   confirmed      dmarc-policy-none                $
 9 check(s) ran, 0% inconclusive, 8 request(s)
 ```
 
+*(Captured before ADR-032. Since 2026-10-10 the summary line also reads `N not applicable` after the inconclusive rate, and each `not_applicable` check is listed underneath with its reason, for example `not applicable: domain-expiring (special-use-name)` for a `.test` name. A not-applicable check is not counted in "check(s) ran" or in the rate.)*
+
 ### Reading that
 
 - **`location: $`** is a reserved value meaning "the target as a whole", as opposed to a specific URL or DNS name.

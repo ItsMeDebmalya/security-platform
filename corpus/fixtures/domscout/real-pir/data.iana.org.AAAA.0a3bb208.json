@@ -1,0 +1,12 @@
+{
+  "flags": [],
+  "name": "data.iana.org",
+  "rcode": "NOERROR",
+  "records": [
+    "2606:4700::6812:18e8",
+    "2606:4700::6812:19e8"
+  ],
+  "resolver": "1.1.1.1",
+  "rrtype": "AAAA",
+  "ttl": 160
+}

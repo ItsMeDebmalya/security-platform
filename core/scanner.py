@@ -36,6 +36,14 @@ class BaseScanner(ABC):
     scanners that talk only to the target (email, tls) are unaffected;
     domscout is first to set it non-empty."""
 
+    @classmethod
+    def service_hosts_for(cls, target: Asset) -> frozenset[str]:
+        """The service hosts for one target (ADR-031 clause 2): read-only public
+        services, GET only, never the target. Defaults to the static
+        `service_hosts`; domscout adds only the RDAP server for the target's TLD.
+        Callers build a scan's HTTP scope from this, never from `service_hosts`."""
+        return cls.service_hosts
+
     def validate(self, target: Asset, mode: Mode = "light") -> None:
         """Reject targets and modes this scanner cannot handle. Raises."""
         if target.type not in self.target_types:
