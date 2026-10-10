@@ -1,0 +1,28 @@
+{
+  "body": "<html>\r\n<head><title>301 Moved Permanently</title></head>\r\n<body>\r\n<center><h1>301 Moved Permanently</h1></center>\r\n<hr><center>nginx</center>\r\n</body>\r\n</html>\r\n",
+  "body_truncated": false,
+  "elapsed_ms": 149,
+  "headers": {
+    "accept-ranges": "bytes",
+    "age": "0",
+    "connection": "keep-alive",
+    "content-length": "162",
+    "content-type": "text/html",
+    "date": "Sat, 10 Oct 2026 01:59:16 GMT",
+    "location": "https://itsmedebmalya.github.io/sp-canary/",
+    "server": "GitHub.com",
+    "vary": "Accept-Encoding",
+    "via": "1.1 varnish",
+    "x-cache": "MISS",
+    "x-cache-hits": "0",
+    "x-fastly-request-id": "ff10f9588f8846c7d1ad74efbe011797392f8a7c",
+    "x-github-edge-region": "fra",
+    "x-github-request-id": "52EE:3A5CE1:DCDEA2:DF6936:6AC99BF4",
+    "x-served-by": "cache-par-lfpg1960022-PAR",
+    "x-timer": "S1791597557.778593,VS0,VE118"
+  },
+  "redaction_receipts": [],
+  "redactions": [],
+  "status": 301,
+  "url": "http://itsmedebmalya.github.io/sp-canary/"
+}

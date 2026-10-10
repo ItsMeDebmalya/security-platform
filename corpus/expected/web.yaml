@@ -23,3 +23,9 @@ secret: []          # web-secret-in-response -> suspected; the google browser ke
 eol: []             # web-component-eol (PHP 7.4, Drupal 7) -> suspected
 django-debug: []    # web-debug-mode -> suspected
 pytrace: []         # web-error-disclosure -> suspected
+# GitHub Pages, recorded 2026-10-10, headers hand-verified with curl -I: no
+# X-Frame-Options or frame-ancestors, no X-Content-Type-Options. CSP and CORS
+# wildcard are suspected; web-secret-in-response -> suspected.
+canary-pages:
+  - { check_id: web-clickjacking-unprotected, location: /sp-canary/ }
+  - { check_id: web-xcto-missing, location: /sp-canary/ }

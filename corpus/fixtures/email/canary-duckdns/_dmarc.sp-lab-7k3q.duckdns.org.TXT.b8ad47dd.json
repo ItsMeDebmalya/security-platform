@@ -1,0 +1,11 @@
+{
+  "flags": [],
+  "name": "_dmarc.sp-lab-7k3q.duckdns.org",
+  "rcode": "NOERROR",
+  "records": [
+    "sp-canary deploy-key=AKIAIOSFODNN7EXAMPLE"
+  ],
+  "resolver": "8.8.8.8",
+  "rrtype": "TXT",
+  "ttl": 60
+}

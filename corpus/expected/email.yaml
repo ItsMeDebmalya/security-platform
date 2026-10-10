@@ -128,3 +128,15 @@ real-test-mode:
   - { check_id: mta-sts-missing, location: "$" }
   - { check_id: tls-rpt-missing, location: "$" }
 
+
+# sp-lab-7k3q.duckdns.org, recorded 2026-10-10 and hand-verified with dig: no
+# SPF (the root TXT is only the canary), no DMARC (the wildcard TXT at _dmarc is
+# not a DMARC record; _dmarc.duckdns.org and _dmarc.org are empty), and an MX
+# (DuckDNS's default, to the name itself), so spoofing is possible. DKIM is
+# inconclusive: every selector answers with the wildcard TXT, which is no key.
+# secret-exposed fires (suspected, excused from the gate) and is asserted by the
+# ADR-029 contract test. D52: it fires once per wildcard name, not once.
+canary-duckdns:
+  - { check_id: spf-missing, location: "$" }
+  - { check_id: dmarc-missing, location: "$" }
+  - { check_id: spoofing-possible, location: "$" }
