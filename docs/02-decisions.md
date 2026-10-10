@@ -791,6 +791,13 @@ In both cases the parser, the scope rule and the gate each did their job. The ga
 
 **Reversal cost.** Low for the finding: drop the helper calls. The field is additive, so removing it is a contract migration in its own right.
 
+**Amendment (D52, 2026-10-10): one wildcard record is one exposure.** The canary showed a wildcard TXT record holding a key reported 20 times, once per name the scan queried. Clause 5's "one finding per exposed resource" now reads, for DNS:
+- DNS exposures are grouped by **the record's content** (a digest of the record set, computed in memory for the scan and never stored) **and its actual source**.
+- The source is a **wildcard** `*.<parent>` only when the scan's random probe name, which cannot exist, was served the same content. Every name under that parent serving it is folded into **one finding at `dns:*.<parent>/<type>`**, which says how many names it was seen at and names them. Its evidence is the probe's answer, which is what proves the wildcard.
+- **The parent's own answer stays a separate finding:** a wildcard never matches its owner (RFC 4592), so the record there is a second record that must also be removed.
+- **Identical content without a probe hit stays separate:** those may be separate records, and nothing in DNS tells them apart.
+- The contract (clause 6) counts every folded name as reported by the wildcard's finding.
+
 ## ADR-030 — Hostnames are encoded the way browsers encode them: UTS-46, non-transitional, as the WHATWG URL Standard specifies
 
 **Status.** Accepted 2026-10-09 (operator approved adding `idna`; the processing choice is this ADR's). Follows the D48 re-review.

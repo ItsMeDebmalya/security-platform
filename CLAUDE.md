@@ -16,9 +16,8 @@ The tool-first strategy in docs/archive/ is SUPERSEDED. Do not follow it.
   - D28's `.test` question is **approved**: special-use names get an explicit "expiry does not apply", never a silent pass, and expiry is proven with real recorded registry cases;
   - **company-domain canaries are skipped** for now.
 - **Waiting on the operator:**
-  - removing the corpus canaries (DuckDNS TXT and GitHub Pages), now recorded: see the ledger's canary-runs entry;
   - the value-add backlog question pending with the operator's senior: build the quick wins before or after Tool 4b?
-- **Next, in order:** **the independent review of D28 + ADR-032** (branch `fix/d28-rdap-bootstrap`, a `core/` and `contracts/` change), then D53 (fixed on `fix/d53-dnssec-zone-apex`, stacked on D28), then D52 (wildcard over-reporting in `secret-exposed`), then Tool 4b, then `scan all`.
+- **Next:** D54 (no-follow for service-host requests, `core/http.py`) is in its own PR, awaiting an independent review; D52 is merged (PR #38). **Then stop: Tool 4b and the value-add quick wins wait for the operator**, who is bringing an update from their senior that may change priorities.
 - **Ledgered, no action:** a WHOIS fallback for NIXI's TLDs (`.भारत` and `.இந்தியா` are not in the RDAP bootstrap).
 - **Standing rules from the operator:**
   - Never push or merge without being told; merge with `--merge`.

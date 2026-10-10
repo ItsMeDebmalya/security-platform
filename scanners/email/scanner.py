@@ -73,7 +73,7 @@ NO_VERDICT_FOR_RCODE = {
 @register
 class EmailScanner(BaseScanner):
     name = "email"
-    version = "1.5.0"
+    version = "1.5.1"
     supported_modes = frozenset({"light", "standard"})
     target_types = frozenset({"domain"})
 
