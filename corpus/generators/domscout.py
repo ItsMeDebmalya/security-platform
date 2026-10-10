@@ -356,8 +356,8 @@ def generate(only: set[str] | None = None) -> None:
                 resolver=RecordingResolver(resolver, directory),
                 resolvers=["1.1.1.1", "8.8.8.8"],
             ),
-            http=HttpClient(
-                scope=scope,
+            http=HttpClient.for_scan(
+                target,
                 service_hosts=DomscoutScanner.service_hosts_for(target),
                 backend=RecordingHttpBackend(directory, backend),
             ),

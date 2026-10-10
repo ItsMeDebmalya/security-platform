@@ -210,3 +210,72 @@ def test_target_requests_still_follow_in_scope_redirects_with_service_hosts_decl
     client = _client(handler, scope=WITH_SERVICE, service_hosts=frozenset({REGISTRY}))
 
     assert client.get("https://example.com/start").text == "arrived"
+
+
+# --- independent review of D54 (2026-10-10): each finding is a test ---------------
+
+
+def test_a_service_host_reached_mid_chain_never_redirects_on_to_the_target():
+    """Finding 1: the rule holds at every hop, not only on the first URL."""
+    sent: list[str] = []
+
+    def answers(request):
+        if request.url.host == REGISTRY:
+            return httpx.Response(302, headers={"location": "https://example.com/secret"})
+        if request.url.path == "/":
+            return httpx.Response(302, headers={"location": f"https://{REGISTRY}/x"})
+        return httpx.Response(200, text="the target's secret page")
+
+    client = _client(
+        _recording(sent, answers), scope=WITH_SERVICE, service_hosts=frozenset({REGISTRY})
+    )
+    response = client.get("https://example.com/")
+
+    assert "https://example.com/secret" not in sent
+    assert response.status_code == 302
+
+
+def test_a_target_request_is_never_followed_into_a_service_host():
+    """Related: crt.sh's or a registry's answer must never pass for the target's."""
+    sent: list[str] = []
+
+    def answers(request):
+        if request.url.host == REGISTRY:
+            return httpx.Response(200, text="registry body")
+        return httpx.Response(302, headers={"location": f"https://{REGISTRY}/x"})
+
+    client = _client(
+        _recording(sent, answers), scope=WITH_SERVICE, service_hosts=frozenset({REGISTRY})
+    )
+    response = client.get("https://example.com/")
+
+    assert sent == ["https://example.com/"]
+    assert response.status_code == 302
+
+
+def test_service_hosts_match_exactly_never_their_subdomains():
+    """Finding 3: a target name under a service host keeps ordinary behaviour."""
+
+    def handler(request):
+        if request.url.path == "/start":
+            return httpx.Response(302, headers={"location": f"http://a.{REGISTRY}/end"})
+        return httpx.Response(200, text="arrived")
+
+    scope = Scope(frozenset({REGISTRY}))
+    client = _client(handler, scope=scope, service_hosts=frozenset({"nothing.example"}))
+    assert client.get(f"http://a.{REGISTRY}/start").text == "arrived"
+
+    client = _client(handler, scope=scope, service_hosts=frozenset({REGISTRY}))
+    assert client.get(f"http://a.{REGISTRY}/start").text == "arrived"
+
+
+def test_for_scan_builds_scope_and_service_hosts_from_one_declaration():
+    """Finding 4: one helper, so the two cannot be wired apart."""
+    target = Asset(type="domain", value="example.com")
+    client = HttpClient.for_scan(
+        target, service_hosts=frozenset({REGISTRY}), transport=httpx.MockTransport(_ok)
+    )
+
+    assert client._service_hosts == frozenset({REGISTRY})
+    assert client.get(f"https://{REGISTRY}/").status_code == 200
+    assert client.get("https://www.example.com/").status_code == 200

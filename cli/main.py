@@ -513,11 +513,9 @@ def _execute(
         org_id="org_internal",
         authz_ref=authz_ref,
         dns=DnsClient(resolver=resolver, resolvers=DEFAULT_RESOLVERS, ratelimit=resolver_limit),
-        http=HttpClient(
-            scope=Scope(
-                frozenset(Scope.for_target(target).hosts | scanner.service_hosts_for(target))
-            ),
-            # D54: requests to these never follow a redirect (ADR-031).
+        # D54: scope and no-follow service hosts from one declaration (ADR-031).
+        http=HttpClient.for_scan(
+            target,
             service_hosts=scanner.service_hosts_for(target),
             ratelimit=target_limit,
             backend=http_backend,

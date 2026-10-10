@@ -122,3 +122,18 @@ def test_the_corpus_harness_declares_service_hosts_to_the_http_client():
 
     assert ctx.http._service_hosts == scanner.service_hosts_for(target)
     assert "rdap.nixiregistry.in" in ctx.http._service_hosts
+
+
+def test_every_scan_client_is_built_with_for_scan():
+    """Review of D54: scope and service hosts come from one declaration everywhere a
+    scan's client is built, so they cannot be wired apart."""
+    import inspect
+
+    import cli.corpus
+    import cli.main
+    import corpus.generators.domscout
+
+    for module in (cli.main, cli.corpus, corpus.generators.domscout):
+        source = inspect.getsource(module)
+        assert "HttpClient.for_scan(" in source
+        assert "http=HttpClient(" not in source

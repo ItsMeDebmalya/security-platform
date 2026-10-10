@@ -43,6 +43,7 @@ from core.authz import Scope
 from core.cost import CostMeter
 from core.evidence import DEFAULT_BODY_CAP, truncate_body
 from core.killswitch import KillSwitch
+from core.models import Asset
 from core.redaction import (
     Receipts,
     add_receipts,
@@ -301,7 +302,7 @@ class HttpClient:
         org_id: str = "org_internal",
     ) -> None:
         self._scope = scope
-        self._service_hosts = frozenset(h.lower() for h in service_hosts)
+        self._service_hosts = frozenset(h.lower().rstrip(".") for h in service_hosts)
         """ADR-031 (D54): a request to one of these never follows a redirect, so it
         only ever reaches the host it was declared for, never the scanned site."""
         self._body_cap = body_cap
@@ -319,26 +320,37 @@ class HttpClient:
             transport=transport, user_agent=user_agent, timeout_s=timeout_s
         )
 
+    @classmethod
+    def for_scan(cls, target: Asset, *, service_hosts: frozenset[str], **kwargs: Any) -> HttpClient:
+        """The client for one scan: scope is the target plus its service hosts, and
+        the same declaration makes them no-follow. Derived together so they cannot
+        be wired apart (review of D54). `api/` and any worker must build it here."""
+        scope = Scope(frozenset(Scope.for_target(target).hosts | service_hosts))
+        return cls(scope=scope, service_hosts=service_hosts, **kwargs)
+
     def get(self, url: str, *, follow_redirects: bool = True, **kwargs: Any) -> CapturedResponse:
         return self.request("GET", url, follow_redirects=follow_redirects, **kwargs)
 
     def request(
         self, method: str, url: str, *, follow_redirects: bool = True, **kwargs: Any
     ) -> CapturedResponse:
-        # D54: a declared service host's redirect is returned, never followed, so
-        # a registry's RDAP server cannot send our request to the scanned site.
-        if self._is_service_host(httpx.URL(url).host):
-            follow_redirects = False
         for _ in range(MAX_REDIRECTS):
             response = self._send_once(method, url, **kwargs)
             location = response.headers.get("location")
             if response.status_code not in (301, 302, 303, 307, 308) or not location:
                 return response
-            if not follow_redirects:
+            # D54, at every hop: a service host's redirect is returned, never
+            # followed, so a registry cannot send our request to the scanned site.
+            if not follow_redirects or self._is_service_host(httpx.URL(url).host):
                 return response
 
             target = str(httpx.URL(response.url).join(location))
             host = httpx.URL(target).host
+            # Nor is any request followed into a service host: a service host is
+            # reached only when asked for directly, so its answer can never pass
+            # for the target's (ADR-031 clause 6; review of D54).
+            if self._is_service_host(host):
+                return response
             if not self._scope.permits(host):
                 # Not an error: the redirect itself is a fact worth reporting.
                 # We simply decline to follow it out of scope.
@@ -347,8 +359,9 @@ class HttpClient:
         return response
 
     def _is_service_host(self, host: str) -> bool:
-        host = host.lower().rstrip(".")
-        return any(host == h or host.endswith("." + h) for h in self._service_hosts)
+        """Exact match: a service host is one declared host, never a zone, so a
+        target name under it keeps ordinary behaviour (review of D54)."""
+        return host.lower().rstrip(".") in self._service_hosts
 
     def _send_once(self, method: str, url: str, **kwargs: Any) -> CapturedResponse:
         host = httpx.URL(url).host

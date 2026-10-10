@@ -231,6 +231,31 @@ class _Scan:
             )
             return []
 
+        # Review of D54: crt.sh is never followed, so a 3xx (or any other non-200)
+        # is reported as what happened, never parsed. A redirect body of `[]` would
+        # otherwise read as "no subdomains".
+        if test_response.status_code != 200:
+            location = test_response.headers.get("location", "")
+            elsewhere = urlsplit(location).hostname or location or "an unnamed location"
+            what = (
+                f"redirected to {elsewhere}; a service host's redirect is never followed (ADR-031)"
+                if 300 <= test_response.status_code < 400
+                else f"returned HTTP {test_response.status_code}"
+            )
+            self._inconclusive_http(
+                "subdomains-ct-log",
+                label=f"crt.sh search for %.{self.domain}",
+                request={"method": "GET", "url": test_url},
+                response=test_response,
+                description=(
+                    f"crt.sh {what} for the subdomain search on {self.domain}. This does "
+                    "not show the domain has no subdomains — only that this source could "
+                    "not be read."
+                ),
+                reason="blocked_prerequisite",
+            )
+            return []
+
         try:
             candidates = ct.parse_crtsh(test_response.text, self.domain)
         except (ValueError, TypeError):
@@ -633,9 +658,9 @@ class _Scan:
 
         # ADR-031 clause 5: a redirect is reported as what happened, never parsed.
         # D54: a registry's redirect is never followed (`follow_redirects=False`,
-        # and `HttpClient` refuses to follow from a declared service host), so the
-        # final host is the registry's. It is still checked, in case a client
-        # without the service-host declaration is ever passed in.
+        # and `HttpClient` refuses to follow from a declared service host), so with
+        # either guard in place the final host is the registry's. It is still
+        # checked, in case a client with neither is ever passed in.
         final_host = urlsplit(test_response.url).hostname
         if 300 <= test_response.status_code < 400 or final_host != host:
             location = test_response.headers.get("location", "")

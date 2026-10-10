@@ -377,3 +377,39 @@ def test_a_control_read_that_fails_keeps_the_record_out_of_evidence():
     (finding,) = _expiry_finding(result)
     assert finding.state == "inconclusive"
     assert "second read" in finding.description
+
+
+def test_a_crt_sh_redirect_is_reported_as_a_redirect_never_parsed():
+    """Review of D54, finding 2: a 3xx from crt.sh is not an empty CT log."""
+
+    class Redirecting(Backend):
+        def send(self, method, url, *, body_cap, **kwargs):
+            if url.startswith("https://crt.sh/"):
+                self.calls.append(url)
+                return RawHttpResponse(
+                    status_code=302,
+                    headers={"location": "https://elsewhere.example/"},
+                    text="[]",
+                    url=url,
+                    elapsed_ms=1,
+                )
+            return super().send(method, url, body_cap=body_cap, **kwargs)
+
+    backend = Redirecting({})
+    target = Asset(type="domain", value="corpus-x.test")
+    scope = Scope(
+        frozenset(Scope.for_target(target).hosts | DomscoutScanner.service_hosts_for(target))
+    )
+    ctx = ScanContext(
+        dns=DnsClient(
+            resolver=FakeResolver(_dns("corpus-x.test")), resolvers=["1.1.1.1", "8.8.8.8"]
+        ),
+        http=HttpClient(scope=scope, backend=backend),
+        scope=scope,
+    )
+    result = DomscoutScanner().run(target, "light", ctx)
+
+    (ct,) = [f for f in result.findings if f.check_id == "subdomains-ct-log"]
+    assert ct.state == "inconclusive"
+    assert "redirected" in ct.description
+    assert "could not be parsed" not in ct.description
