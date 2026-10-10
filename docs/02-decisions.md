@@ -849,7 +849,7 @@ In both cases the parser, the scope rule and the gate each did their job. The ga
 **Implementation (D28, 2026-10-10).**
 - `BaseScanner.service_hosts_for(target)` is the classmethod (clause 2). `cli/main.py` and `cli/corpus.py` build the HTTP scope from it. domscout's static list is now `crt.sh` alone.
 - The bootstrap is vendored unmodified at `scanners/domscout/data/iana-rdap-dns.json` (`publication` 2026-09-30T23:00:03Z). The lookup is label-wise, longest first, on A-labels (ADR-030's encoder), and prefers https.
-- **Special-use names** (operator ruling 2026-10-10) are read from IANA's Special-Use Domain Names registry (updated 2026-05-22). Expiry for them is `not_applicable` ([ADR-032](#adr-032--not_applicable-a-check-outcome-with-a-fixed-list-of-reasons)). **`example.com`, `example.net` and `example.org` are left out:** RFC 6761 reserves them, but a real registry holds each, with an RDAP record and an expiry, so "no registry delegates it" would be false.
+- **Special-use names** (operator ruling 2026-10-10) are read from IANA's Special-Use Domain Names registry (updated 2026-05-22). Expiry for them is `not_applicable` ([ADR-032](#adr-032--not_applicable-a-check-outcome-with-a-fixed-list-of-reasons)). **`example.com`, `example.net` and `example.org` are left out** (approved by the operator, 2026-10-10; ADR-032 clause 5): RFC 6761 reserves them, but a real registry holds each, with an RDAP record and an expiry, so "no registry delegates it" would be false.
 - **Registries answer a name they do not hold differently** (seen live 2026-10-10, for a subdomain): Verisign answers `404`, PIR `400`, and **NIXI `200` with the registered domain's own record** (`ldhName` `nixi.in` for `www.nixi.in`). So the record's `ldhName` decides what a date is about. A date is reported under that name, and only when it is the target or an ancestor of it; any other name is `inconclusive`. A `400` or `404` is `inconclusive`, worded as "no registration for", with the Public Suffix List gap (D49) named.
 
 ---
@@ -878,6 +878,7 @@ In both cases the parser, the scope rule and the gate each did their job. The ga
    - It can never close a finding: `scan verify` treats it as no verdict.
    - A `ScanResult` that reports a finding where the same check declared itself not applicable at the same location is invalid.
 4. **Registered reasons:** `special-use-name` (D28: `domain-expiring` and `domain-expired`).
+5. **A deliberate deviation from RFC 6761's list, for the expiry check only** (operator ruling, 2026-10-10). `special-use-name` covers IANA's Special-Use Domain Names registry **except `example.com`, `example.net` and `example.org`**. RFC 6761 reserves them, but each is genuinely registered with a real registry and has a real expiry date (example.com: Verisign, 2027-08-13, read live). `.test` has neither. So for registration expiry they are normal domains, and their expiry is read. The exception applies to no other check and to no other reason.
 
 **Likely second user, not changed here:** D47, MTA-STS and TLS-RPT on a domain that accepts no mail (a null MX). It would need its own reason, declared by those checks, under an amendment of this ADR.
 

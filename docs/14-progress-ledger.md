@@ -1505,7 +1505,7 @@ Operator-approved. The design choices were the operator's: a new field beside `r
 - **D28, to ADR-031:**
   - `BaseScanner.service_hosts_for(target)`. domscout's scope is crt.sh plus only the target's registry; rdap.org is gone.
   - IANA's bootstrap is vendored unmodified, with a 90-day CI freshness test.
-  - Special-use names (IANA's registry) give `not_applicable` for both expiry checks. **`example.com`/`.net`/`.org` are deliberately not special-use here:** a real registry holds them, with an expiry.
+  - Special-use names (IANA's registry) give `not_applicable` for both expiry checks. **`example.com`/`.net`/`.org` are deliberately not special-use here:** a real registry holds them, with an expiry. Approved by the operator on 2026-10-10 as a deviation from RFC 6761's list for the expiry check only (ADR-032 clause 5). The NIXI parent-record attribution was approved the same day.
   - Each failure is `inconclusive` in its own words: a missing TLD, a redirect, a 400/404 with the PSL gap (D49) named, any other error, and a record for an unrelated name.
 - **Found live: registries answer a name they do not hold differently.** Verisign gives 404, PIR 400, and NIXI 200 with the registered domain's record. The record's `ldhName` now decides what a date is about (ADR-031, "Implementation").
 - **Corpus:**
