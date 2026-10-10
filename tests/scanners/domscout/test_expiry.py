@@ -72,6 +72,14 @@ def _iso(days: int) -> str:
     return (datetime.now(UTC).date() + timedelta(days=days)).isoformat() + "T00:00:00Z"
 
 
+def _record(name: str | None, days: int | None) -> str:
+    """A registry body. Real registries name the domain (`ldhName`); None omits it."""
+    body = json.loads(rdap_json(expiry=_iso(days) if days is not None else None))
+    if name is not None:
+        body["ldhName"] = name
+    return json.dumps(body)
+
+
 # --- which hosts a scan may reach --------------------------------------------
 
 
@@ -107,7 +115,7 @@ def test_a_special_use_name_is_not_applicable_never_a_silent_pass():
 
 def test_the_registry_is_queried_directly_and_rdap_org_never():
     result, backend = _scan(
-        "corpus-x.com", {VERISIGN + "corpus-x.com": (200, rdap_json(expiry=_iso(400)), {})}
+        "corpus-x.com", {VERISIGN + "corpus-x.com": (200, _record("CORPUS-X.COM", 400), {})}
     )
 
     assert VERISIGN + "corpus-x.com" in backend.calls
@@ -118,7 +126,7 @@ def test_the_registry_is_queried_directly_and_rdap_org_never():
 
 def test_an_expiry_within_30_days_is_reported_from_the_registry_s_record():
     result, _ = _scan(
-        "corpus-x.com", {VERISIGN + "corpus-x.com": (200, rdap_json(expiry=_iso(10)), {})}
+        "corpus-x.com", {VERISIGN + "corpus-x.com": (200, _record("CORPUS-X.COM", 10), {})}
     )
 
     (finding,) = _expiry_finding(result)
@@ -130,7 +138,7 @@ def test_an_expiry_within_30_days_is_reported_from_the_registry_s_record():
 
 def test_an_expiry_in_the_past_is_domain_expired():
     result, _ = _scan(
-        "corpus-x.com", {VERISIGN + "corpus-x.com": (200, rdap_json(expiry=_iso(-3)), {})}
+        "corpus-x.com", {VERISIGN + "corpus-x.com": (200, _record("CORPUS-X.COM", -3), {})}
     )
 
     assert [f.check_id for f in _expiry_finding(result)] == ["domain-expired"]
@@ -169,7 +177,9 @@ def test_a_tld_missing_from_the_bootstrap_sends_no_request_and_is_inconclusive()
 
 
 def test_a_record_with_no_expiration_event_is_the_registry_s_record_and_says_so():
-    result, _ = _scan("corpus-x.com", {VERISIGN + "corpus-x.com": (200, rdap_json(), {})})
+    result, _ = _scan(
+        "corpus-x.com", {VERISIGN + "corpus-x.com": (200, _record("corpus-x.com", None), {})}
+    )
 
     (finding,) = _expiry_finding(result)
     assert finding.state == "inconclusive"
@@ -190,24 +200,23 @@ def test_a_client_error_is_its_own_inconclusive_not_a_parsed_empty_body():
 NIXI = "https://rdap.nixiregistry.in/rdap/domain/"
 
 
-def _record(name: str, days: int) -> str:
-    body = json.loads(rdap_json(expiry=_iso(days)))
-    body["ldhName"] = name
-    return json.dumps(body)
-
-
 def test_a_parent_s_record_is_reported_under_the_parent_s_name():
-    """NIXI answers www.<d> with <d>'s record; the date is <d>'s, and says so."""
+    """NIXI answers www.<d> with <d>'s record. The finding is about <d>, in its
+    structured fields as well as its words, and never says www.<d> expires."""
     result, _ = _scan(
         "www.corpus-x.in", {NIXI + "www.corpus-x.in": (200, _record("CORPUS-X.IN", 5), {})}
     )
 
     (finding,) = _expiry_finding(result)
     assert finding.check_id == "domain-expiring"
-    assert finding.description.startswith(
-        "corpus-x.in (the registered domain above www.corpus-x.in, "
-        "as the registry's record names it)"
-    )
+    assert finding.location == "registration:corpus-x.in"
+    assert [(a.value, a.relation) for a in finding.related_assets] == [
+        ("corpus-x.in", "registered_domain")
+    ]
+    assert finding.description.startswith("corpus-x.in, the registered domain that www.corpus-x.in")
+    assert "www.corpus-x.in is not registered on its own" in finding.description
+    assert "www.corpus-x.in's registration" not in finding.description
+    assert "registration of corpus-x.in" in finding.remediation
 
 
 def test_a_record_for_an_unrelated_name_is_never_attributed():
@@ -249,3 +258,89 @@ def test_a_real_registry_s_recorded_record_is_read(case_id, registry):
     runs = {r.check_id: r.outcome for r in result.telemetry.checks_run}
     assert runs["domain-expiring"] in ("clear", "reported")
     assert not [f for f in _expiry_finding(result) if f.state == "inconclusive"]
+
+
+# --- review of D28 (2026-10-10): each finding is a test --------------------------
+
+
+def test_a_record_that_names_no_domain_is_never_attributed():
+    """Finding 1 (blocker): no ldhName must not mean 'it is about the target'."""
+    result, _ = _scan("www.corpus-x.in", {NIXI + "www.corpus-x.in": (200, _record(None, 5), {})})
+
+    (finding,) = _expiry_finding(result)
+    assert finding.state == "inconclusive"
+    assert "does not name the domain it is about" in finding.description
+
+
+@pytest.mark.parametrize(("target", "ldh"), [("corpus-x.in", "IN"), ("www.corpus-x.in", "in")])
+def test_a_record_naming_a_tld_is_never_attributed(target, ldh):
+    """Finding 2: a TLD is never 'the registered domain above'."""
+    result, _ = _scan(target, {NIXI + target: (200, _record(ldh, 5), {})})
+
+    (finding,) = _expiry_finding(result)
+    assert finding.state == "inconclusive"
+    assert "with the record for in," in finding.description
+
+
+def test_a_redirect_followed_to_another_in_scope_host_is_not_parsed():
+    """Finding 4: HttpClient follows a redirect to the target itself; its body is
+    not the registry's record."""
+    target_url = "https://corpus-x.com/rdap"
+    responses = {
+        VERISIGN + "corpus-x.com": (302, "", {"location": target_url}),
+        target_url: (200, _record("CORPUS-X.COM", 5), {}),
+    }
+    result, _ = _scan("corpus-x.com", responses)
+
+    (finding,) = _expiry_finding(result)
+    assert finding.state == "inconclusive"
+    assert "redirected to corpus-x.com, which is not the registry" in finding.description
+
+
+def test_a_redirect_loop_on_the_registry_s_own_host_says_so():
+    loop = (302, "", {"location": VERISIGN + "corpus-x.com"})
+    result, _ = _scan("corpus-x.com", {VERISIGN + "corpus-x.com": loop})
+
+    (finding,) = _expiry_finding(result)
+    assert "kept redirecting within its own server" in finding.description
+
+
+def test_a_missing_tld_cites_the_vendored_lookup_never_a_request():
+    """Finding 6: nothing was fetched, and the evidence must not say otherwise."""
+    result, _ = _scan("codez.io")
+
+    (finding,) = _expiry_finding(result)
+    request = finding.evidence[0].test.request
+    assert request.method == "NONE"
+    assert request.url.startswith("vendored:")
+    assert "no request sent" in finding.evidence[0].label
+
+
+def test_an_http_only_bootstrap_entry_is_worded_as_what_happened():
+    """Finding 7: kg is listed, with an http:// server only."""
+    result, _ = _scan("corpus-x.kg")
+
+    (finding,) = _expiry_finding(result)
+    assert "lists only an http:// RDAP server" in finding.description
+
+
+def test_a_non_200_success_is_not_parsed_as_a_record():
+    result, _ = _scan("corpus-x.com", {VERISIGN + "corpus-x.com": (204, "", {})})
+
+    (finding,) = _expiry_finding(result)
+    assert "returned HTTP 204" in finding.description
+
+
+def test_a_name_that_does_not_encode_says_so():
+    result, _ = _scan("a\u200db.com")
+
+    (finding,) = _expiry_finding(result)
+    assert "does not encode as a DNS name" in finding.description
+
+
+def test_ldhname_whitespace_is_stripped():
+    result, _ = _scan(
+        "corpus-x.com", {VERISIGN + "corpus-x.com": (200, _record(" corpus-x.com ", 400), {})}
+    )
+
+    assert [r.outcome for r in _runs(result, "domain-expiring")] == ["clear"]

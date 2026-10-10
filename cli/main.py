@@ -24,6 +24,7 @@ from typing import Any, cast, get_args
 import typer
 from ulid import ULID
 
+from core.applicability import enforce
 from core.assetgraph import AssetGraph, seed_asset_graph
 from core.authz import AuthorisationDeniedError, AuthorisedScope, Scope
 from core.context import ScanContext
@@ -525,7 +526,8 @@ def _execute(
         ratelimit=target_limit,
         progress=_progress,
     )
-    return scanner.run(target, _as_mode(mode), ctx)
+    # ADR-032: a not_applicable reason the check did not declare fails here.
+    return enforce(scanner.run(target, _as_mode(mode), ctx))
 
 
 def _as_mode(mode: str) -> Mode:

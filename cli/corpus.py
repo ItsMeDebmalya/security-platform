@@ -27,6 +27,7 @@ from typing import Any
 import typer
 import yaml
 
+from core.applicability import enforce
 from core.assetgraph import seed_asset_graph
 from core.authz import Scope
 from core.context import ScanContext
@@ -73,7 +74,8 @@ def _load(path: Path) -> Any:
 
 def _run_case(scanner_name: str, case: dict[str, Any]) -> ScanResult:
     scanner, target, ctx = _case_context(scanner_name, case)
-    return scanner.run(target, case.get("mode", "light"), ctx)
+    # ADR-032: a not_applicable reason the check did not declare fails here.
+    return enforce(scanner.run(target, case.get("mode", "light"), ctx))
 
 
 def _case_context(
@@ -338,6 +340,13 @@ def _regressions(current: list[dict[str, Any]], baseline: list[dict[str, Any]]) 
             problems.append(
                 f"{name}: inconclusive rate rose "
                 f"{before['inconclusive_rate']:.3f} -> {now['inconclusive_rate']:.3f}"
+            )
+        # ADR-032: not_applicable is outside the inconclusive gate, so a rise in it
+        # must be seen by CI on its own (review of D28, finding 10).
+        if now.get("not_applicable", 0) > before.get("not_applicable", 0):
+            problems.append(
+                f"{name}: not_applicable count rose "
+                f"{before.get('not_applicable', 0)} -> {now.get('not_applicable', 0)}"
             )
         if report["false_positives_on_known_good"] > previous.get(
             "false_positives_on_known_good", 0
