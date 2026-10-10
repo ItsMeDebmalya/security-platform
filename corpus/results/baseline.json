@@ -823,7 +823,7 @@
     },
     "overall": {
       "cases": 25,
-      "checks_run": 467,
+      "checks_run": 449,
       "claims": {
         "derived": {
           "fp": 0,
@@ -839,11 +839,11 @@
       "false_positives_on_known_good": 0,
       "fn": 0,
       "fp": 0,
-      "inconclusive_rate": 0.006423982869379015,
+      "inconclusive_rate": 0.0066815144766146995,
       "not_applicable": 0,
       "precision": 1.0,
       "recall": 1.0,
-      "suspected_rate": 0.07066381156316917,
+      "suspected_rate": 0.0334075723830735,
       "tier": "all",
       "tp": 33
     },
@@ -905,7 +905,7 @@
       },
       "real_recorded": {
         "cases": 3,
-        "checks_run": 65,
+        "checks_run": 47,
         "claims": {
           "derived": {
             "fp": 0,
@@ -921,11 +921,11 @@
         "false_positives_on_known_good": 0,
         "fn": 0,
         "fp": 0,
-        "inconclusive_rate": 0.015384615384615385,
+        "inconclusive_rate": 0.02127659574468085,
         "not_applicable": 0,
         "precision": 1.0,
         "recall": 1.0,
-        "suspected_rate": 0.36923076923076925,
+        "suspected_rate": 0.1276595744680851,
         "tier": "real_recorded",
         "tp": 10
       },

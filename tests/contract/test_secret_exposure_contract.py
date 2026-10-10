@@ -225,19 +225,22 @@ def test_the_positive_corpus_cases_fire_secret_exposed(scanner, case_id, locatio
 def test_the_dns_canary_fires_secret_exposed_at_its_txt_record():
     """sp-lab-7k3q.duckdns.org's TXT holds AWS's example key, through real resolvers.
 
-    DuckDNS serves that TXT at every name under the label, so each DKIM selector,
-    `_dmarc` and the wildcard probe answer with it too. Today each is reported:
-    D52, one wildcard record reported once per name queried. The count is pinned
-    so a fix for D52 changes it on purpose."""
+    DuckDNS serves that TXT at every name under the label: a wildcard record, which
+    the scan's random probe name proves. D52: the wildcard is one record, reported
+    once with the names it was seen at. The name itself is a second record: a
+    wildcard never matches its own owner (RFC 4592)."""
     from cli.corpus import _run_case
 
     (case,) = [c for s, c in CASES if s == "email" and c["id"] == "canary-duckdns"]
     result = _run_case("email", case)
 
-    locations = [f.location for f in result.findings if f.check_id == "secret-exposed"]
-    assert "dns:sp-lab-7k3q.duckdns.org/TXT" in locations
-    assert len(locations) == 20  # D52
-    assert {f.state for f in result.findings if f.check_id == "secret-exposed"} == {"suspected"}
+    exposed = [f for f in result.findings if f.check_id == "secret-exposed"]
+    assert [f.location for f in exposed] == [
+        "dns:*.sp-lab-7k3q.duckdns.org/TXT",
+        "dns:sp-lab-7k3q.duckdns.org/TXT",
+    ]
+    assert "seen at 19 names" in exposed[0].description
+    assert {f.state for f in exposed} == {"suspected"}
     assert "AKIAIOSFODNN7EXAMPLE" not in result.model_dump_json()
 
 
