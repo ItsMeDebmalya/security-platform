@@ -1129,12 +1129,13 @@ In both cases the parser, the scope rule and the gate each did their job. The ga
 
 **Not covered (stated so the changelog cannot be read as more):**
 - **Who else an address serves.** This policy says an address is global; it says nothing about whether it is dedicated to the customer. That is D61's open question, and D59 decision B's tier stays empty outside the lab.
+- **Which resolver sees a scanned name.** The second-resolver retry (decision 2) means a customer's hostname can now reach 8.8.8.8 on a connection path, not only the primary. That is no new exposure: the scanners already send names to 8.8.8.8 for independent re-queries.
 - **Request forgery that is not about addresses:** a request in scope, to a global address, that does harm through its content. ADR-004 and the passivity rules cover that, not this.
 - **Connections outside the scan clients:** `cli/rfcs.py` (tooling, fetches only rfc-editor.org) and the corpus and lab generators, which run only on an operator's machine.
 - **A backend that declares `connects = False` and opens sockets anyway.** That is a false declaration, not an omission; only the corpus's web lab router declares it while opening sockets, and only to its own loopback lab.
 - **The record as a finding outside domscout.** A tls or web scan alone reports the refusal through its `inconclusive`s, which name the address and its meaning, but has no informational finding of its own for the record.
 - **Live `scan run` against local labs.** `scan run` is a customer-facing path, so it refuses loopback too, and it resolves through public resolvers, which answer NXDOMAIN for `localhost`. The self-hosted targets in [docs/13](13-test-targets.md) (Juice Shop, DVWA, VAmPI) are reachable only through an entry point in `corpus/`, which none has yet. The web and TLS labs already record through their generators. This is the policy working, not a gap to close with a flag.
-- **domscout's synthetic corpus uses RFC 5737 documentation addresses** (192.0.2.x, 203.0.113.x), which the policy correctly refuses. So every domscout corpus case now carries the `dns-records` note, and the note's negative case exists only in unit tests (public addresses). Ledgered with D60.
+- **domscout's synthetic corpus uses RFC 5737 documentation addresses** (192.0.2.x, 203.0.113.x), which the policy correctly refuses. So every domscout corpus case now carries the `dns-records` note, and the note's negative case exists only in unit tests (public addresses). Ledgered as **D63**, a corpus-fidelity finding.
 
 **Rejected.**
 - **Per-client policies or overrides:** two copies of a rule drift, and per-client overrides multiply the routes a customer path could reach.

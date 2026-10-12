@@ -724,3 +724,16 @@ Then restore the entry-point lines in `CLAUDE.md` and `SPEC.md`, and the revert 
 - **Ledger:** D60 fixed; D62 fixed; D59 decision C superseded; a dated entry with the cookie measurement. A corpus-fidelity gap is recorded: domscout's synthetic zones use documentation addresses.
 
 **Revert.** Revert the merge commit. That restores connections to whatever the operating system's resolver returns, including cloud metadata and private space, which is a real request-forgery path into our own infrastructure. So a revert must be paired with another way to keep that path closed.
+
+## v4.0-pre.25 — D60 follow-up: two corrected claims; D63 recorded (2026-10-12)
+
+**Docs only. No code, scanner version or corpus number changed.**
+- **[Runbook](12-cli-runbook.md) §10:** "every name is resolved through the scan's own resolver" now says every name the scan *connects to*. The email, domscout and reference scanners also query 8.8.8.8 directly, for independent re-queries.
+- **[ADR-036](02-decisions.md#adr-036--one-address-policy-no-connection-to-a-non-global-address-and-the-address-checked-is-the-address-connected-to) *Not covered*:** the second-resolver retry means a scanned hostname can now reach 8.8.8.8 on a connection path. That is no new exposure.
+- **Ledger:**
+  - **D63**, a corpus-fidelity finding: domscout's synthetic zones use documentation addresses, so the corpus can show `dns-records` only with the non-global note;
+  - D62's `.netrc` correction now says what was believed and when;
+  - the handoff order is updated: the lab entry point comes before ADR-035.
+
+**Revert.** Revert the merge commit.
+
