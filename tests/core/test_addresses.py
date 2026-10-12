@@ -289,3 +289,52 @@ def test_nxdomain_is_a_definite_answer_not_a_failed_lookup() -> None:
     with pytest.raises(AddressUnresolvedError, match="NXDOMAIN") as caught:
         AddressPolicy().pin("example.test", dns)
     assert caught.value.lookup_failed is False
+
+
+# --- review of D60, round 5 ---------------------------------------------------
+
+
+class _TwoResolvers:
+    """The real DnsClient, with a primary that times out and a second that answers."""
+
+    def __init__(self, second_answers: dict[str, str]) -> None:
+        from core.dns import DnsClient
+
+        outer = self
+
+        class _Resolver:
+            def resolve(self, name, rrtype, upstream):
+                outer.asked.append((name, rrtype, upstream))
+                if upstream == "192.0.2.1":
+                    return DnsResponse(name, rrtype, "TIMEOUT", [])
+                ip = second_answers.get(name) if rrtype == "A" else None
+                return DnsResponse(name, rrtype, "NOERROR" if ip else "NODATA", [ip] if ip else [])
+
+        self.asked: list[tuple[str, str, str | None]] = []
+        self.client = DnsClient(resolver=_Resolver(), resolvers=["192.0.2.1", "192.0.2.2"])
+
+
+def test_a_lookup_that_fails_to_answer_is_asked_again_of_the_second_resolver() -> None:
+    """Round 5: the cache keeps failures, so one dropped packet on the first
+    lookup would otherwise refuse the name for the whole scan."""
+    two = _TwoResolvers({"example.test": "93.184.215.14"})
+    policy = AddressPolicy()
+    assert policy.pin("example.test", two.client).addresses == ("93.184.215.14",)
+    asked_once = list(two.asked)
+    assert ("example.test", "A", "192.0.2.2") in asked_once
+    # The same answer for the rest of the scan, and no new queries.
+    assert policy.pin("example.test", two.client).addresses == ("93.184.215.14",)
+    assert two.asked == asked_once
+
+
+def test_the_second_answer_is_checked_like_the_first() -> None:
+    two = _TwoResolvers({"example.test": "10.0.0.5"})
+    with pytest.raises(AddressRefusedError, match=re.escape("10.0.0.5")):
+        AddressPolicy().pin("example.test", two.client)
+
+
+def test_nxdomain_on_either_family_means_the_name_does_not_exist() -> None:
+    dns = FakeDns({("example.test", "A"): "NXDOMAIN", ("example.test", "AAAA"): "SERVFAIL"})
+    with pytest.raises(AddressUnresolvedError) as caught:
+        AddressPolicy().pin("example.test", dns)
+    assert caught.value.lookup_failed is False

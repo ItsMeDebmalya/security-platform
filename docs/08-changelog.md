@@ -706,6 +706,7 @@ Then restore the entry-point lines in `CLAUDE.md` and `SPEC.md`, and the revert 
   - Fixtures recorded before D60 replay unchanged; a refusal recorded since replays as the same refusal.
   - The labs record through `corpus/` generators.
   - See the [runbook](12-cli-runbook.md) §10.
+- **Review round 5** (NOT CLEAN, no blockers, fixed): a lookup that fails to answer is asked once more of the second resolver, so one dropped packet no longer refuses a name for the whole scan.
 - **Review round 4** (NOT CLEAN, no blockers, fixed): tls no longer calls a failed lookup (TIMEOUT, SERVFAIL) a missing record.
 - **Review round 3** (NOT CLEAN, no blockers, fixed):
   - an unresolved name reads "DNS lookup failed" in web, and gets DNS advice in tls;

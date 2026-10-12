@@ -266,8 +266,16 @@ class AddressPolicy:
 
         addresses: list[str] = []
         failures: list[str] = []
+        second = getattr(dns, "second_resolver", lambda: None)()
         for rrtype, version in (("A", 4), ("AAAA", 6)):
             answer = dns.query(name, rrtype)
+            if answer.rcode not in _DEFINITE and second is not None:
+                # The scan caches failures too, so one dropped packet would
+                # otherwise refuse this name for the whole scan. Ask the
+                # second resolver once; its answer is checked like any other
+                # and, being cached per resolver, holds for the scan
+                # (review of D60, round 5).
+                answer = dns.query(name, rrtype, resolver=second)
             if answer.rcode not in ("NOERROR", "NODATA"):
                 failures.append(f"{rrtype} {answer.rcode}")
                 continue
@@ -281,9 +289,10 @@ class AddressPolicy:
                 raise AddressUnresolvedError(
                     f"{name} could not be resolved ({', '.join(failures)}), "
                     "so nothing was connected to",
-                    # NXDOMAIN is a definite "no such name"; anything else
-                    # (TIMEOUT, SERVFAIL, REFUSED) failed to answer at all.
-                    lookup_failed=any(not f.endswith(" NXDOMAIN") for f in failures),
+                    # NXDOMAIN on either family is a definite "no such name"
+                    # for the whole name; otherwise TIMEOUT, SERVFAIL or
+                    # REFUSED means the lookup failed to answer at all.
+                    lookup_failed=not any(f.endswith(" NXDOMAIN") for f in failures),
                 )
             raise AddressUnresolvedError(
                 f"{name} has no A or AAAA record, so there is no address to connect to"
@@ -292,6 +301,10 @@ class AddressPolicy:
         if refused:
             raise AddressRefusedError(name, refused)
         return Pinned(host=name, addresses=tuple(addresses))
+
+
+_DEFINITE = ("NOERROR", "NODATA", "NXDOMAIN")
+"""Answers that say something about the name; anything else is a failure to answer."""
 
 
 def url_host(address: str) -> str:

@@ -57,7 +57,8 @@ def describe_transport_failure(exc: BaseException) -> str:
         )
     elif isinstance(exc, AddressUnresolvedError):
         # D60: the policy's own lookup failed (before D60, httpx's said so)
-        text = f"DNS lookup failed: {msg}"
+        # A definite answer with no address is not a failed lookup (round 5).
+        text = f"DNS lookup failed: {msg}" if exc.lookup_failed else f"DNS gave no address: {msg}"
     elif "CERTIFICATE_VERIFY_FAILED" in msg:
         reason = msg.split("certificate verify failed:", 1)[-1].split(" (_ssl", 1)[0]
         text = f"TLS certificate verification failed ({reason.strip().rstrip('.')})"

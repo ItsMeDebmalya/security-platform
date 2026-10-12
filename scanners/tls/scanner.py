@@ -299,7 +299,7 @@ class _Scan:
         neither the "does not resolve" impact nor the record advice (round 4)."""
         if lookup_failed:
             impact = (
-                "Unknown. Our resolvers' lookup failed, which may be temporary or a DNS "
+                "Unknown. Our DNS lookup failed, which may be temporary or a DNS "
                 "fault such as a broken delegation or DNSSEC chain; it does not show the "
                 "name has no records, or that visitors cannot reach it."
             )

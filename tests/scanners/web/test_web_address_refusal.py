@@ -69,7 +69,7 @@ def test_a_name_with_no_address_records_says_the_dns_lookup_failed() -> None:
 
     class NoRecords:
         def query(self, name, rrtype, *, resolver=None):
-            return DnsResponse(name, rrtype, "NXDOMAIN", [])
+            return DnsResponse(name, rrtype, "SERVFAIL", [])
 
     result = _scan(NoRecords())
     for finding in result.findings:
@@ -86,3 +86,15 @@ def test_an_unwired_resolver_is_a_scan_error_not_an_inconclusive() -> None:
     http = HttpClient.for_scan(TARGET, service_hosts=frozenset())
     with pytest.raises(ResolverNotWiredError):
         WebScanner().run(TARGET, "light", ScanContext(http=http))
+
+
+def test_a_definite_answer_with_no_address_is_not_called_a_failed_lookup() -> None:
+    from core.dns import DnsResponse
+
+    class Empty:
+        def query(self, name, rrtype, *, resolver=None):
+            return DnsResponse(name, rrtype, "NODATA", [])
+
+    for finding in _scan(Empty()).findings:
+        assert "DNS gave no address" in finding.description, finding.check_id
+        assert "DNS lookup failed" not in finding.description

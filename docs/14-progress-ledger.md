@@ -1915,6 +1915,16 @@ The round-1 fixes were checked, and the whole change re-read. All fixes are test
   - ADR-036's no-resolver sentence is scoped to what the code does: HTTP and TLS clients, with web and tls letting it through. testssl.sh's client keeps its own `inconclusive`.
   - **Recorded as a follow-up, not fixed here:** domscout's `except Exception` handlers would turn `ResolverNotWiredError` into an `inconclusive`, as they already do a missing fixture (the shape recorded under Tool 4a's planning). Fixing it means touching a validated scanner's handlers, so it is its own change. It cannot be reached from `cli/main.py`.
 
+## 2026-10-12 · Independent review of D60, round 5: NOT CLEAN, no blockers, fixed
+
+- **SHOULD-FIX: the runbook said lookups fall back from 1.1.1.1 to 8.8.8.8; they did not.** `DnsClient.query` asks only the primary. tls's "Our resolvers' lookup failed" carried the same plural.
+- **SHOULD-FIX: one failed lookup refused a name for the whole scan.** `DnsClient` caches failures, so a single dropped packet on the first pin would have turned every later request and handshake to that name into "lookup failed". Before D60 the operating system's resolver was asked afresh each time.
+- **Fix for both, test-first:** `AddressPolicy.pin` asks the second resolver once when the first fails to answer (not on NXDOMAIN). The answer is checked like any other, and it holds for the scan, because the cache is per resolver. The runbook now says exactly which resolver is asked, and tls says "Our DNS lookup failed".
+- **Nits, fixed:**
+  - NXDOMAIN on either family now counts as a definite "no such name", because NXDOMAIN covers the whole name;
+  - web says "DNS gave no address" for a definite answer that held none, and "DNS lookup failed" only for a real failure.
+- **Checked:** the runbook's localhost claim. The live run quoted in §10 asked 1.1.1.1 and got NXDOMAIN on both families.
+
 ## 2026-10-10 · Handoff: open items and where to start
 
 *For a new session with no chat history. State as of PR #32, with the operator's decisions of 2026-10-10 below. Each item links to where it is owned.*
