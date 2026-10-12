@@ -71,9 +71,9 @@ One deliberate, additive migration. All new fields optional, so existing finding
 - [x] A test that the command line carries no suite-wide flag and only those four tests (an exact allowlist, also enforced at runtime, with the environment pinned)
 - [x] testssl.sh fixtures re-recorded from real endpoints (ADR-027); corpus baselines unchanged (identical verdicts; only `recorded_at` moved)
 - [x] Root cause recorded: a check that only reads a tool's output can still be unsafe if the tool does more than the check needs, and the gate can't see inside the wrapper (ADR-023 amendment, clause 1)
-- [ ] The four checks rejoin the verified-owner Standard tier (ADR-033, decision 8)
+- [x] The four checks rejoin the verified-owner Standard tier (ADR-033, decision 8)
 
-**Exit:** the four checks are passive in fact, not only in their declaration; independent review clean; D56 closed.
+**Exit:** the four checks are passive in fact, not only in their declaration; independent review clean; D56 closed. **Done 2026-10-12:** PR #44 merged after five review rounds (the last CLEAN).
 
 ---
 
