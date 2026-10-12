@@ -8,16 +8,18 @@ This repo is being evolved to the v4 architecture.
 Target: docs/18-v4-plan.md | Roadmap: docs/19-v4-roadmap.md | Migration: docs/20-migration-runbook.md
 The tool-first strategy in docs/archive/ is SUPERSEDED. Do not follow it.
 
+**MVP Alpha (decided 2026-10-12, [ADR-033](docs/02-decisions.md#adr-033--mvp-alpha-scope-one-combined-release-the-linux-agent-moves-into-alpha-tool-4b-deferred)).** The first release is one combined **Alpha**: customer **Light** scanning, plus our internal server fleet assessed by a read-only **Linux agent** (PLANNED, not built). It adds **no new external scanners**: new value goes into the agent's modules. The flow engine is **minimal and deterministic**. Reports come in JSON, HTML and PDF, with an overall score and sub-scores, our branding, and AI summaries under a **mandatory fact-check test**. **Tool 4b is deferred past Alpha.** Scope: [docs/24](docs/24-alpha-scope.md). Report: [docs/25](docs/25-alpha-report-spec.md). **Working build plan: [docs/26](docs/26-alpha-build-sequence.md); tick its items as steps complete.**
+
 **Where things stand (handoff, 2026-10-10).** Start with the ledger's handoff section, which lists every open item and its status: [docs/14-progress-ledger.md, "Handoff: open items"](docs/14-progress-ledger.md#2026-10-10--handoff-open-items-and-where-to-start). In short:
-- **Shipped and merged through PR #31:** email v1.5.0, tls v1.4.0, domscout v1.2.0, web v1.0.5. Recent work: ADR-028 core redaction (D21), the read-only finding store, ADR-029 redaction receipts and `secret-exposed`, D48 (RFC 9525, no Common Name fallback), ADR-030 (UTS-46 hostnames, `idna` signed off), tls RFC citations with legacy-but-deployed exemptions, ADR-031 accepted (service hosts), and D31 (takeover fingerprints; BROKEN → UNDETERMINED).
+- **Shipped and merged through PR #41:** email v1.5.1, tls v1.4.0, domscout v1.3.2, web v1.0.5. Since PR #31: D28 and ADR-032 (`not_applicable`), D53, D52 and D54, each `core/` change after an independent review. Recent work: ADR-028 core redaction (D21), the read-only finding store, ADR-029 redaction receipts and `secret-exposed`, D48 (RFC 9525, no Common Name fallback), ADR-030 (UTS-46 hostnames, `idna` signed off), tls RFC citations with legacy-but-deployed exemptions, ADR-031 accepted (service hosts), and D31 (takeover fingerprints; BROKEN → UNDETERMINED).
 - **Standing figure** (owned by [SPEC.md](SPEC.md)): 68 checks, 42 WORKING, 0 BROKEN, 26 UNDETERMINED. **38% have no evidence they work.**
 - **Decided 2026-10-10:**
   - the IANA RDAP bootstrap licence is **signed off** (CC0 1.0; the caveat is in `tools/registry.yaml`);
   - D28's `.test` question is **approved**: special-use names get an explicit "expiry does not apply", never a silent pass, and expiry is proven with real recorded registry cases;
   - **company-domain canaries are skipped** for now.
 - **Waiting on the operator:**
-  - the value-add backlog question pending with the operator's senior: build the quick wins before or after Tool 4b?
-- **Next:** the correctness backlog is clear: **0 BROKEN**, and D52 (PR #38) and D54 (PR #40) are merged after independent review. **The next decision is Tool 4b vs the value-add quick wins, pending the operator's senior's update.** Start neither until the operator says so.
+  - the value-add backlog's quick wins: they are not in the Alpha build plan (docs/26), so add any only on the operator's say-so.
+- **Next:** **the Alpha build has started, following [docs/26](docs/26-alpha-build-sequence.md).** Step 0 (bring the decisions into the repo) is done. Next is **Step 1, the contract extension**: one additive migration with its own ADR and an independent review. After that comes the **agent ADR** (ADR-034, Step 2).
 - **Ledgered, no action:** a WHOIS fallback for NIXI's TLDs (`.भारत` and `.இந்தியா` are not in the RDAP bootstrap).
 - **Standing rules from the operator:**
   - Never push or merge without being told; merge with `--merge`.
@@ -42,7 +44,7 @@ If a task seems to require rebuilding any of the above, STOP and ask me.
 
 **Phase 0 is implemented; Tools 1 (Email), 2 (TLS), 3 (DomScout) and 4a (Website Scanner, Light) have shipped and pass their gates.** The Scanner Contract is frozen, `core/` services exist, the CLI runs, and the corpus harness gates on real numbers.
 
-Scanners: `example` (reference), `email` (Tool 1, v1.5.0), `tls` (Tool 2, v1.4.0, cross-checked against testssl.sh, with a runtime testssl.sh wrap for legacy ciphers in Standard mode), `domscout` (Tool 3, Light, v1.2.0), `web` (Tool 4a, Light, passive only, v1.0.5). Check counts, gate numbers and status are owned by `SPEC.md` and `docs/21-scanner-catalogue.md`; do not restate them here.
+Scanners: `example` (reference), `email` (Tool 1, v1.5.1), `tls` (Tool 2, v1.4.0, cross-checked against testssl.sh, with a runtime testssl.sh wrap for legacy ciphers in Standard mode), `domscout` (Tool 3, Light, v1.3.2), `web` (Tool 4a, Light, passive only, v1.0.5). Check counts, gate numbers and status are owned by `SPEC.md` and `docs/21-scanner-catalogue.md`; do not restate them here.
 
 Commands: `make install`, `make test`, `make lint`, `make typecheck`, `make licence-check`, `make corpus`, `make crosscheck`, `make targets-up`, and `scan run <tool> --target <t>`. Python 3.13.15, pinned in `.python-version`; dependencies via `uv`.
 
@@ -54,7 +56,7 @@ Read `docs/14-progress-ledger.md` for where things stand — including **standin
 - `SPEC.md` — **the canonical build specification: what each tool must do, current status, gates.** Authority for "what to build," replacing `docs/reference/product-spec.md` in that role.
 - `docs/00-context.md` — product, strategy, standards
 - `docs/01-architecture.md` — **the Scanner Contract, finding/evidence model, confidence engine**
-- `docs/02-decisions.md` — ADRs 001–032
+- `docs/02-decisions.md` — ADRs 001–033
 - `docs/03-roadmap.md` — phases 0, **0b (foundation for the calendar)**, 1–7 with accuracy gates
 - `docs/04-phase-0-foundations.md`, `docs/05-phase-1-first-tools.md` — task-level plans
 - `docs/06-guidelines.md` — rules for all code
@@ -68,6 +70,7 @@ Read `docs/14-progress-ledger.md` for where things stand — including **standin
 - `docs/how-to-add-a-scanner.md` — the practical guide, written by building the reference scanner
 - `docs/21-scanner-catalogue.md` — **every shipped check**: what it finds, mode, highest state and its evidence, working/broken. Derived from code; regenerate it, don't hand-edit. Status defers to `SPEC.md` and the ledger
 - `docs/22-differentiators.md` — **what we can claim that most scanners can't**, each line TRUE / PARTIAL / PENDING with a link to its evidence (a test, a ledger row or a verification archive). A claim with no evidence link stays out. Numbers live in SPEC.md and the ledger; this file links to them
+- `docs/24-alpha-scope.md`, `docs/25-alpha-report-spec.md`, `docs/26-alpha-build-sequence.md` — **the MVP Alpha** (ADR-033): its scope, its report, and **the working build plan** (tick items as steps complete)
 - `docs/23-value-add-backlog.md` — **a plan only**: candidate features from the live runs, each with its source, customer value, guardrail, effort and status (PROPOSED). Nothing in it is built or scheduled
 - `docs/08-changelog.md` — v2→v3, v3→v3.1, and the v3.2 additive contract changes made during Phase 0, with revert notes
 - `docs/09-ownership-verification.md` — the legal gate on active scans; methods per target type, audit record, interim allowlist schema

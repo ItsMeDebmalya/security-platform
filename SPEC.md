@@ -17,6 +17,8 @@ This document is **not**:
 
 Where those documents own something, this one **links, does not restate**. Restating is how this document set has drifted apart before — see the ledger's repeated "a number reached a decision document without being checked against its primary source" defect (D13, D16). Do not repeat it here.
 
+**Current release scope: MVP Alpha** ([ADR-033](docs/02-decisions.md#adr-033--mvp-alpha-scope-one-combined-release-the-linux-agent-moves-into-alpha-tool-4b-deferred); scope [docs/24](docs/24-alpha-scope.md), report [docs/25](docs/25-alpha-report-spec.md), build plan [docs/26](docs/26-alpha-build-sequence.md)). The Alpha is one combined release: customer Light scanning plus our internal server fleet assessed by the read-only Linux agent (PLANNED, not built). It adds no new external scanners, and Tool 4b is deferred past it.
+
 **If a change here alters a decision, update the ADR too** ([docs/02-decisions.md](docs/02-decisions.md)), and record it in [docs/08-changelog.md](docs/08-changelog.md). A tool's scope is not really settled until its ADR (where one exists) agrees with this document.
 
 **Status vocabulary — exact, not blurred:**
@@ -92,7 +94,7 @@ Two orthogonal fields, added at two scanners deliberately (before ten made it a 
 
 Content source: [docs/reference/product-spec.md](docs/reference/product-spec.md) (v2, corrected below where wrong). Gates and phase placement: [docs/03-roadmap.md](docs/03-roadmap.md). Corrections from v2 are called out inline as **[v2 said X → now Y]**.
 
-### A1. Website Scanner — Tool 4a (`web`, Light) **Shipped**; 4b (AI/agent exposure) next
+### A1. Website Scanner — Tool 4a (`web`, Light) **Shipped**; 4b (AI/agent exposure) deferred past Alpha (ADR-033)
 
 One-line: crawl and probe a site for header/cookie/config weaknesses (Light), injection and business-logic bugs (Standard), and — new in v3.4 — AI/agent exposure.
 
@@ -404,7 +406,7 @@ Verified against the repo and `make corpus` (2026-10-07) — see the run at the 
 
 | Tool / Feature | Status | Gate | Actual (where shipped) |
 |---|---|---|---|
-| A1 Website Scanner | **A1 Light (4a, `web` v1.0.5) shipped — live-verified; Standard not built; 4b (AI exposure) next** | **Light:** precision ≥0.95, recall ≥0.85 (corpus-relative), inconc ≤0.15. **Standard:** precision ≥0.90 (`confirmed`≥0.98), recall ≥0.75 (benchmark tier) | Light: 1.000 / 1.000 (recall corpus-relative), 234 checks, **10 claims**, 0.9% inconc, PASS |
+| A1 Website Scanner | **A1 Light (4a, `web` v1.0.5) shipped — live-verified; Standard not built; 4b (AI exposure) deferred past Alpha (ADR-033)** | **Light:** precision ≥0.95, recall ≥0.85 (corpus-relative), inconc ≤0.15. **Standard:** precision ≥0.90 (`confirmed`≥0.98), recall ≥0.75 (benchmark tier) | Light: 1.000 / 1.000 (recall corpus-relative), 234 checks, **10 claims**, 0.9% inconc, PASS |
 | A2 Network Scanner | Not built | not yet set | — |
 | A3 SSL/TLS Analyzer | **Shipped v1.4.0** | precision ≥0.98, recall ≥0.95, inconc ≤0.15 | 1.000 / 1.000, 228 checks, 6 claims (all `highly_likely`; no `tls` check can reach `confirmed`), PASS |
 | A4 Domain & Subdomain Enum (`domscout`) | **Shipped (Light) v1.3.2 — live-verified (expiry at three registries, D28; DNSSEC on a subdomain, D53); operator domains B/C + coverage owed** | precision ≥0.95, recall ≥0.80, inconc ≤0.15 | 1.000 / 1.000, 60 checks, 3.3% inconclusive, 18 not applicable, **1 claim**, PASS (v1.3.2; corpus unchanged from v1.3.1) |

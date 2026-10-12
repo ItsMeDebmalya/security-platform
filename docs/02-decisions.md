@@ -905,3 +905,50 @@ In both cases the parser, the scope rule and the gate each did their job. The ga
 
 **Reversal cost.** Medium. Removing the outcome means migrating stored results that carry it. Today only domscout's two expiry checks emit it.
 
+
+---
+
+## ADR-033 — MVP Alpha scope: one combined release, the Linux agent moves into Alpha, Tool 4b deferred
+
+**Status.** Accepted 2026-10-12 (operator, approved by the operator's senior). Scope: [docs/24-alpha-scope.md](24-alpha-scope.md). Report: [docs/25-alpha-report-spec.md](25-alpha-report-spec.md). Working build plan: [docs/26-alpha-build-sequence.md](26-alpha-build-sequence.md).
+
+**Context.** [The v4 roadmap](19-v4-roadmap.md) defined the MVP as Phase 1. That meant defensive scanning at Light and Standard depth, accounts and the dashboard, and it explicitly excluded the Linux agent (§2), which it placed in Phase 2 (§3). The operator's release roadmap also placed the agent after 1.0. That document is not in this repository. To ship sooner, the operator and their senior have chosen a narrower first release that adds one thing the MVP excluded: assessing the company's own server fleet from the inside.
+
+**Decision.**
+1. **One combined Alpha release.** It has two parts, which ship together:
+   - **Customer Light scanning:** self-service, passive, with no signed agreement needed.
+   - **Assessment of our internal server fleet,** covered by one internal written authorisation obtained before the first production server.
+
+   A combined release ships when its slowest part, the agent, is ready. The agent therefore runs on lab boxes and a few internal servers before launch, as internal validation.
+2. **The Linux agent moves into Alpha.** This supersedes the v4 roadmap's exclusion of the agent from the MVP (§2) and its Phase 2 placement (§3), and the release roadmap's post-1.0 placement.
+   - **For Alpha the agent is read-only:** a one-shot collector of facts, with judgements made on the platform. Its architecture is decided separately in ADR-034 ([docs/26](26-alpha-build-sequence.md), Step 2).
+   - **Its modules and rules are in [docs/24 §5](24-alpha-scope.md):** each must fire on a real positive on a lab box before it reaches the fleet, it collects minimum data, secrets are reported by type only, and it suggests fixes but never applies them.
+3. **No new external scanners for Alpha.** The four shipped scanners (email, tls, domscout, web) are the external surface. New value goes into the agent's modules, where the inside view explains the outside one.
+4. **The flow engine is minimal and deterministic for Alpha.** It runs fixed playbooks over existing checks. AI explains; code decides; the validator proves. A test shows the AI layer has no execution path. The full offensive engine is staged after Alpha.
+5. **Reports** ([docs/25](25-alpha-report-spec.md)):
+   - **Formats:** JSON (the source of truth), HTML and PDF, generated deterministically from stored findings.
+   - **Score:** an overall score plus sub-scores by area, each traceable to the findings behind it.
+   - **Branding:** ours. White-label is a later decision.
+   - **AI summaries are included, under a MANDATORY fact-check test.** Every summary is labelled as AI-written, and a mandatory test checks it against its findings, so that it can never add, remove or change a fact ([docs/25 §7](25-alpha-report-spec.md), decision 4).
+6. **Tool 4b (AI and agent exposure) is deferred past Alpha.**
+   - **What this departs from:** [ADR-020](#adr-020--amends-adr-014-what-we-claim-now-that-the-ground-has-moved) adopted "AI and agent exposure" as one of the four claims we make, and [the roadmap](03-roadmap.md) counts Tool 4 as done only when 4a and 4b have both shipped.
+   - **Why:** the Alpha's new capability is the inside view. The capacity Tool 4b needs, a new external detection surface with its own passivity ADR, corpus and live verification, goes into the agent modules instead (decision 3). The claim cannot ship before Tool 4b exists, and none of ADR-020's foundation costs for it has been paid.
+   - **What does not change:** the claim is not withdrawn. ADR-020 stands, and Tool 4b stays on the roadmap after Alpha. Until it ships, nothing customer-facing (the features page, reports, sales material) may present AI and agent exposure as available.
+
+**What is unchanged.**
+- Customer scanning in Alpha is **Light only**. Standard-mode checks, deep and offensive scanning, and the authorisation that gates them come after Alpha. That authorisation is DNS-TXT verification plus the signed agreement whose contents are listed in [docs/24 §8](24-alpha-scope.md).
+- The accuracy rules, the corpus gates, ADR-017 live verification, the ADR-003 licence rule and the extend-don't-rebuild rule all apply to the agent and its `host` scanner exactly as they do to the four scanners.
+- **External items owned by the operator's senior, not by engineering:** account management (Chargebee) and the authorisation agreement.
+
+**Consequences.**
+- **The Scanner Contract needs one additive migration first** ([docs/26](26-alpha-build-sequence.md), Step 1). It adds a `host` target type, vantage and mode tags, finding links (the basis for inside-out correlation), and state-affecting fields defined now to avoid a second migration. That migration gets its own ADR and an independent review.
+- **The agent is a new attack surface on our own hosts.** It runs fixed, allowlisted, read-only commands with no shell, and it never runs as a service in Alpha.
+- **The Alpha estimate** is about 7–9 months for one engineer ([docs/26](26-alpha-build-sequence.md)). A second engineer, or the module fallback (modules 1, 2 and 4), shortens it.
+- **Tool 4b's absence is visible.** The Phase 1 exit criterion in [the roadmap](03-roadmap.md) cannot be met as written until Tool 4b ships after Alpha.
+
+**Rejected.**
+- **Two separate releases** (customer first, fleet later): the operator chose one combined release.
+- **Building Tool 4b inside Alpha:** it competes with the agent for the same capacity.
+- **An always-on agent for Alpha** (enrolment, signed updates, staged rollouts): it is a larger supply-chain surface, and it comes after Alpha.
+
+**Reversal cost.** Medium. Reverting puts the agent back after the MVP and Tool 4b back before it. Contract fields added for the agent are additive and harmless if unused.

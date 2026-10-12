@@ -1653,6 +1653,38 @@ The reviewer had no shared context and worked read-only on 37f9dd7. It called th
 - **Scanning a service host itself** (domscout on `crt.sh`) refuses a redirect to its own apex, which is conservative and harmless. No change.
 - **Round 3 at 6ffc347: CLEAN.** Probe G is closed and no legitimate flow breaks: `www` and the takeover candidates stay inside the target's own scope. Two cosmetic nits were then fixed without changing behaviour: a docstring order, and an ADR-031 qualifier, since a name under a service host that is also the target's own is followed, correctly. **PR #40 merged.**
 
+## 2026-10-12 · New direction: the MVP Alpha (ADR-033)
+
+- **Decision** (operator, approved by the operator's senior), recorded as [ADR-033](02-decisions.md#adr-033--mvp-alpha-scope-one-combined-release-the-linux-agent-moves-into-alpha-tool-4b-deferred):
+  - one combined Alpha release: customer Light scanning plus assessment of our internal server fleet;
+  - **the Linux agent moves into Alpha**, superseding [docs/19](19-v4-roadmap.md)'s exclusion of it from the MVP and its Phase 2 placement;
+  - no new external scanners, with new value going into the agent's modules;
+  - a minimal, deterministic flow engine;
+  - reports in JSON, HTML and PDF with an overall score and sub-scores, our branding, and AI summaries under a mandatory fact-check test;
+  - **Tool 4b deferred past Alpha**, recorded against ADR-020's commitment: the capacity goes to the agent, and the claim is not withdrawn but must not be presented as available.
+- **Documents added:** [docs/24](24-alpha-scope.md) (scope), [docs/25](25-alpha-report-spec.md) (report) and [docs/26](26-alpha-build-sequence.md) (**the working build plan**, ticked as steps complete).
+- **docs/25 reconciled against the scanner catalogue.** The catalogue is generated from code, so it wins. Corrections, each marked in the text:
+  - The customer Alpha is Light only, so it does not capture the Standard-only data points: DKIM key strength, SPF qualifier and lookup limit, DMARC reporting and tags, MTA-STS, TLS-RPT, TLS key and signature, protocol versions, ciphers, forward secrecy and CT. Two examples ("TLS 1.0 still accepted" and the 1024-bit DKIM key) were Standard findings.
+  - `dkim-missing` is `inconclusive` at most (D37).
+  - Registration expiry fires only within 30 days, so "expires in 40 days" could never be a finding.
+  - The declared request cap does not yet count redirect hops (D26).
+  - `scan verify` cannot close `secret-exposed` (ADR-029).
+  - **From the code, not the catalogue:** a check skipped because an earlier one failed is not recorded, so "every check that could not run" overstated what is captured.
+  - **Every agent data point is marked PLANNED.**
+- **docs/24, two baseline claims corrected:**
+  - "all checks are Light": email and TLS also have Standard-mode checks;
+  - "every fix independently reviewed": every `core/` change is, but scanner-only fixes such as D53 are not, by the operator's rule.
+- **Contradictions fixed by pointer** (CLAUDE.md rule 4):
+  - SPEC.md said "4b next" in two places;
+  - docs/03's 4b row now points to ADR-033;
+  - docs/19 has a banner and its history is not rewritten.
+- **Noticed, not fixed:**
+  - The catalogue's email intro says 18 checks (10 Light + 8 Standard), but the code has 20 (10 + 10).
+  - The catalogue says every email check is UNDETERMINED pending D35, while its rows say WORKING.
+  - Both are inside the generated catalogue, for its next regeneration.
+  - The "release roadmap" that placed the agent post-1.0 is not in this repository.
+- **Next: docs/26 Step 1** (the contract extension, with its own ADR and an independent review), then ADR-034 (the agent).
+
 ## 2026-10-10 · Handoff: open items and where to start
 
 *For a new session with no chat history. State as of PR #32, with the operator's decisions of 2026-10-10 below. Each item links to where it is owned.*
@@ -1714,7 +1746,7 @@ The reviewer had no shared context and worked read-only on 37f9dd7. It called th
   - Record the corpus cases from the DuckDNS and Pages runs only.
   - Tell the operator to clear the records.
 
-**Where to start:** read CLAUDE.md, then this table. D28 + ADR-032 (PR #35), D53 (PR #37) and D52 (PR #38, after an independent review) are merged. D54 (no-follow for service-host requests, `core/http.py`) is in its own PR, awaiting an independent review. D55 is ledgered (latent, no action). **Tool 4b and the value-add quick wins wait for the operator** (an update from the operator's senior may change priorities).
+**Where to start (updated 2026-10-12):** the MVP Alpha (ADR-033) is the current direction, built to [docs/26](26-alpha-build-sequence.md); next is Step 1. Read CLAUDE.md, then this table. D28 + ADR-032 (PR #35), D53 (PR #37) and D52 (PR #38, after an independent review) are merged. D54 (no-follow for service-host requests, `core/http.py`) is in its own PR, awaiting an independent review. D55 is ledgered (latent, no action). **Tool 4b and the value-add quick wins wait for the operator** (an update from the operator's senior may change priorities).
 
 ## Next (historical; superseded by the handoff above)
 
