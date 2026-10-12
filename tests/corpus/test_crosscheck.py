@@ -135,3 +135,45 @@ def test_the_harness_reports_cleanly_when_testssl_is_not_installed(monkeypatch, 
 
 def test_availability_is_reported_honestly():
     assert isinstance(available(), bool)
+
+
+def test_the_crosscheck_invocation_is_its_declared_allowlist(monkeypatch) -> None:
+    """ADR-023 amendment, clause 2: every invocation of an external tool has
+    an exact argument allowlist, checked at runtime. The cross-check never
+    runs testssl.sh's vulnerability tests."""
+    import subprocess
+
+    from core.testssl import TESTSSL_ENV_KEYS, TESTSSL_PATH
+    from corpus.crosscheck import testssl as crosscheck
+
+    calls = []
+
+    def _fake_run(cmd, **kwargs):
+        calls.append((list(cmd), kwargs))
+        return subprocess.CompletedProcess(cmd, 0)
+
+    monkeypatch.setenv("OFFENSIVE", "true")
+    monkeypatch.setattr("corpus.crosscheck.testssl.subprocess.run", _fake_run)
+    crosscheck.run_testssl("localhost", 8443)
+
+    ((cmd, kwargs),) = calls
+    assert crosscheck.CROSSCHECK_ARGS == ("--protocols", "--server-defaults", "--quiet")
+    assert cmd[0] == str(TESTSSL_PATH)
+    assert tuple(cmd[1:4]) == ("--protocols", "--server-defaults", "--quiet")
+    assert cmd[4] == "--jsonfile-pretty" and cmd[6] == "localhost:8443" and len(cmd) == 7
+    assert set(kwargs["env"]) == set(TESTSSL_ENV_KEYS)
+    assert kwargs["stdin"] is subprocess.DEVNULL
+
+
+def test_the_crosscheck_refuses_a_target_that_is_a_flag(monkeypatch) -> None:
+    import pytest
+
+    from core.testssl import TestsslArgumentRefusedError as RefusedError
+    from corpus.crosscheck import testssl as crosscheck
+
+    def _fail(*args, **kwargs):
+        raise AssertionError("must not start testssl.sh")
+
+    monkeypatch.setattr("corpus.crosscheck.testssl.subprocess.run", _fail)
+    with pytest.raises(RefusedError):
+        crosscheck.run_testssl("--vulnerable", 443)

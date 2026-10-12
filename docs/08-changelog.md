@@ -630,3 +630,21 @@ Then restore the entry-point lines in `CLAUDE.md` and `SPEC.md`, and the revert 
   - the registry refuses a scanner with `null` tags;
   - `FindingStore` refuses a finding with a `state_change`.
 
+
+## v4.0-pre.20 — D56: testssl.sh narrowed to the four cipher tests; ADR-023 amended (2026-10-12)
+
+**What changed. A safety fix: the four `tls-vuln-*` checks now send what ADR-023 says they send. No result changed, so tls stays 1.4.1.**
+- **`core/testssl.py`** runs `--rc4 --sweet32 --freak --logjam --ids-friendly --quiet` in place of `--vulnerable`. `guard_invocation` refuses any command line or environment outside the declared allowlist before the subprocess starts; the environment is `PATH` and `LANG` only.
+- **[ADR-023](02-decisions.md#adr-023--passive-is-ordinary-negotiation-only-malformed-input-is-active) amended:**
+  - a check is as active as the most active thing its tool sends;
+  - every external-tool invocation has an exact argument allowlist, enforced at runtime and pinned by a test;
+  - evidence that a wrapped check is passive is stated with its limits;
+  - a hand-run tool, including an online scanning service, is classified like a code-run one.
+
+  testssl.sh's size-limit pre-test is accepted as passive, with its caveat.
+- **New:** `corpus/lab/tls_capture.py`, an allowlist of record types and handshake shape (not an attack-pattern detector), tested in CI. `corpus/lab/testssl_capture.py`, a lab-only capture of the real run (not a CI gate). `corpus.generators.testssl --testssl-only`.
+- **Re-recorded** the four badssl.com testssl fixtures: identical verdicts, only `recorded_at` moved. **No corpus baseline moved.**
+- **`corpus/crosscheck/testssl.py`** is guarded by the same allowlist mechanism (`CROSSCHECK_ARGS`) and the same pinned environment.
+- **Ledger:** D56 fixed; D58 (a governance gap: the 2026-09-02 SSL Labs run was never classified); D59 (the testssl.sh subprocess sits outside `ScanContext`, owed).
+
+**Revert.** Revert the merge commit. That restores `--vulnerable` and its active probes, so the interim rule (no live TLS Standard with testssl.sh installed; the four checks out of the verified-owner tier) must be restored with it.

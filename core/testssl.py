@@ -41,6 +41,8 @@ JSON, or (on replay) nothing recorded - all of it becomes
 from __future__ import annotations
 
 import json
+import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -65,11 +67,71 @@ TESTSSL_PATH = ROOT / "tools" / "bin" / f"testssl.sh-{TESTSSL_VERSION}" / "tests
 `corpus/crosscheck/testssl.py` cross-checks against - one binary, two
 callers. Not imported from there: `core/` never depends on `corpus/`."""
 
+TESTSSL_ARGS: tuple[str, ...] = (
+    "--rc4",
+    "--sweet32",
+    "--freak",
+    "--logjam",
+    "--ids-friendly",
+    "--quiet",
+)
+"""The declared argument allowlist (D56; ADR-023 amendment, clause 2).
+
+The four flags select exactly the four cipher-offer tests the checks read,
+and nothing else. They replaced `--vulnerable`, which also runs Heartbleed,
+CCS injection, Ticketbleed and ROBOT (testssl.sh itself labels these
+offensive) and the renegotiation, CRIME, BREACH, POODLE, fallback-SCSV,
+DROWN, Lucky13, Winshock and STARTTLS-injection tests. A run with **no**
+test flag is worse still: testssl.sh treats it as "run everything".
+
+`--ids-friendly` sets testssl.sh's `OFFENSIVE=false`, the switch behind its
+Heartbleed, CCS-injection, Ticketbleed and ROBOT group. In 3.2.4 none of the
+four selected tests reads it, so it changes nothing; it is kept as a second
+line in case one ever does. `--quiet` drops the banner. The complete command line is
+`TESTSSL_PATH, *TESTSSL_ARGS, "--jsonfile-pretty", <temp file>, host:port`,
+and `guard_invocation` refuses anything else before the subprocess starts.
+
+Some traffic runs regardless of the selection, and is accepted as passive in
+the ADR-023 amendment: forward and reverse DNS lookups (to DNS, not the target); a bare
+TCP connect and testssl.sh's connection- and protocol-detection handshakes
+(TLS 1.3 hellos including pre-RFC draft versions, TLS 1.2 hellos, and, only
+if those all fail, TLS 1.1/1.0/SSLv3 and SSLv2 hellos, plus up to seven
+`openssl s_client` handshakes); one ordinary HTTPS `GET /` to identify the
+service; and one large but well-formed ClientHello (129 cipher suites) that
+detects an old-hardware size-limit bug. No flag disables any of it, and all
+of it is well-formed handshakes or an ordinary request.
+"""
+
+CROSSCHECK_ARGS: tuple[str, ...] = ("--protocols", "--server-defaults", "--quiet")
+"""The corpus cross-check's allowlist (`corpus/crosscheck/testssl.py`):
+ordinary protocol and certificate handshakes, no vulnerability tests.
+Declared here, beside the runtime list, so the guard can refuse any list
+that is not declared."""
+
+DECLARED_ARG_LISTS: frozenset[tuple[str, ...]] = frozenset({TESTSSL_ARGS, CROSSCHECK_ARGS})
+"""Every argument list any caller may run testssl.sh with. `guard_invocation`
+refuses an `allowed_args` that is not one of these, so a caller cannot widen
+its own list by passing, say, `("--vulnerable",)`, or `()`, which testssl.sh
+treats as "run everything"."""
+
+TESTSSL_ENV_KEYS: tuple[str, ...] = ("PATH", "LANG")
+"""The only environment variables the subprocess receives.
+
+testssl.sh reads many of its settings from the environment, including
+`OFFENSIVE=${OFFENSIVE:-true}`, so an inherited environment is an argument
+list nobody declared."""
+
+_TARGET = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?:[0-9]{1,5}")
+"""An ASCII hostname (A-labels) or IPv4 address, then a port. Never starts
+with `-`, so it cannot be read as a flag. IPv6 literals are refused: they
+need brackets testssl.sh parses differently, and this wrapper never handled
+them."""
+
 DEFAULT_TIMEOUT_S = 220
 """1-3 minutes/host per the decision this module implements, plus headroom."""
 
 # The four checks this module exists for, and the testssl.sh finding `id`
-# each reads. testssl reports these under `--vulnerable`.
+# each reads. Each is selected by its own flag in `TESTSSL_ARGS`.
 CHECK_TO_TESTSSL_ID: dict[str, str] = {
     "tls-vuln-rc4": "RC4",
     "tls-vuln-sweet32": "SWEET32",
@@ -87,6 +149,16 @@ class TestsslUnavailableError(RuntimeError):
     A scanner catching this must emit `inconclusive` with
     `no_verdict_reason="blocked_prerequisite"` - it must never crash, and it
     must never guess at whether a legacy cipher is offered.
+    """
+
+
+class TestsslArgumentRefusedError(TestsslUnavailableError):
+    """The command line or environment fell outside the declared allowlist,
+    so testssl.sh was never started.
+
+    A subclass of `TestsslUnavailableError` so a hostile or malformed target
+    becomes the scanner's ordinary `inconclusive`, never a crash and never a
+    probe.
     """
 
 
@@ -140,15 +212,56 @@ def available() -> bool:
     return TESTSSL_PATH.exists() and shutil.which("bash") is not None
 
 
-def _run_raw(host: str, port: int, *, timeout_s: int) -> dict[str, Any]:
-    """Run testssl.sh's vulnerability probes and return its full JSON report.
+def _command(host: str, port: int, out: Path) -> list[str]:
+    return [str(TESTSSL_PATH), *TESTSSL_ARGS, "--jsonfile-pretty", str(out), f"{host}:{port}"]
 
-    Reuses the invocation shape `corpus/crosscheck/testssl.py` established for
-    the corpus cross-check: `--jsonfile-pretty` to a temp file, `--quiet`, no
-    severity filter (dropping `OK` findings would drop exactly the negative
-    evidence a control case needs). `--vulnerable` selects the named-CVE
-    probe group these four checks read from, rather than the full protocol/
-    cipher enumeration our own engine already does.
+
+def environment() -> dict[str, str]:
+    """The pinned environment for any testssl.sh subprocess."""
+    return {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "LANG": "C"}
+
+
+def guard_invocation(
+    argv: list[str], env: dict[str, str], *, allowed_args: tuple[str, ...] = TESTSSL_ARGS
+) -> None:
+    """Refuse any command line or environment outside the declared allowlist.
+
+    Exact, not a denylist: an added, missing, duplicated or reordered
+    argument is refused, so a flag nobody has heard of yet is refused too.
+    The environment must be exactly `PATH` (inherited, so testssl.sh can find
+    bash and its tools) and `LANG=C`. Pinned by `tests/core/test_testssl.py`.
+
+    `allowed_args` selects one of `DECLARED_ARG_LISTS`; anything else is
+    refused. The default is the runtime wrapper's list.
+    """
+    if not isinstance(allowed_args, tuple) or allowed_args not in DECLARED_ARG_LISTS:
+        raise TestsslArgumentRefusedError(
+            f"testssl.sh argument list is not a declared one: {allowed_args!r}"
+        )
+    expected_head = [str(TESTSSL_PATH), *allowed_args, "--jsonfile-pretty"]
+    head, rest = argv[: len(expected_head)], argv[len(expected_head) :]
+    if head != expected_head or len(rest) != 2:
+        raise TestsslArgumentRefusedError(
+            f"testssl.sh command line is outside the declared allowlist: {argv!r}"
+        )
+    out, target = rest
+    if out.startswith("-") or not out.endswith(".json") or not os.path.isabs(out):
+        raise TestsslArgumentRefusedError(f"testssl.sh output path refused: {out!r}")
+    if not _TARGET.fullmatch(target) or not 1 <= int(target.rsplit(":", 1)[1]) <= 65535:
+        raise TestsslArgumentRefusedError(f"testssl.sh target refused: {target!r}")
+    if set(env) != set(TESTSSL_ENV_KEYS) or env.get("LANG") != "C":
+        raise TestsslArgumentRefusedError(
+            f"testssl.sh environment is outside the declared allowlist: {sorted(env)!r}"
+        )
+
+
+def _run_raw(host: str, port: int, *, timeout_s: int) -> dict[str, Any]:
+    """Run testssl.sh's four cipher-offer tests and return its full JSON report.
+
+    Exactly `TESTSSL_ARGS`, checked by `guard_invocation` before the
+    subprocess starts (D56). `--jsonfile-pretty` to a temp file and no
+    severity filter: dropping `OK` findings would drop exactly the negative
+    evidence a control case needs.
     """
     if not available():
         raise TestsslUnavailableError(
@@ -158,16 +271,14 @@ def _run_raw(host: str, port: int, *, timeout_s: int) -> dict[str, Any]:
 
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp) / "out.json"
+        argv = _command(host, port, out)
+        env = environment()
+        guard_invocation(argv, env)
         try:
             subprocess.run(
-                [
-                    str(TESTSSL_PATH),
-                    "--jsonfile-pretty",
-                    str(out),
-                    "--vulnerable",
-                    "--quiet",
-                    f"{host}:{port}",
-                ],
+                argv,
+                env=env,
+                stdin=subprocess.DEVNULL,
                 capture_output=True,
                 timeout=timeout_s,
                 check=False,
@@ -190,9 +301,9 @@ def _run_raw(host: str, port: int, *, timeout_s: int) -> dict[str, Any]:
 
 def _parse(report: dict[str, Any]) -> dict[str, LegacyCipherFinding]:
     """Flatten testssl's `scanResult` and keep the worst verdict per id we
-    care about. Only `CHECK_TO_TESTSSL_ID`'s four ids are kept - everything
-    else in `--vulnerable`'s output (Heartbleed, ROBOT, POODLE, ...) is out of
-    scope for this module and silently dropped."""
+    care about. Only `CHECK_TO_TESTSSL_ID`'s four ids are kept; anything else
+    in the report (service, rDNS, scan metadata) is not a verdict these
+    checks read."""
     wanted = set(CHECK_TO_TESTSSL_ID.values())
     best: dict[str, LegacyCipherFinding] = {}
     for block in report.get("scanResult") or []:
@@ -331,6 +442,10 @@ class ReplayTestsslClient:
 
 __all__ = [
     "CHECK_TO_TESTSSL_ID",
+    "CROSSCHECK_ARGS",
+    "DECLARED_ARG_LISTS",
+    "TESTSSL_ARGS",
+    "TESTSSL_ENV_KEYS",
     "TESTSSL_PATH",
     "TESTSSL_VERSION",
     "LegacyCipherFinding",
@@ -340,7 +455,10 @@ __all__ = [
     "RecordingTestsslClient",
     "ReplayTestsslClient",
     "StubTestsslClient",
+    "TestsslArgumentRefusedError",
     "TestsslClient",
     "TestsslUnavailableError",
     "available",
+    "environment",
+    "guard_invocation",
 ]

@@ -11,8 +11,8 @@ email scanner.
 fact then one of them has a bug. Comparing conclusions would generate argument;
 comparing facts generates information.
 
-Not part of the gate, and deliberately so: it needs a GPLv2 shell script that
-is not a runtime dependency of anything, it is slow, and a corpus gate that
+Not part of the gate, and deliberately so: it needs a GPLv2 shell script, it
+is slow, and a corpus gate that
 depends on a third-party tool being installed is a corpus gate that breaks on
 someone else's machine. Run it when changing the TLS engine, and read the
 disagreements.
@@ -22,6 +22,12 @@ disagreements.
 
 testssl.sh is GPLv2 and runs as a separate process. Never import it, never
 copy from it — the CI licence check enforces the isolation mode.
+
+Its invocation has a declared, exact allowlist, `CROSSCHECK_ARGS`, checked by
+`core.testssl.guard_invocation` with the same pinned environment as the
+runtime wrapper (ADR-023 amendment, clause 2). `--protocols` and
+`--server-defaults` are ordinary handshakes; nothing here runs the
+vulnerability tests.
 """
 
 from __future__ import annotations
@@ -37,11 +43,17 @@ from pathlib import Path
 from typing import Any
 
 from core.authz import Scope
+from core.testssl import CROSSCHECK_ARGS, TESTSSL_PATH, environment, guard_invocation
 from core.tls import TlsClient, TlsObservation
 from corpus.generators.tls_lab import LabServer, mint, mint_chain
 
 ROOT = Path(__file__).resolve().parents[2]
-TESTSSL = ROOT / "tools" / "bin" / "testssl.sh-3.2.4" / "testssl.sh"
+TESTSSL = TESTSSL_PATH
+
+# CROSSCHECK_ARGS is declared in core.testssl, beside the runtime list. No
+# `--severity` filter: it drops findings rated OK, which are precisely the
+# facts we agree on. Filtering them would leave a cross-check that only ever
+# sees problems.
 BASE_PORT = 15400
 
 _KEY_BITS = re.compile(r"(\d+)\s*bits")
@@ -65,19 +77,13 @@ def run_testssl(host: str, port: int, timeout_s: int = 180) -> dict[str, str]:
     """Run testssl.sh and return its findings as {id: finding}."""
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp) / "out.json"
+        argv = [str(TESTSSL), *CROSSCHECK_ARGS, "--jsonfile-pretty", str(out), f"{host}:{port}"]
+        env = environment()
+        guard_invocation(argv, env, allowed_args=CROSSCHECK_ARGS)
         subprocess.run(
-            [
-                str(TESTSSL),
-                "--jsonfile-pretty",
-                str(out),
-                # No --severity filter: it drops findings rated OK, which are
-                # precisely the facts we agree on. Filtering them would leave a
-                # cross-check that only ever sees problems.
-                "--protocols",
-                "--server-defaults",
-                "--quiet",
-                f"{host}:{port}",
-            ],
+            argv,
+            env=env,
+            stdin=subprocess.DEVNULL,
             capture_output=True,
             timeout=timeout_s,
             check=False,
