@@ -1880,6 +1880,20 @@ On the customer path the narrow claim held: every connection went to a checked l
   - a DNS family that fails to resolve adds no address and refuses nothing (decision 2);
   - one override also waives testssl.sh's dedicated-address condition, including the labs' instance (decision 6).
 
+## 2026-10-12 · Independent review of D60, round 2: NOT CLEAN, one blocker, fixed
+
+The round-1 fixes were checked, and the whole change re-read. All fixes are test-first.
+
+- **BLOCKER: a recorded refusal stored its URL unredacted.** `record_refusal` wrote the URL as given, while every other fixture path redacts it. A redirect whose `Location` carries a token, pointing at a name in private space, would have put the token on disk. That breaks hard constraint 5 and ADR-028's capture-time rule. It was introduced by round 1's own fix. Fix: redact at capture. The test puts a GitHub token in the query and checks no file holds it.
+- **Should-fix:**
+  - **The recording wrappers still failed open:** wrapping a backend that declared nothing counted as not connecting, against ADR-036 decision 8. They now default to connecting.
+  - **An HTTP connect timeout no longer moved on to the next address.** `httpx.ConnectTimeout` is not a `ConnectError`. Before D60 the socket layer tried every address, and TLS still did, so a name with one dead address would have had tls and web disagree. Both are now caught; TLS failures still stop.
+- **Nits, fixed:**
+  - a replayed TLS refusal counted a request the live one did not; a refusal now costs nothing either way. Unresolved names get their own prefix, `address_unresolved:`, so both can be told apart from a real connect failure;
+  - the TLS recording hook was a generic `record`, which any double with that attribute would have matched; it is now `record_refusal`, as for HTTP;
+  - `_fixture_name` now says a refusal and a response for one URL share a name (last write wins, never misread).
+- **Out of D60's scope, reported:** SPEC.md's web row says 234 checks and 10 claims, where the corpus run shows 255 and 12. No web corpus case changed in D60, so this predates it. Left for the operator.
+
 ## 2026-10-10 · Handoff: open items and where to start
 
 *For a new session with no chat history. State as of PR #32, with the operator's decisions of 2026-10-10 below. Each item links to where it is owned.*

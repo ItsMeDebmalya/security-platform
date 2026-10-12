@@ -209,7 +209,7 @@ class SystemHttpBackend:
         if logical.scheme == "https":
             extensions["sni_hostname"] = logical.raw_host.decode("ascii")
 
-        last: httpx.ConnectError | None = None
+        last: httpx.ConnectError | httpx.ConnectTimeout | None = None
         for address in addresses:
             started = time.monotonic()
             try:
@@ -220,7 +220,7 @@ class SystemHttpBackend:
                     extensions=extensions,
                     **kwargs,
                 )
-            except httpx.ConnectError as exc:
+            except (httpx.ConnectError, httpx.ConnectTimeout) as exc:
                 if _is_tls_failure(exc):
                     raise  # a TLS failure is the answer, not a reason to try elsewhere
                 last = exc
@@ -301,7 +301,11 @@ def _fixture_name(method: str, url: str) -> str:
 
     Sufficient today: every current and planned Light-mode check is an
     idempotent GET, and a scanner never sends two different bodies to the
-    same URL in one run. A scanner that started doing that would collide on
+    same URL in one run. A request the address policy refused (D60) shares the
+    name with the response it would have had; if a name's DNS answer changed
+    mid-recording so that one URL was both refused and answered, the last
+    write wins. A response fixture never has an `address_policy` key, so
+    replay cannot read one as the other. A scanner that started doing that would collide on
     replay - worth revisiting then, not worth a request-body hash now for a
     case nothing exercises.
     """
@@ -329,7 +333,8 @@ class RecordingHttpBackend:
 
     @property
     def connects(self) -> bool:
-        return bool(getattr(self._inner, "connects", False))
+        # Silence means connecting, through a wrapper too (fail closed).
+        return bool(getattr(self._inner, "connects", True))
 
     def send(self, method: str, url: str, *, body_cap: int, **kwargs: Any) -> RawHttpResponse:
         # `body_cap` comes from the caller on every call (`HttpClient` passes
@@ -359,7 +364,12 @@ class RecordingHttpBackend:
             refusal = {"host": exc.host, "refused": exc.refused, "literal": exc.literal}
         else:
             refusal = {"unresolved": str(exc)}
-        self._store.write(_fixture_name(method, url), {"url": url, "address_policy": refusal})
+        # Redacted at capture, like every other fixture (ADR-028; review of D60,
+        # round 2): a refused redirect's URL can carry a token.
+        stored_url = redact_text(url)[0] or url
+        self._store.write(
+            _fixture_name(method, url), {"url": stored_url, "address_policy": refusal}
+        )
 
 
 class ReplayHttpBackend:

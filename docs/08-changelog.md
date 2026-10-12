@@ -706,6 +706,11 @@ Then restore the entry-point lines in `CLAUDE.md` and `SPEC.md`, and the revert 
   - Fixtures recorded before D60 replay unchanged; a refusal recorded since replays as the same refusal.
   - The labs record through `corpus/` generators.
   - See the [runbook](12-cli-runbook.md) §10.
+- **Review round 2** (NOT CLEAN, one blocker, fixed):
+  - refusal fixtures are redacted at capture;
+  - recording wrappers fail closed;
+  - HTTP connect timeouts move on to the next address;
+  - a refusal costs no request.
 - **Review round 1** (NOT CLEAN, no blockers, fixed):
   - a TLS failure on one address no longer falls through to the next;
   - refusals are recorded and replay;

@@ -70,6 +70,7 @@ from scanners.tls.checks import requires_authorisation as _requires_authorisatio
 
 NO_VERDICT_FOR_ERROR = {
     "address_refused": "blocked_prerequisite",
+    "address_unresolved": "blocked_prerequisite",
     "timeout": "timeout",
     "connect_error": "blocked_prerequisite",
     "tls_error": "ambiguous_response",

@@ -588,6 +588,14 @@ class SystemTlsBackend:
             return False, None, f"connect_error:{exc.strerror or exc}"
 
 
+POLICY_ERRORS = ("address_refused:", "address_unresolved:")
+"""D60: a handshake the address policy stopped before any socket was opened."""
+
+
+def _stopped_by_policy(raw: RawHandshake) -> bool:
+    return raw.error is not None and raw.error.startswith(POLICY_ERRORS)
+
+
 def _connect_first(
     addresses: tuple[str, ...], port: int, timeout_s: float
 ) -> tuple[socket.socket, str]:
@@ -620,7 +628,8 @@ class RecordingTlsBackend:
 
     @property
     def connects(self) -> bool:
-        return bool(getattr(self._inner, "connects", False))
+        # Silence means connecting, through a wrapper too (fail closed).
+        return bool(getattr(self._inner, "connects", True))
 
     def handshake(
         self, host: str, port: int, servername: str | None, **kwargs: Any
@@ -640,9 +649,22 @@ class RecordingTlsBackend:
         min_version: ssl.TLSVersion | None,
         max_version: ssl.TLSVersion | None,
     ) -> None:
-        """Freeze one handshake, or a refusal made before any (D60)."""
+        """Freeze one handshake."""
         version = _version_label(min_version, max_version)
         self._store.write(_fixture_name(host, port, servername, version), result.to_dict())
+
+    def record_refusal(
+        self,
+        host: str,
+        port: int,
+        servername: str | None,
+        refused: RawHandshake,
+        min_version: ssl.TLSVersion | None,
+        max_version: ssl.TLSVersion | None,
+    ) -> None:
+        """D60: freeze a handshake the address policy stopped before any socket,
+        so its replay stops it too."""
+        self.record(host, port, servername, refused, min_version, max_version)
 
 
 class ReplayTlsBackend:
@@ -765,14 +787,14 @@ class TlsClient:
             except AddressRefusedError as exc:
                 error = f"address_refused:{exc.summary}"
             except AddressUnresolvedError as exc:
-                error = f"connect_error:{exc}"
+                error = f"address_unresolved:{exc}"
             if error is not None:
                 refused = RawHandshake(
                     reachable=False, observed_at=dt.datetime.now(dt.UTC), error=error
                 )
                 # A recording keeps the refusal, so its replay says the same
                 # (review of D60, round 1). Nothing was connected to.
-                record = getattr(self.backend, "record", None)
+                record = getattr(self.backend, "record_refusal", None)
                 if record is not None:
                     record(host, port, wire_name, refused, min_version, max_version)
                 return refused
@@ -789,7 +811,9 @@ class TlsClient:
             timeout_s=self.timeout_s,
             **pinned,
         )
-        if self.cost is not None:
+        # A refusal opens no socket, live or replayed, so it costs no request
+        # (review of D60, round 2).
+        if self.cost is not None and not _stopped_by_policy(raw):
             self.cost.record_request()
         return raw
 

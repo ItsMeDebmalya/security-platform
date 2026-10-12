@@ -530,7 +530,7 @@ def test_the_policy_and_the_override_cannot_be_subclassed() -> None:
 
 @pytest.mark.parametrize(
     ("answers", "expect"),
-    [({NAME: "10.0.0.5"}, "address_refused:"), ({}, "connect_error:")],
+    [({NAME: "10.0.0.5"}, "address_refused:"), ({}, "address_unresolved:")],
     ids=["refused", "unresolved"],
 )
 def test_a_refused_tls_handshake_is_recorded_and_replays_the_same(
@@ -575,3 +575,81 @@ def test_a_refused_http_request_is_recorded_and_replays_the_same(wire, tmp_path)
     with pytest.raises(AddressUnresolvedError, match="no A or AAAA") as replayed_unresolved:
         replay.get(f"http://gone.{NAME}/")
     assert str(replayed_unresolved.value) == str(live_unresolved.value)
+
+
+# --- review of D60, round 2 ---------------------------------------------------
+
+
+def test_a_recorded_refusal_never_stores_a_secret_from_the_url(tmp_path) -> None:
+    """Blocker: redaction happens at capture, in core (ADR-028), for refusals too."""
+    from core.http import RecordingHttpBackend
+
+    token = "ghp_" + "a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8"
+    recording = RecordingHttpBackend(tmp_path, SystemHttpBackend())
+    with pytest.raises(AddressRefusedError):
+        _http(StaticDns({NAME: "10.0.0.5"}), backend=recording).get(
+            f"http://{NAME}/cb?token={token}"
+        )
+    written = "".join(p.read_text() for p in tmp_path.rglob("*") if p.is_file())
+    assert written and token not in written
+
+
+def test_a_recording_wrapper_around_an_undeclared_backend_is_pinned(tmp_path) -> None:
+    """Should-fix 1: silence means connecting, through a wrapper too."""
+    from core.http import RecordingHttpBackend
+    from core.tls import RecordingTlsBackend
+
+    class Undeclared:
+        pass
+
+    assert RecordingHttpBackend(tmp_path, Undeclared()).connects is True  # type: ignore[arg-type]
+    assert RecordingTlsBackend(tmp_path, Undeclared()).connects is True  # type: ignore[arg-type]
+
+
+def test_a_connect_timeout_moves_on_to_the_next_checked_address() -> None:
+    """Should-fix 2: before D60 the socket layer tried every address; a timeout
+    on one must not end the request."""
+
+    class TwoAddresses:
+        def query(self, name, rrtype, *, resolver=None):
+            if rrtype != "A":
+                return DnsResponse(name, rrtype, "NODATA", [])
+            return DnsResponse(name, rrtype, "NOERROR", [PUBLIC, PUBLIC_2])
+
+    tried: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        tried.append(request.url.host)
+        if request.url.host == PUBLIC:
+            raise httpx.ConnectTimeout("timed out", request=request)
+        return httpx.Response(200, text="ok")
+
+    response = _http(TwoAddresses(), transport=httpx.MockTransport(handler)).get(f"http://{NAME}/")
+    assert response.status_code == 200
+    assert tried == [PUBLIC, PUBLIC_2]
+    assert response.captured["address"] == PUBLIC_2
+
+
+def test_replaying_a_refusal_costs_what_the_refusal_cost(tmp_path) -> None:
+    """Nit 1: a refusal opens no socket, live or replayed, so neither counts a request."""
+    from core.cost import CostMeter
+    from core.tls import RecordingTlsBackend, ReplayTlsBackend
+
+    live_cost, replay_cost = CostMeter(), CostMeter()
+    _tls(
+        StaticDns({NAME: "10.0.0.5"}),
+        backend=RecordingTlsBackend(tmp_path, SystemTlsBackend()),
+        cost=live_cost,
+    ).inspect(NAME, 443)
+    _tls(None, backend=ReplayTlsBackend(tmp_path), cost=replay_cost).inspect(NAME, 443)
+    assert live_cost.requests == replay_cost.requests == 0
+
+
+def test_only_a_backend_with_record_refusal_is_handed_a_tls_refusal() -> None:
+    """Nit 2: a generic `record` attribute (a Mock, say) is not the hook."""
+    from unittest.mock import Mock
+
+    backend = Mock(spec=["handshake", "record"])
+    backend.connects = True
+    _tls(StaticDns({NAME: "10.0.0.5"}), backend=backend).inspect(NAME, 443)
+    backend.record.assert_not_called()
