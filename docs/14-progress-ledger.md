@@ -1986,10 +1986,20 @@ The round-1 fixes were checked, and the whole change re-read. All fixes are test
   - `SourceFileLoader(...).load_module()`;
   - `find_spec` with `module_from_spec`.
 
-  The walk now flags `sys.path`, every loader in `importlib`'s machinery, the ready-made names (`LAB_ADDRESSES`, `OVERRIDE`), non-docstring strings naming a `corpus/` or `tests/` module or path, and imports from `tests/`, whose helpers turn an override on by default. It still passes on the real `cli/`, `scanners/` and `core/` trees, so no false positives.
+  The walk now flags `sys.path`, loading through `importlib`'s loaders (`SourceFileLoader`, `zipimporter`, and the loading steps `module_from_spec`, `exec_module`, `load_module`), the ready-made names (`LAB_ADDRESSES`, `OVERRIDE`), non-docstring strings naming a `corpus/` or `tests/` module or path, and imports from `tests/`, whose helpers turn an override on by default. It still passes on the real `cli/`, `scanners/` and `core/` trees, so no false positives.
 - **What the walks are, now stated in ADR-036 decision 10:** tripwires that keep ordinary code honest, not proofs against deliberate evasion. That was the honest description from the start. Three rounds each found another plain route, which is why the ADR now says it rather than implying completeness.
 - **Nit, fixed:** the changelog records that `AddressPolicy.lab_override` became keyword-only.
 - This commit changes tests and docs only. The last `core/` change in the PR (cb691c4) had a clean review.
+
+## 2026-10-12 · Lab entry point merged (PR #50); confirmation-review follow-up
+
+PR #50 merged at the reviewed head, a597703. The confirmation review was CLEAN. Its findings are taken here, in a small follow-up, so that what merged is exactly what was reviewed:
+- **SHOULD-FIX: an aliased `sys.path` slipped past the walk** (`from sys import path`, `import sys as s` then `s.path`). Both are now flagged.
+- **NIT: two rules were broad enough to push ordinary code into workarounds.**
+  - `find_spec` alone is no longer flagged: it is the usual optional-dependency check, plausible for the Alpha PDF report. `module_from_spec` is the loading step, and it still is.
+  - The corpus export `OVERRIDE` is renamed `TESTSSL_LAB_OVERRIDE`, so the ready-made-name rule no longer catches a common constant such as an enum member.
+  - Tests cover both.
+- **NIT:** the round-3 entry said "every loader in `importlib`'s machinery"; it now names what is flagged.
 
 ## 2026-10-10 · Handoff: open items and where to start
 
