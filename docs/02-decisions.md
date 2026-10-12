@@ -921,7 +921,7 @@ In both cases the parser, the scope rule and the gate each did their job. The ga
 
    A combined release ships when its slowest part, the agent, is ready. The agent therefore runs on lab boxes and a few internal servers before launch, as internal validation.
 2. **The Linux agent moves into Alpha.** This supersedes the v4 roadmap's exclusion of the agent from the MVP (§2) and its Phase 2 placement (§3), and the release roadmap's Post-1.0 placement ([docs/archive/release-roadmap-2026-10-06.md](archive/release-roadmap-2026-10-06.md), §6).
-   - **For Alpha the agent is read-only:** a one-shot collector of facts, with judgements made on the platform. Its architecture is decided separately in ADR-034 ([docs/26](26-alpha-build-sequence.md), Step 2).
+   - **For Alpha the agent is read-only:** a one-shot collector of facts, with judgements made on the platform. Its architecture is decided separately in ADR-035 ([docs/26](26-alpha-build-sequence.md), Step 2; renumbered from ADR-034 on 2026-10-12, when the contract extension took 034).
    - **Its modules and rules are in [docs/24 §5](24-alpha-scope.md):** each must fire on a real positive on a lab box before it reaches the fleet, it collects minimum data, secrets are reported by type only, and it suggests fixes but never applies them.
 3. **No new external scanners for Alpha.** The four shipped scanners (email, tls, domscout, web) are the external surface. New value goes into the agent's modules, where the inside view explains the outside one.
 4. **The flow engine is minimal and deterministic for Alpha.** It runs fixed playbooks over existing checks. AI explains; code decides; the validator proves. A test shows the AI layer has no execution path. The full offensive engine is staged after Alpha.
@@ -966,3 +966,59 @@ In both cases the parser, the scope rule and the gate each did their job. The ga
 - **An always-on agent for Alpha** (enrolment, signed updates, staged rollouts): it is a larger supply-chain surface, and it comes after Alpha.
 
 **Reversal cost.** Medium. Reverting puts the agent back after the MVP and Tool 4b back before it. Contract fields added for the agent are additive and harmless if unused.
+
+---
+
+## ADR-034 — Contract extension (Stage A): host targets, vantage and engagement tags, finding links, state-change fields
+
+**Status.** Accepted 2026-10-12 (operator), with all five review points settled. This is [docs/26](26-alpha-build-sequence.md) Step 1, and it gets an independent review before merge. *Numbering (operator):* this ADR takes 034, and the agent architecture ADR becomes **ADR-035**. The references in docs/26 and ADR-033 are updated in this change. Date order is worth more than two references that nothing is built against yet.
+
+**Context.** [ADR-033](#adr-033--mvp-alpha-scope-one-combined-release-the-linux-agent-moves-into-alpha-tool-4b-deferred) brings the Linux agent into the Alpha. Its findings are about a host, not a domain, and are seen from inside it. The v4 plan's two axes ([docs/18 §A3](18-v4-plan.md): mode, defensive or offensive, and vantage point) are not in the contract, and neither is a way for one finding to explain another or to record a change made to a target. [The migration runbook](20-migration-runbook.md) (Stage A) asks for all of this in one deliberate migration. It adds attack-path linkage, state-affecting fields, and mode and vantage tags, all optional, with the drift test as the guard. A second migration later would cost more than defining these fields once now.
+
+**Decision. All additions are optional, so every existing finding, scan result and stored row stays valid. Finding IDs do not change**: the ID formula covers none of these fields.
+
+1. **`host` target type.** `Asset.type` gains `host`: a server reported by the agent.
+   - `value` is the hostname when the agent knows one, otherwise the IP address.
+   - `addresses` is a new optional field: the IP addresses the agent reported, validated as IP literals. It is allowed **only** on `host` assets and refused on every other type.
+   - It lives in the shared `asset` definition, so `ScanResult.target` and `ScanRun.target` accept it too.
+2. **Vantage tag.** A finding gains `vantage`: `external_unauthenticated | authenticated | agent` (the v4 plan's three vantage points). `null` means "not recorded", and it covers findings recorded before this ADR, which are **never backfilled**.
+3. **Engagement tag (the plan's "mode").** A finding gains `engagement`: `defensive | offensive`, with `null` meaning "not recorded".
+   - **It is not named `mode`.** In the contract and the code, `mode` already means depth (`light | standard | deep`) on `ScanResult`, `ScanRun` and every `Check`. A second `mode` with a different meaning would put two meanings under one name.
+   - **Why `engagement`** (operator): it describes the nature of the interaction with the target, which is what defensive and offensive mean.
+4. **Finding links.** A finding gains `links`: a list of `{relation, finding_id}`.
+   - `relation` is `explains` or `chains_to`. "A explains B" is inside-out correlation: an agent finding explains an external one, for example the process and configuration line behind an open port. "A chains_to B" is a step in an attack path, for later use.
+   - `finding_id` uses the finding ID format (`sha256:` plus 64 hex characters). It may name a finding from another scan or scanner, because IDs are deterministic across scans.
+   - A link to the finding itself is refused, and so is a repeated `(relation, finding_id)` pair.
+   - **Only the forward direction is stored.** Consumers compute the inverse ("explained by").
+   - Existing structures are unchanged:
+     - `related_assets` links a finding to assets, not to findings;
+     - `derived_from` stays the provenance of a `derived` finding (ADR-018), and the correlation pass keeps using it;
+     - moving correlation stories to `chains_to` is a later, separate change.
+5. **State-change fields, defined now and emitted by nothing in the Alpha.** A finding gains `state_change`:
+   - `changes`: at least one `{action: created | modified | deleted, what, where}`.
+   - `cleanup`: `{status: not_needed | pending | done | failed | not_possible, performed_at, detail}`.
+   - **Its text is redacted on validation,** like `location` (ADR-028).
+   - **Invariant:** `state_change` requires `engagement: offensive`. The schema (`if`/`then`) and the model both refuse it on any other finding.
+   - **A runtime guard keeps ADR-004 absolute.** `core.applicability.enforce`, which already runs wherever a result is produced (`scan run`, the corpus harness, and later `api/`), refuses any result that carries a `state_change`. That holds until ADR-025's preconditions exist (Deep mode, the OOB server, the signed agreement) and a later ADR lifts the guard.
+   - **Why, in the operator's words:** "A schema that merely permits something unsafe, with only author discipline stopping it, is the same shape as D56 — a wrapper doing more than the check asked for. A runtime guard turns 'we don't do that' into 'we can't do that.'"
+   - **This is the second place a safety claim is enforced rather than promised.** The first is the authorisation gate (`core/authz.py`, deny by default).
+6. **The existing scanners declare their tags once.** `BaseScanner` gains two class attributes, `vantage` and `engagement`, with no default for scanners that emit findings.
+   - **domscout, email, tls and web** declare `external_unauthenticated` and `defensive`, and pass them on every finding they create. So does core's `secret-exposed` helper, which takes them from the calling scanner.
+   - **The reference `example` scanner** declares the same values.
+   - **The correlation pass** leaves both tags `null` on its derived story findings: a story is not observed from any vantage point.
+   - **A contract test** runs every registered scanner over its corpus and fails if any finding lacks its scanner's declared tags, or carries a `state_change`.
+7. **Versions and baselines.**
+   - Every finding of the four scanners now carries two new fields, so results change and each scanner gets a **patch bump**: email 1.5.2, tls 1.4.1, domscout 1.3.3, web 1.0.6.
+   - **No corpus number may move.** These fields are not scored. Any baseline that moves is reported and explained, never silently re-baselined.
+
+**Stored findings.** The store re-serialises each row it loads and rewrites any whose JSON changed. A pre-ADR-034 row gains the new keys as `null` on its next load and is rewritten once, with its content otherwise unchanged. A read-only store still never writes.
+- **It is never backfilled.** Why, in the operator's words: "Backfilling them as external/defensive would invent a record of something nobody observed. 'Not recorded' is true; a guessed value isn't."
+
+**Rejected.**
+- **Naming the engagement tag `mode`:** it collides with depth.
+- **Making the tags required:** that is not additive, and it would invalidate every stored finding.
+- **Stamping the tags after a scan, in the CLI:** a finding built without its tags would exist inside the scanner and in unit tests. Declaring them on the scanner and passing them at creation keeps every finding complete from birth.
+- **Allowing `state_change` without a runtime guard:** a schema that permits it, with nothing refusing it, would leave ADR-004 resting on authors' discipline. D56 showed what that costs.
+- **A separate links table or graph store:** links belong to the finding until the API needs to query them at scale (Stage B).
+
+**Reversal cost.** Low while nothing but the default tags is emitted: the fields are optional, and dropping them is a migration of the same shape. It is high once agent findings and links exist, because they depend on it.

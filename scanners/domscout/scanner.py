@@ -65,7 +65,9 @@ NO_VERDICT_FOR_RCODE = {
 @register
 class DomscoutScanner(BaseScanner):
     name = "domscout"
-    version = "1.3.2"
+    version = "1.3.3"
+    vantage = "external_unauthenticated"
+    engagement = "defensive"
     supported_modes = frozenset({"light"})
     target_types = frozenset({"domain"})
     service_hosts = SERVICE_HOSTS
@@ -164,6 +166,8 @@ class _Scan:
             self.findings,
             scanner=self.scanner.name,
             scanner_version=self.scanner.version,
+            vantage=self.scanner.vantage,
+            engagement=self.scanner.engagement,
             target=self.target,
             org_id=self.ctx.org_id,
             scan_id=self.ctx.scan_id,
@@ -996,6 +1000,8 @@ class _Scan:
             org_id=self.ctx.org_id,
             scanner=self.scanner.name,
             scanner_version=self.scanner.version,
+            vantage=self.scanner.vantage,
+            engagement=self.scanner.engagement,
             check_id=check.check_id,
             title=check.title,
             target=self.target,
@@ -1067,6 +1073,8 @@ class _Scan:
             org_id=self.ctx.org_id,
             scanner=self.scanner.name,
             scanner_version=self.scanner.version,
+            vantage=self.scanner.vantage,
+            engagement=self.scanner.engagement,
             check_id=check_id,
             title=check.title,
             target=self.target,
@@ -1156,6 +1164,8 @@ class _Scan:
             org_id=self.ctx.org_id,
             scanner=self.scanner.name,
             scanner_version=self.scanner.version,
+            vantage=self.scanner.vantage,
+            engagement=self.scanner.engagement,
             check_id=check_id,
             title=check.title,
             target=self.target,

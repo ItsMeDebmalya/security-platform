@@ -16,6 +16,7 @@ Two invariants are enforced here rather than left to scanner authors:
 
 from __future__ import annotations
 
+import ipaddress
 from collections.abc import Mapping
 from datetime import date, datetime
 from typing import Annotated, Any, ClassVar, Literal, Self
@@ -71,12 +72,31 @@ class Strict(BaseModel):
 # --- assets and cost --------------------------------------------------------
 
 
-AssetType = Literal["domain", "url", "ip", "cidr", "repo", "cloud_account", "image", "email"]
+AssetType = Literal[
+    "domain", "url", "ip", "cidr", "repo", "cloud_account", "image", "email", "host"
+]
+"""`host` (ADR-034): a server reported by the agent; `value` is its hostname, or its
+IP address when it has none."""
 
 
 class Asset(Strict):
     type: AssetType
     value: str = Field(min_length=1)
+    addresses: list[str] = Field(default_factory=list)
+    """ADR-034: the IP addresses the agent reported for a `host`. Only on `host`."""
+
+    @field_validator("addresses")
+    @classmethod
+    def _addresses_are_ip_literals(cls, value: list[str]) -> list[str]:
+        for address in value:
+            ipaddress.ip_address(address)  # raises ValueError for anything else
+        return value
+
+    @model_validator(mode="after")
+    def _addresses_only_on_hosts(self) -> Self:
+        if self.addresses and self.type != "host":
+            raise ValueError("addresses belong only to a host asset (ADR-034)")
+        return self
 
 
 class RelatedAsset(Strict):
@@ -373,8 +393,57 @@ _FREE_TEXT_FIELDS = (
 )
 
 
+Vantage = Literal["external_unauthenticated", "authenticated", "agent"]
+"""ADR-034: where a finding was observed from (docs/18-v4-plan.md §A3)."""
+
+Engagement = Literal["defensive", "offensive"]
+"""ADR-034: the nature of the interaction with the target (the plan's "mode"; not
+named `mode`, which means depth everywhere else)."""
+
+FINDING_ID_PATTERN = r"^sha256:[0-9a-f]{64}$"
+
+
+class FindingLink(Strict):
+    """ADR-034: this finding `explains` another (inside-out correlation) or
+    `chains_to` it (an attack-path step). Only the forward direction is stored."""
+
+    relation: Literal["explains", "chains_to"]
+    finding_id: str = Field(pattern=FINDING_ID_PATTERN)
+
+
+class Change(Strict):
+    action: Literal["created", "modified", "deleted"]
+    what: str = Field(min_length=1)
+    where: str = Field(min_length=1)
+
+    @field_validator("what", "where")
+    @classmethod
+    def _redact(cls, value: str) -> str:
+        return redact_text(value)[0] or value
+
+
+class Cleanup(Strict):
+    status: Literal["not_needed", "pending", "done", "failed", "not_possible"]
+    performed_at: datetime | None = None
+    detail: str = ""
+
+    @field_validator("detail")
+    @classmethod
+    def _redact(cls, value: str) -> str:
+        return (redact_text(value)[0] or value) if value else value
+
+
+class StateChange(Strict):
+    """ADR-034: what an offensive test changed on the target, and how it was undone.
+    Defined now, emitted by nothing in the Alpha, and refused at runtime by
+    `core.applicability.enforce` until a later ADR lifts the guard (ADR-004/025)."""
+
+    changes: list[Change] = Field(min_length=1)
+    cleanup: Cleanup
+
+
 class Finding(Strict):
-    id: str = Field(pattern=r"^sha256:[0-9a-f]{64}$")
+    id: str = Field(pattern=FINDING_ID_PATTERN)
     org_id: str = Field(min_length=1)
     scanner: str = Field(min_length=1)
     scanner_version: str = Field(pattern=SEMVER)
@@ -420,6 +489,29 @@ class Finding(Strict):
 
     # --- ADR-029: computed from the evidence, never taken from input
     redaction_receipts: list[RedactionReceipt] = Field(default_factory=list)
+
+    # --- ADR-034 (Stage A): all optional. `None` means "not recorded", never a guess.
+    vantage: Vantage | None = None
+    engagement: Engagement | None = None
+    links: list[FindingLink] = Field(default_factory=list)
+    state_change: StateChange | None = None
+
+    @model_validator(mode="after")
+    def _links_are_to_other_findings_once(self) -> Self:
+        keys = [(link.relation, link.finding_id) for link in self.links]
+        if len(set(keys)) != len(keys):
+            raise ValueError("a finding repeats a link (ADR-034)")
+        if any(link.finding_id == self.id for link in self.links):
+            raise ValueError("a finding cannot link to itself (ADR-034)")
+        return self
+
+    @model_validator(mode="after")
+    def _state_change_only_when_offensive(self) -> Self:
+        if self.state_change is not None and self.engagement != "offensive":
+            raise ValueError(
+                "state_change is allowed only on a finding whose engagement is offensive (ADR-034)"
+            )
+        return self
 
     @model_validator(mode="after")
     def _roll_up_receipts(self) -> Self:

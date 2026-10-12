@@ -19,7 +19,7 @@ The tool-first strategy in docs/archive/ is SUPERSEDED. Do not follow it.
   - **company-domain canaries are skipped** for now.
 - **Waiting on the operator:**
   - the value-add backlog's quick wins: they are not in the Alpha build plan (docs/26), so add any only on the operator's say-so.
-- **Next:** **the Alpha build has started, following [docs/26](docs/26-alpha-build-sequence.md).** Step 0 (bring the decisions into the repo) is done. Next is **Step 1, the contract extension**: one additive migration with its own ADR and an independent review. Then **Step 1b, the D56 fix**: a safety-claim violation, because `testssl.sh --vulnerable` sends active probes ADR-023 says we never send. It goes in its own reviewed PR, ahead of the agent. After that comes the **agent ADR** (ADR-034, Step 2).
+- **Next:** **the Alpha build has started, following [docs/26](docs/26-alpha-build-sequence.md).** Step 0 (bring the decisions into the repo) is done. Next is **Step 1, the contract extension**: one additive migration with its own ADR and an independent review. Then **Step 1b, the D56 fix**: a safety-claim violation, because `testssl.sh --vulnerable` sends active probes ADR-023 says we never send. It goes in its own reviewed PR, ahead of the agent. After that comes the **agent ADR** (ADR-035, Step 2).
 - **Ledgered, no action:** a WHOIS fallback for NIXI's TLDs (`.भारत` and `.இந்தியா` are not in the RDAP bootstrap).
 - **Standing rules from the operator:**
   - Never push or merge without being told; merge with `--merge`.
@@ -44,7 +44,7 @@ If a task seems to require rebuilding any of the above, STOP and ask me.
 
 **Phase 0 is implemented; Tools 1 (Email), 2 (TLS), 3 (DomScout) and 4a (Website Scanner, Light) have shipped and pass their gates.** The Scanner Contract is frozen, `core/` services exist, the CLI runs, and the corpus harness gates on real numbers.
 
-Scanners: `example` (reference), `email` (Tool 1, v1.5.1), `tls` (Tool 2, v1.4.0, cross-checked against testssl.sh, with a runtime testssl.sh wrap for legacy ciphers in Standard mode), `domscout` (Tool 3, Light, v1.3.2), `web` (Tool 4a, Light, passive only, v1.0.5). Check counts, gate numbers and status are owned by `SPEC.md` and `docs/21-scanner-catalogue.md`; do not restate them here.
+Scanners: `example` (reference), `email` (Tool 1, v1.5.2), `tls` (Tool 2, v1.4.1, cross-checked against testssl.sh, with a runtime testssl.sh wrap for legacy ciphers in Standard mode), `domscout` (Tool 3, Light, v1.3.3), `web` (Tool 4a, Light, passive only, v1.0.6). Check counts, gate numbers and status are owned by `SPEC.md` and `docs/21-scanner-catalogue.md`; do not restate them here.
 
 Commands: `make install`, `make test`, `make lint`, `make typecheck`, `make licence-check`, `make corpus`, `make crosscheck`, `make targets-up`, and `scan run <tool> --target <t>`. Python 3.13.15, pinned in `.python-version`; dependencies via `uv`.
 
@@ -56,7 +56,7 @@ Read `docs/14-progress-ledger.md` for where things stand — including **standin
 - `SPEC.md` — **the canonical build specification: what each tool must do, current status, gates.** Authority for "what to build," replacing `docs/reference/product-spec.md` in that role.
 - `docs/00-context.md` — product, strategy, standards
 - `docs/01-architecture.md` — **the Scanner Contract, finding/evidence model, confidence engine**
-- `docs/02-decisions.md` — ADRs 001–033
+- `docs/02-decisions.md` — ADRs 001–034
 - `docs/03-roadmap.md` — phases 0, **0b (foundation for the calendar)**, 1–7 with accuracy gates
 - `docs/04-phase-0-foundations.md`, `docs/05-phase-1-first-tools.md` — task-level plans
 - `docs/06-guidelines.md` — rules for all code

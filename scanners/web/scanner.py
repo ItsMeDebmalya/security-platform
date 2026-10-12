@@ -148,7 +148,9 @@ Judge = Callable[[dict[str, str], str], tuple[bool, str]]
 @register
 class WebScanner(BaseScanner):
     name = "web"
-    version = "1.0.5"
+    version = "1.0.6"
+    vantage = "external_unauthenticated"
+    engagement = "defensive"
     supported_modes = frozenset({"light"})
     target_types = frozenset({"domain", "url"})
 
@@ -643,6 +645,8 @@ class _Scan:
                 org_id=self.ctx.org_id,
                 scanner=self.scanner.name,
                 scanner_version=self.scanner.version,
+                vantage=self.scanner.vantage,
+                engagement=self.scanner.engagement,
                 check_id=check.check_id,
                 title=check.title,
                 target=self.target,
@@ -726,6 +730,8 @@ class _Scan:
                 org_id=self.ctx.org_id,
                 scanner=self.scanner.name,
                 scanner_version=self.scanner.version,
+                vantage=self.scanner.vantage,
+                engagement=self.scanner.engagement,
                 check_id=check.check_id,
                 title=check.title,
                 target=self.target,

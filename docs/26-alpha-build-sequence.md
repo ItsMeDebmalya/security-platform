@@ -52,11 +52,11 @@ Tick items with `[x]` as they complete. Each step ends with an exit check; don't
 
 One deliberate, additive migration. All new fields optional, so existing findings stay valid.
 
-- [ ] `host` target type (hostname / IP, reported by the agent)
-- [ ] Vantage tag: external-unauthenticated · authenticated · agent
-- [ ] Mode tag: defensive · offensive
-- [ ] Finding links (one finding explains or chains to another), the basis for inside-out correlation
-- [ ] State-affecting fields (what changed, cleanup record), defined now to avoid a second migration later
+- [x] `host` target type (hostname / IP, reported by the agent)
+- [x] Vantage tag: external-unauthenticated · authenticated · agent
+- [x] Mode tag: defensive · offensive (named `engagement`, since `mode` means depth; ADR-034)
+- [x] Finding links (one finding explains or chains to another), the basis for inside-out correlation
+- [x] State-affecting fields (what changed, cleanup record), defined now to avoid a second migration later
 - [ ] ADR, schema + models, drift test green, independent review
 
 **Exit:** contract supports host findings and links; all corpus baselines unchanged.
@@ -79,7 +79,7 @@ One deliberate, additive migration. All new fields optional, so existing finding
 
 ## Step 2 — Agent design · 3–5 days
 
-- [ ] ADR-034: the architecture above
+- [ ] ADR-035: the architecture above (renumbered from ADR-034: the contract extension took 034)
 - [ ] Language decision (see "Decisions needed" below)
 - [ ] Snapshot format, versioned
 - [ ] Command and file allowlists, with the reason for each entry
@@ -87,7 +87,7 @@ One deliberate, additive migration. All new fields optional, so existing finding
 - [ ] Vulnerability data source chosen, licence evidence gathered for sign-off
 - [ ] Spec and implementation plan (`docs/superpowers/`)
 
-**Exit:** ADR-034, spec and plan approved by Debmalya.
+**Exit:** ADR-035, spec and plan approved by Debmalya.
 
 ---
 
@@ -216,7 +216,7 @@ Must be complete **before any external user**.
 | Decision | Options | Lean |
 |---|---|---|
 | Collector language | Python standard library only, or a single Go binary | Python standard library only for Alpha: one language, easy to audit. Revisit if the fleet's Python versions vary too much |
-| Vulnerability data | OSV.dev, distribution security trackers, or a combination | Decided in ADR-034 after licence evidence is gathered |
+| Vulnerability data | OSV.dev, distribution security trackers, or a combination | Decided in ADR-035 after licence evidence is gathered |
 | Fleet OS mix | Needed from Debmalya | Determines lab box distributions and the collector's minimum Python version |
 
 ---

@@ -111,7 +111,9 @@ LEGACY_CIPHER_CHECK_IDS = tuple(CHECK_TO_TESTSSL_ID)
 @register
 class TlsScanner(BaseScanner):
     name = "tls"
-    version = "1.4.0"
+    version = "1.4.1"
+    vantage = "external_unauthenticated"
+    engagement = "defensive"
     supported_modes = frozenset({"light", "standard"})
     target_types = frozenset({"domain", "url", "ip"})
 
@@ -855,6 +857,8 @@ class _Scan:
                 org_id=self.ctx.org_id,
                 scanner=self.scanner.name,
                 scanner_version=self.scanner.version,
+                vantage=self.scanner.vantage,
+                engagement=self.scanner.engagement,
                 check_id=check.check_id,
                 title=check.title,
                 target=self.target,
@@ -962,6 +966,8 @@ class _Scan:
                 org_id=self.ctx.org_id,
                 scanner=self.scanner.name,
                 scanner_version=self.scanner.version,
+                vantage=self.scanner.vantage,
+                engagement=self.scanner.engagement,
                 check_id=check.check_id,
                 title=check.title,
                 target=self.target,
@@ -1035,6 +1041,8 @@ class _Scan:
                 org_id=self.ctx.org_id,
                 scanner=self.scanner.name,
                 scanner_version=self.scanner.version,
+                vantage=self.scanner.vantage,
+                engagement=self.scanner.engagement,
                 check_id=check.check_id,
                 title=check.title,
                 target=self.target,

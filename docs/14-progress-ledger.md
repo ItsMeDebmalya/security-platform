@@ -1706,6 +1706,21 @@ The reviewer had no shared context and worked read-only on 37f9dd7. It called th
 
 - **Next, in order:** docs/26 Step 1 (the contract extension, with its own ADR and an independent review), then **Step 1b, the D56 fix** (a safety-claim violation, in its own reviewed PR), then Step 2 (ADR-034, the agent).
 
+## 2026-10-12 · ADR-034: contract extension, Stage A (docs/26 Step 1)
+
+- **Additive migration** under ADR-034, with the operator's five decisions recorded in it:
+  - **`host` targets** (with `addresses`, host only);
+  - **`vantage`** (external_unauthenticated, authenticated, agent);
+  - **`engagement`**, defensive or offensive, the v4 plan's "mode", named so because `mode` already means depth;
+  - **`links`** (`explains` / `chains_to`);
+  - **`state_change`**: offensive only, emitted by nothing, and **refused at runtime** by `core.applicability.enforce`, the second safety claim enforced rather than promised (the authorisation gate is the first);
+  - pre-ADR-034 findings read as **"not recorded"**, never backfilled.
+- **Test-first.** The model, schema and runtime-guard tests, the corpus-wide tag contract, and a correlation test (a story records no vantage) all failed before the change. The schema gains three examples (tagged external, agent on a `host`, offensive with a `state_change`), round-tripped by the drift test.
+- **The four scanners** declare `external_unauthenticated` and `defensive` and pass them on every finding, as does the `secret-exposed` helper. Versions: email 1.5.2, tls 1.4.1, domscout 1.3.3, web 1.0.6.
+- **No corpus baseline moved:** every field is identical for all five scanners, and the baseline file is untouched.
+- **Renumbering:** the agent architecture ADR, called ADR-034 in the 2026-10-12 Alpha entry above, is now **ADR-035**.
+- **A `core/` and `contracts/` change, so it needs an independent review before merge.**
+
 ## 2026-10-10 · Handoff: open items and where to start
 
 *For a new session with no chat history. State as of PR #32, with the operator's decisions of 2026-10-10 below. Each item links to where it is owned.*
