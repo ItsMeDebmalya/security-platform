@@ -624,4 +624,9 @@ Then restore the entry-point lines in `CLAUDE.md` and `SPEC.md`, and the revert 
 - The agent architecture ADR is renumbered to ADR-035.
 
 **Revert.** Revert the merge commit. Findings stored after this change carry the new keys; they would fail validation under the old models, so strip the four keys and `target.addresses` first.
+- **After the independent review:**
+  - `links` is `uniqueItems`;
+  - `addresses` refuses IPv6 scope ids;
+  - the registry refuses a scanner with `null` tags;
+  - `FindingStore` refuses a finding with a `state_change`.
 

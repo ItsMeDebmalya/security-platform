@@ -210,3 +210,59 @@ def test_the_schema_refuses_addresses_on_a_non_host_asset():
     }
 
     assert not validator.is_valid(bad)
+
+
+# --- independent review of ADR-034, round 1: each finding is a test --------------------
+
+
+def test_the_schema_refuses_repeated_links_like_the_model():
+    """Finding 1: `uniqueItems` makes the schema say what the model says."""
+    validator, schemas = _schema_validator()
+    example = schemas["finding.schema.json"]["examples"][1]
+    link = {"relation": "explains", "finding_id": OTHER}
+
+    assert validator.is_valid({**example, "links": [link]})
+    assert not validator.is_valid({**example, "links": [link, link]})
+
+
+def test_an_ipv6_scope_id_is_refused_so_model_and_schema_formats_agree():
+    """Finding 2: Python accepts `fe80::1%eth0`; JSON Schema's ipv6 format does not."""
+    with pytest.raises(ValidationError):
+        Asset(type="host", value="web-01", addresses=["fe80::1%eth0"])
+
+
+def test_a_scanner_that_declares_no_tags_cannot_register():
+    """Finding 3: 'no default for scanners that emit findings', enforced."""
+    from core.registry import ScannerRegistry
+    from core.scanner import BaseScanner
+
+    class Untagged(BaseScanner):
+        name = "untagged"
+        version = "1.0.0"
+        supported_modes = frozenset({"light"})
+        target_types = frozenset({"domain"})
+
+        def run(self, target, mode, ctx):  # pragma: no cover
+            raise NotImplementedError
+
+    with pytest.raises(ValueError, match="vantage"):
+        ScannerRegistry().register(Untagged)
+
+    class HalfTagged(Untagged):
+        name = "half-tagged"
+        vantage = "agent"
+
+    with pytest.raises(ValueError, match="engagement"):
+        ScannerRegistry().register(HalfTagged)
+
+
+def test_the_store_refuses_a_state_change_at_its_boundary(tmp_path):
+    """Finding 4: 'we can't' holds where findings are stored, not only on the CLI."""
+    from core.applicability import StateChangeRefusedError
+    from core.store import FindingStore
+
+    finding = _finding(engagement="offensive", state_change=CHANGE)
+    with FindingStore(tmp_path / "f.sqlite3") as store:
+        with pytest.raises(StateChangeRefusedError):
+            store.ingest([finding])
+        assert store.get(finding.id, finding.org_id) is None

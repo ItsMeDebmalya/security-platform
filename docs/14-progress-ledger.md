@@ -1719,7 +1719,12 @@ The reviewer had no shared context and worked read-only on 37f9dd7. It called th
 - **The four scanners** declare `external_unauthenticated` and `defensive` and pass them on every finding, as does the `secret-exposed` helper. Versions: email 1.5.2, tls 1.4.1, domscout 1.3.3, web 1.0.6.
 - **No corpus baseline moved:** every field is identical for all five scanners, and the baseline file is untouched.
 - **Renumbering:** the agent architecture ADR, called ADR-034 in the 2026-10-12 Alpha entry above, is now **ADR-035**.
-- **A `core/` and `contracts/` change, so it needs an independent review before merge.**
+- **Independent review, round 1: NOT CLEAN, no blockers.** All four should-fix items were fixed test-first:
+  - the schema accepted repeated links (now `uniqueItems`; self-links are stated as model-only);
+  - the IP check was model-only and disagreed on IPv6 scope ids (the model now refuses them; the schema's `format` is stated as advisory);
+  - "no default" for the tags was not enforced (`register()` now refuses `null` tags, and the contract test no longer hard-codes values);
+  - the `state_change` guard was not at the store boundary (`FindingStore` now refuses one).
+  - The nits are fixed too: the ADR wording on `[]` versus `null`, the CLAUDE.md "Next" line, an AST test on every `Finding.create` call site, and the derived-finding sentence. Re-review requested.
 
 ## 2026-10-10 · Handoff: open items and where to start
 

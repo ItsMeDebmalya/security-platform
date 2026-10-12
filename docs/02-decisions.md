@@ -979,7 +979,9 @@ In both cases the parser, the scope rule and the gate each did their job. The ga
 
 1. **`host` target type.** `Asset.type` gains `host`: a server reported by the agent.
    - `value` is the hostname when the agent knows one, otherwise the IP address.
-   - `addresses` is a new optional field: the IP addresses the agent reported, validated as IP literals. It is allowed **only** on `host` assets and refused on every other type.
+   - `addresses` is a new optional field: the IP addresses the agent reported. It is allowed **only** on `host` assets; both the schema and the model refuse it on every other type.
+   - **The model** validates each entry as an IP literal and refuses IPv6 scope ids (`fe80::1%eth0`), which Python accepts but JSON Schema's `ipv6` format does not.
+   - **In the schema, the `ipv4`/`ipv6` `format` is advisory,** as `date-time` already is, because `format` is not asserted by default. When it is asserted, schema and model agree.
    - It lives in the shared `asset` definition, so `ScanResult.target` and `ScanRun.target` accept it too.
 2. **Vantage tag.** A finding gains `vantage`: `external_unauthenticated | authenticated | agent` (the v4 plan's three vantage points). `null` means "not recorded", and it covers findings recorded before this ADR, which are **never backfilled**.
 3. **Engagement tag (the plan's "mode").** A finding gains `engagement`: `defensive | offensive`, with `null` meaning "not recorded".
@@ -988,7 +990,8 @@ In both cases the parser, the scope rule and the gate each did their job. The ga
 4. **Finding links.** A finding gains `links`: a list of `{relation, finding_id}`.
    - `relation` is `explains` or `chains_to`. "A explains B" is inside-out correlation: an agent finding explains an external one, for example the process and configuration line behind an open port. "A chains_to B" is a step in an attack path, for later use.
    - `finding_id` uses the finding ID format (`sha256:` plus 64 hex characters). It may name a finding from another scan or scanner, because IDs are deterministic across scans.
-   - A link to the finding itself is refused, and so is a repeated `(relation, finding_id)` pair.
+   - **A repeated `(relation, finding_id)` pair is refused** by both the schema (`uniqueItems`) and the model.
+   - **A link to the finding itself is refused by the model only.** JSON Schema cannot compare a value with the finding's own `id`, and the schema description says so.
    - **Only the forward direction is stored.** Consumers compute the inverse ("explained by").
    - Existing structures are unchanged:
      - `related_assets` links a finding to assets, not to findings;
@@ -1002,16 +1005,23 @@ In both cases the parser, the scope rule and the gate each did their job. The ga
    - **A runtime guard keeps ADR-004 absolute.** `core.applicability.enforce`, which already runs wherever a result is produced (`scan run`, the corpus harness, and later `api/`), refuses any result that carries a `state_change`. That holds until ADR-025's preconditions exist (Deep mode, the OOB server, the signed agreement) and a later ADR lifts the guard.
    - **Why, in the operator's words:** "A schema that merely permits something unsafe, with only author discipline stopping it, is the same shape as D56 — a wrapper doing more than the check asked for. A runtime guard turns 'we don't do that' into 'we can't do that.'"
    - **This is the second place a safety claim is enforced rather than promised.** The first is the authorisation gate (`core/authz.py`, deny by default).
-6. **The existing scanners declare their tags once.** `BaseScanner` gains two class attributes, `vantage` and `engagement`, with no default for scanners that emit findings.
+   - **The store refuses one too.** `FindingStore` refuses to write a finding with a `state_change`, whatever path built it, so the guard does not depend on every future producer remembering `enforce` (review of ADR-034).
+6. **The existing scanners declare their tags once.** `BaseScanner` gains two class attributes, `vantage` and `engagement`.
+   - **The registry refuses a scanner that leaves either `null`.** A registered scanner emits findings, and `null` would read as "not recorded", which is true only of findings made before this ADR.
    - **domscout, email, tls and web** declare `external_unauthenticated` and `defensive`, and pass them on every finding they create. So does core's `secret-exposed` helper, which takes them from the calling scanner.
    - **The reference `example` scanner** declares the same values.
-   - **The correlation pass** leaves both tags `null` on its derived story findings: a story is not observed from any vantage point.
-   - **A contract test** runs every registered scanner over its corpus and fails if any finding lacks its scanner's declared tags, or carries a `state_change`.
+   - **The correlation pass** leaves both tags `null` on its derived story findings: a story is computed across scanners from findings, not observed from any vantage point.
+   - **A finding a scanner derives from its own observations** (for example `tls-vuln-beast`, derived from `tls-protocol-obsolete`) carries that scanner's tags, because it rests on what that scanner saw.
+   - **Two contract tests guard this:**
+     - one runs every registered scanner over its corpus and fails if a finding's tags differ from its scanner's declared, non-null ones, or if it carries a `state_change`;
+     - one reads every `Finding.create` call in `scanners/` and `core/exposure.py`, and fails if either tag is not passed, covering paths no corpus case reaches.
 7. **Versions and baselines.**
    - Every finding of the four scanners now carries two new fields, so results change and each scanner gets a **patch bump**: email 1.5.2, tls 1.4.1, domscout 1.3.3, web 1.0.6.
    - **No corpus number may move.** These fields are not scored. Any baseline that moves is reported and explained, never silently re-baselined.
 
-**Stored findings.** The store re-serialises each row it loads and rewrites any whose JSON changed. A pre-ADR-034 row gains the new keys as `null` on its next load and is rewritten once, with its content otherwise unchanged. A read-only store still never writes.
+**Stored findings.** The store re-serialises each row it loads and rewrites any whose JSON changed. A pre-ADR-034 row gains the new keys on its next load and is rewritten once, with its content otherwise unchanged. A read-only store still never writes.
+- `vantage`, `engagement` and `state_change` come back as `null`.
+- `links` and `target.addresses` come back as `[]`, empty like `related_assets` and `references`.
 - **It is never backfilled.** Why, in the operator's words: "Backfilling them as external/defensive would invent a record of something nobody observed. 'Not recorded' is true; a guessed value isn't."
 
 **Rejected.**

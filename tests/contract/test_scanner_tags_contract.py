@@ -11,9 +11,33 @@ from tests.contract.test_not_applicable_contract import CASES
 
 @pytest.mark.parametrize("name", sorted(discover().names()))
 def test_every_registered_scanner_declares_its_tags(name):
+    """Not hard-coded: the agent scanner (ADR-035) will declare `agent`."""
     scanner = discover().get(name)
-    assert scanner.vantage == "external_unauthenticated"
-    assert scanner.engagement == "defensive"
+    assert scanner.vantage is not None
+    assert scanner.engagement is not None
+
+
+def test_every_finding_create_in_scanners_and_core_passes_both_tags():
+    """Review of ADR-034: the corpus reaches only some paths, so check every call site."""
+    import ast
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[2]
+    files = [*sorted((root / "scanners").glob("*/*.py")), root / "core" / "exposure.py"]
+    missing = []
+    for path in files:
+        for node in ast.walk(ast.parse(path.read_text())):
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and node.func.attr == "create"
+                and isinstance(node.func.value, ast.Name)
+                and node.func.value.id == "Finding"
+            ):
+                given = {k.arg for k in node.keywords}
+                if not {"vantage", "engagement"} <= given:
+                    missing.append(f"{path.relative_to(root)}:{node.lineno}")
+    assert missing == []
 
 
 @pytest.mark.parametrize(("scanner", "case"), CASES, ids=[f"{s}:{c['id']}" for s, c in CASES])

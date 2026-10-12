@@ -230,6 +230,15 @@ class FindingStore:
         # Re-validated at the storage boundary: a finding mutated in place since it
         # was built is redacted before it is written (ADR-028).
         finding = Finding.model_validate(finding.model_dump())
+        # ADR-034: "we can't change a target" holds where findings are stored, not
+        # only where results are produced (review of ADR-034, finding 4).
+        if finding.state_change is not None:
+            from core.applicability import StateChangeRefusedError
+
+            raise StateChangeRefusedError(
+                f"{finding.check_id}@{finding.location} records a change made to a target; "
+                "no finding with a state_change may be stored (ADR-004, ADR-034)"
+            )
         self._conn.execute(
             """
             INSERT INTO findings

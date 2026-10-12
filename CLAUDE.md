@@ -19,7 +19,7 @@ The tool-first strategy in docs/archive/ is SUPERSEDED. Do not follow it.
   - **company-domain canaries are skipped** for now.
 - **Waiting on the operator:**
   - the value-add backlog's quick wins: they are not in the Alpha build plan (docs/26), so add any only on the operator's say-so.
-- **Next:** **the Alpha build has started, following [docs/26](docs/26-alpha-build-sequence.md).** Step 0 (bring the decisions into the repo) is done. Next is **Step 1, the contract extension**: one additive migration with its own ADR and an independent review. Then **Step 1b, the D56 fix**: a safety-claim violation, because `testssl.sh --vulnerable` sends active probes ADR-023 says we never send. It goes in its own reviewed PR, ahead of the agent. After that comes the **agent ADR** (ADR-035, Step 2).
+- **Next:** **the Alpha build has started, following [docs/26](docs/26-alpha-build-sequence.md).** Step 0 (bring the decisions into the repo) is done. **Step 1, the contract extension, is done:** ADR-034, merged after an independent review. Next is **Step 1b, the D56 fix**: a safety-claim violation, because `testssl.sh --vulnerable` sends active probes ADR-023 says we never send. It goes in its own reviewed PR, ahead of the agent. After that comes the **agent ADR** (ADR-035, Step 2).
 - **Ledgered, no action:** a WHOIS fallback for NIXI's TLDs (`.भारत` and `.இந்தியா` are not in the RDAP bootstrap).
 - **Standing rules from the operator:**
   - Never push or merge without being told; merge with `--merge`.

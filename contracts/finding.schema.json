@@ -17,7 +17,7 @@
   "properties": {
     "vantage": { "enum": ["external_unauthenticated", "authenticated", "agent", null], "description": "ADR-034 (additive): where the finding was observed from. null = not recorded (every finding before ADR-034); never backfilled." },
     "engagement": { "enum": ["defensive", "offensive", null], "description": "ADR-034 (additive): the nature of the interaction with the target, defensive or offensive. Not named mode, which means depth. null = not recorded." },
-    "links": { "type": "array", "items": { "$ref": "#/$defs/finding_link" }, "description": "ADR-034 (additive): this finding explains or chains to other findings, by id. No self-links, no repeats." },
+    "links": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/finding_link" }, "description": "ADR-034 (additive): this finding explains or chains to other findings, by id. No repeats (uniqueItems). No self-links: enforced by the model only, because JSON Schema cannot compare a link with the finding's own id." },
     "state_change": { "oneOf": [ { "$ref": "#/$defs/state_change" }, { "type": "null" } ], "description": "ADR-034 (additive): allowed only when engagement is offensive." },
     "id": {
       "type": "string",
@@ -174,7 +174,7 @@
         "addresses": {
           "type": "array",
           "items": { "anyOf": [ { "format": "ipv4", "type": "string" }, { "format": "ipv6", "type": "string" } ] },
-          "description": "ADR-034 (additive): the IP addresses the agent reported. Allowed only on a host asset."
+          "description": "ADR-034 (additive): the IP addresses the agent reported. Allowed only on a host asset. format is advisory (not asserted by default, like date-time); the model enforces IP literals, refusing IPv6 scope ids, so it agrees with these formats when they are asserted."
         }
       },
       "if": { "required": ["addresses"], "properties": { "addresses": { "minItems": 1 } } },

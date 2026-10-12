@@ -89,6 +89,10 @@ class Asset(Strict):
     @classmethod
     def _addresses_are_ip_literals(cls, value: list[str]) -> list[str]:
         for address in value:
+            # A scope id (`fe80::1%eth0`) is accepted by Python but not by JSON
+            # Schema's ipv6 format; refused so the two agree (review of ADR-034).
+            if "%" in address:
+                raise ValueError(f"{address!r}: an IPv6 scope id is not an address literal")
             ipaddress.ip_address(address)  # raises ValueError for anything else
         return value
 
