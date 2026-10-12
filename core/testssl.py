@@ -91,11 +91,15 @@ line in case one ever does. `--quiet` drops the banner. The complete command lin
 `TESTSSL_PATH, *TESTSSL_ARGS, "--jsonfile-pretty", <temp file>, host:port`,
 and `guard_invocation` refuses anything else before the subprocess starts.
 
-Three things run regardless of the selection, and are accepted as passive in
-the ADR-023 amendment: a reverse-DNS lookup (to DNS, not the target), one
-ordinary HTTPS `GET /` to identify the service, and one large but
-well-formed ClientHello (129 cipher suites) that detects an old-hardware
-size-limit bug; no flag disables that one.
+Some traffic runs regardless of the selection, and is accepted as passive in
+the ADR-023 amendment: a reverse-DNS lookup (to DNS, not the target); a bare
+TCP connect and testssl.sh's connection- and protocol-detection handshakes
+(TLS 1.3 hellos including pre-RFC draft versions, TLS 1.2 hellos, and, only
+if those all fail, TLS 1.1/1.0/SSLv3 and SSLv2 hellos, plus up to seven
+`openssl s_client` handshakes); one ordinary HTTPS `GET /` to identify the
+service; and one large but well-formed ClientHello (129 cipher suites) that
+detects an old-hardware size-limit bug. No flag disables any of it, and all
+of it is well-formed handshakes or an ordinary request.
 """
 
 TESTSSL_ENV_KEYS: tuple[str, ...] = ("PATH", "LANG")
@@ -200,18 +204,26 @@ def _command(host: str, port: int, out: Path) -> list[str]:
     return [str(TESTSSL_PATH), *TESTSSL_ARGS, "--jsonfile-pretty", str(out), f"{host}:{port}"]
 
 
-def _environment() -> dict[str, str]:
+def environment() -> dict[str, str]:
+    """The pinned environment for any testssl.sh subprocess."""
     return {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "LANG": "C"}
 
 
-def guard_invocation(argv: list[str], env: dict[str, str]) -> None:
+def guard_invocation(
+    argv: list[str], env: dict[str, str], *, allowed_args: tuple[str, ...] = TESTSSL_ARGS
+) -> None:
     """Refuse any command line or environment outside the declared allowlist.
 
     Exact, not a denylist: an added, missing, duplicated or reordered
     argument is refused, so a flag nobody has heard of yet is refused too.
-    Pinned by `tests/core/test_testssl.py`.
+    The environment must be exactly `PATH` (inherited, so testssl.sh can find
+    bash and its tools) and `LANG=C`. Pinned by `tests/core/test_testssl.py`.
+
+    `allowed_args` lets another caller of the same binary declare its own
+    exact list (`corpus/crosscheck/testssl.py`); the default is this
+    module's.
     """
-    expected_head = [str(TESTSSL_PATH), *TESTSSL_ARGS, "--jsonfile-pretty"]
+    expected_head = [str(TESTSSL_PATH), *allowed_args, "--jsonfile-pretty"]
     head, rest = argv[: len(expected_head)], argv[len(expected_head) :]
     if head != expected_head or len(rest) != 2:
         raise TestsslArgumentRefusedError(
@@ -222,7 +234,7 @@ def guard_invocation(argv: list[str], env: dict[str, str]) -> None:
         raise TestsslArgumentRefusedError(f"testssl.sh output path refused: {out!r}")
     if not _TARGET.fullmatch(target) or not 1 <= int(target.rsplit(":", 1)[1]) <= 65535:
         raise TestsslArgumentRefusedError(f"testssl.sh target refused: {target!r}")
-    if set(env) != set(TESTSSL_ENV_KEYS):
+    if set(env) != set(TESTSSL_ENV_KEYS) or env.get("LANG") != "C":
         raise TestsslArgumentRefusedError(
             f"testssl.sh environment is outside the declared allowlist: {sorted(env)!r}"
         )
@@ -245,7 +257,7 @@ def _run_raw(host: str, port: int, *, timeout_s: int) -> dict[str, Any]:
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp) / "out.json"
         argv = _command(host, port, out)
-        env = _environment()
+        env = environment()
         guard_invocation(argv, env)
         try:
             subprocess.run(
@@ -429,5 +441,6 @@ __all__ = [
     "TestsslClient",
     "TestsslUnavailableError",
     "available",
+    "environment",
     "guard_invocation",
 ]

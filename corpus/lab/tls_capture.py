@@ -16,13 +16,19 @@ handshake:
 
 It is deliberately **not** an attack-pattern detector (ADR-023, D56
 amendment). It does not know what any probe looks like; it knows what
-normal looks like and flags everything else, so it also catches a test
-nobody anticipated. After the first violation in a direction it stops
-reading that direction rather than guess at framing.
+normal looks like and flags everything else, so within what it inspects
+(record types, their order, and handshake type bytes) it also catches a
+deviation nobody anticipated. After the first violation in a direction it
+stops reading that direction rather than guess at framing.
 
-What it cannot see, stated plainly: the contents of encrypted records, so a
-second handshake carried inside encryption before any application data, or
-a single ChangeCipherSpec sent early but before application data, passes.
+What it does not inspect, stated plainly: the contents of encrypted records
+(so a second handshake inside encryption before any application data
+passes); the contents of an allowed plaintext handshake message beyond its
+type byte (so a well-ordered message with malformed contents passes); and a
+single ChangeCipherSpec sent early but before application data. Two
+legitimate shapes testssl.sh does not send are flagged falsely: a
+ClientHello split across records whose continuation begins with 0x01, and
+0-RTT early data followed by a HelloRetryRequest.
 The primary proof that we send only what we declare is the argument
 allowlist and runtime guard in `core/testssl.py`; this analyser is the
 positive check on a real run (`corpus/lab/testssl_capture.py`).

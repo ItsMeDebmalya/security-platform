@@ -644,6 +644,7 @@ Then restore the entry-point lines in `CLAUDE.md` and `SPEC.md`, and the revert 
   testssl.sh's size-limit pre-test is accepted as passive, with its caveat.
 - **New:** `corpus/lab/tls_capture.py`, an allowlist of record types and handshake shape (not an attack-pattern detector), tested in CI. `corpus/lab/testssl_capture.py`, a lab-only capture of the real run (not a CI gate). `corpus.generators.testssl --testssl-only`.
 - **Re-recorded** the four badssl.com testssl fixtures: identical verdicts, only `recorded_at` moved. **No corpus baseline moved.**
-- **Ledger:** D56 fixed; D58 (a governance gap: the 2026-09-02 SSL Labs run was never classified).
+- **`corpus/crosscheck/testssl.py`** is guarded by the same allowlist mechanism (`CROSSCHECK_ARGS`) and the same pinned environment.
+- **Ledger:** D56 fixed; D58 (a governance gap: the 2026-09-02 SSL Labs run was never classified); D59 (the testssl.sh subprocess sits outside `ScanContext`, owed).
 
 **Revert.** Revert the merge commit. That restores `--vulnerable` and its active probes, so the interim rule (no live TLS Standard with testssl.sh installed; the four checks out of the verified-owner tier) must be restored with it.

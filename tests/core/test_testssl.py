@@ -319,7 +319,7 @@ def _valid_argv(tmp_path) -> list[str]:
 
 
 def _valid_env() -> dict[str, str]:
-    return {key: "x" for key in TESTSSL_ENV_KEYS}
+    return {"PATH": "/usr/bin:/bin", "LANG": "C"}
 
 
 def test_the_guard_accepts_the_declared_invocation(tmp_path) -> None:
@@ -358,6 +358,17 @@ def test_the_guard_refuses_an_undeclared_environment_variable(tmp_path) -> None:
     env = _valid_env() | {"OFFENSIVE": "true"}
     with pytest.raises(RefusedError):
         guard_invocation(_valid_argv(tmp_path), env)
+
+
+def test_the_guard_pins_the_value_of_lang_not_only_the_key(tmp_path) -> None:
+    with pytest.raises(RefusedError):
+        guard_invocation(_valid_argv(tmp_path), {"PATH": "/usr/bin:/bin", "LANG": "en_US.UTF-8"})
+
+
+def test_the_pinned_environment_passes_its_own_guard(tmp_path) -> None:
+    from core.testssl import environment
+
+    guard_invocation(_valid_argv(tmp_path), environment())
 
 
 def test_a_refused_target_never_starts_the_subprocess(monkeypatch) -> None:
