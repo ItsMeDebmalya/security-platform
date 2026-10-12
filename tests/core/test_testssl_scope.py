@@ -162,8 +162,25 @@ IMPORTERS = ("import_module", "__import__")
 """Import by string: allowed only as a direct call whose module path visibly
 starts outside `corpus` (core's scanner discovery imports `scanners.*`)."""
 
-LOADERS = ("run_module", "run_path", "spec_from_file_location", "spec_from_loader")
+LOADERS = (
+    "run_module",
+    "run_path",
+    "spec_from_file_location",
+    "spec_from_loader",
+    "find_spec",
+    "module_from_spec",
+    "exec_module",
+    "load_module",
+    "SourceFileLoader",
+    "zipimporter",
+)
 """Code loading by path or module name: never needed on a customer path."""
+
+READY_MADE = ("LAB_ADDRESSES", "OVERRIDE")
+"""Names under which `corpus/` exports a ready-made override or lab policy."""
+
+LAB_PACKAGES = ("corpus", "tests")
+"""Packages that hold ready-made overrides (`tests/` helpers turn one on by default)."""
 
 
 def _imports_outside_corpus(call: ast.Call) -> bool:
@@ -175,7 +192,7 @@ def _imports_outside_corpus(call: ast.Call) -> bool:
     if not (isinstance(first, ast.Constant) and isinstance(first.value, str)):
         return False  # dynamic: cannot be shown not to reach corpus/
     head = first.value.split(".", 1)[0]
-    return head not in ("", "corpus")
+    return head not in ("", *LAB_PACKAGES)
 
 
 def _docstrings(tree: ast.AST) -> set[int]:
@@ -199,8 +216,12 @@ def _override_uses(tree: ast.AST) -> list[tuple[int, str]]:
       by string (`import_module`, `__import__`, aliased or not), by loader
       (`runpy`, `spec_from_file_location`), or a `corpus.` module path in any
       string (`sys.modules[...]`).
-    Not chased: deliberate obfuscation such as `exec` of a built string;
-    that is review's job, and a relaxed policy still needs an override."""
+    Also (round 3): `sys.path`, more loaders, the ready-made policy names,
+    and imports from `tests/` as well as `corpus/`.
+
+    What this is: a tripwire that keeps ordinary code honest, not a proof
+    against someone deliberately evading it. Deliberate obfuscation (a name
+    assembled from pieces, `exec` of a built string) is code review's job."""
     uses = []
     direct = {id(n.func) for n in ast.walk(tree) if isinstance(n, ast.Call)}
     docstrings = _docstrings(tree)
@@ -214,6 +235,14 @@ def _override_uses(tree: ast.AST) -> list[tuple[int, str]]:
         )
         if name == "LabOverride":
             uses.append((node.lineno, "name"))  # type: ignore[attr-defined]
+        elif name in READY_MADE:
+            uses.append((node.lineno, f"ready-made lab policy {name}"))  # type: ignore[attr-defined]
+        elif (
+            isinstance(node, ast.Attribute)
+            and node.attr == "path"
+            and (getattr(node.value, "id", None) == "sys")
+        ):
+            uses.append((node.lineno, "sys.path"))
         elif isinstance(node, ast.Attribute) and node.attr == "lab_override":
             uses.append((node.lineno, "attribute lab_override"))
         elif name in IMPORTERS + LOADERS and id(node) not in direct:
@@ -224,12 +253,12 @@ def _override_uses(tree: ast.AST) -> list[tuple[int, str]]:
             isinstance(node, ast.Constant)
             and isinstance(node.value, str)
             and id(node) not in docstrings
-            and node.value.startswith("corpus.")
+            and node.value.startswith(("corpus.", "corpus/", "tests.", "tests/"))
         ):
-            uses.append((node.lineno, f"module path {node.value!r}"))
+            uses.append((node.lineno, f"lab module or path {node.value!r}"))
         elif isinstance(node, ast.keyword) and node.arg == "lab_override":
             uses.append((node.value.lineno, "keyword lab_override"))
-        elif isinstance(node, ast.ImportFrom) and (node.module or "").split(".")[0] == "corpus":
+        elif isinstance(node, ast.ImportFrom) and (node.module or "").split(".")[0] in LAB_PACKAGES:
             uses.append((node.lineno, f"import from {node.module}"))
         elif isinstance(node, ast.ImportFrom) and any(
             a.name in ("LabOverride", *IMPORTERS, *LOADERS) for a in node.names
@@ -244,9 +273,9 @@ def _override_uses(tree: ast.AST) -> list[tuple[int, str]]:
             elif called == "AddressPolicy" and node.args:
                 uses.append((node.lineno, "AddressPolicy given a positional argument"))
         elif isinstance(node, ast.Import) and any(
-            a.name.split(".")[0] == "corpus" for a in node.names
+            a.name.split(".")[0] in LAB_PACKAGES for a in node.names
         ):
-            uses.append((node.lineno, "import corpus"))
+            uses.append((node.lineno, "import of a lab package"))
     return uses
 
 
@@ -284,6 +313,15 @@ def test_no_customer_facing_code_path_can_reach_the_lab_override() -> None:
         "import importlib.util\nimportlib.util.spec_from_file_location('x', p)",
         "import sys\nsys.modules['corpus.lab.scan']",
         "AddressPolicy(override)",
+        # Round 3: sys.path, more loaders, ready-made policies, tests/.
+        "import sys\nsys.path.insert(0, 'corpus')",
+        "from importlib.machinery import SourceFileLoader\nSourceFileLoader('m', p).load_module()",
+        "import importlib.util as u\nu.module_from_spec(u.find_spec(name))",
+        "spec.loader.exec_module(module)",
+        "path = 'corpus/generators/tls_lab.py'",
+        "ScanContext(addresses=LAB_ADDRESSES)",
+        "from tests.core.test_testssl_scope import client",
+        "import tests.core.test_testssl_scope",
     ],
 )
 def test_the_walk_catches_indirect_routes(source) -> None:

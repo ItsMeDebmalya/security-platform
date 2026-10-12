@@ -746,7 +746,8 @@ Then restore the entry-point lines in `CLAUDE.md` and `SPEC.md`, and the revert 
   - `LAB_NETWORKS` is loopback only;
   - `AddressScope` is a networks-only scope check, D61's first instance;
   - `LabOverride` replaces `allow_non_global` with `networks` (each inside `LAB_NETWORKS`) and `hosts`;
-  - testssl.sh's dedicated-address waiver applies only to the hosts an override names.
+  - testssl.sh's dedicated-address waiver applies only to the hosts an override names;
+  - `AddressPolicy`'s `lab_override` is keyword-only (a signature change), so every use is visible to the override walk.
 - **`cli/main.py`:** `_execute` gains `address_policy` and `wrap_resolver`, both keyword-only and defaulting to `None`. `scan run` does not pass them.
 - **Docs:** ADR-036 decision 10, with its table of what is and is not bypassed; docs/13 (how to scan the containers now); runbook §10; ledger, including a note against D61.
 

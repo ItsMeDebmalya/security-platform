@@ -1979,6 +1979,18 @@ The round-1 fixes were checked, and the whole change re-read. All fixes are test
   - the round-1 rule wrongly flagged `import_module("json")`;
   - the lab walk's docstring now says what it deliberately does not chase (obfuscation such as `exec`, which review must catch), and that a future clash on the `address_policy=` keyword is fixed by renaming, not by weakening the check.
 
+## 2026-10-12 · Independent review of the lab entry point, round 3: CLEAN, one should-fix taken
+
+- **SHOULD-FIX, taken: plain code could still reach a ready-made override unflagged.** Three examples:
+  - `sys.path.insert(0, "corpus")` followed by an import of `generators.tls_lab.LAB_ADDRESSES`, passed as `addresses=`;
+  - `SourceFileLoader(...).load_module()`;
+  - `find_spec` with `module_from_spec`.
+
+  The walk now flags `sys.path`, every loader in `importlib`'s machinery, the ready-made names (`LAB_ADDRESSES`, `OVERRIDE`), non-docstring strings naming a `corpus/` or `tests/` module or path, and imports from `tests/`, whose helpers turn an override on by default. It still passes on the real `cli/`, `scanners/` and `core/` trees, so no false positives.
+- **What the walks are, now stated in ADR-036 decision 10:** tripwires that keep ordinary code honest, not proofs against deliberate evasion. That was the honest description from the start. Three rounds each found another plain route, which is why the ADR now says it rather than implying completeness.
+- **Nit, fixed:** the changelog records that `AddressPolicy.lab_override` became keyword-only.
+- This commit changes tests and docs only. The last `core/` change in the PR (cb691c4) had a clean review.
+
 ## 2026-10-10 · Handoff: open items and where to start
 
 *For a new session with no chat history. State as of PR #32, with the operator's decisions of 2026-10-10 below. Each item links to where it is owned.*
