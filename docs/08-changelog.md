@@ -648,3 +648,11 @@ Then restore the entry-point lines in `CLAUDE.md` and `SPEC.md`, and the revert 
 - **Ledger:** D56 fixed; D58 (a governance gap: the 2026-09-02 SSL Labs run was never classified); D59 (the testssl.sh subprocess sits outside `ScanContext`, owed).
 
 **Revert.** Revert the merge commit. That restores `--vulnerable` and its active probes, so the interim rule (no live TLS Standard with testssl.sh installed; the four checks out of the verified-owner tier) must be restored with it.
+
+## v4.0-pre.21 — D56 interim rule lifted; the four testssl.sh checks rejoin the verified-owner tier (2026-10-12)
+
+**What changed. Docs only, after PR #44 merged.**
+- [ADR-033](02-decisions.md#adr-033--mvp-alpha-scope-one-combined-release-the-linux-agent-moves-into-alpha-tool-4b-deferred) decision 8: `tls-vuln-rc4`, `-sweet32`, `-freak` and `-logjam` are back in the verified-owner Standard tier.
+- The interim rule (no live TLS Standard with testssl.sh installed) is lifted in the ledger, docs/21, docs/24, docs/25, docs/26 (Step 1b complete) and CLAUDE.md.
+
+**Revert.** Revert this commit to hold the four checks out again; reverting PR #44 also requires it.

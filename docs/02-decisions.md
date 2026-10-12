@@ -973,7 +973,7 @@ In both cases the parser, the scope rule and the gate each did their job. The ga
    | Who | Checks | In Alpha |
    |---|---|---|
    | Anyone, any domain | **Light checks only** | Yes |
-   | **Owner verified by DNS TXT** ([docs/09](09-ownership-verification.md)) | **Light + passive Standard checks**: email's 10 Standard checks, and tls's Standard checks **except the four testssl.sh checks** (`tls-vuln-rc4`, `-sweet32`, `-freak`, `-logjam`). Those send active probes today (ledger **D56**) and return to this tier only once D56 is fixed | Yes |
+   | **Owner verified by DNS TXT** ([docs/09](09-ownership-verification.md)) | **Light + passive Standard checks**: email's 10 Standard checks, and tls's 11 Standard checks. The four testssl.sh checks (`tls-vuln-rc4`, `-sweet32`, `-freak`, `-logjam`) were held out while they sent active probes (ledger **D56**). **They rejoined this tier on 2026-10-12**, when the D56 fix merged (PR #44: testssl.sh narrowed to the four cipher tests under an exact argument allowlist, [ADR-023](#adr-023--passive-is-ordinary-negotiation-only-malformed-input-is-active) amended) | Yes |
    | **Signed agreement** | Deep and offensive | No: after Alpha |
 
    - **This is stricter than the code today.** All 21 Standard checks are declared passive, so `core/authz.py` grants a Standard scan with **no record at all** (D27). The verified-owner requirement is a **product policy** enforced where customers launch scans: the API boundary ([docs/26](26-alpha-build-sequence.md), Step 7). It must be in place before any customer can run Standard. Until then, customer scans are Light only.
@@ -990,7 +990,7 @@ In both cases the parser, the scope rule and the gate each did their job. The ga
 - **The agent is a new attack surface on our own hosts.** It runs fixed, allowlisted, read-only commands with no shell, and it never runs as a service in Alpha.
 - **The Alpha estimate** is about 7–9 months for one engineer ([docs/26](26-alpha-build-sequence.md)). A second engineer, or the module fallback (modules 1, 2 and 4), shortens it.
 - **Tool 4b's absence is visible.** The Phase 1 exit criterion in [the roadmap](03-roadmap.md) cannot be met as written until Tool 4b ships after Alpha. Phase 1 stays open by decision 6, and that blocks nothing in docs/26.
-- **The verified-owner Standard tier needs D56 fixed** before the four testssl.sh checks can join it, and an API-level gate before any customer can run Standard.
+- **The verified-owner Standard tier needed D56 fixed** before the four testssl.sh checks could join it (fixed and joined 2026-10-12, PR #44). It still needs an API-level gate before any customer can run Standard.
 
 **Rejected.**
 - **Two separate releases** (customer first, fleet later): the operator chose one combined release.
