@@ -946,6 +946,7 @@ In both cases the parser, the scope rule and the gate each did their job. The ga
 
    - **This is stricter than the code today.** All 21 Standard checks are declared passive, so `core/authz.py` grants a Standard scan with **no record at all** (D27). The verified-owner requirement is a **product policy** enforced where customers launch scans: the API boundary ([docs/26](26-alpha-build-sequence.md), Step 7). It must be in place before any customer can run Standard. Until then, customer scans are Light only.
    - [ADR-023](#adr-023--passive-is-ordinary-negotiation-only-malformed-input-is-active)'s classification is unchanged. These checks are still passive; ADR-033 decides only who may ask for them.
+   - **Why, in the operator's words:** "We gate passive Standard checks behind ownership not because the traffic is dangerous, but because our promise to a customer is that we only run deeper tests on assets they have shown they control. Ownership proof is the boundary of consent, not a measure of blast radius."
 
 **What is unchanged.**
 - **Deep and offensive scanning, and the signed agreement that gates it** (contents in [docs/24 §8](24-alpha-scope.md)), come after Alpha. DNS-TXT ownership verification is needed in Alpha only for the passive Standard tier (decision 8).
