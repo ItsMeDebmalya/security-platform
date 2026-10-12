@@ -67,10 +67,10 @@ One deliberate, additive migration. All new fields optional, so existing finding
 
 **A safety-claim violation, not a feature** (ledger D56). The four `tls-vuln-*` checks run `testssl.sh --vulnerable`, which sends the malformed-input probes ADR-023 says we never send. This is the top-priority code fix after Step 1, ahead of the agent. It gets its own PR and an independent review, because it touches `core/`.
 
-- [ ] Narrow the testssl.sh invocation to the four cipher tests the checks read
-- [ ] A test that the command line carries no suite-wide flag and only those four tests
-- [ ] testssl.sh fixtures re-recorded from real endpoints (ADR-027); corpus baselines unchanged or explained
-- [ ] Root cause recorded: a check that only reads a tool's output can still be unsafe if the tool does more than the check needs, and the gate can't see inside the wrapper
+- [x] Narrow the testssl.sh invocation to the four cipher tests the checks read
+- [x] A test that the command line carries no suite-wide flag and only those four tests (an exact allowlist, also enforced at runtime, with the environment pinned)
+- [x] testssl.sh fixtures re-recorded from real endpoints (ADR-027); corpus baselines unchanged (identical verdicts; only `recorded_at` moved)
+- [x] Root cause recorded: a check that only reads a tool's output can still be unsafe if the tool does more than the check needs, and the gate can't see inside the wrapper (ADR-023 amendment, clause 1)
 - [ ] The four checks rejoin the verified-owner Standard tier (ADR-033, decision 8)
 
 **Exit:** the four checks are passive in fact, not only in their declaration; independent review clean; D56 closed.

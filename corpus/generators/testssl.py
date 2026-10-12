@@ -14,6 +14,8 @@ run; replay (the corpus gate, `make corpus`) never touches the network.
 
     tools/fetch-testssl.sh                       # once
     uv run python -m corpus.generators.testssl   # re-records against badssl.com
+    uv run python -m corpus.generators.testssl --testssl-only
+                                                 # only testssl's verdicts (D56)
 
 Records **both** fixture sets a Standard-mode scan needs: our own engine's TLS
 handshakes (`core.tls.RecordingTlsBackend`, for the certificate/protocol
@@ -35,6 +37,7 @@ found - the check ships (the code path is real and unit-tested in
 
 from __future__ import annotations
 
+import argparse
 import shutil
 from pathlib import Path
 
@@ -60,6 +63,18 @@ CASES: dict[str, str] = {
 
 PORT = 443
 SCOPE = Scope(frozenset({host for host in CASES.values()}))
+
+
+def generate_testssl_only() -> None:
+    """Re-record testssl's verdicts without touching our own engine's TLS
+    fixtures. Used for D56, where only the testssl.sh invocation changed."""
+    for case_id, host in CASES.items():
+        testssl_dir = TESTSSL_FIXTURES / case_id
+        if testssl_dir.exists():
+            shutil.rmtree(testssl_dir)
+        report = RecordingTestsslClient(testssl_dir).legacy_ciphers(host, PORT)
+        verdicts = {i: f.severity for i, f in sorted(report.findings.items())}
+        print(f"{case_id:<24} {host:<26} {verdicts}")
 
 
 def generate() -> None:
@@ -90,4 +105,9 @@ def generate() -> None:
 
 
 if __name__ == "__main__":
-    generate()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--testssl-only", action="store_true")
+    if parser.parse_args().testssl_only:
+        generate_testssl_only()
+    else:
+        generate()

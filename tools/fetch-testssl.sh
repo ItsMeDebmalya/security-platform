@@ -4,9 +4,10 @@
 #
 # testssl.sh is GPLv2. It is NEVER linked, imported, or copied into our tree -
 # it runs as a separate process and we read its output (ADR-003, and the CI
-# licence check enforces the isolation mode). It is also not a runtime
-# dependency of any scanner: it exists only as an independent second opinion
-# in the corpus cross-check (ADR-016).
+# licence check enforces the isolation mode). It has two callers: the corpus
+# cross-check (ADR-016), and, since D20, the tls scanner's four legacy-cipher
+# checks in Standard mode (core/testssl.py), which run it under an exact
+# argument allowlist (D56, ADR-023 amendment).
 #
 #     tools/fetch-testssl.sh
 #

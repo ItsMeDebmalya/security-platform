@@ -206,3 +206,165 @@ def test_replay_report_for_check_maps_check_id_to_testssl_id(tmp_path) -> None:
     assert report.for_check("tls-vuln-rc4").vulnerable is True
     assert report.for_check("tls-vuln-sweet32") is None
     assert report.for_check("not-a-real-check") is None
+
+
+# --- D56: the declared argument allowlist (ADR-023 amendment) ---------------
+#
+# These are the primary proof that the four checks send only what they read.
+# `--vulnerable` (and any run with no test flag at all, which testssl.sh
+# treats as "run everything") also sends the probes ADR-023 says we never
+# send. The allowlist is exact: any added, missing or reordered argument, and
+# any environment variable beyond the pinned set, is refused before the
+# subprocess starts.
+
+from core.testssl import (  # noqa: E402
+    TESTSSL_ARGS,
+    TESTSSL_ENV_KEYS,
+    TESTSSL_PATH,
+    guard_invocation,
+)
+from core.testssl import TestsslArgumentRefusedError as RefusedError  # noqa: E402
+
+EXPECTED_ARGS = (
+    "--rc4",
+    "--sweet32",
+    "--freak",
+    "--logjam",
+    "--ids-friendly",
+    "--quiet",
+)
+
+
+def _capture_run(monkeypatch) -> list[tuple[list[str], dict]]:
+    calls: list[tuple[list[str], dict]] = []
+
+    def _fake_run(cmd, **kwargs):
+        calls.append((list(cmd), kwargs))
+        out_path = next(c for c in cmd if c.endswith(".json"))
+        import json
+
+        with open(out_path, "w") as fh:
+            json.dump(CLEAN_REPORT, fh)
+        return subprocess.CompletedProcess(cmd, 0)
+
+    monkeypatch.setattr("core.testssl.available", lambda: True)
+    monkeypatch.setattr("core.testssl.subprocess.run", _fake_run)
+    return calls
+
+
+def test_the_declared_allowlist_is_exactly_the_four_cipher_tests() -> None:
+    assert TESTSSL_ARGS == EXPECTED_ARGS
+
+
+def test_the_live_client_sends_exactly_the_allowlisted_command_line(monkeypatch) -> None:
+    calls = _capture_run(monkeypatch)
+    LiveTestsslClient().legacy_ciphers("example.test", 443)
+
+    ((cmd, _),) = calls
+    assert cmd[0] == str(TESTSSL_PATH)
+    assert tuple(cmd[1:7]) == EXPECTED_ARGS
+    assert cmd[7] == "--jsonfile-pretty"
+    assert cmd[8].endswith(".json")
+    assert cmd[9] == "example.test:443"
+    assert len(cmd) == 10
+
+
+def test_no_suite_wide_or_offensive_flag_reaches_the_subprocess(monkeypatch) -> None:
+    calls = _capture_run(monkeypatch)
+    LiveTestsslClient().legacy_ciphers("example.test", 443)
+
+    ((cmd, _),) = calls
+    for forbidden in (
+        "--vulnerable",
+        "-U",
+        "--vulnerabilities",
+        "-e",
+        "--each-cipher",
+        "-E",
+        "--cipher-per-proto",
+        "--heartbleed",
+        "-H",
+        "--ccs",
+        "-I",
+        "--ticketbleed",
+        "-T",
+        "--robot",
+        "-BB",
+        "--full",
+    ):
+        assert forbidden not in cmd
+
+
+def test_the_subprocess_gets_only_the_pinned_environment(monkeypatch) -> None:
+    """testssl.sh reads its own settings from the environment: for example
+    `OFFENSIVE=${OFFENSIVE:-true}`. An inherited environment is an argument
+    list nobody declared."""
+    monkeypatch.setenv("OFFENSIVE", "true")
+    calls = _capture_run(monkeypatch)
+    LiveTestsslClient().legacy_ciphers("example.test", 443)
+
+    ((_, kwargs),) = calls
+    assert set(kwargs["env"]) == set(TESTSSL_ENV_KEYS)
+    assert "OFFENSIVE" not in kwargs["env"]
+
+
+def _valid_argv(tmp_path) -> list[str]:
+    return [
+        str(TESTSSL_PATH),
+        *EXPECTED_ARGS,
+        "--jsonfile-pretty",
+        str(tmp_path / "out.json"),
+        "example.test:443",
+    ]
+
+
+def _valid_env() -> dict[str, str]:
+    return {key: "x" for key in TESTSSL_ENV_KEYS}
+
+
+def test_the_guard_accepts_the_declared_invocation(tmp_path) -> None:
+    guard_invocation(_valid_argv(tmp_path), _valid_env())
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        pytest.param(lambda a: a.insert(1, "--vulnerable"), id="added-suite-flag"),
+        pytest.param(lambda a: a.insert(5, "--heartbleed"), id="added-offensive-flag"),
+        pytest.param(lambda a: a.remove("--rc4"), id="missing-test-flag"),
+        pytest.param(
+            lambda a: [a.remove(f) for f in ("--rc4", "--sweet32", "--freak", "--logjam")],
+            id="no-test-flag-runs-everything",
+        ),
+        pytest.param(lambda a: a.remove("--ids-friendly"), id="missing-ids-friendly"),
+        pytest.param(lambda a: a.__setitem__(1, "--sweet32"), id="reordered-or-duplicated"),
+        pytest.param(lambda a: a.__setitem__(0, "/usr/bin/testssl.sh"), id="other-binary"),
+        pytest.param(lambda a: a.__setitem__(-1, "--file=x"), id="target-is-a-flag"),
+        pytest.param(lambda a: a.__setitem__(-1, "-example.test:443"), id="target-leading-dash"),
+        pytest.param(lambda a: a.__setitem__(-1, "example.test:0"), id="port-out-of-range"),
+        pytest.param(lambda a: a.__setitem__(-1, "exa mple.test:443"), id="target-whitespace"),
+        pytest.param(lambda a: a.__setitem__(-2, "--debug"), id="outfile-is-a-flag"),
+        pytest.param(lambda a: a.append("extra"), id="trailing-argument"),
+    ],
+)
+def test_the_guard_refuses_anything_outside_the_allowlist(tmp_path, mutate) -> None:
+    argv = _valid_argv(tmp_path)
+    mutate(argv)
+    with pytest.raises(RefusedError):
+        guard_invocation(argv, _valid_env())
+
+
+def test_the_guard_refuses_an_undeclared_environment_variable(tmp_path) -> None:
+    env = _valid_env() | {"OFFENSIVE": "true"}
+    with pytest.raises(RefusedError):
+        guard_invocation(_valid_argv(tmp_path), env)
+
+
+def test_a_refused_target_never_starts_the_subprocess(monkeypatch) -> None:
+    """A host that would parse as a flag is refused before testssl.sh runs,
+    and the refusal is the scanner's ordinary `inconclusive` path."""
+    calls = _capture_run(monkeypatch)
+    with pytest.raises(UnavailableError):
+        LiveTestsslClient().legacy_ciphers("--vulnerable", 443)
+    assert calls == []
+    assert issubclass(RefusedError, UnavailableError)
