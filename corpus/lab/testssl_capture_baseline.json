@@ -1,0 +1,6 @@
+{
+  "testssl_version": "3.2.4",
+  "connections": 23,
+  "measured": "2026-10-12",
+  "against": "ordinary local TLS server via corpus/lab/testssl_capture.py"
+}

@@ -656,3 +656,20 @@ Then restore the entry-point lines in `CLAUDE.md` and `SPEC.md`, and the revert 
 - The interim rule (no live TLS Standard with testssl.sh installed) is lifted in the ledger, docs/21, docs/24, docs/25, docs/26 (Step 1b complete) and CLAUDE.md.
 
 **Revert.** Revert this commit to hold the four checks out again; reverting PR #44 also requires it.
+
+## v4.0-pre.22 — D59: testssl.sh under the platform's controls; the four testssl.sh checks need a dedicated address (2026-10-12)
+
+**What changed. tls 1.4.2: live Standard output changed. No corpus number moved.**
+- **`core/testssl.py`:**
+  - the four checks run only under an explicit `LabOverride`. Without one, `LiveTestsslClient` refuses before resolving or starting anything (`TestsslNotPermittedError`), because the dedicated-address condition cannot yet be established;
+  - testssl.sh tests only IPv4 addresses the scan's own resolver returned (`--ip=`, `--nodns=none`), at most four per host, worst verdict winning, untested addresses named;
+  - non-global addresses are refused;
+  - the process runs in its own group, polled against the kill switch and torn down on kill, timeout or Ctrl-C;
+  - each run's traffic is **budgeted** (40 connections pre-charged on the target's bucket), not rate limited. Pre-charging bounds the average rate over the reserved window, not the burst inside testssl.sh.
+- **`core/context.py`** hands the client the scan's resolver, scope, kill switch, limiter and cost meter.
+- **`scanners/tls`:** each refusal is an `inconclusive` that says why ("Install testssl.sh" only when the binary is missing), and a clean result over only some of a host's addresses is `inconclusive`.
+- **[ADR-023](02-decisions.md#adr-023--passive-is-ordinary-negotiation-only-malformed-input-is-active) amended (D59); [ADR-033](02-decisions.md#adr-033--mvp-alpha-scope-one-combined-release-the-linux-agent-moves-into-alpha-tool-4b-deferred) decision 8 amended:** the four checks move to a dedicated-address tier, which is empty outside the lab.
+- **Lab capture** runs through the live client; its connection count is pinned in `corpus/lab/testssl_capture_baseline.json`. The badssl.com fixtures were re-recorded with identical verdicts and now record addresses and the override's reason.
+- **Ledger:** D59 fixed; D60 (SSRF, platform-wide address policy, owed; supersedes D59's local refusal); D61 (no address-level scope check exists anywhere).
+
+**Revert.** Revert the merge commit. That restores testssl.sh's own DNS, every-address testing and the unkillable subprocess; the four checks would then run for verified owners again, which ADR-033 decision 8 no longer permits, so hold them out by policy until the condition can be established.

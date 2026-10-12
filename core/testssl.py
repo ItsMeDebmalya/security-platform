@@ -40,17 +40,26 @@ JSON, or (on replay) nothing recorded - all of it becomes
 
 from __future__ import annotations
 
+import contextlib
+import ipaddress
 import json
 import os
 import re
 import shutil
+import signal
 import subprocess
 import tempfile
+import threading
+import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol
 
+from core.authz import Scope
+from core.cost import CostMeter
+from core.killswitch import KillSwitch
 from core.replay import (
     FixtureStore,
     MissingFixtureError,
@@ -74,8 +83,11 @@ TESTSSL_ARGS: tuple[str, ...] = (
     "--logjam",
     "--ids-friendly",
     "--quiet",
+    "--nodns=none",
+    "--connect-timeout=10",
+    "--openssl-timeout=10",
 )
-"""The declared argument allowlist (D56; ADR-023 amendment, clause 2).
+"""The declared argument allowlist (D56 and D59; ADR-023 amendments).
 
 The four flags select exactly the four cipher-offer tests the checks read,
 and nothing else. They replaced `--vulnerable`, which also runs Heartbleed,
@@ -87,12 +99,19 @@ test flag is worse still: testssl.sh treats it as "run everything".
 `--ids-friendly` sets testssl.sh's `OFFENSIVE=false`, the switch behind its
 Heartbleed, CCS-injection, Ticketbleed and ROBOT group. In 3.2.4 none of the
 four selected tests reads it, so it changes nothing; it is kept as a second
-line in case one ever does. `--quiet` drops the banner. The complete command line is
-`TESTSSL_PATH, *TESTSSL_ARGS, "--jsonfile-pretty", <temp file>, host:port`,
+line in case one ever does. `--quiet` drops the banner.
+
+D59: `--nodns=none` stops testssl.sh doing any DNS of its own, and every run
+also carries `--ip=<address>`, one IPv4 address our own resolver returned
+for the in-scope name, so testssl.sh tests that address and nothing else
+(the name stays the SNI). The two timeouts bound a hung connection.
+
+The complete command line is
+`TESTSSL_PATH, *TESTSSL_ARGS, "--ip=<IPv4>", "--jsonfile-pretty", <temp file>, host:port`,
 and `guard_invocation` refuses anything else before the subprocess starts.
 
 Some traffic runs regardless of the selection, and is accepted as passive in
-the ADR-023 amendment: forward and reverse DNS lookups (to DNS, not the target); a bare
+the ADR-023 amendment (with `--nodns=none`, no DNS lookups any more); a bare
 TCP connect and testssl.sh's connection- and protocol-detection handshakes
 (TLS 1.3 hellos including pre-RFC draft versions, TLS 1.2 hellos, and, only
 if those all fail, TLS 1.1/1.0/SSLv3 and SSLv2 hellos, plus up to seven
@@ -128,7 +147,28 @@ need brackets testssl.sh parses differently, and this wrapper never handled
 them."""
 
 DEFAULT_TIMEOUT_S = 220
-"""1-3 minutes/host per the decision this module implements, plus headroom."""
+"""1-3 minutes per address per the decision this module implements, plus headroom."""
+
+MAX_ADDRESSES = 4
+"""D59, decision A: every resolved IPv4 address is tested, up to this many.
+Testing only the first would let a clean result on one address read as
+clean for the host. Past the cap, the addresses not tested are named, and a
+clean result is reported as `inconclusive`, never `clear`."""
+
+TESTSSL_CONNECTION_BUDGET = 40
+"""Connections one testssl.sh run is charged against the target's rate-limit
+bucket before it starts (D59, decision D). The lab capture measured 23 for
+3.2.4 against an ordinary server (`corpus/lab/testssl_capture_baseline.json`);
+this is that plus margin. It is a budget, not a rate limit: pre-charging
+bounds the average rate over the reserved window, not the burst inside
+testssl.sh, which our limiter cannot pace. A re-measurement over this number
+fails `tests/core/test_testssl_scope.py` rather than raising it."""
+
+POLL_S = 0.5
+"""How often a running testssl.sh is checked against the kill switch."""
+
+TERMINATE_GRACE_S = 2.0
+"""SIGTERM to the process group, then this long, then SIGKILL."""
 
 # The four checks this module exists for, and the testssl.sh finding `id`
 # each reads. Each is selected by its own flag in `TESTSSL_ARGS`.
@@ -153,13 +193,44 @@ class TestsslUnavailableError(RuntimeError):
 
 
 class TestsslArgumentRefusedError(TestsslUnavailableError):
-    """The command line or environment fell outside the declared allowlist,
-    so testssl.sh was never started.
+    """The command line, environment, target or one of its addresses fell
+    outside what may be tested, so testssl.sh was never started.
 
     A subclass of `TestsslUnavailableError` so a hostile or malformed target
     becomes the scanner's ordinary `inconclusive`, never a crash and never a
     probe.
     """
+
+
+class TestsslNotPermittedError(TestsslUnavailableError):
+    """The dedicated-address condition is unproven, so the four checks may not
+    run (D59, decision B; ADR-023 and ADR-033 decision 8).
+
+    testssl.sh's legacy-cipher tests can send SSLv2 hellos, which carry no
+    SNI. On a shared address such a hello reaches whatever site the address
+    serves by default, which may belong to a party who has not authorised
+    us. Nothing today can show that an address is dedicated to the verified
+    customer, so outside the lab nothing is resolved and nothing starts.
+    """
+
+
+@dataclass(frozen=True)
+class LabOverride:
+    """Permission to run testssl.sh without proof of a dedicated address.
+
+    For the lab capture and the corpus recordings against public test
+    endpoints only. Never constructed on a customer-facing code path; a test
+    walks `cli/`, `scanners/`, `core/`, `api/` and `web/` for any call to it.
+    `reason` is recorded in every fixture made under it.
+    """
+
+    reason: str
+    allow_non_global: bool = False
+    """Lab only: permit loopback and private addresses (the local capture)."""
+
+    def __post_init__(self) -> None:
+        if not self.reason.strip():
+            raise ValueError("a lab override must say why it is being used")
 
 
 @dataclass(frozen=True)
@@ -184,6 +255,14 @@ class LegacyCipherReport:
     port: int
     recorded_at: datetime
     findings: dict[str, LegacyCipherFinding] = field(default_factory=dict)
+    """The worst verdict per id across every address tested."""
+    addresses_tested: tuple[str, ...] = ()
+    addresses_untested: tuple[str, ...] = ()
+    """Resolved but past `MAX_ADDRESSES`. Non-empty means a clean result
+    covers only part of the host."""
+    per_address: dict[str, dict[str, LegacyCipherFinding]] = field(default_factory=dict)
+    lab_override: str | None = None
+    """The override's reason, when the run was made under one."""
 
     def for_check(self, check_id: str) -> LegacyCipherFinding | None:
         testssl_id = CHECK_TO_TESTSSL_ID.get(check_id)
@@ -212,8 +291,31 @@ def available() -> bool:
     return TESTSSL_PATH.exists() and shutil.which("bash") is not None
 
 
-def _command(host: str, port: int, out: Path) -> list[str]:
-    return [str(TESTSSL_PATH), *TESTSSL_ARGS, "--jsonfile-pretty", str(out), f"{host}:{port}"]
+def _command(host: str, port: int, address: str, out: Path) -> list[str]:
+    return [
+        str(TESTSSL_PATH),
+        *TESTSSL_ARGS,
+        f"--ip={address}",
+        "--jsonfile-pretty",
+        str(out),
+        f"{host}:{port}",
+    ]
+
+
+def _ipv4_literal(value: str) -> bool:
+    try:
+        ipaddress.IPv4Address(value)
+    except ValueError:
+        return False
+    return True
+
+
+def _not_global(address: str) -> bool:
+    """Loopback, RFC 1918, link-local (169.254.169.254 included), shared,
+    documentation, multicast, broadcast and unspecified: none of it is
+    anyone's public site."""
+    ip = ipaddress.IPv4Address(address)
+    return not ip.is_global or ip.is_multicast
 
 
 def environment() -> dict[str, str]:
@@ -238,9 +340,26 @@ def guard_invocation(
         raise TestsslArgumentRefusedError(
             f"testssl.sh argument list is not a declared one: {allowed_args!r}"
         )
-    expected_head = [str(TESTSSL_PATH), *allowed_args, "--jsonfile-pretty"]
-    head, rest = argv[: len(expected_head)], argv[len(expected_head) :]
-    if head != expected_head or len(rest) != 2:
+    pinned = allowed_args == TESTSSL_ARGS
+    head_len = 1 + len(allowed_args)
+    head, rest = argv[:head_len], argv[head_len:]
+    if pinned:
+        # D59: the runtime wrapper always names the one address it tests.
+        if not rest or not rest[0].startswith("--ip="):
+            raise TestsslArgumentRefusedError(
+                f"testssl.sh command line has no pinned address: {argv!r}"
+            )
+        if not _ipv4_literal(rest[0].removeprefix("--ip=")):
+            raise TestsslArgumentRefusedError(
+                f"testssl.sh address must be an IPv4 literal: {rest[0]!r}"
+            )
+        rest = rest[1:]
+    if head != [str(TESTSSL_PATH), *allowed_args] or rest[:1] != ["--jsonfile-pretty"]:
+        raise TestsslArgumentRefusedError(
+            f"testssl.sh command line is outside the declared allowlist: {argv!r}"
+        )
+    rest = rest[1:]
+    if len(rest) != 2:
         raise TestsslArgumentRefusedError(
             f"testssl.sh command line is outside the declared allowlist: {argv!r}"
         )
@@ -255,14 +374,66 @@ def guard_invocation(
         )
 
 
-def _run_raw(host: str, port: int, *, timeout_s: int) -> dict[str, Any]:
-    """Run testssl.sh's four cipher-offer tests and return its full JSON report.
+def _terminate(proc: subprocess.Popen[bytes]) -> None:
+    """SIGTERM the whole process group, wait, then SIGKILL it.
 
-    Exactly `TESTSSL_ARGS`, checked by `guard_invocation` before the
-    subprocess starts (D56). `--jsonfile-pretty` to a temp file and no
-    severity filter: dropping `OK` findings would drop exactly the negative
-    evidence a control case needs.
+    testssl.sh is a bash script that starts `openssl` and `timeout` children;
+    killing only the script would leave them running. The group exists
+    because the process was started with `start_new_session=True`."""
+    try:
+        os.killpg(proc.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        return
+    with contextlib.suppress(subprocess.TimeoutExpired):
+        proc.wait(timeout=TERMINATE_GRACE_S)
+    with contextlib.suppress(ProcessLookupError):
+        os.killpg(proc.pid, signal.SIGKILL)
+    proc.wait()
+
+
+def _run_process(
+    argv: list[str], env: dict[str, str], *, timeout_s: float, alive: Callable[[], None]
+) -> None:
+    """Run testssl.sh in its own process group, checking the kill switch.
+
+    `alive` raises `ScanKilledError` when the scan has been killed; it is
+    called every `POLL_S`. On a kill, a timeout or any other exception
+    (Ctrl-C included) the whole group is torn down before the exception
+    propagates. Stragglers are reaped after a normal exit too. A kill
+    reaches the process within `POLL_S` plus `TERMINATE_GRACE_S` of being
+    set in this process; across workers it needs the shared kill switch
+    (Phase 6), which this loop reads the same way.
     """
+    proc = subprocess.Popen(
+        argv,
+        env=env,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+    deadline = time.monotonic() + timeout_s
+    try:
+        while True:
+            try:
+                proc.wait(timeout=POLL_S)
+                break
+            except subprocess.TimeoutExpired:
+                pass
+            alive()
+            if time.monotonic() > deadline:
+                raise subprocess.TimeoutExpired(argv, timeout_s)
+    except BaseException:
+        _terminate(proc)
+        raise
+    with contextlib.suppress(ProcessLookupError, PermissionError):
+        os.killpg(proc.pid, signal.SIGKILL)
+
+
+def _run_one(
+    host: str, port: int, address: str, *, timeout_s: float, alive: Callable[[], None]
+) -> dict[str, Any]:
+    """One guarded testssl.sh run against one pinned address; its full JSON."""
     if not available():
         raise TestsslUnavailableError(
             f"testssl.sh {TESTSSL_VERSION} is not installed at {TESTSSL_PATH}. "
@@ -271,31 +442,31 @@ def _run_raw(host: str, port: int, *, timeout_s: int) -> dict[str, Any]:
 
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp) / "out.json"
-        argv = _command(host, port, out)
+        argv = _command(host, port, address, out)
         env = environment()
         guard_invocation(argv, env)
         try:
-            subprocess.run(
-                argv,
-                env=env,
-                stdin=subprocess.DEVNULL,
-                capture_output=True,
-                timeout=timeout_s,
-                check=False,
-            )
-        except (subprocess.TimeoutExpired, OSError) as exc:
+            _run_process(argv, env, timeout_s=timeout_s, alive=alive)
+        except subprocess.TimeoutExpired as exc:
             raise TestsslUnavailableError(
-                f"testssl.sh against {host}:{port} failed: {exc}"
+                f"testssl.sh against {host}:{port} ({address}) timed out after {timeout_s} s; "
+                "its process group was stopped"
+            ) from exc
+        except OSError as exc:
+            raise TestsslUnavailableError(
+                f"testssl.sh against {host}:{port} ({address}) failed: {exc}"
             ) from exc
 
         if not out.exists():
-            raise TestsslUnavailableError(f"testssl.sh against {host}:{port} produced no output")
+            raise TestsslUnavailableError(
+                f"testssl.sh against {host}:{port} ({address}) produced no output"
+            )
         try:
             data: dict[str, Any] = json.loads(out.read_text())
             return data
         except json.JSONDecodeError as exc:
             raise TestsslUnavailableError(
-                f"testssl.sh against {host}:{port} produced unparsable JSON: {exc}"
+                f"testssl.sh against {host}:{port} ({address}) produced unparsable JSON: {exc}"
             ) from exc
 
 
@@ -331,19 +502,104 @@ def _parse(report: dict[str, Any]) -> dict[str, LegacyCipherFinding]:
     return best
 
 
+_HOST_LOCKS: dict[str, threading.Lock] = {}
+_HOST_LOCKS_GUARD = threading.Lock()
+
+
+def _host_lock(host: str) -> threading.Lock:
+    with _HOST_LOCKS_GUARD:
+        return _HOST_LOCKS.setdefault(host.lower().rstrip("."), threading.Lock())
+
+
+def _worst(
+    per_address: dict[str, dict[str, LegacyCipherFinding]],
+) -> dict[str, LegacyCipherFinding]:
+    worst: dict[str, LegacyCipherFinding] = {}
+    for findings in per_address.values():
+        for testssl_id, finding in findings.items():
+            current = worst.get(testssl_id)
+            if current is None or _SEVERITY_RANK.get(finding.severity, 0) > _SEVERITY_RANK.get(
+                current.severity, 0
+            ):
+                worst[testssl_id] = finding
+    return worst
+
+
 @dataclass
 class LiveTestsslClient:
-    """Runs the real subprocess. This is what a production Standard scan uses."""
+    """Runs the real subprocess under the platform's controls (D59).
+
+    `ScanContext` hands it the scan's DNS client, scope, kill switch, target
+    rate limiter and cost meter, the same way it wires every other client.
+    `lab_override` is never set on a customer-facing path; without it the
+    four checks do not run (`TestsslNotPermittedError`).
+    """
 
     timeout_s: int = DEFAULT_TIMEOUT_S
+    dns: Any = None
+    scope: Scope | None = None
+    lab_override: LabOverride | None = None
+    killswitch: KillSwitch | None = None
+    ratelimit: Any = None
+    cost: CostMeter | None = None
+    scan_id: str = "local"
+    org_id: str = "org_internal"
+
+    def _alive(self) -> None:
+        if self.killswitch is not None:
+            self.killswitch.check(scan_id=self.scan_id, org_id=self.org_id)
+
+    def _addresses(self, host: str) -> tuple[list[str], list[str]]:
+        if self.scope is None or not self.scope.permits(host):
+            raise TestsslArgumentRefusedError(
+                f"{host} is outside the scope of this scan; testssl.sh was not started"
+            )
+        if self.dns is None:
+            raise TestsslUnavailableError("no DNS client to resolve the target's addresses")
+        self._alive()
+        answer = self.dns.query(host, "A")
+        addresses = list(dict.fromkeys(a for a in answer.records if _ipv4_literal(a)))
+        if not addresses:
+            raise TestsslArgumentRefusedError(
+                f"{host} has no IPv4 address; testssl.sh is run against IPv4 addresses only"
+            )
+        allow_non_global = self.lab_override is not None and self.lab_override.allow_non_global
+        refused = [a for a in addresses if _not_global(a)]
+        if refused and not allow_non_global:
+            raise TestsslArgumentRefusedError(
+                f"{host} resolves to {', '.join(refused)}, which is not a global address "
+                "(loopback, private, link-local or otherwise reserved); testssl.sh was not started"
+            )
+        return addresses[:MAX_ADDRESSES], addresses[MAX_ADDRESSES:]
 
     def legacy_ciphers(self, host: str, port: int) -> LegacyCipherReport:
-        report = _run_raw(host, port, timeout_s=self.timeout_s)
+        if self.lab_override is None:
+            raise TestsslNotPermittedError(
+                "not run: the dedicated-address condition is unproven. testssl.sh's "
+                "legacy-cipher tests can send hellos with no SNI, which on a shared address "
+                "reach a site that is not this customer's, and we cannot yet show that "
+                f"{host}'s address serves only this customer (ADR-023, D59)"
+            )
+        tested, untested = self._addresses(host)
+        per_address: dict[str, dict[str, LegacyCipherFinding]] = {}
+        with _host_lock(host):
+            for address in tested:
+                self._alive()
+                if self.ratelimit is not None:
+                    self.ratelimit.acquire(host, float(TESTSSL_CONNECTION_BUDGET))
+                if self.cost is not None:
+                    self.cost.record_request(TESTSSL_CONNECTION_BUDGET)
+                raw = _run_one(host, port, address, timeout_s=self.timeout_s, alive=self._alive)
+                per_address[address] = _parse(raw)
         return LegacyCipherReport(
             host=host,
             port=port,
             recorded_at=datetime.now(UTC),
-            findings=_parse(report),
+            findings=_worst(per_address),
+            addresses_tested=tuple(tested),
+            addresses_untested=tuple(untested),
+            per_address=per_address,
+            lab_override=self.lab_override.reason,
         )
 
 
@@ -353,20 +609,40 @@ def _fixture_name(host: str, port: int) -> str:
     return fixture_filename(stem, str(port), digest=fixture_digest(key, length=10))
 
 
+def _findings_to_dict(findings: dict[str, LegacyCipherFinding]) -> dict[str, Any]:
+    return {
+        testssl_id: {
+            "testssl_id": f.testssl_id,
+            "severity": f.severity,
+            "detail": f.detail,
+            "cve": f.cve,
+        }
+        for testssl_id, f in findings.items()
+    }
+
+
+def _findings_from_dict(data: dict[str, Any]) -> dict[str, LegacyCipherFinding]:
+    return {
+        testssl_id: LegacyCipherFinding(
+            testssl_id=f["testssl_id"],
+            severity=f["severity"],
+            detail=f["detail"],
+            cve=f.get("cve"),
+        )
+        for testssl_id, f in data.items()
+    }
+
+
 def _report_to_dict(report: LegacyCipherReport) -> dict[str, Any]:
     return {
         "host": report.host,
         "port": report.port,
         "recorded_at": report.recorded_at.isoformat(),
-        "findings": {
-            testssl_id: {
-                "testssl_id": f.testssl_id,
-                "severity": f.severity,
-                "detail": f.detail,
-                "cve": f.cve,
-            }
-            for testssl_id, f in report.findings.items()
-        },
+        "findings": _findings_to_dict(report.findings),
+        "addresses_tested": list(report.addresses_tested),
+        "addresses_untested": list(report.addresses_untested),
+        "per_address": {a: _findings_to_dict(f) for a, f in report.per_address.items()},
+        "lab_override": report.lab_override,
     }
 
 
@@ -375,15 +651,11 @@ def _report_from_dict(data: dict[str, Any]) -> LegacyCipherReport:
         host=data["host"],
         port=data["port"],
         recorded_at=datetime.fromisoformat(data["recorded_at"]),
-        findings={
-            testssl_id: LegacyCipherFinding(
-                testssl_id=f["testssl_id"],
-                severity=f["severity"],
-                detail=f["detail"],
-                cve=f.get("cve"),
-            )
-            for testssl_id, f in data.get("findings", {}).items()
-        },
+        findings=_findings_from_dict(data.get("findings", {})),
+        addresses_tested=tuple(data.get("addresses_tested", ())),
+        addresses_untested=tuple(data.get("addresses_untested", ())),
+        per_address={a: _findings_from_dict(f) for a, f in data.get("per_address", {}).items()},
+        lab_override=data.get("lab_override"),
     )
 
 
@@ -444,10 +716,13 @@ __all__ = [
     "CHECK_TO_TESTSSL_ID",
     "CROSSCHECK_ARGS",
     "DECLARED_ARG_LISTS",
+    "MAX_ADDRESSES",
     "TESTSSL_ARGS",
+    "TESTSSL_CONNECTION_BUDGET",
     "TESTSSL_ENV_KEYS",
     "TESTSSL_PATH",
     "TESTSSL_VERSION",
+    "LabOverride",
     "LegacyCipherFinding",
     "LegacyCipherReport",
     "LiveTestsslClient",
@@ -457,6 +732,7 @@ __all__ = [
     "StubTestsslClient",
     "TestsslArgumentRefusedError",
     "TestsslClient",
+    "TestsslNotPermittedError",
     "TestsslUnavailableError",
     "available",
     "environment",

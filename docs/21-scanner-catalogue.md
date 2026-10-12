@@ -41,7 +41,7 @@ Below 0.40 confidence nothing is reported.
 
 **Light and Standard.**
 - **Light** is passive: ordinary requests anyone could make, such as DNS lookups, normal page loads, normal TLS handshakes, and public registries and logs. It needs no proof that you own the target.
-- **Standard** adds more checks. Every Standard check in these four scanners is *declared* passive under [ADR-023](02-decisions.md#adr-023--passive-is-ordinary-negotiation-only-malformed-input-is-active), so `core/authz.py` lets a Standard scan run with no ownership record (ledger D27). The ownership gate is built and applies to the first check declared *active*. The four testssl.sh checks sent active probes despite their declaration until ledger D56 was fixed on 2026-10-12 (see the tls section). [ADR-033](02-decisions.md#adr-033--mvp-alpha-scope-one-combined-release-the-linux-agent-moves-into-alpha-tool-4b-deferred) sets who may run Standard in the Alpha.
+- **Standard** adds more checks. Every Standard check in these four scanners is *declared* passive under [ADR-023](02-decisions.md#adr-023--passive-is-ordinary-negotiation-only-malformed-input-is-active), so `core/authz.py` lets a Standard scan run with no ownership record (ledger D27). The ownership gate is built and applies to the first check declared *active*. The four testssl.sh checks sent active probes despite their declaration until ledger D56 was fixed on 2026-10-12, and since D59 they do not run outside the lab (see the tls section). [ADR-033](02-decisions.md#adr-033--mvp-alpha-scope-one-combined-release-the-linux-agent-moves-into-alpha-tool-4b-deferred) sets who may run Standard in the Alpha.
 - Deep/Validated mode does not exist yet.
 
 **Status column.**
@@ -125,9 +125,9 @@ Live basis: 13 real hosts, every claim hand-verified with `curl`, cross-checked 
 
 ---
 
-## tls — SSL/TLS Analyzer (Tool 2, v1.4.1)
+## tls — SSL/TLS Analyzer (Tool 2, v1.4.2)
 
-19 checks, declared passive under ADR-023 (ordinary TLS handshakes). 8 run in Light, and 11 more in Standard. **Ledger D56, fixed 2026-10-12 (PR #44):** the four testssl.sh checks below used to run `testssl.sh --vulnerable`, whose malformed-input probes ADR-023 classes as active. They now run only the four cipher tests they read (`--rc4 --sweet32 --freak --logjam`), under an exact argument and environment allowlist enforced at runtime ([ADR-023](02-decisions.md#adr-023--passive-is-ordinary-negotiation-only-malformed-input-is-active), D56 amendment). testssl.sh also sends connection- and protocol-detection handshakes, one ordinary `GET /` and one large well-formed ClientHello on every run, all accepted as passive there.
+19 checks, declared passive under ADR-023 (ordinary TLS handshakes). 8 run in Light, and 11 more in Standard. **Ledger D56, fixed 2026-10-12 (PR #44):** the four testssl.sh checks below used to run `testssl.sh --vulnerable`, whose malformed-input probes ADR-023 classes as active. They now run only the four cipher tests they read (`--rc4 --sweet32 --freak --logjam`), under an exact argument and environment allowlist enforced at runtime ([ADR-023](02-decisions.md#adr-023--passive-is-ordinary-negotiation-only-malformed-input-is-active), D56 amendment). testssl.sh also sends connection- and protocol-detection handshakes, one ordinary `GET /` and one large well-formed ClientHello on every run, all accepted as passive there. **Ledger D59 (2026-10-12): these four do not run outside the lab.** Their SSLv2 hellos carry no SNI, so on a shared address they would reach a site that is not the customer's, and we cannot yet show an address is dedicated. Live Standard scans report them `inconclusive` with that reason. Their WORKING status below rests on the badssl.com recordings, made under an explicit lab override.
 
 **No tls check has a validation step, so none reaches `confirmed`.** The ceiling is `highly_likely`. It is reached only when two independent readings agree: our own reading of the certificate, and the trust path (OpenSSL's verification). Single-reading checks stop at `suspected`.
 

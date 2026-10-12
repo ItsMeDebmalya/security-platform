@@ -43,8 +43,9 @@ from pathlib import Path
 
 from core.authz import Scope
 from core.context import ScanContext
+from core.dns import DnsClient, SystemResolver
 from core.models import Asset
-from core.testssl import RecordingTestsslClient
+from core.testssl import LabOverride, LiveTestsslClient, RecordingTestsslClient
 from core.tls import RecordingTlsBackend, TlsClient
 from scanners.tls import TlsScanner
 
@@ -62,7 +63,28 @@ CASES: dict[str, str] = {
 }
 
 PORT = 443
+RESOLVERS = ["1.1.1.1", "8.8.8.8"]
+"""The same public resolvers `cli/main.py` uses for a live scan."""
 SCOPE = Scope(frozenset({host for host in CASES.values()}))
+
+OVERRIDE = LabOverride(
+    reason=(
+        "corpus recording against badssl.com, a public TLS test service run for exactly this "
+        "(ADR-027). Its test names share addresses it operates itself, so a hello with no SNI "
+        "reaches badssl.com's own default site, not an unrelated party (D59)"
+    )
+)
+"""D59: the dedicated-address condition cannot be proven for badssl.com
+either. The recordings run under this explicit override, and its reason is
+written into every fixture."""
+
+
+def _live() -> LiveTestsslClient:
+    return LiveTestsslClient(
+        dns=DnsClient(resolver=SystemResolver(RESOLVERS), resolvers=RESOLVERS),
+        scope=SCOPE,
+        lab_override=OVERRIDE,
+    )
 
 
 def generate_testssl_only() -> None:
@@ -72,9 +94,12 @@ def generate_testssl_only() -> None:
         testssl_dir = TESTSSL_FIXTURES / case_id
         if testssl_dir.exists():
             shutil.rmtree(testssl_dir)
-        report = RecordingTestsslClient(testssl_dir).legacy_ciphers(host, PORT)
+        report = RecordingTestsslClient(testssl_dir, inner=_live()).legacy_ciphers(host, PORT)
         verdicts = {i: f.severity for i, f in sorted(report.findings.items())}
-        print(f"{case_id:<24} {host:<26} {verdicts}")
+        print(
+            f"{case_id:<24} {host:<26} {verdicts} tested={list(report.addresses_tested)} "
+            f"untested={list(report.addresses_untested)}"
+        )
 
 
 def generate() -> None:
@@ -88,7 +113,7 @@ def generate() -> None:
 
         ctx = ScanContext(
             tls=TlsClient(scope=SCOPE, backend=RecordingTlsBackend(tls_dir)),
-            testssl=RecordingTestsslClient(testssl_dir),
+            testssl=RecordingTestsslClient(testssl_dir, inner=_live()),
             progress=lambda message, fraction: None,
         )
         result = TlsScanner().run(Asset(type="url", value=f"https://{host}"), "standard", ctx)

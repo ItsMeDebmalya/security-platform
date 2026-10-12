@@ -25,6 +25,7 @@ HTTP record/replay (ledger D2/D10), and the A+ to F grade is deferred (D9).
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import UTC, datetime
 from urllib.parse import urlsplit
 
@@ -38,6 +39,8 @@ from core.testssl import (
     CHECK_TO_TESTSSL_ID,
     LegacyCipherFinding,
     LegacyCipherReport,
+    TestsslArgumentRefusedError,
+    TestsslNotPermittedError,
     TestsslUnavailableError,
 )
 from core.tls import DEFAULT_PORT, TlsClient, TlsObservation, a_label
@@ -111,7 +114,7 @@ LEGACY_CIPHER_CHECK_IDS = tuple(CHECK_TO_TESTSSL_ID)
 @register
 class TlsScanner(BaseScanner):
     name = "tls"
-    version = "1.4.1"
+    version = "1.4.2"
     vantage = "external_unauthenticated"
     engagement = "defensive"
     supported_modes = frozenset({"light", "standard"})
@@ -777,33 +780,96 @@ class _Scan:
         """
         try:
             report = self.ctx.testssl.legacy_ciphers(self.host, self.port)
+        except TestsslNotPermittedError as exc:
+            self._legacy_inconclusive(
+                self._because("was not run", str(exc)),
+                impact="Unknown. Not tested, by policy; not an observation about the server.",
+                remediation=(
+                    "Nothing to change on your side. These four checks run only where the tested "
+                    "address can be shown to serve your sites alone (the dedicated-address "
+                    "condition, ADR-023), and we cannot establish that yet."
+                ),
+            )
+            return
+        except TestsslArgumentRefusedError as exc:
+            self._legacy_inconclusive(
+                self._because("was not run", str(exc)),
+                impact="Unknown. testssl.sh was not started, so the server was not observed.",
+                remediation=(
+                    "Nothing to install: testssl.sh was refused for the reason above. If the "
+                    "name resolves only to a private or IPv6 address, that is why."
+                ),
+            )
+            return
         except TestsslUnavailableError as exc:
-            for check_id in LEGACY_CIPHER_CHECK_IDS:
-                self._emit(
-                    CHECKS[check_id],
-                    no_verdict_reason="blocked_prerequisite",
-                    description=(
-                        f"The legacy-cipher check for {CHECKS[check_id].title.lower()} could "
-                        f"not run against {self._location()}: {exc}"
-                    ),
-                    impact=("Unknown. This is a tooling gap, not an observation about the server."),
-                    remediation=(
-                        "Install testssl.sh (`tools/fetch-testssl.sh`) and re-run this scan in "
-                        "Standard mode."
-                    ),
-                    signals=[self._signal(CHECKS[check_id], EXTERNAL_PROBE, ratio=1.0)],
-                )
-                self.checks.append(
-                    CheckRun(check_id=check_id, location=self._location(), outcome="inconclusive")
-                )
+            self._legacy_inconclusive(
+                self._because("could not run", str(exc)),
+                impact="Unknown. This is a tooling gap, not an observation about the server.",
+                remediation=(
+                    "Install testssl.sh (`tools/fetch-testssl.sh`) and re-run this scan in "
+                    "Standard mode."
+                ),
+            )
             return
 
+        untested = report.addresses_untested
         for check_id in LEGACY_CIPHER_CHECK_IDS:
             finding = report.for_check(check_id)
-            if finding is None or not finding.vulnerable:
+            if finding is not None and finding.vulnerable:
+                self._report_legacy_cipher(check_id, finding, report)
+            elif untested:
+                # D59, decision A: clean on the addresses tested is not clean for
+                # the host when some of its addresses were not tested.
+                self._legacy_inconclusive(
+                    self._partial_coverage(report),
+                    impact="Unknown for the addresses not tested.",
+                    remediation="No change needed for the addresses tested.",
+                    only=(check_id,),
+                )
+            else:
                 self._clear(check_id)
-                continue
-            self._report_legacy_cipher(check_id, finding, report)
+
+    def _because(self, what: str, reason: str) -> Callable[[str], str]:
+        def describe(title: str) -> str:
+            return (
+                f"The legacy-cipher check for {title} {what} against {self._location()}: {reason}"
+            )
+
+        return describe
+
+    def _partial_coverage(self, report: LegacyCipherReport) -> Callable[[str], str]:
+        tested, untested = report.addresses_tested, report.addresses_untested
+
+        def describe(title: str) -> str:
+            return (
+                f"The legacy-cipher check for {title} found nothing on the {len(tested)} "
+                f"addresses tested ({', '.join(tested)}), but {self.host} has {len(untested)} "
+                f"more that were not tested ({', '.join(untested)}); at most four addresses "
+                "are tested per host."
+            )
+
+        return describe
+
+    def _legacy_inconclusive(
+        self,
+        describe: Callable[[str], str],
+        *,
+        impact: str,
+        remediation: str,
+        only: tuple[str, ...] = LEGACY_CIPHER_CHECK_IDS,
+    ) -> None:
+        for check_id in only:
+            self._emit(
+                CHECKS[check_id],
+                no_verdict_reason="blocked_prerequisite",
+                description=describe(CHECKS[check_id].title.lower()),
+                impact=impact,
+                remediation=remediation,
+                signals=[self._signal(CHECKS[check_id], EXTERNAL_PROBE, ratio=1.0)],
+            )
+            self.checks.append(
+                CheckRun(check_id=check_id, location=self._location(), outcome="inconclusive")
+            )
 
     def _report_legacy_cipher(
         self, check_id: str, finding: LegacyCipherFinding, report: LegacyCipherReport
@@ -840,6 +906,13 @@ class _Scan:
                     "cannot negotiate the cipher family being reported."
                 ),
                 "data": {
+                    "addresses_tested": list(report.addresses_tested),
+                    "addresses_untested": list(report.addresses_untested),
+                    "per_address": {
+                        address: verdicts[finding.testssl_id].severity
+                        for address, verdicts in report.per_address.items()
+                        if finding.testssl_id in verdicts
+                    },
                     "testssl_id": finding.testssl_id,
                     "severity": finding.severity,
                     "cve": finding.cve,
@@ -873,6 +946,12 @@ class _Scan:
                 description=(
                     f"testssl.sh reports {self._location()} as {check.title.lower()}: "
                     f"{finding.detail}"
+                    + (
+                        f" Tested on {', '.join(report.addresses_tested)}; not tested on "
+                        f"{', '.join(report.addresses_untested)} (at most four addresses per host)."
+                        if report.addresses_untested
+                        else ""
+                    )
                 ),
                 impact=(
                     f"{check.title} lets an attacker who can observe or influence the "
