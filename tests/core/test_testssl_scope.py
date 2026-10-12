@@ -138,23 +138,69 @@ def test_a_not_permitted_refusal_is_the_scanners_inconclusive_path() -> None:
 
 
 CUSTOMER_FACING = ("cli", "scanners", "core", "api", "web")
+DEFINED_IN = ROOT / "core" / "testssl.py"
 
 
-def test_no_customer_facing_code_path_constructs_the_lab_override() -> None:
+def _override_uses(tree: ast.AST) -> list[tuple[int, str]]:
+    """Any way a module could reach a lab override: the name (called, aliased
+    or referenced), an attribute or `getattr` string naming it, a
+    `lab_override=` keyword or assignment, or an import from `corpus`, which
+    holds ready-made overrides."""
+    uses = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Name) and node.id == "LabOverride":
+            uses.append((node.lineno, "name"))
+        elif isinstance(node, ast.Attribute) and node.attr in ("LabOverride", "lab_override"):
+            uses.append((node.lineno, f"attribute {node.attr}"))
+        elif isinstance(node, ast.Constant) and node.value in ("LabOverride", "lab_override"):
+            uses.append((node.lineno, f"string {node.value!r}"))
+        elif isinstance(node, ast.keyword) and node.arg == "lab_override":
+            uses.append((node.value.lineno, "keyword lab_override"))
+        elif isinstance(node, ast.ImportFrom) and (node.module or "").split(".")[0] == "corpus":
+            uses.append((node.lineno, f"import from {node.module}"))
+        elif isinstance(node, ast.ImportFrom) and any(a.name == "LabOverride" for a in node.names):
+            uses.append((node.lineno, "import LabOverride"))
+        elif isinstance(node, ast.Import) and any(
+            a.name.split(".")[0] == "corpus" for a in node.names
+        ):
+            uses.append((node.lineno, "import corpus"))
+    return uses
+
+
+def test_no_customer_facing_code_path_can_reach_the_lab_override() -> None:
     """C: the override exists for the lab and the corpus recordings only."""
     offenders = []
     for top in CUSTOMER_FACING:
         for path in (ROOT / top).rglob("*.py") if (ROOT / top).exists() else []:
-            tree = ast.parse(path.read_text())
-            for node in ast.walk(tree):
-                if (
-                    isinstance(node, ast.Call)
-                    and isinstance(node.func, ast.Name | ast.Attribute)
-                    and (getattr(node.func, "id", None) or getattr(node.func, "attr", None))
-                    == "LabOverride"
-                ):
-                    offenders.append(f"{path.relative_to(ROOT)}:{node.lineno}")
+            if path == DEFINED_IN:
+                continue
+            for line, how in _override_uses(ast.parse(path.read_text())):
+                offenders.append(f"{path.relative_to(ROOT)}:{line} ({how})")
     assert offenders == []
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "from core.testssl import LabOverride as Lab\nLab('x')",
+        "import core.testssl\ngetattr(core.testssl, 'LabOverride')('x')",
+        "from corpus.generators.testssl import OVERRIDE",
+        "LiveTestsslClient(lab_override=object())",
+        "client.lab_override = something",
+    ],
+)
+def test_the_walk_catches_indirect_routes(source) -> None:
+    assert _override_uses(ast.parse(source))
+
+
+def test_anything_but_a_real_lab_override_is_not_permission(runs) -> None:
+    from types import SimpleNamespace
+
+    c = client(override=False)
+    c.lab_override = SimpleNamespace(reason="x", allow_non_global=True)  # type: ignore[assignment]
+    with pytest.raises(NotPermittedError):
+        c.legacy_ciphers("example.test", 443)
+    assert runs == []
 
 
 # --- addresses ---------------------------------------------------------------
@@ -196,6 +242,20 @@ def test_the_worst_verdict_across_addresses_wins_and_each_is_kept(runs) -> None:
     assert report.findings["RC4"].severity == "HIGH"
     assert report.per_address[PUBLIC[0]]["RC4"].severity == "OK"
     assert report.per_address[PUBLIC[1]]["RC4"].severity == "HIGH"
+
+
+def test_an_address_with_no_verdict_counts_as_untested_for_that_check(runs) -> None:
+    """Decision A: a run that produced no verdict for an id (for example a
+    testssl.sh fatal error written as a scan problem) did not test it."""
+    runs.verdicts[PUBLIC[1]] = {"scanResult": [{"scanProblem": [{"id": "scanProblem"}]}]}
+    report = client({"example.test": PUBLIC[:2]}).legacy_ciphers("example.test", 443)
+
+    assert report.coverage("RC4") == ((PUBLIC[0],), (PUBLIC[1],))
+
+
+def test_coverage_counts_addresses_past_the_cap_as_untested(runs) -> None:
+    report = client({"example.test": PUBLIC}).legacy_ciphers("example.test", 443)
+    assert report.coverage("RC4") == (tuple(PUBLIC[:4]), (PUBLIC[4],))
 
 
 def test_a_name_with_no_ipv4_address_is_refused_honestly(runs) -> None:
@@ -257,11 +317,49 @@ def test_each_address_pre_charges_the_declared_budget(runs) -> None:
     assert limiter.calls == [("example.test", float(TESTSSL_CONNECTION_BUDGET))] * 2
 
 
+def test_a_kill_during_the_budget_wait_starts_nothing(runs) -> None:
+    killswitch = KillSwitch()
+
+    class _KillWhileWaiting(FakeLimiter):
+        def acquire(self, host, tokens=1.0):
+            super().acquire(host, tokens)
+            killswitch.kill(scan_id="s", reason="stop during the wait")
+
+    c = client(ratelimit=_KillWhileWaiting(), killswitch=killswitch, scan_id="s", org_id="o")
+    with pytest.raises(ScanKilledError):
+        c.legacy_ciphers("example.test", 443)
+    assert runs == []
+
+
+def test_a_missing_binary_charges_no_budget(monkeypatch) -> None:
+    from core.testssl import TestsslUnavailableError
+
+    monkeypatch.setattr("core.testssl.available", lambda: False)
+    limiter = FakeLimiter()
+    with pytest.raises(TestsslUnavailableError, match="not installed"):
+        client(ratelimit=limiter).legacy_ciphers("example.test", 443)
+    assert limiter.calls == []
+
+
+def test_a_lookup_failure_is_not_called_an_ipv6_only_name(runs) -> None:
+    from core.testssl import TestsslUnavailableError
+
+    class _Fails(FakeDns):
+        def query(self, name, rrtype, *, resolver=None):
+            return DnsResponse(name, rrtype, "SERVFAIL", [])
+
+    c = client()
+    c.dns = _Fails({})
+    with pytest.raises(TestsslUnavailableError, match="SERVFAIL") as exc:
+        c.legacy_ciphers("example.test", 443)
+    assert not isinstance(exc.value, RefusedError)
+
+
 def test_the_budget_is_pinned_to_the_lab_measurement() -> None:
     """D: the lab capture records the connections one run makes. A new
-    testssl.sh version must be re-measured (the version check fails until it
-    is), and a measurement over the budget fails here rather than quietly
-    raising the charge."""
+    testssl.sh version fails here until the capture is re-run. The capture
+    itself fails loudly (exit 1, "OVER BUDGET") on a count over the budget and
+    never writes one, so this check guards a hand-edited baseline."""
     baseline = json.loads((ROOT / "corpus" / "lab" / "testssl_capture_baseline.json").read_text())
     assert baseline["testssl_version"] == TESTSSL_VERSION, "re-run the lab capture"
     assert baseline["connections"] <= TESTSSL_CONNECTION_BUDGET, (

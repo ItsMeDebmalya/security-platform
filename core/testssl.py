@@ -161,8 +161,10 @@ bucket before it starts (D59, decision D). The lab capture measured 23 for
 3.2.4 against an ordinary server (`corpus/lab/testssl_capture_baseline.json`);
 this is that plus margin. It is a budget, not a rate limit: pre-charging
 bounds the average rate over the reserved window, not the burst inside
-testssl.sh, which our limiter cannot pace. A re-measurement over this number
-fails `tests/core/test_testssl_scope.py` rather than raising it."""
+testssl.sh, which our limiter cannot pace. The capture fails loudly (exit 1,
+"OVER BUDGET") on a count over this number and never records one, and
+`tests/core/test_testssl_scope.py` fails when testssl.sh's version changes
+until the capture is re-run. Neither raises the number."""
 
 POLL_S = 0.5
 """How often a running testssl.sh is checked against the kill switch."""
@@ -269,6 +271,21 @@ class LegacyCipherReport:
         if testssl_id is None:
             return None
         return self.findings.get(testssl_id)
+
+    def coverage(self, testssl_id: str) -> tuple[tuple[str, ...], tuple[str, ...]]:
+        """(addresses that returned a verdict for this id, addresses that did not).
+
+        An address whose run produced no verdict for the id (a testssl.sh
+        fatal error, say) did not test it, so it counts as untested, as do
+        the addresses past `MAX_ADDRESSES` (D59, decision A). A report from
+        before D59 has no per-address record and reports full coverage."""
+        if not self.per_address:
+            return self.addresses_tested, self.addresses_untested
+        tested = tuple(
+            a for a in self.addresses_tested if testssl_id in self.per_address.get(a, {})
+        )
+        missed = tuple(a for a in self.addresses_tested if a not in tested)
+        return tested, missed + self.addresses_untested
 
 
 class TestsslClient(Protocol):
@@ -381,14 +398,14 @@ def _terminate(proc: subprocess.Popen[bytes]) -> None:
     killing only the script would leave them running. The group exists
     because the process was started with `start_new_session=True`."""
     try:
-        os.killpg(proc.pid, signal.SIGTERM)
-    except ProcessLookupError:
-        return
-    with contextlib.suppress(subprocess.TimeoutExpired):
-        proc.wait(timeout=TERMINATE_GRACE_S)
-    with contextlib.suppress(ProcessLookupError):
-        os.killpg(proc.pid, signal.SIGKILL)
-    proc.wait()
+        with contextlib.suppress(ProcessLookupError, PermissionError):
+            os.killpg(proc.pid, signal.SIGTERM)
+        with contextlib.suppress(subprocess.TimeoutExpired):
+            proc.wait(timeout=TERMINATE_GRACE_S)
+    finally:  # even if interrupted during the grace period
+        with contextlib.suppress(ProcessLookupError, PermissionError):
+            os.killpg(proc.pid, signal.SIGKILL)
+        proc.wait()
 
 
 def _run_process(
@@ -558,12 +575,19 @@ class LiveTestsslClient:
             raise TestsslUnavailableError("no DNS client to resolve the target's addresses")
         self._alive()
         answer = self.dns.query(host, "A")
+        if answer.rcode not in ("NOERROR", "NODATA"):
+            raise TestsslUnavailableError(
+                f"{host} could not be resolved ({answer.rcode}); testssl.sh was not started"
+            )
         addresses = list(dict.fromkeys(a for a in answer.records if _ipv4_literal(a)))
         if not addresses:
             raise TestsslArgumentRefusedError(
-                f"{host} has no IPv4 address; testssl.sh is run against IPv4 addresses only"
+                f"{host} has no IPv4 address (no A record; it may be IPv6-only); "
+                "testssl.sh is run against IPv4 addresses only"
             )
-        allow_non_global = self.lab_override is not None and self.lab_override.allow_non_global
+        allow_non_global = (
+            isinstance(self.lab_override, LabOverride) and self.lab_override.allow_non_global
+        )
         refused = [a for a in addresses if _not_global(a)]
         if refused and not allow_non_global:
             raise TestsslArgumentRefusedError(
@@ -573,7 +597,7 @@ class LiveTestsslClient:
         return addresses[:MAX_ADDRESSES], addresses[MAX_ADDRESSES:]
 
     def legacy_ciphers(self, host: str, port: int) -> LegacyCipherReport:
-        if self.lab_override is None:
+        if not isinstance(self.lab_override, LabOverride):
             raise TestsslNotPermittedError(
                 "not run: the dedicated-address condition is unproven. testssl.sh's "
                 "legacy-cipher tests can send hellos with no SNI, which on a shared address "
@@ -584,9 +608,16 @@ class LiveTestsslClient:
         per_address: dict[str, dict[str, LegacyCipherFinding]] = {}
         with _host_lock(host):
             for address in tested:
+                if not available():
+                    raise TestsslUnavailableError(
+                        f"testssl.sh {TESTSSL_VERSION} is not installed at {TESTSSL_PATH}. "
+                        "Run tools/fetch-testssl.sh first."
+                    )
                 self._alive()
                 if self.ratelimit is not None:
+                    # Can wait a long time; a kill set meanwhile must still stop the run.
                     self.ratelimit.acquire(host, float(TESTSSL_CONNECTION_BUDGET))
+                self._alive()
                 if self.cost is not None:
                     self.cost.record_request(TESTSSL_CONNECTION_BUDGET)
                 raw = _run_one(host, port, address, timeout_s=self.timeout_s, alive=self._alive)

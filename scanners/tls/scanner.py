@@ -797,7 +797,8 @@ class _Scan:
                 impact="Unknown. testssl.sh was not started, so the server was not observed.",
                 remediation=(
                     "Nothing to install: testssl.sh was refused for the reason above. If the "
-                    "name resolves only to a private or IPv6 address, that is why."
+                    "name resolves to any private or reserved address, or has no IPv4 "
+                    "address, that is why."
                 ),
             )
             return
@@ -812,16 +813,17 @@ class _Scan:
             )
             return
 
-        untested = report.addresses_untested
         for check_id in LEGACY_CIPHER_CHECK_IDS:
             finding = report.for_check(check_id)
+            tested, untested = report.coverage(CHECK_TO_TESTSSL_ID[check_id])
             if finding is not None and finding.vulnerable:
                 self._report_legacy_cipher(check_id, finding, report)
-            elif untested:
+            elif untested or not tested:
                 # D59, decision A: clean on the addresses tested is not clean for
-                # the host when some of its addresses were not tested.
+                # the host when some of its addresses were not tested, including
+                # an address whose run returned no verdict for this check.
                 self._legacy_inconclusive(
-                    self._partial_coverage(report),
+                    self._partial_coverage(tested, untested),
                     impact="Unknown for the addresses not tested.",
                     remediation="No change needed for the addresses tested.",
                     only=(check_id,),
@@ -837,15 +839,15 @@ class _Scan:
 
         return describe
 
-    def _partial_coverage(self, report: LegacyCipherReport) -> Callable[[str], str]:
-        tested, untested = report.addresses_tested, report.addresses_untested
-
+    def _partial_coverage(
+        self, tested: tuple[str, ...], untested: tuple[str, ...]
+    ) -> Callable[[str], str]:
         def describe(title: str) -> str:
             return (
                 f"The legacy-cipher check for {title} found nothing on the {len(tested)} "
-                f"addresses tested ({', '.join(tested)}), but {self.host} has {len(untested)} "
-                f"more that were not tested ({', '.join(untested)}); at most four addresses "
-                "are tested per host."
+                f"address(es) that returned a verdict ({', '.join(tested) or 'none'}), but "
+                f"{self.host} has {len(untested)} that were not tested or returned no verdict "
+                f"({', '.join(untested)}). At most four addresses are tested per host."
             )
 
         return describe

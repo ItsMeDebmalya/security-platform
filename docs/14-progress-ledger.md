@@ -1795,7 +1795,24 @@ The reviewer had no shared context and worked read-only on 37f9dd7. It called th
 - **badssl.com fixtures re-recorded under their own override:** identical verdicts and detail strings. Each host resolved to one address, which badssl.com operates for all its test names. The fixtures now also carry `addresses_tested`, `addresses_untested`, `per_address` and the override's reason.
 - **No corpus number moved.** tls goes to **1.4.2**, because live Standard output changed: the four checks are now `inconclusive` with a reason.
 
-**What we lose, plainly:** the four weak-cipher checks are unavailable against every customer until a dedicated address can be shown. That covers shared-hosted customers, and in practice everyone, since we cannot yet tell the two apart.
+**What we lose, plainly:** the four weak-cipher checks are unavailable against every customer until a dedicated address can be shown.
+
+**Independent review, round 1: NOT CLEAN, no blockers. Four should-fix items, all fixed test-first:**
+- **A run that returned no verdict counted as tested.** A testssl.sh fatal error on one of two addresses would have let the other's clean result read as `clear`. Coverage is now judged per check: an address with no verdict for a check is untested for it.
+- **The override test matched only a literal `LabOverride(...)` call, and the client only checked `is None`.** The walk now catches aliases, `getattr` strings, `lab_override=` keywords and assignments, and any import from `corpus/`. The client accepts only a real `LabOverride` instance.
+- **A kill set during the budget wait (17.5 s or more) still started testssl.sh.** The kill switch is now checked again after the wait.
+- **Two places claimed the CI pin fails on an over-budget measurement.** It cannot: the capture never records one. The capture itself fails loudly, and the CI pin catches a version change. Both places are reworded.
+
+Nits fixed:
+- teardown sends SIGKILL even if interrupted during the grace period;
+- a missing binary charges no budget;
+- a lookup failure (SERVFAIL, NXDOMAIN) is reported as one, not as "no IPv4 address";
+- the remediation says "any" private address, matching the code.
+
+Left as recorded:
+- the per-host lock and budget are keyed by name, so two names on one address are not jointly budgeted (D60/D61);
+- the guard checks that `--ip` is an IPv4 literal, but the global-address rule lives in the client, its only caller;
+- the budget wait holds the limiter's lock (pre-existing, longer now). That covers shared-hosted customers, and in practice everyone, since we cannot yet tell the two apart.
 
 ## 2026-10-10 · Handoff: open items and where to start
 

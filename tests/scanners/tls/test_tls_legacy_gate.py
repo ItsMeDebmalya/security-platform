@@ -129,6 +129,18 @@ def test_clean_on_four_of_six_addresses_is_not_clear_and_names_them():
     assert set(_outcomes(result).values()) == {"inconclusive"}
 
 
+def test_clean_where_one_address_gave_no_verdict_is_not_clear():
+    """Decision A: an address whose run produced nothing did not test the host."""
+    per = {"93.184.215.1": ALL_OK, "93.184.215.2": {}}
+    result = _scan(_Returns(_report(per)))
+
+    found = _legacy(result)
+    assert set(found) == set(LEGACY)
+    for f in found.values():
+        assert f.state == "inconclusive"
+        assert "93.184.215.2" in f.description
+
+
 @pytest.mark.parametrize("untested", [(), ("93.184.215.9",)])
 def test_a_vulnerable_address_is_reported_with_every_addresss_verdict(untested):
     vulnerable = dict(ALL_OK, RC4=LegacyCipherFinding("RC4", "HIGH", "VULNERABLE", "CVE-2013-2566"))
