@@ -221,8 +221,11 @@ class LabOverride:
     """Permission to run testssl.sh without proof of a dedicated address.
 
     For the lab capture and the corpus recordings against public test
-    endpoints only. Never constructed on a customer-facing code path; a test
-    walks `cli/`, `scanners/`, `core/`, `api/` and `web/` for any call to it.
+    endpoints only. Never reachable from a customer-facing code path: a test
+    walks `cli/`, `scanners/`, `core/` (outside this module), `api/` and `web/`
+    for any route to it (its name or an alias, an attribute or string naming
+    it, a `lab_override=` keyword or assignment, an import from `corpus/`),
+    and the client accepts only a real instance.
     `reason` is recorded in every fixture made under it.
     """
 
@@ -277,8 +280,11 @@ class LegacyCipherReport:
 
         An address whose run produced no verdict for the id (a testssl.sh
         fatal error, say) did not test it, so it counts as untested, as do
-        the addresses past `MAX_ADDRESSES` (D59, decision A). A report from
-        before D59 has no per-address record and reports full coverage."""
+        the addresses past `MAX_ADDRESSES` (D59, decision A). A report with no
+        per-address record returns its address lists as they are; one from
+        before D59 has none, so nothing counts as tested and every clean
+        check is `inconclusive`. That fails closed. Every fixture in the
+        corpus was re-recorded with per-address verdicts."""
         if not self.per_address:
             return self.addresses_tested, self.addresses_untested
         tested = tuple(
