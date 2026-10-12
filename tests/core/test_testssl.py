@@ -391,6 +391,11 @@ def test_the_guard_refuses_an_undeclared_argument_list(tmp_path, allowed) -> Non
         guard_invocation(argv, _valid_env(), allowed_args=allowed)
 
 
+def test_a_list_instead_of_a_tuple_is_a_refusal_not_a_crash(tmp_path) -> None:
+    with pytest.raises(RefusedError):
+        guard_invocation(_valid_argv(tmp_path), _valid_env(), allowed_args=list(EXPECTED_ARGS))
+
+
 def test_the_declared_lists_are_exactly_the_two_callers() -> None:
     from core.testssl import CROSSCHECK_ARGS, DECLARED_ARG_LISTS
 

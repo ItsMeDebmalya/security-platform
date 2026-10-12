@@ -234,7 +234,7 @@ def guard_invocation(
     `allowed_args` selects one of `DECLARED_ARG_LISTS`; anything else is
     refused. The default is the runtime wrapper's list.
     """
-    if allowed_args not in DECLARED_ARG_LISTS:
+    if not isinstance(allowed_args, tuple) or allowed_args not in DECLARED_ARG_LISTS:
         raise TestsslArgumentRefusedError(
             f"testssl.sh argument list is not a declared one: {allowed_args!r}"
         )

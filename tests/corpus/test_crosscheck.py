@@ -159,7 +159,7 @@ def test_the_crosscheck_invocation_is_its_declared_allowlist(monkeypatch) -> Non
     ((cmd, kwargs),) = calls
     assert crosscheck.CROSSCHECK_ARGS == ("--protocols", "--server-defaults", "--quiet")
     assert cmd[0] == str(TESTSSL_PATH)
-    assert tuple(cmd[1:4]) == crosscheck.CROSSCHECK_ARGS
+    assert tuple(cmd[1:4]) == ("--protocols", "--server-defaults", "--quiet")
     assert cmd[4] == "--jsonfile-pretty" and cmd[6] == "localhost:8443" and len(cmd) == 7
     assert set(kwargs["env"]) == set(TESTSSL_ENV_KEYS)
     assert kwargs["stdin"] is subprocess.DEVNULL
