@@ -519,10 +519,12 @@ def _execute(
         # Standard mode only pays for it - the TLS scanner's own mode gate
         # (`if self.mode == "standard"`) is what keeps Light free of the cost;
         # this client is wired unconditionally because it is only ever invoked
-        # by a check declared `mode="standard"`. D59: no lab override here, ever,
-        # so the four checks report "not run: dedicated-address condition
-        # unproven" until that condition can be established. ScanContext hands
-        # the client this scan's resolver, scope, kill switch and limiter.
+        # by a check declared `mode="standard"`. D59: `scan run` never gives it a
+        # lab override, so for customers the four checks report "not run:
+        # dedicated-address condition unproven". Only the lab entry point's
+        # `address_policy` carries one, for inventory boxes (ADR-036 decision 10).
+        # ScanContext hands the client this scan's resolver, scope, kill switch,
+        # limiter and address policy.
         testssl_client = LiveTestsslClient()
 
     # Two limiters, because they protect different things: the target host

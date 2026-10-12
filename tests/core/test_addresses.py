@@ -298,6 +298,13 @@ def test_a_lab_override_cannot_name_a_network_outside_the_declared_lab_networks(
         LabOverride(reason="unit test", networks=(network,))
 
 
+def test_a_lab_network_written_with_host_bits_is_refused_not_widened() -> None:
+    """`127.5.5.5/8` is a typo for something; normalising it to all of 127/8
+    would widen the lab silently (review of the lab entry point, round 1)."""
+    with pytest.raises(ValueError):
+        LabOverride(reason="unit test", networks=("127.5.5.5/8",))
+
+
 def test_the_declared_lab_networks_are_loopback_only_until_step_3() -> None:
     from core.addresses import LAB_NETWORKS
 

@@ -44,6 +44,15 @@ def _write(tmp_path: Path, body: str) -> Path:
 
 
 @pytest.mark.parametrize(
+    "body",
+    ["- {name: localhost, address: 127.0.0.1}\n", "boxes:\n  - {name: localhost}\n", "boxes: 7\n"],
+)
+def test_an_inventory_of_the_wrong_shape_is_a_clear_error(tmp_path, body) -> None:
+    with pytest.raises(ValueError, match="inventory"):
+        lab.load_inventory(_write(tmp_path, body))
+
+
+@pytest.mark.parametrize(
     ("body", "why"),
     [
         ("boxes:\n  - {name: web.lab.test, address: 93.184.215.14}\n", "global"),
@@ -195,35 +204,68 @@ LAB_ONLY = {"address_policy", "wrap_resolver"}
 SOURCE_DIRS = ("cli", "scanners", "core", "api", "web", "corpus", "tools")
 
 
-def _execute_calls() -> Iterator[tuple[Path, ast.Call]]:
-    for top in SOURCE_DIRS:
-        for path in (ROOT / top).rglob("*.py") if (ROOT / top).exists() else []:
-            for node in ast.walk(ast.parse(path.read_text())):
-                if not isinstance(node, ast.Call):
-                    continue
-                func = node.func
-                name = func.id if isinstance(func, ast.Name) else getattr(func, "attr", None)
-                if name == "_execute":
-                    yield path, node
+def _lab_parameter_uses(rel: str, tree: ast.AST) -> list[str]:
+    """Every way a module could hand `_execute` the lab parameters, or reach
+    `_execute` other than by calling it directly: the keywords themselves, a
+    keyword splat into a call to it, an alias or reference to it (a
+    `functools.partial`, a variable), an import under another name, or a
+    string naming it (`getattr`). Review of the lab entry point, round 1."""
+    uses = []
+    direct = {
+        id(node.func)
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and (getattr(node.func, "id", None) or getattr(node.func, "attr", None)) == "_execute"
+    }
+    for node in ast.walk(tree):
+        if isinstance(node, ast.keyword) and node.arg in LAB_ONLY and rel != "corpus/lab/scan.py":
+            uses.append(f"{rel}:{node.value.lineno} keyword {node.arg}")
+        elif isinstance(node, ast.Call) and id(node.func) in direct:
+            if any(k.arg is None for k in node.keywords) and rel != "corpus/lab/scan.py":
+                uses.append(f"{rel}:{node.lineno} keyword splat into _execute")
+        elif isinstance(node, ast.Name | ast.Attribute):
+            name = node.id if isinstance(node, ast.Name) else node.attr
+            if name == "_execute" and id(node) not in direct and rel != "cli/main.py":
+                uses.append(f"{rel}:{node.lineno} reference to _execute that is not a call")
+        elif isinstance(node, ast.ImportFrom):
+            for alias in node.names:
+                if alias.name == "_execute" and alias.asname not in (None, "_execute"):
+                    uses.append(f"{rel}:{node.lineno} _execute imported as {alias.asname}")
+        elif isinstance(node, ast.Constant) and node.value == "_execute":
+            uses.append(f"{rel}:{node.lineno} string naming _execute")
+    return uses
 
 
 def test_only_the_lab_entry_point_passes_the_lab_parameters_to_execute() -> None:
     """Condition 1: the design is safe only while `scan run` cannot reach these
-    two parameters. Checked at the source, not only by behaviour: no call to
-    `_execute` outside `corpus/lab/scan.py` names them or splats keywords."""
+    two parameters. Checked at the source, not only by behaviour."""
     offenders = []
-    lab_calls = 0
-    for path, call in _execute_calls():
-        rel = path.relative_to(ROOT).as_posix()
-        names = {k.arg for k in call.keywords}
-        splat = any(k.arg is None for k in call.keywords)
-        if rel == "corpus/lab/scan.py":
-            lab_calls += 1
-            continue
-        if splat or names & LAB_ONLY:
-            offenders.append(f"{rel}:{call.lineno}")
+    for top in SOURCE_DIRS:
+        for path in (ROOT / top).rglob("*.py") if (ROOT / top).exists() else []:
+            rel = path.relative_to(ROOT).as_posix()
+            offenders += _lab_parameter_uses(rel, ast.parse(path.read_text()))
     assert offenders == []
-    assert lab_calls == 1
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "from cli.main import _execute\nex = _execute\nex(address_policy=1)",
+        "import functools\nfrom cli.main import _execute\n"
+        "functools.partial(_execute, wrap_resolver=2)()",
+        "import cli.main as main\ngetattr(main, '_execute')(address_policy=3)",
+        "from cli.main import _execute as run\nrun(scanner_name='web')",
+        "from cli.main import _execute\n_execute(**options)",
+        "anything(wrap_resolver=f)",
+    ],
+)
+def test_the_source_check_catches_indirect_routes(source) -> None:
+    assert _lab_parameter_uses("cli/elsewhere.py", ast.parse(source))
+
+
+def test_the_source_check_allows_the_lab_entry_point_its_one_call() -> None:
+    source = (ROOT / "corpus" / "lab" / "scan.py").read_text()
+    assert _lab_parameter_uses("corpus/lab/scan.py", ast.parse(source)) == []
 
 
 def test_the_lab_parameters_are_keyword_only_and_default_to_none() -> None:

@@ -100,8 +100,15 @@ class _LabResolver:
 def load_inventory(path: Path) -> Inventory:
     """Read and check the inventory. Any entry outside the rules is refused."""
     data = yaml.safe_load(path.read_text()) or {}
+    boxes = data.get("boxes") if isinstance(data, dict) else None
+    if not isinstance(boxes, list) or not all(
+        isinstance(b, dict) and {"name", "address"} <= set(b) for b in boxes
+    ):
+        raise ValueError(
+            f"{path}: the lab inventory must be `boxes:`, a list of {{name, address}} entries"
+        )
     entries: dict[str, str] = {}
-    for box in data.get("boxes") or []:
+    for box in boxes:
         name = str(box["name"]).strip().lower().rstrip(".")
         address = str(ipaddress.ip_address(str(box["address"])))
         if not _reserved(name):
@@ -138,8 +145,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--scope-file", type=Path, default=SCOPE_PATH)
     args = parser.parse_args(argv)
 
-    inventory = load_inventory(INVENTORY)
     try:
+        inventory = load_inventory(INVENTORY)
         target = Asset(type=_as_target_type(args.target_type), value=args.target)
     except ValueError as exc:
         _echo(f"error: {exc}")

@@ -245,7 +245,8 @@ class LabOverride:
         if not self.reason.strip():
             raise ValueError("a lab override must say why it is being used")
         for network in self.networks:
-            parsed = ipaddress.ip_network(network, strict=False)
+            # Strict: `127.5.5.5/8` is refused, never silently widened to 127/8.
+            parsed = ipaddress.ip_network(network)
             if not _within_lab_networks(parsed):
                 raise ValueError(
                     f"{network} is not inside a declared lab network "

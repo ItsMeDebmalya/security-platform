@@ -158,6 +158,20 @@ DEFINED_IN = ROOT / "core" / "addresses.py"
 """D60: the one override lives in the one address policy (ADR-036)."""
 
 
+def _imports_outside_corpus(call: ast.Call) -> bool:
+    """Whether an import-by-string call names a module path that starts, in
+    its literal text, with a package other than `corpus`."""
+    if not call.args:
+        return False
+    first = call.args[0]
+    if isinstance(first, ast.JoinedStr) and first.values:
+        first = first.values[0]
+    if not (isinstance(first, ast.Constant) and isinstance(first.value, str)):
+        return False  # dynamic: cannot be shown not to reach corpus/
+    head = first.value.split(".", 1)[0]
+    return bool(head) and head != "corpus" and "." in first.value
+
+
 def _override_uses(tree: ast.AST) -> list[tuple[int, str]]:
     """Any way a module could reach a lab override: the name (called, aliased
     or referenced), an attribute or `getattr` string naming it, a
@@ -177,6 +191,16 @@ def _override_uses(tree: ast.AST) -> list[tuple[int, str]]:
             uses.append((node.lineno, f"import from {node.module}"))
         elif isinstance(node, ast.ImportFrom) and any(a.name == "LabOverride" for a in node.names):
             uses.append((node.lineno, "import LabOverride"))
+        elif (
+            isinstance(node, ast.Call)
+            and (getattr(node.func, "id", None) or getattr(node.func, "attr", None))
+            in ("import_module", "__import__")
+            and not _imports_outside_corpus(node)
+        ):
+            # An import by string could reach `corpus/` past the import checks
+            # (review of the lab entry point, round 1). Allowed only when the
+            # module path visibly starts elsewhere (core's scanner discovery).
+            uses.append((node.lineno, "import by string"))
         elif isinstance(node, ast.Import) and any(
             a.name.split(".")[0] == "corpus" for a in node.names
         ):
@@ -207,6 +231,9 @@ def test_no_customer_facing_code_path_can_reach_the_lab_override() -> None:
         "from corpus.generators.testssl import OVERRIDE",
         "HttpClient(scope=s, addresses=AddressPolicy(lab_override=o))",
         "client.lab_override = something",
+        "import importlib\nimportlib.import_module('corpus.lab.scan')",
+        "__import__('corpus.generators.testssl')",
+        "import importlib\nimportlib.import_module(name)",
     ],
 )
 def test_the_walk_catches_indirect_routes(source) -> None:
@@ -218,7 +245,7 @@ def test_anything_but_a_real_lab_override_is_not_permission(runs) -> None:
 
     c = client(override=False)
     c.addresses = SimpleNamespace(  # type: ignore[assignment]
-        lab_reason="x", lab_override=SimpleNamespace(reason="x", allow_non_global=True)
+        lab_reason="x", lab_override=SimpleNamespace(reason="x", networks=("127.0.0.1/32",))
     )
     with pytest.raises(NotPermittedError):
         c.legacy_ciphers("example.test", 443)
