@@ -912,7 +912,7 @@ In both cases the parser, the scope rule and the gate each did their job. The ga
 
 **Status.** Accepted 2026-10-12 (operator, approved by the operator's senior). Scope: [docs/24-alpha-scope.md](24-alpha-scope.md). Report: [docs/25-alpha-report-spec.md](25-alpha-report-spec.md). Working build plan: [docs/26-alpha-build-sequence.md](26-alpha-build-sequence.md).
 
-**Context.** [The v4 roadmap](19-v4-roadmap.md) defined the MVP as Phase 1. That meant defensive scanning at Light and Standard depth, accounts and the dashboard, and it explicitly excluded the Linux agent (§2), which it placed in Phase 2 (§3). The operator's release roadmap also placed the agent after 1.0. That document is not in this repository. To ship sooner, the operator and their senior have chosen a narrower first release that adds one thing the MVP excluded: assessing the company's own server fleet from the inside.
+**Context.** [The v4 roadmap](19-v4-roadmap.md) defined the MVP as Phase 1. That meant defensive scanning at Light and Standard depth, accounts and the dashboard, and it explicitly excluded the Linux agent (§2), which it placed in Phase 2 (§3). The release roadmap of 2026-10-06, now archived at [docs/archive/release-roadmap-2026-10-06.md](archive/release-roadmap-2026-10-06.md), also excluded the agent from the MVP (§2) and Beta (§4), and placed it **Post-1.0** (§6, 2028 H2). That roadmap's Alpha was Light-only demand validation (§3). Its §10, lever 4, allowed deferring Tool 4b "only with a deliberate decision record". This ADR is that record. To ship sooner, the operator and their senior have chosen a narrower first release that adds one thing the MVP excluded: assessing the company's own server fleet from the inside.
 
 **Decision.**
 1. **One combined Alpha release.** It has two parts, which ship together:
@@ -920,7 +920,7 @@ In both cases the parser, the scope rule and the gate each did their job. The ga
    - **Assessment of our internal server fleet,** covered by one internal written authorisation obtained before the first production server.
 
    A combined release ships when its slowest part, the agent, is ready. The agent therefore runs on lab boxes and a few internal servers before launch, as internal validation.
-2. **The Linux agent moves into Alpha.** This supersedes the v4 roadmap's exclusion of the agent from the MVP (§2) and its Phase 2 placement (§3), and the release roadmap's post-1.0 placement.
+2. **The Linux agent moves into Alpha.** This supersedes the v4 roadmap's exclusion of the agent from the MVP (§2) and its Phase 2 placement (§3), and the release roadmap's Post-1.0 placement ([docs/archive/release-roadmap-2026-10-06.md](archive/release-roadmap-2026-10-06.md), §6).
    - **For Alpha the agent is read-only:** a one-shot collector of facts, with judgements made on the platform. Its architecture is decided separately in ADR-034 ([docs/26](26-alpha-build-sequence.md), Step 2).
    - **Its modules and rules are in [docs/24 §5](24-alpha-scope.md):** each must fire on a real positive on a lab box before it reaches the fleet, it collects minimum data, secrets are reported by type only, and it suggests fixes but never applies them.
 3. **No new external scanners for Alpha.** The four shipped scanners (email, tls, domscout, web) are the external surface. New value goes into the agent's modules, where the inside view explains the outside one.
@@ -934,9 +934,21 @@ In both cases the parser, the scope rule and the gate each did their job. The ga
    - **What this departs from:** [ADR-020](#adr-020--amends-adr-014-what-we-claim-now-that-the-ground-has-moved) adopted "AI and agent exposure" as one of the four claims we make, and [the roadmap](03-roadmap.md) counts Tool 4 as done only when 4a and 4b have both shipped.
    - **Why:** the Alpha's new capability is the inside view. The capacity Tool 4b needs, a new external detection surface with its own passivity ADR, corpus and live verification, goes into the agent modules instead (decision 3). The claim cannot ship before Tool 4b exists, and none of ADR-020's foundation costs for it has been paid.
    - **What does not change:** the claim is not withdrawn. ADR-020 stands, and Tool 4b stays on the roadmap after Alpha. Until it ships, nothing customer-facing (the features page, reports, sales material) may present AI and agent exposure as available.
+   - **Phase 1 stays open until Tool 4b ships.** [The roadmap](03-roadmap.md)'s Phase 1 exit criterion (Tool 4 counts only when 4a and 4b have both shipped) is **not rewritten**. Planning is now driven by [docs/26](26-alpha-build-sequence.md), the Alpha build sequence, so an open Phase 1 blocks nothing in it.
+7. **Terminology: "AI and agent exposure" is not "the agent".** "AI and agent exposure" (Tool 4b) means AI agents exposed on a target's website: MCP servers, agent panels, model endpoints. It is unrelated to **"the agent"**, our read-only Linux collector. No customer-facing material may use one term in a way that suggests the other. For example, Alpha material must never imply that the Linux agent detects AI agents, or that Tool 4b installs anything.
+8. **Who may run what in the customer Alpha.** "Light only" in the scope documents meant **no authorisation needed**, not literally `mode=light`. The boundary, set by the operator on 2026-10-12 from the per-check evidence in the ledger's ADR-033 entry, is:
+
+   | Who | Checks | In Alpha |
+   |---|---|---|
+   | Anyone, any domain | **Light checks only** | Yes |
+   | **Owner verified by DNS TXT** ([docs/09](09-ownership-verification.md)) | **Light + passive Standard checks**: email's 10 Standard checks, and tls's Standard checks **except the four testssl.sh checks** (`tls-vuln-rc4`, `-sweet32`, `-freak`, `-logjam`). Those send active probes today (ledger **D56**) and return to this tier only once D56 is fixed | Yes |
+   | **Signed agreement** | Deep and offensive | No: after Alpha |
+
+   - **This is stricter than the code today.** All 21 Standard checks are declared passive, so `core/authz.py` grants a Standard scan with **no record at all** (D27). The verified-owner requirement is a **product policy** enforced where customers launch scans: the API boundary ([docs/26](26-alpha-build-sequence.md), Step 7). It must be in place before any customer can run Standard. Until then, customer scans are Light only.
+   - [ADR-023](#adr-023--passive-is-ordinary-negotiation-only-malformed-input-is-active)'s classification is unchanged. These checks are still passive; ADR-033 decides only who may ask for them.
 
 **What is unchanged.**
-- Customer scanning in Alpha is **Light only**. Standard-mode checks, deep and offensive scanning, and the authorisation that gates them come after Alpha. That authorisation is DNS-TXT verification plus the signed agreement whose contents are listed in [docs/24 §8](24-alpha-scope.md).
+- **Deep and offensive scanning, and the signed agreement that gates it** (contents in [docs/24 §8](24-alpha-scope.md)), come after Alpha. DNS-TXT ownership verification is needed in Alpha only for the passive Standard tier (decision 8).
 - The accuracy rules, the corpus gates, ADR-017 live verification, the ADR-003 licence rule and the extend-don't-rebuild rule all apply to the agent and its `host` scanner exactly as they do to the four scanners.
 - **External items owned by the operator's senior, not by engineering:** account management (Chargebee) and the authorisation agreement.
 
@@ -944,7 +956,8 @@ In both cases the parser, the scope rule and the gate each did their job. The ga
 - **The Scanner Contract needs one additive migration first** ([docs/26](26-alpha-build-sequence.md), Step 1). It adds a `host` target type, vantage and mode tags, finding links (the basis for inside-out correlation), and state-affecting fields defined now to avoid a second migration. That migration gets its own ADR and an independent review.
 - **The agent is a new attack surface on our own hosts.** It runs fixed, allowlisted, read-only commands with no shell, and it never runs as a service in Alpha.
 - **The Alpha estimate** is about 7–9 months for one engineer ([docs/26](26-alpha-build-sequence.md)). A second engineer, or the module fallback (modules 1, 2 and 4), shortens it.
-- **Tool 4b's absence is visible.** The Phase 1 exit criterion in [the roadmap](03-roadmap.md) cannot be met as written until Tool 4b ships after Alpha.
+- **Tool 4b's absence is visible.** The Phase 1 exit criterion in [the roadmap](03-roadmap.md) cannot be met as written until Tool 4b ships after Alpha. Phase 1 stays open by decision 6, and that blocks nothing in docs/26.
+- **The verified-owner Standard tier needs D56 fixed** before the four testssl.sh checks can join it, and an API-level gate before any customer can run Standard.
 
 **Rejected.**
 - **Two separate releases** (customer first, fleet later): the operator chose one combined release.

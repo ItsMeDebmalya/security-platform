@@ -605,4 +605,9 @@ Then restore the entry-point lines in `CLAUDE.md` and `SPEC.md`, and the revert 
 - docs/19 gains a banner. SPEC.md gains a pointer and its "4b next" lines are corrected. docs/03's 4b row points to ADR-033. CLAUDE.md's CURRENT STATE is updated.
 
 **Revert.** Delete ADR-033 and the three documents, and remove the banner and pointers. docs/19's original MVP line then applies again.
+- **Amended before merge (operator review, 2026-10-12):**
+  - the release roadmap is archived at `docs/archive/release-roadmap-2026-10-06.md` with an ARCHIVED banner, and ADR-033 cites it;
+  - ADR-033 adds the terminology rule, records that Phase 1 stays open (docs/26 drives planning), and sets the customer boundary: Light for any domain, Light plus passive Standard for DNS-TXT-verified owners (the four testssl.sh checks excluded until D56), and deep only by signed agreement after Alpha;
+  - docs/21 is regenerated from the code (email: 20 checks; the D35 contradiction fixed; D56 caveats);
+  - docs/24 and docs/25 are re-reconciled.
 

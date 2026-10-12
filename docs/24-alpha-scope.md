@@ -24,7 +24,7 @@ We are prioritising an **Alpha release to accelerate deployment**. External requ
 ## 2. What exists today (honest baseline)
 
 - **Four accuracy-gated scanners:** Email, TLS, DNS/Subdomain, Web (Light).
-- All checks are **passive**: they read public information, change nothing, and need no authorisation. Most run in Light mode. Email and TLS add further checks in Standard mode, which are passive too (ADR-023), and the customer Alpha does not run them (Light only). *(Corrected 12 October 2026 against [the scanner catalogue](21-scanner-catalogue.md): not every check is Light.)*
+- The checks read public information and change nothing. Most run in **Light** mode. Email and TLS add **Standard** checks that are declared passive too (ADR-023). **One exception:** four TLS checks run through testssl.sh currently send active probes (ledger D56) and are held out until that is fixed. *(Corrected 12 October 2026 against [the regenerated scanner catalogue](21-scanner-catalogue.md): not every check is Light, and not every check is passive in practice.)*
 - A **shared core**: evidence store, confidence scoring (separate from severity), honest finding states (incl. "inconclusive"), validation, kill switch, rate limiting, secret redaction, an authorisation gate.
 - A completed **correctness audit**: 0 checks known to make false claims (0 BROKEN), and every change to the shared core independently reviewed before merge. *(Corrected 12 October 2026: scanner-only fixes such as D53 are reviewed only when they touch the core, by the operator's rule.)*
 
@@ -36,7 +36,11 @@ We are prioritising an **Alpha release to accelerate deployment**. External requ
 
 One release containing:
 
-- **Customer-facing scanning (Light only):** self-service Light scans via the dashboard, accounts (Chargebee), shareable reports. Light scanning is passive and needs no signed agreement. Deep/offensive scanning, and the authorisation that gates it, follow after Alpha.
+- **Customer-facing scanning, no signed agreement needed** ([ADR-033](02-decisions.md#adr-033--mvp-alpha-scope-one-combined-release-the-linux-agent-moves-into-alpha-tool-4b-deferred), decision 8):
+  - **any domain:** Light checks only;
+  - **an owner verified by DNS TXT:** Light plus the passive Standard checks (the four testssl.sh checks are excluded until D56 is fixed).
+
+  Self-service via the dashboard, accounts (Chargebee), shareable reports. Deep/offensive scanning, and the signed agreement that gates it, follow after Alpha. *(Clarified 12 October 2026: "Light only" meant "no authorisation needed", not literally Light mode.)*
 - **Server assessment for Codezin's own fleet:** the read-only agent with the modules in Section 5, covered by one internal written authorisation.
 
 **Note on timing:** a combined release ships when its slowest component (the agent) is ready. To keep momentum, the agent runs on lab boxes and a few internal servers **before** launch as internal validation; everything is then released together.

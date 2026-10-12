@@ -412,7 +412,7 @@ Verified against the repo and `make corpus` (2026-10-07) — see the run at the 
 | A4 Domain & Subdomain Enum (`domscout`) | **Shipped (Light) v1.3.2 — live-verified (expiry at three registries, D28; DNSSEC on a subdomain, D53); operator domains B/C + coverage owed** | precision ≥0.95, recall ≥0.80, inconc ≤0.15 | 1.000 / 1.000, 60 checks, 3.3% inconclusive, 18 not applicable, **1 claim**, PASS (v1.3.2; corpus unchanged from v1.3.1) |
 | A5 Deface Monitoring | Not built | not yet set | — |
 | A6 API Scanner | Not built | not yet set | — |
-| A7 Email Security | **Shipped** | precision ≥0.99, recall ≥0.95, inconc ≤0.15 | 1.000 / 1.000, 449 checks, 33 claims, 0.7% inconc, PASS (v1.5.1, 2026-10-10; the row last showed v1.5.0's 442/30). Live (run 2): 0.965 over 144 claims, before D44/D45 were fixed. **Not quotable: corpus-validated, live-unverified (D35)** |
+| A7 Email Security | **Shipped** | precision ≥0.99, recall ≥0.95, inconc ≤0.15 | 1.000 / 1.000, 449 checks, 33 claims, 0.7% inconc, PASS (v1.5.1, 2026-10-10; the row last showed v1.5.0's 442/30). Live (run 2): 0.965 over 144 claims, before D44/D45 were fixed. Live-verified in email run 2 (D35 closed 2026-10-08) *(corrected 2026-10-12: this row still called it live-unverified)* |
 | A8 Container Scanner | Not built | not yet set | — |
 | A9 Supply Chain Scanner | Not built | not yet set | — |
 | A10 Cloud CSPM | Not built | not yet set | — |
