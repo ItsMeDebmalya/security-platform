@@ -673,3 +673,14 @@ Then restore the entry-point lines in `CLAUDE.md` and `SPEC.md`, and the revert 
 - **Ledger:** D59 fixed; D60 (SSRF, platform-wide address policy, owed; supersedes D59's local refusal); D61 (no address-level scope check exists anywhere).
 
 **Revert.** Revert the merge commit. That restores testssl.sh's own DNS, every-address testing and the unkillable subprocess; the four checks would then run for verified owners again, which ADR-033 decision 8 no longer permits, so hold them out by policy until the condition can be established.
+
+## v4.0-pre.23 — The scanner catalogue records availability separately from verification (2026-10-12)
+
+**What changed. Docs only: no code, no scanner version and no corpus number changed.**
+- **[docs/21](21-scanner-catalogue.md):** every check gains an **Availability** column: "available", or "unavailable" with the reason. The four testssl.sh checks are *unavailable: consent condition unproven* (D59). Their Status column is unchanged, because status records whether a check fires correctly on real evidence, and three of the four did. The `tls-weak-cipher` row no longer says those suites are covered for customers.
+- **[SPEC.md](../SPEC.md)** standing figure: 68 checks: 42 WORKING, 0 BROKEN, 26 UNDETERMINED; 4 unavailable to customers (3 WORKING, 1 UNDETERMINED). CLAUDE.md mirrors it.
+- **[docs/24](24-alpha-scope.md) Section 2** names the four checks and says no customer-facing check detects those weak ciphers today.
+- **Ledger:** a dated entry for the change, and **D62** (a finding: the HTTP client trusts the process environment's proxy and trust-anchor settings; fixed in D60).
+
+**Revert.** Revert the merge commit. That drops the Availability column and the figure's second sentence; the four checks would again read as available to customers, which they are not.
+
