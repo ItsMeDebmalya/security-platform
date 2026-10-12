@@ -588,7 +588,7 @@ class SystemTlsBackend:
             return False, None, f"connect_error:{exc.strerror or exc}"
 
 
-POLICY_ERRORS = ("address_refused:", "address_unresolved:")
+POLICY_ERRORS = ("address_refused:", "address_unresolved:", "address_lookup_failed:")
 """D60: a handshake the address policy stopped before any socket was opened."""
 
 
@@ -787,7 +787,8 @@ class TlsClient:
             except AddressRefusedError as exc:
                 error = f"address_refused:{exc.summary}"
             except AddressUnresolvedError as exc:
-                error = f"address_unresolved:{exc}"
+                prefix = "address_lookup_failed" if exc.lookup_failed else "address_unresolved"
+                error = f"{prefix}:{exc}"
             if error is not None:
                 refused = RawHandshake(
                     reachable=False, observed_at=dt.datetime.now(dt.UTC), error=error

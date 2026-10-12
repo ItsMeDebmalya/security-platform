@@ -1904,6 +1904,17 @@ The round-1 fixes were checked, and the whole change re-read. All fixes are test
   - a replayed refusal takes one rate-limit token the live refusal did not;
   - a request can take one connect timeout per checked address, as before D60, with the kill switch checked before the request, not between addresses.
 
+## 2026-10-12 · Independent review of D60, round 4: NOT CLEAN, no blockers, fixed
+
+- **SHOULD-FIX: tls called a failed lookup a missing record.** The round-3 wording ("since it does not resolve", "it needs an A or AAAA record") was used for TIMEOUT and SERVFAIL too. Those say nothing about whether the name has records (`core/dns.py`: a failed lookup is not a missing record). A transient resolver failure would have told a customer their working site had no DNS records. Fix, test-first:
+  - `AddressUnresolvedError.lookup_failed` marks any family that failed to answer; NXDOMAIN counts as a definite answer;
+  - tls uses a separate prefix (`address_lookup_failed:`) and wording ("may be temporary or a DNS fault… scan again later");
+  - an HTTP recording keeps the flag through replay.
+- **Nits:**
+  - the runbook now quotes the current tls message;
+  - ADR-036's no-resolver sentence is scoped to what the code does: HTTP and TLS clients, with web and tls letting it through. testssl.sh's client keeps its own `inconclusive`.
+  - **Recorded as a follow-up, not fixed here:** domscout's `except Exception` handlers would turn `ResolverNotWiredError` into an `inconclusive`, as they already do a missing fixture (the shape recorded under Tool 4a's planning). Fixing it means touching a validated scanner's handlers, so it is its own change. It cannot be reached from `cli/main.py`.
+
 ## 2026-10-10 · Handoff: open items and where to start
 
 *For a new session with no chat history. State as of PR #32, with the operator's decisions of 2026-10-10 below. Each item links to where it is owned.*

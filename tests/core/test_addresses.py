@@ -224,6 +224,16 @@ def test_a_lookup_failure_is_unresolved_and_says_which(rcode) -> None:
 def test_a_name_with_no_address_records_is_unresolved() -> None:
     with pytest.raises(AddressUnresolvedError, match="no A or AAAA"):
         AddressPolicy().pin("example.test", FakeDns({}))
+    with pytest.raises(AddressUnresolvedError) as caught:
+        AddressPolicy().pin("example.test", FakeDns({}))
+    assert caught.value.lookup_failed is False
+
+
+def test_a_failed_lookup_is_marked_as_one() -> None:
+    dns = FakeDns({("example.test", "A"): "TIMEOUT", ("example.test", "AAAA"): "SERVFAIL"})
+    with pytest.raises(AddressUnresolvedError) as caught:
+        AddressPolicy().pin("example.test", dns)
+    assert caught.value.lookup_failed is True
 
 
 def test_one_family_failing_still_pins_the_other() -> None:
@@ -272,3 +282,10 @@ def test_only_a_real_lab_override_is_accepted() -> None:
 def test_a_lab_override_must_say_why() -> None:
     with pytest.raises(ValueError):
         LabOverride(reason="  ")
+
+
+def test_nxdomain_is_a_definite_answer_not_a_failed_lookup() -> None:
+    dns = FakeDns({("example.test", "A"): "NXDOMAIN", ("example.test", "AAAA"): "NXDOMAIN"})
+    with pytest.raises(AddressUnresolvedError, match="NXDOMAIN") as caught:
+        AddressPolicy().pin("example.test", dns)
+    assert caught.value.lookup_failed is False

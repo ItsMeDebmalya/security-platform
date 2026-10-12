@@ -70,3 +70,22 @@ def test_a_name_that_does_not_resolve_gets_dns_advice_not_firewall_advice() -> N
     assert "address_unresolved:" not in finding.description
     assert "firewall" not in finding.remediation
     assert "DNS" in finding.remediation
+
+
+def test_a_failed_lookup_is_not_called_a_missing_record() -> None:
+    """Review round 4: a TIMEOUT or SERVFAIL says nothing about whether the name
+    has records (core/dns.py: a failed lookup is not a missing record)."""
+    from core.dns import DnsResponse
+
+    class Failing:
+        def query(self, name, rrtype, *, resolver=None):
+            return DnsResponse(name, rrtype, "SERVFAIL", [])
+
+    ctx = ScanContext(dns=Failing(), tls=TlsClient(scope=Scope(frozenset({"example.test"}))))
+    [finding] = (
+        TlsScanner().run(Asset(type="url", value="https://example.test"), "light", ctx).findings
+    )
+    assert "SERVFAIL" in finding.description
+    assert "does not resolve" not in finding.impact
+    assert "needs an A or AAAA record" not in finding.remediation
+    assert "again" in finding.remediation

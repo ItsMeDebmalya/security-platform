@@ -365,7 +365,7 @@ class RecordingHttpBackend:
         if isinstance(exc, AddressRefusedError):
             refusal = {"host": exc.host, "refused": exc.refused, "literal": exc.literal}
         else:
-            refusal = {"unresolved": str(exc)}
+            refusal = {"unresolved": str(exc), "lookup_failed": exc.lookup_failed}
         # Redacted at capture, like every other fixture (ADR-028; review of D60,
         # round 2): a refused redirect's URL can carry a token.
         stored_url = redact_text(url)[0] or url
@@ -407,7 +407,9 @@ class ReplayHttpBackend:
         if refusal is not None:
             # D60: recorded as stopped by the address policy; nothing was sent.
             if "unresolved" in refusal:
-                raise AddressUnresolvedError(refusal["unresolved"])
+                raise AddressUnresolvedError(
+                    refusal["unresolved"], lookup_failed=refusal.get("lookup_failed", False)
+                )
             raise AddressRefusedError(
                 refusal["host"], refusal["refused"], literal=refusal.get("literal", False)
             )

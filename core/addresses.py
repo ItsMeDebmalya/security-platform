@@ -166,6 +166,13 @@ class AddressRefusedError(PermissionError):
 class AddressUnresolvedError(ConnectionError):
     """The name gave us no address we could check, so nothing was sent."""
 
+    def __init__(self, message: str, *, lookup_failed: bool = False) -> None:
+        super().__init__(message)
+        self.lookup_failed = lookup_failed
+        """True when a lookup failed (TIMEOUT, SERVFAIL...), which says nothing
+        about whether the name has records; False when the answers were
+        definite and held no address (review of D60, round 4)."""
+
 
 class ResolverNotWiredError(RuntimeError):
     """A connecting client was given no resolver: our wiring bug, never a fact
@@ -273,7 +280,10 @@ class AddressPolicy:
             if failures:
                 raise AddressUnresolvedError(
                     f"{name} could not be resolved ({', '.join(failures)}), "
-                    "so nothing was connected to"
+                    "so nothing was connected to",
+                    # NXDOMAIN is a definite "no such name"; anything else
+                    # (TIMEOUT, SERVFAIL, REFUSED) failed to answer at all.
+                    lookup_failed=any(not f.endswith(" NXDOMAIN") for f in failures),
                 )
             raise AddressUnresolvedError(
                 f"{name} has no A or AAAA record, so there is no address to connect to"

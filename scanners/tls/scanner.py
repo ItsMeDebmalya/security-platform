@@ -71,6 +71,7 @@ from scanners.tls.checks import requires_authorisation as _requires_authorisatio
 NO_VERDICT_FOR_ERROR = {
     "address_refused": "blocked_prerequisite",
     "address_unresolved": "blocked_prerequisite",
+    "address_lookup_failed": "blocked_prerequisite",
     "timeout": "timeout",
     "connect_error": "blocked_prerequisite",
     "tls_error": "ambiguous_response",
@@ -259,7 +260,10 @@ class _Scan:
             self._address_refused(error.removeprefix("address_refused:"))
             return
         if error.startswith("address_unresolved:"):
-            self._unresolved(error.removeprefix("address_unresolved:"))
+            self._unresolved(error.removeprefix("address_unresolved:"), lookup_failed=False)
+            return
+        if error.startswith("address_lookup_failed:"):
+            self._unresolved(error.removeprefix("address_lookup_failed:"), lookup_failed=True)
             return
 
         self._emit(
@@ -288,9 +292,30 @@ class _Scan:
             CheckRun(check_id="tls-no-handshake", location=self._location(), outcome="inconclusive")
         )
 
-    def _unresolved(self, why: str) -> None:
+    def _unresolved(self, why: str, *, lookup_failed: bool) -> None:
         """D60: the name gave no address to connect to, so nothing was sent.
-        A DNS fact, so the advice is about DNS, not firewalls (review, round 3)."""
+        A DNS fact, so the advice is about DNS, not firewalls (review, round 3).
+        A failed lookup is not a missing record (core/dns.py), so it gets
+        neither the "does not resolve" impact nor the record advice (round 4)."""
+        if lookup_failed:
+            impact = (
+                "Unknown. Our resolvers' lookup failed, which may be temporary or a DNS "
+                "fault such as a broken delegation or DNSSEC chain; it does not show the "
+                "name has no records, or that visitors cannot reach it."
+            )
+            remediation = (
+                "Scan again later. If the failure persists, check that the name's DNS "
+                "servers answer and, if the zone is signed, that its DNSSEC chain validates."
+            )
+        else:
+            impact = (
+                "Unknown. If this name is meant to serve visitors, they cannot reach it "
+                "either, since it does not resolve."
+            )
+            remediation = (
+                f"Check the DNS records for {self.host}: it needs an A or AAAA record "
+                "pointing at the server. If the name is no longer used, nothing needs fixing."
+            )
         self._emit(
             CHECKS["tls-no-handshake"],
             no_verdict_reason="blocked_prerequisite",
@@ -298,14 +323,8 @@ class _Scan:
                 f"We could not test {self.host}'s TLS: {why}. Nothing can be concluded "
                 "about this server's TLS configuration."
             ),
-            impact=(
-                "Unknown. If this name is meant to serve visitors, they cannot reach it "
-                "either, since it does not resolve."
-            ),
-            remediation=(
-                f"Check the DNS records for {self.host}: it needs an A or AAAA record "
-                "pointing at the server. If the name is no longer used, nothing needs fixing."
-            ),
+            impact=impact,
+            remediation=remediation,
             signals=[self._signal(CHECKS["tls-no-handshake"], NEGOTIATION, ratio=1.0)],
         )
         self.checks.append(

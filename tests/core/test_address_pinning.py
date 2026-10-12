@@ -653,3 +653,20 @@ def test_only_a_backend_with_record_refusal_is_handed_a_tls_refusal() -> None:
     backend.connects = True
     _tls(StaticDns({NAME: "10.0.0.5"}), backend=backend).inspect(NAME, 443)
     backend.record.assert_not_called()
+
+
+def test_a_recorded_failed_lookup_replays_as_a_failed_lookup(tmp_path) -> None:
+    from core.addresses import AddressUnresolvedError
+    from core.http import RecordingHttpBackend, ReplayHttpBackend
+
+    class Failing:
+        def query(self, name, rrtype, *, resolver=None):
+            return DnsResponse(name, rrtype, "TIMEOUT", [])
+
+    recording = RecordingHttpBackend(tmp_path, SystemHttpBackend())
+    with pytest.raises(AddressUnresolvedError) as live:
+        _http(Failing(), backend=recording).get(f"http://{NAME}/")
+    with pytest.raises(AddressUnresolvedError) as replayed:
+        _http(None, backend=ReplayHttpBackend(tmp_path)).get(f"http://{NAME}/")
+    assert live.value.lookup_failed is True
+    assert replayed.value.lookup_failed is True
