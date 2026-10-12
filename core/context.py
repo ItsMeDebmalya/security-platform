@@ -130,6 +130,22 @@ class ScanContext:
             self._adopt(client, "org_id", self.org_id, placeholder="org_internal")
             self._adopt(client, "exposures", self.exposures)
 
+        # D59: testssl.sh runs outside our clients, so it gets the scan's own
+        # resolver, scope, kill switch, target limiter and cost meter.
+        if not isinstance(self.testssl, StubTestsslClient):
+            live = getattr(self.testssl, "inner", self.testssl)  # a recording client wraps one
+            for name, value in (
+                ("dns", None if isinstance(self.dns, UnconfiguredClient) else self.dns),
+                ("scope", self.scope),
+                ("killswitch", self.killswitch),
+                ("ratelimit", self.ratelimit),
+                ("cost", self.cost),
+            ):
+                if value is not None:
+                    self._adopt(live, name, value)
+            self._adopt(live, "scan_id", self.scan_id, placeholder="local")
+            self._adopt(live, "org_id", self.org_id, placeholder="org_internal")
+
     @staticmethod
     def _adopt(client: object, name: str, value: object, placeholder: object = None) -> None:
         for attribute in (f"_{name}", name):

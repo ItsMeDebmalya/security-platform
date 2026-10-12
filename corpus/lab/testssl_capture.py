@@ -1,18 +1,24 @@
 """LAB ONLY, NOT A CI GATE: what the narrowed testssl.sh run actually sends (D56).
 
-Runs the production invocation (`core.testssl._run_raw`, through
-`guard_invocation`) against an **ordinary** local TLS server, through a
-recording TCP proxy, and checks two things:
+Runs the production client (`core.testssl.LiveTestsslClient`, through
+`guard_invocation` and the D59 process runner) against an **ordinary** local
+TLS server, through a recording TCP proxy, under an explicit `LabOverride`
+(the lab is loopback, and nothing here can show a dedicated address). It
+checks three things:
 
 1. every client-side byte on every connection fits
    `corpus.lab.tls_capture.analyse`'s allowlist of an ordinary handshake;
 2. the server received at most one HTTP request, and it was a `GET`
-   (testssl.sh's service detection).
+   (testssl.sh's service detection);
+3. the run made no more connections than `TESTSSL_CONNECTION_BUDGET` (D59).
+   Over budget fails loudly; it never raises the budget.
 
 It also checks the report still carries the four ids the checks read.
 
     tools/fetch-testssl.sh                                # once
     uv run python -m corpus.lab.testssl_capture
+    uv run python -m corpus.lab.testssl_capture --write-baseline
+                     # after a testssl.sh upgrade: record the new count, if within budget
 
 Exit status 0 when clean, 1 otherwise. It needs the pinned testssl.sh binary
 and takes a minute or two, so it runs when the lab is up, never in CI. CI is
@@ -35,8 +41,10 @@ choice, and none should be added.
 
 from __future__ import annotations
 
+import argparse
 import contextlib
 import datetime
+import json
 import socket
 import ssl
 import sys
@@ -51,10 +59,29 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import NameOID
 
-from core.testssl import CHECK_TO_TESTSSL_ID, _parse, _run_raw, available
+from core.authz import Scope
+from core.dns import DnsResponse
+from core.testssl import (
+    CHECK_TO_TESTSSL_ID,
+    TESTSSL_CONNECTION_BUDGET,
+    TESTSSL_VERSION,
+    LabOverride,
+    LiveTestsslClient,
+    available,
+)
 from corpus.lab.tls_capture import Chunk, analyse
 
 HOST = "127.0.0.1"
+NAME = "localhost"
+BASELINE = Path(__file__).with_name("testssl_capture_baseline.json")
+
+
+class _LoopbackDns:
+    """The lab's resolver: `localhost` is 127.0.0.1, and nothing else exists."""
+
+    def query(self, name: str, rrtype: str, *, resolver: str | None = None) -> DnsResponse:
+        records = [HOST] if (name, rrtype) == (NAME, "A") else []
+        return DnsResponse(name, rrtype, "NOERROR" if records else "NODATA", records)
 
 
 def _self_signed(directory: Path) -> tuple[Path, Path]:
@@ -167,6 +194,9 @@ class _RecordingProxy:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--write-baseline", action="store_true")
+    write_baseline = parser.parse_args().write_baseline
     if not available():
         print("testssl.sh is not installed: run tools/fetch-testssl.sh first", file=sys.stderr)
         return 2
@@ -180,8 +210,16 @@ def main() -> int:
         proxy = _RecordingProxy(server.server_address[1])
         threading.Thread(target=proxy.serve, daemon=True).start()
 
+        client = LiveTestsslClient(
+            timeout_s=300,
+            dns=_LoopbackDns(),
+            scope=Scope(frozenset({NAME})),
+            lab_override=LabOverride(
+                reason="lab capture: ordinary local server on loopback", allow_non_global=True
+            ),
+        )
         try:
-            report = _run_raw(HOST, proxy.port, timeout_s=300)
+            report = client.legacy_ciphers(NAME, proxy.port)
         finally:
             proxy.close()
             server.shutdown()
@@ -191,23 +229,48 @@ def main() -> int:
     violations = analyse(chunks)
     connections = len({c.connection for c in chunks})
     client_bytes = sum(len(c.data) for c in chunks if c.direction == "client")
-    found = set(_parse(report))
+    found = set(report.findings)
     wanted = set(CHECK_TO_TESTSSL_ID.values())
     requests = list(_Handler.requests)
 
-    print(f"connections: {connections}  client bytes: {client_bytes}")
+    print(
+        f"connections: {connections} (budget {TESTSSL_CONNECTION_BUDGET})  "
+        f"client bytes: {client_bytes}"
+    )
+    over_budget = connections > TESTSSL_CONNECTION_BUDGET
+    if over_budget:
+        print(
+            f"OVER BUDGET: testssl.sh {TESTSSL_VERSION} made {connections} connections; the "
+            f"declared budget is {TESTSSL_CONNECTION_BUDGET}. That needs a decision, not a "
+            "bigger number."
+        )
     print(f"HTTP requests seen by the server: {requests}")
     print(f"testssl ids in report: {sorted(found)} (want {sorted(wanted)})")
     for v in violations:
         print(f"VIOLATION conn={v.connection} {v.rule}: {v.detail}")
 
     ok = (
-        not violations
+        not over_budget
+        and not violations
         and len(requests) <= 1
         and all(r.startswith("GET ") for r in requests)
         and found == wanted
     )
     print("CLEAN" if ok else "NOT CLEAN")
+    if ok and write_baseline:
+        BASELINE.write_text(
+            json.dumps(
+                {
+                    "testssl_version": TESTSSL_VERSION,
+                    "connections": connections,
+                    "measured": datetime.date.today().isoformat(),
+                    "against": "ordinary local TLS server via corpus/lab/testssl_capture.py",
+                },
+                indent=2,
+            )
+            + "\n"
+        )
+        print(f"baseline written: {BASELINE.name}")
     return 0 if ok else 1
 
 

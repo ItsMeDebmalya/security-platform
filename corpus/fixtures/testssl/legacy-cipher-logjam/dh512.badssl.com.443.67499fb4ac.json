@@ -1,4 +1,8 @@
 {
+  "addresses_tested": [
+    "104.154.89.105"
+  ],
+  "addresses_untested": [],
   "findings": {
     "FREAK": {
       "cve": "CVE-2015-0204",
@@ -26,6 +30,35 @@
     }
   },
   "host": "dh512.badssl.com",
+  "lab_override": "corpus recording against badssl.com, a public TLS test service run for exactly this (ADR-027). Its test names share addresses it operates itself, so a hello with no SNI reaches badssl.com's own default site, not an unrelated party (D59)",
+  "per_address": {
+    "104.154.89.105": {
+      "FREAK": {
+        "cve": "CVE-2015-0204",
+        "detail": "not vulnerable",
+        "severity": "OK",
+        "testssl_id": "FREAK"
+      },
+      "LOGJAM": {
+        "cve": "CVE-2015-4000",
+        "detail": "no DH EXPORT ciphers, no common prime but Unknown DH group has only 512 bits,",
+        "severity": "CRITICAL",
+        "testssl_id": "LOGJAM"
+      },
+      "RC4": {
+        "cve": "CVE-2013-2566 CVE-2015-2808",
+        "detail": "not vulnerable",
+        "severity": "OK",
+        "testssl_id": "RC4"
+      },
+      "SWEET32": {
+        "cve": "CVE-2016-2183 CVE-2016-6329",
+        "detail": "not vulnerable",
+        "severity": "OK",
+        "testssl_id": "SWEET32"
+      }
+    }
+  },
   "port": 443,
-  "recorded_at": "2026-10-12T05:02:56.638901+00:00"
+  "recorded_at": "2026-10-12T08:36:59.617475+00:00"
 }
