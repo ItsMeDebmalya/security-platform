@@ -916,7 +916,7 @@ In both cases the parser, the scope rule and the gate each did their job. The ga
 
 **Decision.**
 1. **One combined Alpha release.** It has two parts, which ship together:
-   - **Customer Light scanning:** self-service, passive, with no signed agreement needed.
+   - **Customer scanning:** self-service and passive, with no signed agreement needed. Light for any domain; Light plus passive Standard checks for an owner verified by DNS TXT (decision 8).
    - **Assessment of our internal server fleet,** covered by one internal written authorisation obtained before the first production server.
 
    A combined release ships when its slowest part, the agent, is ready. The agent therefore runs on lab boxes and a few internal servers before launch, as internal validation.
