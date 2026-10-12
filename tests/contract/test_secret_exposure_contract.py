@@ -26,6 +26,8 @@ from core.http import HttpClient
 from core.models import Asset, CheckRun, Finding, Mode, ScanResult, Telemetry
 from core.registry import discover
 from core.scanner import BaseScanner
+from corpus.generators.tls_lab import LabDns
+from tests.core.named_transport import named
 from tests.core.test_redaction import AWS
 from tests.core.test_redaction_storage import _finding_kwargs
 
@@ -138,7 +140,8 @@ def _run(scanner: BaseScanner) -> tuple[ScanResult, ScanContext]:
         return httpx.Response(200, text=f"<p>key {AWS}</p>")
 
     scope = Scope(frozenset({"x.test"}))
-    http = HttpClient(scope=scope, transport=httpx.MockTransport(handler))
+    # D60: the name resolves to a public literal; MockTransport opens no socket.
+    http = HttpClient(scope=scope, transport=named(handler), dns=LabDns("93.184.215.14"))
     ctx = ScanContext(http=http)
     return scanner.run(Asset(type="domain", value="x.test"), "light", ctx), ctx
 

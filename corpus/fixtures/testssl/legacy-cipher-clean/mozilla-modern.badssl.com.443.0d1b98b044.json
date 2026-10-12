@@ -30,7 +30,7 @@
     }
   },
   "host": "mozilla-modern.badssl.com",
-  "lab_override": "corpus recording against badssl.com, a public TLS test service run for exactly this (ADR-027). Its test names share addresses it operates itself, so a hello with no SNI reaches badssl.com's own default site, not an unrelated party (D59)",
+  "lab_reason": "corpus recording against badssl.com, a public TLS test service run for exactly this (ADR-027). Its test names share addresses it operates itself, so a hello with no SNI reaches badssl.com's own default site, not an unrelated party (D59)",
   "per_address": {
     "104.154.89.105": {
       "FREAK": {

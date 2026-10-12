@@ -10,7 +10,7 @@ from core.authz import Scope
 from core.context import ScanContext
 from core.models import Asset
 from core.tls import TlsClient
-from corpus.generators.tls_lab import lab_server
+from corpus.generators.tls_lab import LAB_ADDRESSES, LabDns, lab_server
 from scanners.tls import TlsScanner
 
 LOOPBACK = Scope(frozenset({"localhost"}))
@@ -20,7 +20,7 @@ be in production - no test-only parameter on run()."""
 
 
 def scan(server, mode="light", servername="localhost"):
-    ctx = ScanContext(tls=TlsClient(scope=LOOPBACK))
+    ctx = ScanContext(dns=LabDns(), addresses=LAB_ADDRESSES, tls=TlsClient(scope=LOOPBACK))
     target = Asset(type="url", value=f"https://{servername}:{server.port}")
     return TlsScanner().run(target, mode, ctx)
 
@@ -95,7 +95,11 @@ def test_an_expired_certificate_reaches_confirmed_on_two_independent_readings():
         )
         server = LabServer(minted)
         try:
-            ctx = ScanContext(tls=TlsClient(scope=LOOPBACK, trust_anchor=str(minted.cert_path)))
+            ctx = ScanContext(
+                dns=LabDns(),
+                addresses=LAB_ADDRESSES,
+                tls=TlsClient(scope=LOOPBACK, trust_anchor=str(minted.cert_path)),
+            )
             result = TlsScanner().run(
                 Asset(type="url", value=f"https://localhost:{server.port}"), "light", ctx
             )
@@ -213,7 +217,11 @@ def _expired_incomplete_chain_server(tmp_path):
 
 def test_an_expired_and_incomplete_chain_reports_both_findings(tmp_path):
     server, root = _expired_incomplete_chain_server(tmp_path)
-    ctx = ScanContext(tls=TlsClient(scope=LOOPBACK, trust_anchor=str(root.cert_path)))
+    ctx = ScanContext(
+        dns=LabDns(),
+        addresses=LAB_ADDRESSES,
+        tls=TlsClient(scope=LOOPBACK, trust_anchor=str(root.cert_path)),
+    )
     target = Asset(type="url", value=f"https://localhost:{server.port}")
     try:
         result = TlsScanner().run(target, "light", ctx)
@@ -231,7 +239,11 @@ def test_expired_and_chain_incomplete_are_two_separate_findings_not_one(tmp_path
     correct rather than a double-report of one (docs/14-progress-ledger.md,
     D17)."""
     server, root = _expired_incomplete_chain_server(tmp_path)
-    ctx = ScanContext(tls=TlsClient(scope=LOOPBACK, trust_anchor=str(root.cert_path)))
+    ctx = ScanContext(
+        dns=LabDns(),
+        addresses=LAB_ADDRESSES,
+        tls=TlsClient(scope=LOOPBACK, trust_anchor=str(root.cert_path)),
+    )
     target = Asset(type="url", value=f"https://localhost:{server.port}")
     try:
         result = TlsScanner().run(target, "light", ctx)
@@ -252,7 +264,11 @@ def test_the_time_neutral_probe_stands_down_once_the_chain_is_already_explained(
     at the client layer in tests/core/test_tls.py; this proves the scanner's
     finding is unaffected by which of the two branches supplied it."""
     server, root = _expired_incomplete_chain_server(tmp_path)
-    ctx = ScanContext(tls=TlsClient(scope=LOOPBACK, trust_anchor=str(root.cert_path)))
+    ctx = ScanContext(
+        dns=LabDns(),
+        addresses=LAB_ADDRESSES,
+        tls=TlsClient(scope=LOOPBACK, trust_anchor=str(root.cert_path)),
+    )
     target = Asset(type="url", value=f"https://localhost:{server.port}")
     try:
         result = TlsScanner().run(target, "light", ctx)
@@ -642,7 +658,9 @@ def test_a_common_name_only_certificate_is_a_mismatch_and_says_why():
 
 
 def _scan_ip(server):
-    ctx = ScanContext(tls=TlsClient(scope=Scope(frozenset({"127.0.0.1"}))))
+    ctx = ScanContext(
+        dns=LabDns(), addresses=LAB_ADDRESSES, tls=TlsClient(scope=Scope(frozenset({"127.0.0.1"})))
+    )
     target = Asset(type="url", value=f"https://127.0.0.1:{server.port}")
     return TlsScanner().run(target, "light", ctx)
 
@@ -669,14 +687,18 @@ def test_the_scanner_reports_an_unencodable_host_as_inconclusive():
     from dataclasses import replace
 
     with lab_server(common_name="ab.example", sans=["ab.example"]) as srv:
-        real = TlsClient(scope=LOOPBACK).inspect("localhost", srv.port, servername="localhost")
+        real = TlsClient(scope=LOOPBACK, dns=LabDns(), addresses=LAB_ADDRESSES).inspect(
+            "localhost", srv.port, servername="localhost"
+        )
 
     class _Fake(TlsClient):
         def inspect(self, host, port, *, servername=None, **_):
             return replace(real, host=host, port=port, servername=servername)
 
     host = "a\u200db.example"
-    ctx = ScanContext(tls=_Fake(scope=Scope(frozenset({host}))))
+    ctx = ScanContext(
+        dns=LabDns(), addresses=LAB_ADDRESSES, tls=_Fake(scope=Scope(frozenset({host})))
+    )
     result = TlsScanner().run(Asset(type="url", value=f"https://{host}"), "light", ctx)
 
     (finding,) = [f for f in result.findings if f.check_id == "tls-hostname-mismatch"]

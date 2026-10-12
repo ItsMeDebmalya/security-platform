@@ -29,6 +29,7 @@ from datetime import UTC, date, datetime
 from typing import Any
 from urllib.parse import urlsplit
 
+from core.addresses import refusal
 from core.applicability import not_applicable
 from core.assetgraph import DiscoveredAsset
 from core.confidence import ConfidenceEngine, Signal
@@ -65,7 +66,7 @@ NO_VERDICT_FOR_RCODE = {
 @register
 class DomscoutScanner(BaseScanner):
     name = "domscout"
-    version = "1.3.3"
+    version = "1.4.0"
     vantage = "external_unauthenticated"
     engagement = "defensive"
     supported_modes = frozenset({"light"})
@@ -361,6 +362,21 @@ class _Scan:
             if has_address:
                 self.resolved_subdomains.append(name)
 
+        # D60 (ADR-036 decision 2): a public name with a non-global record. Our
+        # scans will not connect to it; the record itself is worth showing.
+        non_global: dict[str, dict[str, str]] = {}
+        for name in [self.domain, *self.resolved_subdomains]:
+            info = self.resolved[name]
+            refused = {
+                address: why
+                for answer in (info.a, info.aaaa)
+                if answer.is_definite()
+                for address in answer.records
+                if (why := refusal(address)) is not None
+            }
+            if refused:
+                non_global[name] = refused
+
         for mx in self.apex_mx.records if self.apex_mx.is_definite() else []:
             target = mx.split()[-1].strip().rstrip(".").lower()
             if target and target != ".":
@@ -377,31 +393,59 @@ class _Scan:
                     "ns": self.apex_ns.records if self.apex_ns.is_definite() else [],
                     "mx": self.apex_mx.records if self.apex_mx.is_definite() else [],
                     "soa": self.apex_soa.records if self.apex_soa.is_definite() else [],
+                    "non_global_addresses": non_global,
                 },
             )
         ]
 
-        if not self.resolved_subdomains:
+        if not self.resolved_subdomains and not non_global:
             self._clear("dns-records")
             return
+
+        description = (
+            f"{len(self.resolved_subdomains)} subdomain(s) of {self.domain} resolve to an "
+            f"address: {', '.join(self.resolved_subdomains)}."
+            if self.resolved_subdomains
+            else f"No subdomain of {self.domain} was found resolving to an address."
+        )
+        impact = (
+            "Each of these is a live host under this domain's name, and each is part of "
+            "the domain's attack surface."
+        )
+        remediation = (
+            "Confirm every resolving subdomain is still in active use. Remove the DNS "
+            "record for any that is not, before it becomes a target for takeover."
+        )
+        if non_global:
+            listed = "; ".join(
+                f"{name}: " + ", ".join(f"{a} ({why})" for a, why in refused.items())
+                for name, refused in non_global.items()
+            )
+            description += (
+                f" {len(non_global)} name(s) resolve to a non-global address in public DNS: "
+                f"{listed}. Our scans would not connect to these addresses, so a TLS or "
+                "website scan of these names would report that it could not test them."
+            )
+            impact += (
+                " A public name that resolves to a private or reserved address usually means "
+                "split-horizon DNS (an internal answer leaking to public resolvers) or a stale "
+                "record pointing somewhere it should not, and either tells outsiders about "
+                "internal addressing."
+            )
+            remediation += (
+                " For each name that resolves to a non-global address: if it is internal "
+                "only, remove it from public DNS; if it is meant to be public, point it at "
+                "the public address."
+            )
 
         finding = self._emit_reported(
             check=CHECKS["dns-records"],
             independence_class=DNS_RESOLUTION,
             location="$",
             evidence=evidence,
-            description=(
-                f"{len(self.resolved_subdomains)} subdomain(s) of {self.domain} resolve to an "
-                f"address: {', '.join(self.resolved_subdomains)}."
-            ),
-            impact=(
-                "Each of these is a live host under this domain's name, and each is part of "
-                "the domain's attack surface."
-            ),
-            remediation=(
-                "Confirm every resolving subdomain is still in active use. Remove the DNS "
-                "record for any that is not, before it becomes a target for takeover."
-            ),
+            description=description,
+            impact=impact,
+            remediation=remediation,
             related_assets=related,
         )
         for name in self.resolved_subdomains:

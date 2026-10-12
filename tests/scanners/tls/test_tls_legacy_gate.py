@@ -19,7 +19,7 @@ from core.testssl import TestsslArgumentRefusedError as RefusedError
 from core.testssl import TestsslNotPermittedError as NotPermittedError
 from core.testssl import TestsslUnavailableError as UnavailableError
 from core.tls import TlsClient
-from corpus.generators.tls_lab import lab_server
+from corpus.generators.tls_lab import LAB_ADDRESSES, LabDns, lab_server
 from scanners.tls import TlsScanner
 
 LEGACY = ("tls-vuln-rc4", "tls-vuln-sweet32", "tls-vuln-freak", "tls-vuln-logjam")
@@ -43,7 +43,12 @@ class _Returns:
 
 def _scan(testssl):
     with lab_server(common_name="localhost", sans=["localhost"]) as srv:
-        ctx = ScanContext(tls=TlsClient(scope=Scope(frozenset({"localhost"}))), testssl=testssl)
+        ctx = ScanContext(
+            dns=LabDns(),
+            addresses=LAB_ADDRESSES,
+            tls=TlsClient(scope=Scope(frozenset({"localhost"}))),
+            testssl=testssl,
+        )
         return TlsScanner().run(
             Asset(type="url", value=f"https://localhost:{srv.port}"), "standard", ctx
         )

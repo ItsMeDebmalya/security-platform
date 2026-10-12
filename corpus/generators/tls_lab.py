@@ -37,6 +37,9 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
 from cryptography.x509.oid import NameOID
 
+from core.addresses import AddressPolicy, LabOverride
+from core.dns import DnsResponse
+
 DAY = dt.timedelta(days=1)
 
 
@@ -269,6 +272,32 @@ def _load_key(path: Path) -> object:
     from cryptography.hazmat.primitives.serialization import load_pem_private_key
 
     return load_pem_private_key(path.read_bytes(), password=None)
+
+
+LAB_ADDRESSES = AddressPolicy(
+    lab_override=LabOverride(
+        reason="local lab server on loopback (corpus/generators/tls_lab.py)",
+        allow_non_global=True,
+    )
+)
+"""D60 (ADR-036): the lab's address policy. Lab servers listen on loopback,
+which the platform's policy refuses; this override, which lives in `corpus/`
+and is unreachable from customer-facing code, lets the lab reach them."""
+
+
+class LabDns:
+    """The lab's resolver: every name's A record is `default` (loopback),
+    unless `answers` names it. No AAAA. Stands in for the scan's `DnsClient`,
+    which is how every connecting client now resolves (D60)."""
+
+    def __init__(self, default: str = "127.0.0.1", answers: dict[str, str] | None = None) -> None:
+        self.default = default
+        self.answers = dict(answers or {})
+
+    def query(self, name: str, rrtype: str, *, resolver: str | None = None) -> DnsResponse:
+        if rrtype != "A":
+            return DnsResponse(name, rrtype, "NODATA", [])
+        return DnsResponse(name, rrtype, "NOERROR", [self.answers.get(name, self.default)])
 
 
 class LabServer:

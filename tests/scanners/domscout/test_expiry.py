@@ -19,6 +19,8 @@ VERISIGN = "https://rdap.verisign.com/com/v1/domain/"
 
 
 class Backend:
+    connects = False  # opens no socket; serves canned answers (D60: backends must say)
+
     def __init__(self, responses: dict[str, tuple[int, str, dict[str, str]]]):
         self._responses = responses
         self.calls: list[str] = []

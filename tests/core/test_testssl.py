@@ -37,13 +37,13 @@ class _Dns:
 def live(**kwargs) -> LiveTestsslClient:
     """A live client as the lab and corpus build it: a scope, a resolver, and
     the explicit lab override (D59). Production builds it without one."""
+    from core.addresses import AddressPolicy, LabOverride
     from core.authz import Scope
-    from core.testssl import LabOverride
 
     return LiveTestsslClient(
         dns=_Dns(),
         scope=Scope(frozenset({"example.test", "rc4.badssl.com"})),
-        lab_override=LabOverride(reason="unit test"),
+        addresses=AddressPolicy(lab_override=LabOverride(reason="unit test")),
         **kwargs,
     )
 
@@ -223,7 +223,7 @@ def test_record_then_replay_round_trips(tmp_path, monkeypatch) -> None:
     assert replayed.port == 443
     assert replayed.addresses_tested == (ADDRESS,)
     assert replayed.per_address[ADDRESS]["RC4"].severity == "HIGH"
-    assert replayed.lab_override == "unit test"
+    assert replayed.lab_reason == "unit test"
 
 
 def test_replay_report_for_check_maps_check_id_to_testssl_id(tmp_path) -> None:

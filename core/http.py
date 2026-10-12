@@ -12,6 +12,13 @@ What this client promises:
   responses we get back
 - **no request to a host outside scope, and no redirect that leaves it** - an
   SSRF probe never targets a third party
+- **no connection to a non-global address, and the address connected to is
+  the one checked** (D60, ADR-036). Each request, every redirect hop included,
+  resolves its host once through the scan's `DnsClient`, checks every address
+  with `core.addresses`, and the backend connects to that address literal
+  with the name carried in the Host header and as SNI. httpx is never handed
+  a name to resolve, and never reads the process environment (no proxy
+  variables, no trust-anchor overrides: D62)
 - bodies redacted and size-capped at capture, so evidence is ready to store
 
 **Record/replay is at the backend layer, like DNS and TLS** (`core/replay.py`).
@@ -32,13 +39,16 @@ reproduces exactly that capture, truncation included.
 
 from __future__ import annotations
 
+import ssl
 import time
 from dataclasses import dataclass
+from http.cookiejar import CookieJar, DefaultCookiePolicy
 from pathlib import Path
 from typing import Any, Protocol
 
 import httpx
 
+from core.addresses import AddressPolicy, AddressRefusedError, AddressUnresolvedError
 from core.authz import Scope
 from core.cost import CostMeter
 from core.evidence import DEFAULT_BODY_CAP, truncate_body
@@ -109,16 +119,47 @@ class RawHttpResponse:
     redactions: list[str] | None = None
     redaction_receipts: list[dict[str, Any]] | None = None
     """ADR-029, with `redactions`: the fixture's recorded receipts on replay."""
+    address: str | None = None
+    """D60: the checked address the request was sent to; `None` on a fixture
+    recorded before D60."""
 
 
 class HttpBackend(Protocol):
+    """`connects` says whether `send` opens a socket. A backend that does is
+    handed `addresses`, the checked literals for the URL's host, and must
+    connect to one of them, never to the name (D60). One that does not (a
+    replay) is handed nothing and needs no lookup."""
+
+    connects: bool
+
     def send(self, method: str, url: str, *, body_cap: int, **kwargs: Any) -> RawHttpResponse: ...
 
 
 class SystemHttpBackend:
     """Real sockets, via httpx. Constructed by the CLI or the worker, never by
     a scanner. `transport` exists for tests - `httpx.MockTransport` stands in
-    for the network without touching it."""
+    for the network without touching it. `trust_anchor` is a CA file to trust
+    instead of the system store, for the lab.
+
+    D60: it connects only to an address it is handed, already checked. The
+    URL's host is replaced with that literal; the name goes in the Host header
+    and, for https, as SNI (httpx's `sni_hostname` request extension), so the
+    certificate is still checked against the name. Three httpx defaults are
+    switched off because each would let something other than our check
+    choose the destination or the trust:
+    - `trust_env`: proxy variables would route the request through a proxy
+      that resolves the name itself; `SSL_CERT_FILE`/`SSL_CERT_DIR` would
+      replace the trust store (D62);
+    - keep-alive: connections are pooled by address, so two names on one
+      address could share a TLS session negotiated with the other's SNI;
+    - the cookie jar: cookies are not carried between requests. With address
+      URLs a jar would file a cookie under the address, and send one name's
+      cookie to another name on that address. Measured before it was removed
+      (ledger, D60): the web scanner's 13 live hand-verified hosts gave the
+      same outcome for every request with and without the jar.
+    """
+
+    connects = True
 
     def __init__(
         self,
@@ -126,37 +167,110 @@ class SystemHttpBackend:
         transport: httpx.BaseTransport | None = None,
         user_agent: str = DEFAULT_USER_AGENT,
         timeout_s: float = 15.0,
+        trust_anchor: str | None = None,
     ) -> None:
+        verify: ssl.SSLContext | bool = (
+            ssl.create_default_context(cafile=trust_anchor) if trust_anchor else True
+        )
         self._client = httpx.Client(
             transport=transport,
             timeout=timeout_s,
             follow_redirects=False,
             headers={"User-Agent": user_agent},
+            trust_env=False,
+            verify=verify,
+            cookies=CookieJar(policy=DefaultCookiePolicy(allowed_domains=[])),
+            limits=httpx.Limits(max_keepalive_connections=0),
         )
 
-    def send(self, method: str, url: str, *, body_cap: int, **kwargs: Any) -> RawHttpResponse:
+    def send(
+        self,
+        method: str,
+        url: str,
+        *,
+        body_cap: int,
+        addresses: tuple[str, ...] | None = None,
+        **kwargs: Any,
+    ) -> RawHttpResponse:
         # `body_cap` is part of `HttpBackend` because `RecordingHttpBackend`
         # needs it to write a correctly-capped fixture; a live wire response
         # is never capped here (`HttpClient` applies the cap once, in its own
         # capture step), so it is unused on this path.
         del body_cap
-        started = time.monotonic()
-        response = self._client.request(method, url, **kwargs)
-        elapsed_ms = int((time.monotonic() - started) * 1000)
-        return RawHttpResponse(
-            status_code=response.status_code,
-            headers=dict(response.headers),
-            text=response.text,
-            url=str(response.url),
-            elapsed_ms=elapsed_ms,
-        )
+        if not addresses:
+            raise ValueError(
+                "the live HTTP backend connects only to a checked address; "
+                "HttpClient resolves and checks the host first (D60)"
+            )
+        logical = httpx.URL(url)
+        headers = dict(kwargs.pop("headers", None) or {})
+        headers["Host"] = logical.netloc.decode("ascii")
+        extensions = dict(kwargs.pop("extensions", None) or {})
+        if logical.scheme == "https":
+            extensions["sni_hostname"] = logical.raw_host.decode("ascii")
+
+        last: httpx.ConnectError | httpx.ConnectTimeout | None = None
+        for address in addresses:
+            started = time.monotonic()
+            try:
+                response = self._client.request(
+                    method,
+                    logical.copy_with(host=address),
+                    headers=headers,
+                    extensions=extensions,
+                    **kwargs,
+                )
+            except (httpx.ConnectError, httpx.ConnectTimeout) as exc:
+                if _is_tls_failure(exc):
+                    raise  # a TLS failure is the answer, not a reason to try elsewhere
+                last = exc
+                continue
+            elapsed_ms = int((time.monotonic() - started) * 1000)
+            return RawHttpResponse(
+                status_code=response.status_code,
+                headers=dict(response.headers),
+                text=response.text,
+                url=url,
+                elapsed_ms=elapsed_ms,
+                address=address,
+            )
+        assert last is not None
+        raise last
 
     def close(self) -> None:
         self._client.close()
 
 
+def _is_tls_failure(exc: BaseException) -> bool:
+    """Whether an `ssl.SSLError` is anywhere in the chain.
+
+    httpx wraps httpcore's `ConnectError`, which carries the `SSLError` as an
+    argument, so `__cause__` alone never reaches it (review of D60, round 1)."""
+    seen: set[int] = set()
+    stack: list[BaseException] = [exc]
+    while stack:
+        current = stack.pop()
+        if id(current) in seen:
+            continue
+        seen.add(id(current))
+        if isinstance(current, ssl.SSLError):
+            return True
+        stack.extend(
+            linked
+            for linked in (current.__cause__, current.__context__, *current.args)
+            if isinstance(linked, BaseException)
+        )
+    return False
+
+
 def _capture_payload(
-    *, status_code: int, headers: dict[str, str], text: str, elapsed_ms: int, body_cap: int
+    *,
+    status_code: int,
+    headers: dict[str, str],
+    text: str,
+    elapsed_ms: int,
+    body_cap: int,
+    address: str | None = None,
 ) -> dict[str, Any]:
     """The redacted, size-capped shape stored as evidence - and, for HTTP,
     also the shape stored as a fixture. Shared so recording never drifts from
@@ -168,7 +282,7 @@ def _capture_payload(
     receipts: Receipts = {}
     add_receipts(receipts, header_counts, "response.headers")
     add_receipts(receipts, body_counts, "response.body")
-    return {
+    payload = {
         "status": status_code,
         "headers": clean_headers,
         "body": body,
@@ -177,6 +291,9 @@ def _capture_payload(
         "redactions": sorted(set(header_counts) | set(body_counts)),
         "redaction_receipts": receipt_list(receipts),
     }
+    if address is not None:
+        payload["address"] = address  # D60: where it went, as evidence
+    return payload
 
 
 def _fixture_name(method: str, url: str) -> str:
@@ -187,6 +304,12 @@ def _fixture_name(method: str, url: str) -> str:
     same URL in one run. A scanner that started doing that would collide on
     replay - worth revisiting then, not worth a request-body hash now for a
     case nothing exercises.
+
+    A request the address policy refused (D60) shares the name with the
+    response it would have had. If a name's DNS answer changed mid-recording
+    so that one URL was both refused and answered, the last write wins. A
+    response fixture never has an `address_policy` key, so replay cannot read
+    one as the other.
     """
     # The stem is readable, so it is built from the redacted URL: a secret in a
     # path must not end up in a file name (review of D21, 6).
@@ -210,6 +333,11 @@ class RecordingHttpBackend:
         self._store = FixtureStore(Path(directory))
         self._inner = inner or SystemHttpBackend()
 
+    @property
+    def connects(self) -> bool:
+        # Silence means connecting, through a wrapper too (fail closed).
+        return bool(getattr(self._inner, "connects", True))
+
     def send(self, method: str, url: str, *, body_cap: int, **kwargs: Any) -> RawHttpResponse:
         # `body_cap` comes from the caller on every call (`HttpClient` passes
         # its own `body_cap` through) rather than being configured here too.
@@ -223,10 +351,27 @@ class RecordingHttpBackend:
             text=raw.text,
             elapsed_ms=raw.elapsed_ms,
             body_cap=body_cap,
+            address=raw.address,
         )
         payload["url"] = redact_text(raw.url)[0] or raw.url
         self._store.write(_fixture_name(method, url), payload)
         return raw
+
+    def record_refusal(
+        self, method: str, url: str, exc: AddressRefusedError | AddressUnresolvedError
+    ) -> None:
+        """D60: a request the address policy stopped, so its replay stops it too."""
+        refusal: dict[str, Any]
+        if isinstance(exc, AddressRefusedError):
+            refusal = {"host": exc.host, "refused": exc.refused, "literal": exc.literal}
+        else:
+            refusal = {"unresolved": str(exc), "lookup_failed": exc.lookup_failed}
+        # Redacted at capture, like every other fixture (ADR-028; review of D60,
+        # round 2): a refused redirect's URL can carry a token.
+        stored_url = redact_text(url)[0] or url
+        self._store.write(
+            _fixture_name(method, url), {"url": stored_url, "address_policy": refusal}
+        )
 
 
 class ReplayHttpBackend:
@@ -237,6 +382,8 @@ class ReplayHttpBackend:
     from what recording stored - truncation included - rather than
     reconstructing something that was never written to disk.
     """
+
+    connects = False
 
     def __init__(self, directory: str | Path) -> None:
         self._store = FixtureStore(Path(directory))
@@ -255,6 +402,16 @@ class ReplayHttpBackend:
                     subject=f"{method.upper()} {url}",
                     directory=self._store.directory,
                 )
+            )
+        refusal = data.get("address_policy")
+        if refusal is not None:
+            # D60: recorded as stopped by the address policy; nothing was sent.
+            if "unresolved" in refusal:
+                raise AddressUnresolvedError(
+                    refusal["unresolved"], lookup_failed=refusal.get("lookup_failed", False)
+                )
+            raise AddressRefusedError(
+                refusal["host"], refusal["refused"], literal=refusal.get("literal", False)
             )
         # ADR-028 clause 7: a replayed capture is redacted again. Running the
         # redactor twice is the same as once, so a correct fixture is unchanged;
@@ -281,6 +438,7 @@ class ReplayHttpBackend:
             body_truncated=data["body_truncated"],
             redactions=sorted(found),
             redaction_receipts=receipt_list(receipts),
+            address=data.get("address"),
         )
 
 
@@ -301,8 +459,15 @@ class HttpClient:
         ratelimit: Any = None,
         scan_id: str = "local",
         org_id: str = "org_internal",
+        dns: Any = None,
+        addresses: AddressPolicy | None = None,
     ) -> None:
         self._scope = scope
+        self._dns = dns
+        """The scan's `DnsClient`, wired in by `ScanContext` (D60)."""
+        self._addresses = addresses
+        """The scan's `AddressPolicy`, wired in by `ScanContext`; a client never
+        given one uses the default, which has no override (D60)."""
         self._service_hosts = frozenset(h.lower().rstrip(".") for h in service_hosts)
         """ADR-031 (D54): a request to one of these never follows a redirect, so it
         only ever reaches the host it was declared for, never the scanned site."""
@@ -334,6 +499,14 @@ class HttpClient:
         own = Scope.for_target(target)
         scope = Scope(frozenset(own.hosts | service_hosts))
         return cls(scope=scope, service_hosts=service_hosts, follow_scope=own, **kwargs)
+
+    @property
+    def dns(self) -> Any:
+        return self._dns
+
+    @property
+    def addresses(self) -> AddressPolicy | None:
+        return self._addresses
 
     def get(self, url: str, *, follow_redirects: bool = True, **kwargs: Any) -> CapturedResponse:
         return self.request("GET", url, follow_redirects=follow_redirects, **kwargs)
@@ -380,6 +553,21 @@ class HttpClient:
 
         if self._killswitch is not None:
             self._killswitch.check(scan_id=self._scan_id, org_id=self._org_id)
+        # Fail closed: a backend that does not say it opens no socket is pinned.
+        if getattr(self._backend, "connects", True):
+            # D60, at every hop: resolved once, checked, and only the checked
+            # literals go down. Nothing is inherited from an earlier hop.
+            policy = self._addresses or AddressPolicy()
+            try:
+                pinned = policy.pin(httpx.URL(url).raw_host.decode("ascii"), self._dns)
+            except (AddressRefusedError, AddressUnresolvedError) as exc:
+                # A recording keeps the refusal, so its replay says the same
+                # (review of D60, round 1). Nothing was sent.
+                record = getattr(self._backend, "record_refusal", None)
+                if record is not None:
+                    record(method, url, exc)
+                raise
+            kwargs = {**kwargs, "addresses": pinned.addresses}
         if self._ratelimit is not None:
             self._ratelimit.acquire(host)
 
@@ -419,6 +607,7 @@ class HttpClient:
                 "elapsed_ms": raw.elapsed_ms,
                 "redactions": list(raw.redactions),
                 "redaction_receipts": list(raw.redaction_receipts or []),
+                **({"address": raw.address} if raw.address is not None else {}),
             }
         return _capture_payload(
             status_code=raw.status_code,
@@ -426,6 +615,7 @@ class HttpClient:
             text=raw.text,
             elapsed_ms=raw.elapsed_ms,
             body_cap=self._body_cap,
+            address=raw.address,
         )
 
     def close(self) -> None:

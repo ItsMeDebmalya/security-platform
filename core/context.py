@@ -15,6 +15,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Protocol
 
+from core.addresses import AddressPolicy
 from core.assetgraph import AssetGraph
 from core.authz import Scope
 from core.cost import CostMeter
@@ -107,6 +108,10 @@ class ScanContext:
     progress: ProgressReporter = _noop_progress
     exposures: ExposureLog = field(default_factory=ExposureLog)
     """ADR-029: every public capture this scan made, for `secret-exposed`."""
+    addresses: AddressPolicy = field(default_factory=AddressPolicy)
+    """D60 (ADR-036): the scan's one address policy, handed to every client that
+    connects. The default has no lab override, and nothing customer-facing
+    may construct one that does."""
 
     def __post_init__(self) -> None:
         """Wire the ambient services into the clients we were handed.
@@ -129,6 +134,10 @@ class ScanContext:
             self._adopt(client, "scan_id", self.scan_id, placeholder="local")
             self._adopt(client, "org_id", self.org_id, placeholder="org_internal")
             self._adopt(client, "exposures", self.exposures)
+            # D60: resolve through this scan's resolver, under this scan's policy.
+            if client is not self.dns and not isinstance(self.dns, UnconfiguredClient):
+                self._adopt(client, "dns", self.dns)
+            self._adopt(client, "addresses", self.addresses)
 
         # D59: testssl.sh runs outside our clients, so it gets the scan's own
         # resolver, scope, kill switch, target limiter and cost meter.
@@ -140,6 +149,7 @@ class ScanContext:
                 ("killswitch", self.killswitch),
                 ("ratelimit", self.ratelimit),
                 ("cost", self.cost),
+                ("addresses", self.addresses),
             ):
                 if value is not None:
                     self._adopt(live, name, value)

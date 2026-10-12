@@ -30,6 +30,7 @@ from pathlib import Path
 
 import pytest
 
+from core.addresses import AddressPolicy, LabOverride
 from core.authz import Scope
 from core.context import ScanContext
 from core.dns import DnsResponse
@@ -38,7 +39,6 @@ from core.testssl import (
     MAX_ADDRESSES,
     TESTSSL_CONNECTION_BUDGET,
     TESTSSL_VERSION,
-    LabOverride,
     LiveTestsslClient,
 )
 from core.testssl import TestsslArgumentRefusedError as RefusedError
@@ -88,7 +88,7 @@ def client(answers=None, *, override=True, **kwargs) -> LiveTestsslClient:
     return LiveTestsslClient(
         dns=FakeDns(answers if answers is not None else {"example.test": PUBLIC[:1]}),
         scope=Scope(frozenset({"example.test"})),
-        lab_override=lab() if override else None,
+        addresses=AddressPolicy(lab_override=lab()) if override else None,
         **kwargs,
     )
 
@@ -118,7 +118,8 @@ def runs(monkeypatch) -> list[list[str]]:
 
 
 def test_the_lab_override_is_off_by_default() -> None:
-    assert LiveTestsslClient().lab_override is None
+    assert LiveTestsslClient().addresses is None
+    assert ScanContext(testssl=LiveTestsslClient()).addresses.lab_reason is None
 
 
 def test_without_the_override_nothing_is_resolved_and_nothing_starts(runs) -> None:
@@ -138,7 +139,8 @@ def test_a_not_permitted_refusal_is_the_scanners_inconclusive_path() -> None:
 
 
 CUSTOMER_FACING = ("cli", "scanners", "core", "api", "web")
-DEFINED_IN = ROOT / "core" / "testssl.py"
+DEFINED_IN = ROOT / "core" / "addresses.py"
+"""D60: the one override lives in the one address policy (ADR-036)."""
 
 
 def _override_uses(tree: ast.AST) -> list[tuple[int, str]]:
@@ -182,10 +184,13 @@ def test_no_customer_facing_code_path_can_reach_the_lab_override() -> None:
 @pytest.mark.parametrize(
     "source",
     [
-        "from core.testssl import LabOverride as Lab\nLab('x')",
+        "from core.addresses import LabOverride as Lab\nLab('x')",
+        "import core.addresses\ngetattr(core.addresses, 'LabOverride')('x')",
+        "AddressPolicy(lab_override=object())",
+        "ScanContext(addresses=AddressPolicy(lab_override=x))",
         "import core.testssl\ngetattr(core.testssl, 'LabOverride')('x')",
         "from corpus.generators.testssl import OVERRIDE",
-        "LiveTestsslClient(lab_override=object())",
+        "HttpClient(scope=s, addresses=AddressPolicy(lab_override=o))",
         "client.lab_override = something",
     ],
 )
@@ -197,7 +202,9 @@ def test_anything_but_a_real_lab_override_is_not_permission(runs) -> None:
     from types import SimpleNamespace
 
     c = client(override=False)
-    c.lab_override = SimpleNamespace(reason="x", allow_non_global=True)  # type: ignore[assignment]
+    c.addresses = SimpleNamespace(  # type: ignore[assignment]
+        lab_reason="x", lab_override=SimpleNamespace(reason="x", allow_non_global=True)
+    )
     with pytest.raises(NotPermittedError):
         c.legacy_ciphers("example.test", 443)
     assert runs == []
@@ -217,7 +224,9 @@ def test_only_addresses_our_resolver_returned_are_tested(runs) -> None:
     assert all(argv[-1] == "example.test:443" for argv in runs)  # the name stays the SNI
     assert report.addresses_tested == tuple(PUBLIC[:2])
     assert report.addresses_untested == ()
-    assert c.dns.queries == [("example.test", "A")]
+    # D60: the one policy reads both families, so a non-global AAAA refuses
+    # the name here too; testssl.sh is still run on the IPv4 addresses only.
+    assert c.dns.queries == [("example.test", "A"), ("example.test", "AAAA")]
 
 
 def test_testssl_does_no_dns_of_its_own(runs) -> None:
@@ -259,7 +268,22 @@ def test_coverage_counts_addresses_past_the_cap_as_untested(runs) -> None:
 
 
 def test_a_name_with_no_ipv4_address_is_refused_honestly(runs) -> None:
+    class _Ipv6Only(FakeDns):
+        def query(self, name, rrtype, *, resolver=None):
+            records = ["2606:4700::1"] if rrtype == "AAAA" else []
+            return DnsResponse(name, rrtype, "NOERROR" if records else "NODATA", records)
+
+    c = client()
+    c.dns = _Ipv6Only({})
     with pytest.raises(RefusedError, match="IPv4"):
+        c.legacy_ciphers("example.test", 443)
+    assert runs == []
+
+
+def test_a_name_with_no_address_at_all_says_so(runs) -> None:
+    from core.testssl import TestsslUnavailableError
+
+    with pytest.raises(TestsslUnavailableError, match="no A or AAAA"):
         client({"example.test": []}).legacy_ciphers("example.test", 443)
     assert runs == []
 
@@ -289,7 +313,7 @@ def test_the_lab_override_can_allow_a_non_global_address(runs) -> None:
     c = LiveTestsslClient(
         dns=FakeDns({"localhost": ["127.0.0.1"]}),
         scope=Scope(frozenset({"localhost"})),
-        lab_override=lab(allow_non_global=True),
+        addresses=AddressPolicy(lab_override=lab(allow_non_global=True)),
     )
     report = c.legacy_ciphers("localhost", 8443)
     assert report.addresses_tested == ("127.0.0.1",)
@@ -303,7 +327,9 @@ def test_a_host_outside_the_scope_is_refused_before_any_lookup(runs) -> None:
 
 
 def test_a_client_with_no_scope_refuses(runs) -> None:
-    c = LiveTestsslClient(dns=FakeDns({"example.test": PUBLIC[:1]}), lab_override=lab())
+    c = LiveTestsslClient(
+        dns=FakeDns({"example.test": PUBLIC[:1]}), addresses=AddressPolicy(lab_override=lab())
+    )
     with pytest.raises(RefusedError, match="scope"):
         c.legacy_ciphers("example.test", 443)
 
@@ -411,7 +437,8 @@ def test_the_scan_context_hands_its_controls_to_the_client() -> None:
     assert live.ratelimit is ctx.ratelimit
     assert live.cost is ctx.cost
     assert (live.scan_id, live.org_id) == ("scan-1", "org-1")
-    assert live.lab_override is None
+    assert live.addresses is ctx.addresses
+    assert ctx.addresses.lab_reason is None
 
 
 # --- the kill switch reaches a running process -------------------------------

@@ -10,6 +10,7 @@ from core.http import HttpClient, OutOfScopeError
 from core.killswitch import KillSwitch, ScanKilledError
 from core.models import Asset
 from core.ratelimit import RateLimiter
+from tests.core.named_transport import PUBLIC_DNS, named
 
 SCOPE = Scope.for_target(Asset(type="domain", value="example.com"))
 
@@ -17,7 +18,8 @@ SCOPE = Scope.for_target(Asset(type="domain", value="example.com"))
 def _client(handler, **kwargs):
     return HttpClient(
         scope=kwargs.pop("scope", SCOPE),
-        transport=httpx.MockTransport(handler),
+        dns=kwargs.pop("dns", PUBLIC_DNS),
+        transport=named(handler),
         **kwargs,
     )
 
@@ -273,7 +275,7 @@ def test_for_scan_builds_scope_and_service_hosts_from_one_declaration():
     """Finding 4: one helper, so the two cannot be wired apart."""
     target = Asset(type="domain", value="example.com")
     client = HttpClient.for_scan(
-        target, service_hosts=frozenset({REGISTRY}), transport=httpx.MockTransport(_ok)
+        target, service_hosts=frozenset({REGISTRY}), transport=named(_ok), dns=PUBLIC_DNS
     )
 
     assert client._service_hosts == frozenset({REGISTRY})
@@ -297,7 +299,8 @@ def test_a_target_request_is_never_followed_under_a_service_host():
     client = HttpClient.for_scan(
         Asset(type="domain", value="example.com"),
         service_hosts=frozenset({REGISTRY}),
-        transport=httpx.MockTransport(_recording(sent, answers)),
+        transport=named(_recording(sent, answers)),
+        dns=PUBLIC_DNS,
     )
     response = client.get("https://example.com/")
 

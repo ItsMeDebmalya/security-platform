@@ -18,13 +18,15 @@ from core.killswitch import KillSwitch, ScanKilledError
 from core.models import Asset
 from core.ratelimit import RateLimiter
 from core.tls import MissingHandshakeError, RecordingTlsBackend, ReplayTlsBackend, TlsClient
-from corpus.generators.tls_lab import lab_server
+from corpus.generators.tls_lab import LAB_ADDRESSES, LabDns, lab_server
 
 LOOPBACK = Scope(frozenset({"127.0.0.1"}))
 
 
 def client(**kwargs) -> TlsClient:
     kwargs.setdefault("scope", LOOPBACK)
+    kwargs.setdefault("dns", LabDns())
+    kwargs.setdefault("addresses", LAB_ADDRESSES)
     return TlsClient(**kwargs)
 
 

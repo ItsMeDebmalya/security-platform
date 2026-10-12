@@ -16,6 +16,8 @@ class ConnectTimeout(Exception):  # noqa: N818 - the name must contain "timeout"
 
 
 class FakeSite:
+    connects = False  # opens no socket; serves canned answers (D60: backends must say)
+
     def __init__(self, host: str = "x.test", default=NOT_FOUND) -> None:
         self.host = host
         self.default = default

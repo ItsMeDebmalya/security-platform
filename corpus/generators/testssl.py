@@ -41,11 +41,12 @@ import argparse
 import shutil
 from pathlib import Path
 
+from core.addresses import AddressPolicy, LabOverride
 from core.authz import Scope
 from core.context import ScanContext
 from core.dns import DnsClient, SystemResolver
 from core.models import Asset
-from core.testssl import LabOverride, LiveTestsslClient, RecordingTestsslClient
+from core.testssl import LiveTestsslClient, RecordingTestsslClient
 from core.tls import RecordingTlsBackend, TlsClient
 from scanners.tls import TlsScanner
 
@@ -79,11 +80,15 @@ either. The recordings run under this explicit override, and its reason is
 written into every fixture."""
 
 
+def _dns() -> DnsClient:
+    return DnsClient(resolver=SystemResolver(RESOLVERS), resolvers=RESOLVERS)
+
+
 def _live() -> LiveTestsslClient:
     return LiveTestsslClient(
-        dns=DnsClient(resolver=SystemResolver(RESOLVERS), resolvers=RESOLVERS),
+        dns=_dns(),
         scope=SCOPE,
-        lab_override=OVERRIDE,
+        addresses=AddressPolicy(lab_override=OVERRIDE),
     )
 
 
@@ -112,6 +117,8 @@ def generate() -> None:
             shutil.rmtree(testssl_dir)
 
         ctx = ScanContext(
+            # D60: our own engine resolves through the scan's resolver too.
+            dns=_dns(),
             tls=TlsClient(scope=SCOPE, backend=RecordingTlsBackend(tls_dir)),
             testssl=RecordingTestsslClient(testssl_dir, inner=_live()),
             progress=lambda message, fraction: None,

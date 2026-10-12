@@ -684,3 +684,43 @@ Then restore the entry-point lines in `CLAUDE.md` and `SPEC.md`, and the revert 
 
 **Revert.** Revert the merge commit. That drops the Availability column and the figure's second sentence; the four checks would again read as available to customers, which they are not.
 
+
+## v4.0-pre.24 — D60: one address policy; the address checked is the address connected to (2026-10-12)
+
+**What changed. tls 1.4.3, web 1.0.7, domscout 1.4.0: live results changed. No corpus number moved.** [ADR-036](02-decisions.md#adr-036--one-address-policy-no-connection-to-a-non-global-address-and-the-address-checked-is-the-address-connected-to).
+- **The claim, exactly:** from a customer-facing scan the platform does not connect to a non-global address, and the address it connects to is the one it checked. It is not a claim that the platform is "SSRF-proof"; ADR-036 lists what is not covered.
+- **`core/addresses.py`, the one policy.** The rule comes from IANA's special-purpose address registries, through Python's `is_global` plus the cases it gets wrong. A test checks a sample of every registry row, from the registries vendored as test data.
+- **Resolve once, check, connect to the address.**
+  - `core/http.py` (every redirect hop) and `core/tls.py` resolve through the scan's `DnsClient`, never the operating system's resolver, and refuse the whole name if any address is non-global.
+  - The backends connect only to the checked literal, with the name as Host and SNI.
+  - A rebinding test shows a later, different answer never moves a connection.
+- **`core/testssl.py`** calls the policy. This supersedes D59 decision C, its local copy of the rule. It now reads AAAA too. The report's and the four badssl fixtures' `lab_override` key is renamed `lab_reason`.
+- **One lab override,** moved to `core/addresses.py` and held by the scan's one `AddressPolicy`, which `ScanContext` hands to every client. Only that module may name it.
+- **httpx:**
+  - **Environment:** it no longer reads proxy variables or `SSL_CERT_FILE`/`SSL_CERT_DIR` (D62).
+  - **Connections:** keep-alive is off.
+  - **Cookies are not carried between requests.** This was measured on the 13 live hand-verified web hosts before removal: every request gave the same outcome without the jar.
+- **Refusals are honest `inconclusive`s** naming the address, its category and what it usually means. domscout's `dns-records` now names every name that resolves to a non-global address.
+- **Operators:**
+  - `scan run` no longer reaches loopback targets live. It also resolves through public resolvers, so `/etc/hosts` no longer applies.
+  - Fixtures recorded before D60 replay unchanged; a refusal recorded since replays as the same refusal.
+  - The labs record through `corpus/` generators.
+  - See the [runbook](12-cli-runbook.md) §10.
+- **Review round 5** (NOT CLEAN, no blockers, fixed): a lookup that fails to answer is asked once more of the second resolver, so one dropped packet no longer refuses a name for the whole scan.
+- **Review round 4** (NOT CLEAN, no blockers, fixed): tls no longer calls a failed lookup (TIMEOUT, SERVFAIL) a missing record.
+- **Review round 3** (NOT CLEAN, no blockers, fixed):
+  - an unresolved name reads "DNS lookup failed" in web, and gets DNS advice in tls;
+  - a client with no resolver is a scan error (`ResolverNotWiredError`), never an `inconclusive`.
+- **Review round 2** (NOT CLEAN, one blocker, fixed):
+  - refusal fixtures are redacted at capture;
+  - recording wrappers fail closed;
+  - HTTP connect timeouts move on to the next address;
+  - a refusal costs no request.
+- **Review round 1** (NOT CLEAN, no blockers, fixed):
+  - a TLS failure on one address no longer falls through to the next;
+  - refusals are recorded and replay;
+  - a backend that does not declare `connects` is pinned (fail closed);
+  - the policy and the override cannot be subclassed.
+- **Ledger:** D60 fixed; D62 fixed; D59 decision C superseded; a dated entry with the cookie measurement. A corpus-fidelity gap is recorded: domscout's synthetic zones use documentation addresses.
+
+**Revert.** Revert the merge commit. That restores connections to whatever the operating system's resolver returns, including cloud metadata and private space, which is a real request-forgery path into our own infrastructure. So a revert must be paired with another way to keep that path closed.
