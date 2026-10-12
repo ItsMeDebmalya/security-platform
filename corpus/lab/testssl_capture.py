@@ -216,7 +216,9 @@ def main() -> int:
             scope=Scope(frozenset({NAME})),
             addresses=AddressPolicy(
                 lab_override=LabOverride(
-                    reason="lab capture: ordinary local server on loopback", allow_non_global=True
+                    reason="lab capture: ordinary local server on loopback",
+                    networks=("127.0.0.1/32",),
+                    hosts=frozenset({NAME}),
                 )
             ),
         )

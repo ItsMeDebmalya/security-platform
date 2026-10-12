@@ -43,7 +43,11 @@ def live(**kwargs) -> LiveTestsslClient:
     return LiveTestsslClient(
         dns=_Dns(),
         scope=Scope(frozenset({"example.test", "rc4.badssl.com"})),
-        addresses=AddressPolicy(lab_override=LabOverride(reason="unit test")),
+        addresses=AddressPolicy(
+            lab_override=LabOverride(
+                reason="unit test", hosts=frozenset({"example.test", "rc4.badssl.com"})
+            )
+        ),
         **kwargs,
     )
 

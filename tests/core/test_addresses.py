@@ -259,24 +259,83 @@ def test_the_policy_has_no_override_by_default() -> None:
     assert AddressPolicy().lab_reason is None
 
 
-def test_the_lab_override_can_permit_non_global_addresses() -> None:
-    policy = AddressPolicy(lab_override=LabOverride(reason="unit test", allow_non_global=True))
-    dns = FakeDns({("localhost", "A"): ["127.0.0.1"]})
+def test_the_lab_override_permits_only_its_own_networks() -> None:
+    """Lab entry point: `networks` replaced the blanket `allow_non_global`, so a
+    lab use names exactly what it may reach."""
+    policy = AddressPolicy(lab_override=LabOverride(reason="unit test", networks=("127.0.0.1/32",)))
+    dns = FakeDns({("localhost", "A"): ["127.0.0.1"], ("other.test", "A"): ["127.0.0.2"]})
     assert policy.pin("localhost", dns).addresses == ("127.0.0.1",)
     assert policy.lab_reason == "unit test"
+    with pytest.raises(AddressRefusedError, match=re.escape("127.0.0.2")):
+        policy.pin("other.test", dns)
 
 
-def test_an_override_without_allow_non_global_permits_nothing_extra() -> None:
+def test_an_override_with_no_networks_permits_nothing_extra() -> None:
     policy = AddressPolicy(lab_override=LabOverride(reason="unit test"))
     with pytest.raises(AddressRefusedError):
         policy.pin("127.0.0.1", FakeDns({}))
+
+
+@pytest.mark.parametrize(
+    "network",
+    [
+        "10.0.0.0/8",  # the shape of a fleet subnet: never a lab network
+        "192.168.0.0/16",
+        "172.16.5.0/24",
+        "169.254.169.254/32",  # cloud metadata
+        "fe80::/10",
+        "93.184.215.0/24",  # global: the policy never needed permission for it
+        "0.0.0.0/0",
+    ],
+)
+def test_a_lab_override_cannot_name_a_network_outside_the_declared_lab_networks(
+    network,
+) -> None:
+    """ADR-036 decision 10: the lab may never reach a production address. Its
+    networks must sit inside LAB_NETWORKS, which a reviewed change to core
+    widens, one purpose-built lab at a time."""
+    with pytest.raises(ValueError, match="lab network"):
+        LabOverride(reason="unit test", networks=(network,))
+
+
+def test_the_declared_lab_networks_are_loopback_only_until_step_3() -> None:
+    from core.addresses import LAB_NETWORKS
+
+    assert {str(n) for n in LAB_NETWORKS} == {"127.0.0.0/8", "::1/128"}
+
+
+def test_the_dedicated_address_waiver_keys_off_the_named_hosts() -> None:
+    """Condition 4: the waiver is for targets the override names, not for any
+    target scanned while an override happens to be present."""
+    policy = AddressPolicy(
+        lab_override=LabOverride(reason="unit test", hosts=frozenset({"localhost"}))
+    )
+    assert policy.waives_dedicated_address("localhost")
+    assert policy.waives_dedicated_address("LOCALHOST.")
+    assert not policy.waives_dedicated_address("example.com")
+    assert not AddressPolicy().waives_dedicated_address("localhost")
+
+
+# --- the address-scope check (D61's first instance) -------------------------
+
+
+def test_an_address_scope_permits_its_networks_and_refuses_everything_else() -> None:
+    from core.addresses import AddressScope
+
+    scope = AddressScope(("127.0.0.1/32", "::1/128"))
+    assert scope.permits("127.0.0.1")
+    assert scope.permits("::1")
+    assert not scope.permits("127.0.0.2")
+    assert not scope.permits("93.184.215.14")
+    assert not scope.permits("not-an-address")
+    assert not AddressScope(()).permits("127.0.0.1")
 
 
 def test_only_a_real_lab_override_is_accepted() -> None:
     from types import SimpleNamespace
 
     with pytest.raises(TypeError):
-        AddressPolicy(lab_override=SimpleNamespace(reason="x", allow_non_global=True))  # type: ignore[arg-type]
+        AddressPolicy(lab_override=SimpleNamespace(reason="x", networks=()))  # type: ignore[arg-type]
 
 
 def test_a_lab_override_must_say_why() -> None:

@@ -191,7 +191,7 @@ def test_a_tls_target_resolving_to_private_space_is_refused_before_any_socket(wi
 
 
 def test_a_lab_override_lets_the_tls_client_reach_loopback(wire) -> None:
-    lab = AddressPolicy(lab_override=LabOverride(reason="unit test", allow_non_global=True))
+    lab = AddressPolicy(lab_override=LabOverride(reason="unit test", networks=("127.0.0.1/32",)))
     with lab_server(common_name="localhost", sans=["localhost"]) as srv:
         wire["ports"][("127.0.0.1", srv.port)] = srv.port
         client = TlsClient(

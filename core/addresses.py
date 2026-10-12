@@ -183,20 +183,60 @@ class ResolverNotWiredError(RuntimeError):
 # --- the policy -------------------------------------------------------------
 
 
+LAB_NETWORKS: tuple[ipaddress.IPv4Network | ipaddress.IPv6Network, ...] = (
+    ipaddress.ip_network("127.0.0.0/8"),
+    ipaddress.ip_network("::1/128"),
+)
+"""Where a lab override may ever reach (ADR-036 decision 10): purpose-built
+lab boxes only, boxes we created to be scanned. **Never a production address,
+network or name.** Loopback only until docs/26 Step 3 adds the lab VMs' own
+network, by a reviewed change here. The fleet is reached through agent
+snapshots, never through the lab path."""
+
+
+class AddressScope:
+    """Addresses inside a declared set of networks, and nothing else.
+
+    D61's first instance: an address-level scope check. The lab uses it for
+    its inventory; a customer-facing address scope (an address shown to be
+    the customer's) is meant to reuse this, not to grow a second one.
+    """
+
+    def __init__(self, networks: tuple[str, ...]) -> None:
+        self.networks = tuple(ipaddress.ip_network(n, strict=False) for n in networks)
+
+    def permits(self, address: str) -> bool:
+        ip = _parse(address)
+        return ip is not None and any(
+            ip.version == net.version and ip in net for net in self.networks
+        )
+
+
+def _within_lab_networks(network: ipaddress.IPv4Network | ipaddress.IPv6Network) -> bool:
+    return any(
+        network.version == lab.version and network.subnet_of(lab)  # type: ignore[arg-type]
+        for lab in LAB_NETWORKS
+    )
+
+
 @dataclass(frozen=True)
 class LabOverride:
     """Permission to work without one of the platform's consent conditions.
 
-    For the lab capture and the corpus recordings only, never a
-    customer-facing path. It is the only override there is: `core/testssl.py`
-    reads it, through `AddressPolicy.lab_reason`, as the waiver of the
-    dedicated-address condition (D59), and `allow_non_global` lets the
-    address policy connect to loopback and private addresses (the local labs).
+    For the lab and the corpus recordings only, never a customer-facing path.
+    It is the only override there is, and it says exactly what it covers:
+    - `networks`: the non-global addresses the policy may connect to. Each
+      must sit inside `LAB_NETWORKS`; anything else is refused when the
+      override is made, so no lab use can name a production network.
+    - `hosts`: the targets for which testssl.sh's dedicated-address condition
+      (D59) is waived. The waiver keys off the target being named here, never
+      off an override merely being present.
     `reason` is recorded wherever it is used.
     """
 
     reason: str
-    allow_non_global: bool = False
+    networks: tuple[str, ...] = ()
+    hosts: frozenset[str] = frozenset()
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
         raise TypeError("LabOverride cannot be subclassed (ADR-036 decision 6)")
@@ -204,6 +244,17 @@ class LabOverride:
     def __post_init__(self) -> None:
         if not self.reason.strip():
             raise ValueError("a lab override must say why it is being used")
+        for network in self.networks:
+            parsed = ipaddress.ip_network(network, strict=False)
+            if not _within_lab_networks(parsed):
+                raise ValueError(
+                    f"{network} is not inside a declared lab network "
+                    f"({', '.join(str(n) for n in LAB_NETWORKS)}). The lab may never reach a "
+                    "production address, network or name (ADR-036 decision 10)"
+                )
+        object.__setattr__(
+            self, "hosts", frozenset(h.strip().lower().rstrip(".") for h in self.hosts)
+        )
 
 
 @dataclass(frozen=True)
@@ -235,13 +286,23 @@ class AddressPolicy:
         return self.lab_override.reason if self.lab_override is not None else None
 
     def refusal(self, address: str) -> str | None:
-        """`refusal()`, with the lab's permission for non-global addresses."""
+        """`refusal()`, with the lab's permission for its own networks only."""
         why = refusal(address)
         if why is None or _parse(address) is None:
             return why
-        if self.lab_override is not None and self.lab_override.allow_non_global:
+        if self.lab_override is not None and AddressScope(self.lab_override.networks).permits(
+            address
+        ):
             return None
         return why
+
+    def waives_dedicated_address(self, host: str) -> bool:
+        """Whether testssl.sh's dedicated-address condition is waived for this
+        target: only when the lab override names it (ADR-036 decision 10)."""
+        return (
+            self.lab_override is not None
+            and host.strip().lower().rstrip(".") in self.lab_override.hosts
+        )
 
     def pin(self, host: str, dns: Any) -> Pinned:
         """Resolve `host` once through the scan's resolver and check every address.
@@ -313,8 +374,10 @@ def url_host(address: str) -> str:
 
 
 __all__ = [
+    "LAB_NETWORKS",
     "AddressPolicy",
     "AddressRefusedError",
+    "AddressScope",
     "AddressUnresolvedError",
     "LabOverride",
     "Pinned",

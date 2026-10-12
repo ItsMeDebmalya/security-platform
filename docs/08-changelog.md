@@ -737,3 +737,18 @@ Then restore the entry-point lines in `CLAUDE.md` and `SPEC.md`, and the revert 
 
 **Revert.** Revert the merge commit.
 
+## v4.0-pre.26 — The lab entry point (ADR-036 decision 10) (2026-10-12)
+
+**What changed. No scanner version and no corpus number changed; the customer path's behaviour is unchanged.**
+- **`corpus/lab/scan.py`:** `uv run python -m corpus.lab.scan <scanner> --target <t>` scans the purpose-built lab boxes in `corpus/lab/inventory.yaml`, which `scan run` refuses. It runs `scan run`'s own `_execute`; two keyword-only parameters, which a source-level test keeps out of every other caller, give it a lab address policy and a resolver that answers lab names (so `localhost` works there).
+- **`corpus/lab/inventory.yaml`:** `localhost → 127.0.0.1` today. It may never contain a production address, network or name.
+- **`core/addresses.py`:**
+  - `LAB_NETWORKS` is loopback only;
+  - `AddressScope` is a networks-only scope check, D61's first instance;
+  - `LabOverride` replaces `allow_non_global` with `networks` (each inside `LAB_NETWORKS`) and `hosts`;
+  - testssl.sh's dedicated-address waiver applies only to the hosts an override names.
+- **`cli/main.py`:** `_execute` gains `address_policy` and `wrap_resolver`, both keyword-only and defaulting to `None`. `scan run` does not pass them.
+- **Docs:** ADR-036 decision 10, with its table of what is and is not bypassed; docs/13 (how to scan the containers now); runbook §10; ledger, including a note against D61.
+
+**Revert.** Revert the merge commit. The docs/13 containers then become unreachable again (as after D60), and the lab overrides return to the blanket `allow_non_global`.
+

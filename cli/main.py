@@ -16,6 +16,7 @@ import json
 import sys
 import threading
 import traceback
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from types import TracebackType
@@ -24,6 +25,7 @@ from typing import Any, cast, get_args
 import typer
 from ulid import ULID
 
+from core.addresses import AddressPolicy
 from core.applicability import enforce
 from core.assetgraph import AssetGraph, seed_asset_graph
 from core.authz import AuthorisationDeniedError, AuthorisedScope, Scope
@@ -35,6 +37,7 @@ from core.dns import (
     MissingFixtureError,
     RecordingResolver,
     ReplayResolver,
+    Resolver,
     SystemResolver,
 )
 from core.http import HttpClient, OutOfScopeError, RecordingHttpBackend, ReplayHttpBackend
@@ -467,7 +470,19 @@ def _execute(
     replay: Path | None,
     scope_file: Path,
     scan_id: str | None = None,
+    address_policy: AddressPolicy | None = None,
+    wrap_resolver: Callable[[Resolver], Resolver] | None = None,
 ) -> ScanResult:
+    """Build one scan's context and run it.
+
+    `address_policy` and `wrap_resolver` exist for the lab entry point
+    (`corpus/lab/scan.py`, ADR-036 decision 10) and nothing else. `scan run`
+    never passes them, and a test reads every call to `_execute` in the source
+    to keep it that way. They change only which non-global addresses the scan
+    may reach and how lab names resolve; the authorisation check, the name
+    scope, the kill switch, rate limits, cost and redaction below are the
+    same for both callers.
+    """
     registry = discover()
     scanner = registry.get(scanner_name)()
 
@@ -489,12 +504,15 @@ def _execute(
         http_backend = ReplayHttpBackend(replay)
         testssl_client = ReplayTestsslClient(replay)
     elif record is not None:
-        resolver = RecordingResolver(SystemResolver(DEFAULT_RESOLVERS), record)
+        live: Resolver = SystemResolver(DEFAULT_RESOLVERS)
+        resolver = RecordingResolver(wrap_resolver(live) if wrap_resolver else live, record)
         tls_backend = RecordingTlsBackend(record)
         http_backend = RecordingHttpBackend(record)
         testssl_client = RecordingTestsslClient(record)
     else:
         resolver = SystemResolver(DEFAULT_RESOLVERS)
+        if wrap_resolver is not None:
+            resolver = wrap_resolver(resolver)
         tls_backend = SystemTlsBackend()
         http_backend = None  # HttpClient's own default: a live SystemHttpBackend
         # D20: the one place a scan reaches the real testssl.sh subprocess.
@@ -528,6 +546,7 @@ def _execute(
         scope=Scope.for_target(target),
         ratelimit=target_limit,
         progress=_progress,
+        addresses=address_policy or AddressPolicy(),
     )
     # ADR-032: a not_applicable reason the check did not declare fails here.
     return enforce(scanner.run(target, _as_mode(mode), ctx))

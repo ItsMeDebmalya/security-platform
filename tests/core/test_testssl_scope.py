@@ -81,6 +81,7 @@ class FakeLimiter:
 
 
 def lab(**kwargs) -> LabOverride:
+    kwargs.setdefault("hosts", frozenset({"example.test", "localhost"}))
     return LabOverride(reason="unit test", **kwargs)
 
 
@@ -126,6 +127,20 @@ def test_without_the_override_nothing_is_resolved_and_nothing_starts(runs) -> No
     """B: the condition is unproven, so the four checks do not run. Not a
     lookup, not a process: the refusal comes before either."""
     c = client(override=False)
+    with pytest.raises(NotPermittedError, match="dedicated"):
+        c.legacy_ciphers("example.test", 443)
+    assert runs == []
+    assert c.dns.queries == []
+
+
+def test_an_override_that_does_not_name_the_target_does_not_waive_the_condition(runs) -> None:
+    """Lab entry point, condition 4: the waiver keys off the target, not off an
+    override merely being present."""
+    c = LiveTestsslClient(
+        dns=FakeDns({"example.test": PUBLIC[:1]}),
+        scope=Scope(frozenset({"example.test"})),
+        addresses=AddressPolicy(lab_override=lab(hosts=frozenset({"localhost"}))),
+    )
     with pytest.raises(NotPermittedError, match="dedicated"):
         c.legacy_ciphers("example.test", 443)
     assert runs == []
@@ -313,7 +328,7 @@ def test_the_lab_override_can_allow_a_non_global_address(runs) -> None:
     c = LiveTestsslClient(
         dns=FakeDns({"localhost": ["127.0.0.1"]}),
         scope=Scope(frozenset({"localhost"})),
-        addresses=AddressPolicy(lab_override=lab(allow_non_global=True)),
+        addresses=AddressPolicy(lab_override=lab(networks=("127.0.0.1/32",))),
     )
     report = c.legacy_ciphers("localhost", 8443)
     assert report.addresses_tested == ("127.0.0.1",)
@@ -321,6 +336,8 @@ def test_the_lab_override_can_allow_a_non_global_address(runs) -> None:
 
 def test_a_host_outside_the_scope_is_refused_before_any_lookup(runs) -> None:
     c = client()
+    # Named by the override, so the scope check (not the waiver) is what refuses.
+    c.addresses = AddressPolicy(lab_override=lab(hosts=frozenset({"elsewhere.test"})))
     with pytest.raises(RefusedError, match="scope"):
         c.legacy_ciphers("elsewhere.test", 443)
     assert c.dns.queries == [] and runs == []
