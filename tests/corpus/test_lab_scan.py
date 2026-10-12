@@ -209,7 +209,15 @@ def _lab_parameter_uses(rel: str, tree: ast.AST) -> list[str]:
     `_execute` other than by calling it directly: the keywords themselves, a
     keyword splat into a call to it, an alias or reference to it (a
     `functools.partial`, a variable), an import under another name, or a
-    string naming it (`getattr`). Review of the lab entry point, round 1."""
+    string naming it (`getattr`). Review of the lab entry point, round 1.
+
+    Not chased (round 2): deliberate obfuscation, such as a name assembled
+    from pieces or `exec` of a built string. `address_policy` is useless
+    without a `LabOverride`, which the override walk bars, and `wrap_resolver`
+    alone cannot reach a non-global address.
+
+    If a future module legitimately needs a parameter called `address_policy`
+    or `wrap_resolver`, rename it there; do not weaken this check."""
     uses = []
     direct = {
         id(node.func)

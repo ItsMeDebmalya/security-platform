@@ -42,7 +42,7 @@ customer-facing package for any route to it; only this module may name it.
 from __future__ import annotations
 
 import ipaddress
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 IPAddress = ipaddress.IPv4Address | ipaddress.IPv6Address
@@ -270,7 +270,9 @@ class Pinned:
 class AddressPolicy:
     """The scan's address policy. `ScanContext` hands the same one to every client."""
 
-    lab_override: LabOverride | None = None
+    lab_override: LabOverride | None = field(default=None, kw_only=True)
+    """Keyword-only, so every use names it (`lab_override=`) where the override
+    walk can see it (review of the lab entry point, round 2)."""
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
         # A subclass overriding `refusal` would relax the policy without naming

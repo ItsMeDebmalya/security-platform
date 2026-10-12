@@ -1964,6 +1964,21 @@ The round-1 fixes were checked, and the whole change re-read. All fixes are test
   - lab networks are parsed strictly, so `127.5.5.5/8` is refused rather than widened to all of 127/8.
 - **Noted by the reviewer, not investigated:** a recorded lab scan replayed through `scan run --replay` gave the same findings, with a request count of 4 against 6 live.
 
+## 2026-10-12 · Independent review of the lab entry point, round 2: CLEAN, one should-fix taken
+
+- **SHOULD-FIX, taken before merge: the override walk missed an aliased `import_module`, and `AddressPolicy` accepted its override positionally.** Together they let a customer-facing file load `corpus.generators.testssl.OVERRIDE` with neither walk noticing. The positional form dates from D60. This undid the defence in depth that ADR-036 decision 10 relies on ("a relaxed policy still needs a `LabOverride`"). Fixed in both places:
+  - **In code:** `AddressPolicy.lab_override` is keyword-only, so every use names it where the walk sees it.
+  - **In the walk, which now flags:**
+    - any `AddressPolicy` call with a positional argument;
+    - any reference to `import_module` or `__import__` that is not a direct call with a module path visibly outside `corpus`;
+    - any loader (`runpy.run_module`, `run_path`, `spec_from_file_location`);
+    - an aliased import of any of these;
+    - any non-docstring string naming a `corpus.` module path (`sys.modules[...]`).
+  - Each bypass has a test, and so do the ordinary cases it must not flag: core's `scanners.*` discovery, `import_module("json")`, the corpus harness's `"corpus"` path segment, and docstrings.
+- **Nits, fixed:**
+  - the round-1 rule wrongly flagged `import_module("json")`;
+  - the lab walk's docstring now says what it deliberately does not chase (obfuscation such as `exec`, which review must catch), and that a future clash on the `address_policy=` keyword is fixed by renaming, not by weakening the check.
+
 ## 2026-10-10 · Handoff: open items and where to start
 
 *For a new session with no chat history. State as of PR #32, with the operator's decisions of 2026-10-10 below. Each item links to where it is owned.*
