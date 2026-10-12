@@ -113,6 +113,11 @@ def mint() -> None:
 class LabBackend:
     """Routes <case>.web.test to the lab, keeping the original URL in the response."""
 
+    connects = False
+    """It does open sockets, but only to the web lab on loopback, which it
+    routes to itself with the case's Host and SNI. It is corpus-only, never on
+    a customer path, and must declare this rather than be pinned (D60)."""
+
     def __init__(self, ca: Path) -> None:
         context = ssl.create_default_context(cafile=str(ca))
         self._client = httpx.Client(verify=context, follow_redirects=False, timeout=10.0)

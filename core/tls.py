@@ -626,9 +626,23 @@ class RecordingTlsBackend:
         self, host: str, port: int, servername: str | None, **kwargs: Any
     ) -> RawHandshake:
         result = self._inner.handshake(host, port, servername, **kwargs)
-        version = _version_label(kwargs.get("min_version"), kwargs.get("max_version"))
-        self._store.write(_fixture_name(host, port, servername, version), result.to_dict())
+        self.record(
+            host, port, servername, result, kwargs.get("min_version"), kwargs.get("max_version")
+        )
         return result
+
+    def record(
+        self,
+        host: str,
+        port: int,
+        servername: str | None,
+        result: RawHandshake,
+        min_version: ssl.TLSVersion | None,
+        max_version: ssl.TLSVersion | None,
+    ) -> None:
+        """Freeze one handshake, or a refusal made before any (D60)."""
+        version = _version_label(min_version, max_version)
+        self._store.write(_fixture_name(host, port, servername, version), result.to_dict())
 
 
 class ReplayTlsBackend:
@@ -736,31 +750,35 @@ class TlsClient:
             )
         if self.killswitch is not None:
             self.killswitch.check(scan_id=self.scan_id, org_id=self.org_id)
-        pinned: dict[str, Any] = {}
-        if getattr(self.backend, "connects", False):
-            # D60: one lookup, through the scan's resolver; only checked
-            # literals go down to the socket.
-            policy = self.addresses or AddressPolicy()
-            try:
-                pinned["addresses"] = policy.pin(a_label(host) or host, self.dns).addresses
-            except AddressRefusedError as exc:
-                return RawHandshake(
-                    reachable=False,
-                    observed_at=dt.datetime.now(dt.UTC),
-                    error=f"address_refused:{exc.summary}",
-                )
-            except AddressUnresolvedError as exc:
-                return RawHandshake(
-                    reachable=False,
-                    observed_at=dt.datetime.now(dt.UTC),
-                    error=f"connect_error:{exc}",
-                )
-        if self.ratelimit is not None:
-            self.ratelimit.acquire(host)
-
         # ADR-030: the A-label a browser would send, so the SNI and the name
         # OpenSSL checks are the browser's, not Python's IDNA 2003 encoding.
         wire_name = (a_label(servername) or servername) if servername else servername
+        pinned: dict[str, Any] = {}
+        # Fail closed: a backend that does not say it opens no socket is pinned.
+        if getattr(self.backend, "connects", True):
+            # D60: one lookup, through the scan's resolver; only checked
+            # literals go down to the socket.
+            policy = self.addresses or AddressPolicy()
+            error: str | None = None
+            try:
+                pinned["addresses"] = policy.pin(a_label(host) or host, self.dns).addresses
+            except AddressRefusedError as exc:
+                error = f"address_refused:{exc.summary}"
+            except AddressUnresolvedError as exc:
+                error = f"connect_error:{exc}"
+            if error is not None:
+                refused = RawHandshake(
+                    reachable=False, observed_at=dt.datetime.now(dt.UTC), error=error
+                )
+                # A recording keeps the refusal, so its replay says the same
+                # (review of D60, round 1). Nothing was connected to.
+                record = getattr(self.backend, "record", None)
+                if record is not None:
+                    record(host, port, wire_name, refused, min_version, max_version)
+                return refused
+        if self.ratelimit is not None:
+            self.ratelimit.acquire(host)
+
         raw = self.backend.handshake(
             host,
             port,

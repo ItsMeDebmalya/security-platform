@@ -185,6 +185,9 @@ class LabOverride:
     reason: str
     allow_non_global: bool = False
 
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        raise TypeError("LabOverride cannot be subclassed (ADR-036 decision 6)")
+
     def __post_init__(self) -> None:
         if not self.reason.strip():
             raise ValueError("a lab override must say why it is being used")
@@ -204,8 +207,13 @@ class AddressPolicy:
 
     lab_override: LabOverride | None = None
 
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        # A subclass overriding `refusal` would relax the policy without naming
+        # the override, out of the walk's sight (review of D60, round 1).
+        raise TypeError("AddressPolicy cannot be subclassed (ADR-036 decision 6)")
+
     def __post_init__(self) -> None:
-        if self.lab_override is not None and not isinstance(self.lab_override, LabOverride):
+        if self.lab_override is not None and type(self.lab_override) is not LabOverride:
             raise TypeError("only a real LabOverride can relax the address policy")
 
     @property

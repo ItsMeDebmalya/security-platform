@@ -423,8 +423,8 @@ class _Scan:
             )
             description += (
                 f" {len(non_global)} name(s) resolve to a non-global address in public DNS: "
-                f"{listed}. Our scans do not connect to these addresses, so TLS and website "
-                "checks on these names report that they could not test them."
+                f"{listed}. Our scans would not connect to these addresses, so a TLS or "
+                "website scan of these names would report that it could not test them."
             )
             impact += (
                 " A public name that resolves to a private or reserved address usually means "

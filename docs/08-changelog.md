@@ -703,9 +703,14 @@ Then restore the entry-point lines in `CLAUDE.md` and `SPEC.md`, and the revert 
 - **Refusals are honest `inconclusive`s** naming the address, its category and what it usually means. domscout's `dns-records` now names every name that resolves to a non-global address.
 - **Operators:**
   - `scan run` no longer reaches loopback targets live. It also resolves through public resolvers, so `/etc/hosts` no longer applies.
-  - Replays are unaffected.
+  - Fixtures recorded before D60 replay unchanged; a refusal recorded since replays as the same refusal.
   - The labs record through `corpus/` generators.
   - See the [runbook](12-cli-runbook.md) §10.
+- **Review round 1** (NOT CLEAN, no blockers, fixed):
+  - a TLS failure on one address no longer falls through to the next;
+  - refusals are recorded and replay;
+  - a backend that does not declare `connects` is pinned (fail closed);
+  - the policy and the override cannot be subclassed.
 - **Ledger:** D60 fixed; D62 fixed; D59 decision C superseded; a dated entry with the cookie measurement. A corpus-fidelity gap is recorded: domscout's synthetic zones use documentation addresses.
 
 **Revert.** Revert the merge commit. That restores connections to whatever the operating system's resolver returns, including cloud metadata and private space, which is a real request-forgery path into our own infrastructure. So a revert must be paired with another way to keep that path closed.

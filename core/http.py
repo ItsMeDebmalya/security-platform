@@ -48,7 +48,7 @@ from typing import Any, Protocol
 
 import httpx
 
-from core.addresses import AddressPolicy
+from core.addresses import AddressPolicy, AddressRefusedError, AddressUnresolvedError
 from core.authz import Scope
 from core.cost import CostMeter
 from core.evidence import DEFAULT_BODY_CAP, truncate_body
@@ -221,7 +221,7 @@ class SystemHttpBackend:
                     **kwargs,
                 )
             except httpx.ConnectError as exc:
-                if isinstance(exc.__cause__, ssl.SSLError):
+                if _is_tls_failure(exc):
                     raise  # a TLS failure is the answer, not a reason to try elsewhere
                 last = exc
                 continue
@@ -239,6 +239,28 @@ class SystemHttpBackend:
 
     def close(self) -> None:
         self._client.close()
+
+
+def _is_tls_failure(exc: BaseException) -> bool:
+    """Whether an `ssl.SSLError` is anywhere in the chain.
+
+    httpx wraps httpcore's `ConnectError`, which carries the `SSLError` as an
+    argument, so `__cause__` alone never reaches it (review of D60, round 1)."""
+    seen: set[int] = set()
+    stack: list[BaseException] = [exc]
+    while stack:
+        current = stack.pop()
+        if id(current) in seen:
+            continue
+        seen.add(id(current))
+        if isinstance(current, ssl.SSLError):
+            return True
+        stack.extend(
+            linked
+            for linked in (current.__cause__, current.__context__, *current.args)
+            if isinstance(linked, BaseException)
+        )
+    return False
 
 
 def _capture_payload(
@@ -328,6 +350,17 @@ class RecordingHttpBackend:
         self._store.write(_fixture_name(method, url), payload)
         return raw
 
+    def record_refusal(
+        self, method: str, url: str, exc: AddressRefusedError | AddressUnresolvedError
+    ) -> None:
+        """D60: a request the address policy stopped, so its replay stops it too."""
+        refusal: dict[str, Any]
+        if isinstance(exc, AddressRefusedError):
+            refusal = {"host": exc.host, "refused": exc.refused, "literal": exc.literal}
+        else:
+            refusal = {"unresolved": str(exc)}
+        self._store.write(_fixture_name(method, url), {"url": url, "address_policy": refusal})
+
 
 class ReplayHttpBackend:
     """Serves recorded captures and never opens a socket.
@@ -357,6 +390,14 @@ class ReplayHttpBackend:
                     subject=f"{method.upper()} {url}",
                     directory=self._store.directory,
                 )
+            )
+        refusal = data.get("address_policy")
+        if refusal is not None:
+            # D60: recorded as stopped by the address policy; nothing was sent.
+            if "unresolved" in refusal:
+                raise AddressUnresolvedError(refusal["unresolved"])
+            raise AddressRefusedError(
+                refusal["host"], refusal["refused"], literal=refusal.get("literal", False)
             )
         # ADR-028 clause 7: a replayed capture is redacted again. Running the
         # redactor twice is the same as once, so a correct fixture is unchanged;
@@ -498,11 +539,20 @@ class HttpClient:
 
         if self._killswitch is not None:
             self._killswitch.check(scan_id=self._scan_id, org_id=self._org_id)
-        if getattr(self._backend, "connects", False):
+        # Fail closed: a backend that does not say it opens no socket is pinned.
+        if getattr(self._backend, "connects", True):
             # D60, at every hop: resolved once, checked, and only the checked
             # literals go down. Nothing is inherited from an earlier hop.
             policy = self._addresses or AddressPolicy()
-            pinned = policy.pin(httpx.URL(url).raw_host.decode("ascii"), self._dns)
+            try:
+                pinned = policy.pin(httpx.URL(url).raw_host.decode("ascii"), self._dns)
+            except (AddressRefusedError, AddressUnresolvedError) as exc:
+                # A recording keeps the refusal, so its replay says the same
+                # (review of D60, round 1). Nothing was sent.
+                record = getattr(self._backend, "record_refusal", None)
+                if record is not None:
+                    record(method, url, exc)
+                raise
             kwargs = {**kwargs, "addresses": pinned.addresses}
         if self._ratelimit is not None:
             self._ratelimit.acquire(host)

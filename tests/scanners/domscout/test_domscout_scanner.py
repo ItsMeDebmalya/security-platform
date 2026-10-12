@@ -20,6 +20,8 @@ def answer(name, rrtype, *records, rcode="NOERROR", ttl=300):
 class FakeHttpBackend:
     """Records URLs served by fixed status/body, or raises for a listed URL."""
 
+    connects = False  # opens no socket; serves canned answers (D60: backends must say)
+
     def __init__(self, responses: dict[str, tuple[int, str]], *, fail: set[str] | None = None):
         self._responses = responses
         self._fail = fail or set()

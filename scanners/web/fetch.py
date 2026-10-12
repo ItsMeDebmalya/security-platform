@@ -52,8 +52,8 @@ def describe_transport_failure(exc: BaseException) -> str:
     text: str
     if isinstance(exc, AddressRefusedError):
         # D60: said as what it is, naming the hop's name and address
-        text = (
-            f"{exc.summary}, so it was not connected to (often split-horizon DNS or a stale record)"
+        text = f"{exc.summary}, so it was not connected to" + (
+            "" if exc.literal else " (often split-horizon DNS or a stale record)"
         )
     elif "CERTIFICATE_VERIFY_FAILED" in msg:
         reason = msg.split("certificate verify failed:", 1)[-1].split(" (_ssl", 1)[0]

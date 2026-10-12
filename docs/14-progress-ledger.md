@@ -1842,7 +1842,7 @@ Changed: [the catalogue](21-scanner-catalogue.md), [SPEC.md](../SPEC.md)'s stand
 - **`core/testssl.py`** calls the policy (decision C superseded). It now reads the AAAA answer too, so a name with a non-global IPv6 record is refused here as everywhere; testssl.sh still runs on IPv4 only. `LabOverride` moved to `core/addresses.py`; the report's `lab_override` field and the four badssl fixtures' key are renamed `lab_reason`. Only the key was edited, no verdict, so `core/testssl.py` no longer names the override and the walk covers it.
 - **`core/context.py`:** one `AddressPolicy` per scan, handed with the resolver to every connecting client. Only `core/addresses.py` may name the override; the walk's single exemption.
 - **Scanners:** tls (1.4.3) and web (1.0.7) report a refusal as an `inconclusive` that names the address, its category and what it usually means: never "check your firewall", never "transport error". domscout (1.4.0): `dns-records` lists each name resolving to a non-global address, with the meaning; this meets the operator's condition that the record be a finding, not only a coverage note. email is unchanged.
-- **Every backend in `core/` declares `connects`;** a test enforces it, so a live backend cannot skip the policy by omission.
+- **Every backend in `core/` declares `connects`;** a test enforces it. *Corrected in review round 1:* as first written, a backend that declared nothing was treated as not connecting, so this line overstated. Since round 1, silence means connecting (fail closed).
 
 **Measured before the cookie jar went (operator's condition).** The corpus could not answer whether cookies matter: it replays without httpx, so its answer was guaranteed clean, the shape of D28 and D31. So the web scanner's real Light plan was run live, twice per host, with the jar and with it cleared after every response, on its 13 live hand-verified hosts (the three operator domains included). Results:
 - 96 scanner requests, 127 on the wire, 31 redirect hops.
@@ -1860,6 +1860,25 @@ Changed: [the catalogue](21-scanner-catalogue.md), [SPEC.md](../SPEC.md)'s stand
 - **Who else an address serves** (D61) is untouched; D59 decision B's tier stays empty outside the lab.
 
 **No corpus number moved.** Replays open no socket and do no resolution.
+
+## 2026-10-12 · Independent review of D60, round 1: NOT CLEAN, no blockers, fixed
+
+On the customer path the narrow claim held: every connection went to a checked literal, nothing below the policy was handed a name, and every redirect hop was pinned again. Three should-fix items and six nits; all fixed test-first, or recorded.
+
+**Should-fix:**
+1. **A certificate failure on one address fell through to the next.** httpx carries the `SSLError` two levels down (`httpx.ConnectError` ← `httpcore.ConnectError(SSLError)`), so the check on `__cause__` never fired. A name with a bad certificate on one address and a good one on another would have read clean. Fix: walk the whole chain. A two-address test now puts the bad certificate first.
+2. **A refusal in a recorded scan could not be replayed.** The refusal happens before the backend, so recording wrote nothing and the replay crashed on a missing fixture. Three docs said "replays are unaffected". The suggested fix (pin during replay too) was not taken: existing fixtures hold no address lookups, and the corpus harness cannot hold the lab override, so it would have broken the corpus. Instead, the recording backends keep the refusal (TLS: the refused handshake; HTTP: the refusal, raised again on replay), and an unresolved name the same way. The three docs are corrected.
+3. **A backend that did not declare `connects` skipped the policy.** Now silence means connecting (fail closed). The corpus and test fakes declare `False`, and so does the web lab's router, which reaches only its own loopback lab. The ledger line that said "cannot skip the policy by omission" was not true when written; it is corrected above.
+
+**Nits:**
+- **Fixed:**
+  - web described an address target as a DNS problem; it now says "is a non-global address", with no split-horizon note;
+  - domscout said TLS and web checks "report" refusals on names they never scan; it now says "would";
+  - SPEC.md's domscout row still read v1.3.3;
+  - `AddressPolicy` and `LabOverride` could be subclassed to relax the policy without naming the override; now they cannot, and the override's type is checked exactly.
+- **Stated in ADR-036:**
+  - a DNS family that fails to resolve adds no address and refuses nothing (decision 2);
+  - one override also waives testssl.sh's dedicated-address condition, including the labs' instance (decision 6).
 
 ## 2026-10-10 · Handoff: open items and where to start
 

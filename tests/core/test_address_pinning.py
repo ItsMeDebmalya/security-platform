@@ -461,3 +461,117 @@ def test_a_recording_backend_connects_exactly_when_what_it_wraps_does(tmp_path) 
     assert RecordingHttpBackend(tmp_path, ReplayHttpBackend(tmp_path)).connects is False
     assert RecordingTlsBackend(tmp_path, SystemTlsBackend()).connects is True
     assert RecordingTlsBackend(tmp_path, ReplayTlsBackend(tmp_path)).connects is False
+
+
+# --- review of D60, round 1 ---------------------------------------------------
+
+
+def test_a_tls_failure_on_the_first_address_is_the_answer_not_a_reason_to_move_on(
+    wire, tmp_path
+) -> None:
+    """Should-fix 1: httpx chains the SSL error two levels down, so a check on
+    `__cause__` alone never fired and a bad certificate fell through to the
+    next address, which answered cleanly."""
+
+    class TwoAddresses:
+        def query(self, name, rrtype, *, resolver=None):
+            if rrtype != "A":
+                return DnsResponse(name, rrtype, "NODATA", [])
+            return DnsResponse(name, rrtype, "NOERROR", [PUBLIC, PUBLIC_2])
+
+    with (
+        http_server(tls_for="other.test", tmp=tmp_path / "bad") as bad,
+        http_server(tls_for=NAME, tmp=tmp_path / "good") as good,
+    ):
+        wire["ports"][(PUBLIC, 443)] = bad["port"]
+        wire["ports"][(PUBLIC_2, 443)] = good["port"]
+        anchors = tmp_path / "both.pem"
+        anchors.write_text(Path(bad["cafile"]).read_text() + Path(good["cafile"]).read_text())
+        client = _http(TwoAddresses(), backend=SystemHttpBackend(trust_anchor=str(anchors)))
+        with pytest.raises(httpx.ConnectError, match=r"(?i)hostname"):
+            client.get(f"https://{NAME}/")
+    assert wire["connect"] == [(PUBLIC, 443)]
+
+
+def test_a_backend_that_does_not_say_whether_it_connects_is_treated_as_connecting() -> None:
+    """Should-fix 3: fail closed. A live backend written later that forgets
+    `connects` must not skip the policy."""
+    from core.http import RawHttpResponse
+
+    class Undeclared:
+        def __init__(self) -> None:
+            self.calls: list[tuple[str, tuple[str, ...] | None]] = []
+
+        def send(self, method, url, *, body_cap, addresses=None, **kwargs):
+            self.calls.append((url, addresses))
+            return RawHttpResponse(200, {}, "ok", url, 1)
+
+    backend = Undeclared()
+    with pytest.raises(AddressRefusedError):
+        _http(StaticDns({NAME: "10.0.0.5"}), backend=backend).get(f"http://{NAME}/")
+    assert backend.calls == []
+    _http(StaticDns({NAME: PUBLIC}), backend=backend).get(f"http://{NAME}/")
+    assert backend.calls == [(f"http://{NAME}/", (PUBLIC,))]
+
+
+def test_the_policy_and_the_override_cannot_be_subclassed() -> None:
+    """Nit 8: a subclass overriding `refusal` would relax the policy without
+    naming the override, out of the walk's sight."""
+    with pytest.raises(TypeError):
+
+        class Lenient(AddressPolicy):
+            pass
+
+    with pytest.raises(TypeError):
+
+        class Lab(LabOverride):
+            pass
+
+
+@pytest.mark.parametrize(
+    ("answers", "expect"),
+    [({NAME: "10.0.0.5"}, "address_refused:"), ({}, "connect_error:")],
+    ids=["refused", "unresolved"],
+)
+def test_a_refused_tls_handshake_is_recorded_and_replays_the_same(
+    wire, tmp_path, answers, expect
+) -> None:
+    """Should-fix 2: a refusal happens before the backend, so recording wrote
+    nothing and the replay of that scan failed with a missing fixture."""
+    from core.tls import RecordingTlsBackend, ReplayTlsBackend
+
+    recorded = _tls(StaticDns(answers), backend=RecordingTlsBackend(tmp_path, SystemTlsBackend()))
+    live = recorded.inspect(NAME, 443, servername=NAME)
+    replayed = _tls(None, backend=ReplayTlsBackend(tmp_path)).inspect(NAME, 443, servername=NAME)
+
+    assert live.error is not None and live.error.startswith(expect)
+    assert (replayed.reachable, replayed.error) == (False, live.error)
+    assert wire["connect"] == []
+
+
+def test_a_refused_http_request_is_recorded_and_replays_the_same(wire, tmp_path) -> None:
+    from core.addresses import AddressUnresolvedError
+    from core.http import RecordingHttpBackend, ReplayHttpBackend
+
+    scope = Scope.for_target(Asset(type="domain", value=NAME))
+    dns = StaticDns({NAME: PUBLIC, f"internal.{NAME}": "10.0.0.5"})
+    recording = RecordingHttpBackend(tmp_path, SystemHttpBackend())
+    with http_server() as srv:
+        wire["ports"][(PUBLIC, 80)] = srv["port"]
+        srv["routes"]["/"] = ("302 Found", f"Location: http://internal.{NAME}/admin\r\n")
+        with pytest.raises(AddressRefusedError) as live:
+            _http(dns, scope=scope, backend=recording).get(f"http://{NAME}/")
+        with pytest.raises(AddressUnresolvedError) as live_unresolved:
+            _http(StaticDns({}), scope=scope, backend=recording).get(f"http://gone.{NAME}/")
+
+    replay = _http(None, scope=scope, backend=ReplayHttpBackend(tmp_path))
+    with pytest.raises(AddressRefusedError) as replayed:
+        replay.get(f"http://{NAME}/")
+    assert (replayed.value.host, replayed.value.refused, replayed.value.literal) == (
+        live.value.host,
+        live.value.refused,
+        live.value.literal,
+    )
+    with pytest.raises(AddressUnresolvedError, match="no A or AAAA") as replayed_unresolved:
+        replay.get(f"http://gone.{NAME}/")
+    assert str(replayed_unresolved.value) == str(live_unresolved.value)

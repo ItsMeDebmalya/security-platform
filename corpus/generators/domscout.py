@@ -154,6 +154,8 @@ class WildcardAResolver:
 class FakeHttpBackend:
     """Serves fixed status/body per URL; raises for a URL in `fail`."""
 
+    connects = False  # opens no socket; serves canned answers (D60: backends must say)
+
     def __init__(
         self, responses: dict[str, tuple[int, str]], *, fail: set[str] | None = None
     ) -> None:

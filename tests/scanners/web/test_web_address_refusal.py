@@ -50,3 +50,13 @@ def test_a_redirect_into_private_space_is_refused_at_that_hop_and_named() -> Non
     assert hsts.state == "inconclusive"
     assert "internal.example.test" in hsts.description
     assert "192.168.1.10" in hsts.description
+
+
+def test_an_address_target_is_not_explained_as_a_dns_problem() -> None:
+    """Review nit 4: no DNS was involved, so no split-horizon explanation."""
+    target = Asset(type="url", value="http://10.0.0.5/")
+    http = HttpClient.for_scan(target, service_hosts=frozenset())
+    result = WebScanner().run(target, "light", ScanContext(dns=LabDns(), http=http))
+    for finding in result.findings:
+        assert "10.0.0.5 is a non-global address" in finding.description, finding.check_id
+        assert "split-horizon" not in finding.description
