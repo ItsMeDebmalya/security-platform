@@ -60,3 +60,29 @@ def test_an_address_target_is_not_explained_as_a_dns_problem() -> None:
     for finding in result.findings:
         assert "10.0.0.5 is a non-global address" in finding.description, finding.check_id
         assert "split-horizon" not in finding.description
+
+
+def test_a_name_with_no_address_records_says_the_dns_lookup_failed() -> None:
+    """Review round 3: before D60 httpx's own resolver failure read "DNS lookup
+    failed"; the policy's must not regress to "transport error"."""
+    from core.dns import DnsResponse
+
+    class NoRecords:
+        def query(self, name, rrtype, *, resolver=None):
+            return DnsResponse(name, rrtype, "NXDOMAIN", [])
+
+    result = _scan(NoRecords())
+    for finding in result.findings:
+        assert "DNS lookup failed" in finding.description, finding.check_id
+        assert "transport error" not in finding.description
+
+
+def test_an_unwired_resolver_is_a_scan_error_not_an_inconclusive() -> None:
+    """A missing resolver is our wiring bug, never a fact about the target."""
+    import pytest
+
+    from core.addresses import ResolverNotWiredError
+
+    http = HttpClient.for_scan(TARGET, service_hosts=frozenset())
+    with pytest.raises(ResolverNotWiredError):
+        WebScanner().run(TARGET, "light", ScanContext(http=http))

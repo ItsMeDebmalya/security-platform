@@ -301,13 +301,15 @@ def _fixture_name(method: str, url: str) -> str:
 
     Sufficient today: every current and planned Light-mode check is an
     idempotent GET, and a scanner never sends two different bodies to the
-    same URL in one run. A request the address policy refused (D60) shares the
-    name with the response it would have had; if a name's DNS answer changed
-    mid-recording so that one URL was both refused and answered, the last
-    write wins. A response fixture never has an `address_policy` key, so
-    replay cannot read one as the other. A scanner that started doing that would collide on
+    same URL in one run. A scanner that started doing that would collide on
     replay - worth revisiting then, not worth a request-body hash now for a
     case nothing exercises.
+
+    A request the address policy refused (D60) shares the name with the
+    response it would have had. If a name's DNS answer changed mid-recording
+    so that one URL was both refused and answered, the last write wins. A
+    response fixture never has an `address_policy` key, so replay cannot read
+    one as the other.
     """
     # The stem is readable, so it is built from the redacted URL: a secret in a
     # path must not end up in a file name (review of D21, 6).

@@ -53,3 +53,20 @@ def test_an_address_target_is_described_as_an_address_not_a_name() -> None:
     )
     assert "resolves" not in finding.description
     assert "split-horizon" not in finding.impact
+
+
+def test_a_name_that_does_not_resolve_gets_dns_advice_not_firewall_advice() -> None:
+    class NoRecords:
+        def query(self, name, rrtype, *, resolver=None):
+            from core.dns import DnsResponse
+
+            return DnsResponse(name, rrtype, "NXDOMAIN", [])
+
+    ctx = ScanContext(dns=NoRecords(), tls=TlsClient(scope=Scope(frozenset({"example.test"}))))
+    [finding] = (
+        TlsScanner().run(Asset(type="url", value="https://example.test"), "light", ctx).findings
+    )
+    assert "could not be resolved" in finding.description
+    assert "address_unresolved:" not in finding.description
+    assert "firewall" not in finding.remediation
+    assert "DNS" in finding.remediation

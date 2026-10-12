@@ -258,6 +258,9 @@ class _Scan:
         if error.startswith("address_refused:"):
             self._address_refused(error.removeprefix("address_refused:"))
             return
+        if error.startswith("address_unresolved:"):
+            self._unresolved(error.removeprefix("address_unresolved:"))
+            return
 
         self._emit(
             CHECKS["tls-no-handshake"],
@@ -278,6 +281,30 @@ class _Scan:
                 "is, check that the service is running and that a firewall is not refusing "
                 f"the connection. If it is not, scan the port that does - `--target "
                 f"https://{self.host}:<port>`."
+            ),
+            signals=[self._signal(CHECKS["tls-no-handshake"], NEGOTIATION, ratio=1.0)],
+        )
+        self.checks.append(
+            CheckRun(check_id="tls-no-handshake", location=self._location(), outcome="inconclusive")
+        )
+
+    def _unresolved(self, why: str) -> None:
+        """D60: the name gave no address to connect to, so nothing was sent.
+        A DNS fact, so the advice is about DNS, not firewalls (review, round 3)."""
+        self._emit(
+            CHECKS["tls-no-handshake"],
+            no_verdict_reason="blocked_prerequisite",
+            description=(
+                f"We could not test {self.host}'s TLS: {why}. Nothing can be concluded "
+                "about this server's TLS configuration."
+            ),
+            impact=(
+                "Unknown. If this name is meant to serve visitors, they cannot reach it "
+                "either, since it does not resolve."
+            ),
+            remediation=(
+                f"Check the DNS records for {self.host}: it needs an A or AAAA record "
+                "pointing at the server. If the name is no longer used, nothing needs fixing."
             ),
             signals=[self._signal(CHECKS["tls-no-handshake"], NEGOTIATION, ratio=1.0)],
         )

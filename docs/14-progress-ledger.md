@@ -1894,6 +1894,16 @@ The round-1 fixes were checked, and the whole change re-read. All fixes are test
   - `_fixture_name` now says a refusal and a response for one URL share a name (last write wins, never misread).
 - **Out of D60's scope, reported:** SPEC.md's web row says 234 checks and 10 claims, where the corpus run shows 255 and 12. No web corpus case changed in D60, so this predates it. Left for the operator.
 
+## 2026-10-12 · Independent review of D60, round 3: NOT CLEAN, no blockers, fixed
+
+- **SHOULD-FIX: an unresolved name read as "transport error" in web.** Before D60, httpx's own resolver failed with a message `describe_transport_failure` turned into "DNS lookup failed". The policy's `AddressUnresolvedError` matched none of its markers. It now says "DNS lookup failed: …" with the reason (test-first). **And a missing resolver is a scan error:** `ResolverNotWiredError` is our wiring bug, never a fact about the target, so it no longer shows as a customer-facing `inconclusive`. Making it loud found a test helper (`tests/scanners/tls/test_tls_legacy_gate.py`) whose handshakes had been silently unreachable since the D60 branch began. Its assertions read only the testssl.sh checks, so it still passed. It now uses the lab resolver and policy.
+- **Nits, fixed:**
+  - tls advised checking a firewall for a name that does not resolve; it now gives DNS advice and drops the raw `address_unresolved:` prefix;
+  - the `_fixture_name` docstring had a sentence spliced mid-paragraph.
+- **Nits, stated in ADR-036:**
+  - a replayed refusal takes one rate-limit token the live refusal did not;
+  - a request can take one connect timeout per checked address, as before D60, with the kill switch checked before the request, not between addresses.
+
 ## 2026-10-10 · Handoff: open items and where to start
 
 *For a new session with no chat history. State as of PR #32, with the operator's decisions of 2026-10-10 below. Each item links to where it is owned.*

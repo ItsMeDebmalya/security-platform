@@ -167,6 +167,12 @@ class AddressUnresolvedError(ConnectionError):
     """The name gave us no address we could check, so nothing was sent."""
 
 
+class ResolverNotWiredError(RuntimeError):
+    """A connecting client was given no resolver: our wiring bug, never a fact
+    about the target, so it is a scan error and never an `inconclusive`
+    (review of D60, round 3). Nothing was connected to."""
+
+
 # --- the policy -------------------------------------------------------------
 
 
@@ -246,7 +252,7 @@ class AddressPolicy:
                 raise AddressRefusedError(host, {address: why}, literal=True)
             return Pinned(host=name, addresses=(address,))
         if dns is None:
-            raise AddressUnresolvedError(
+            raise ResolverNotWiredError(
                 f"no resolver for {name}: the scan's DNS client was not wired, "
                 "so nothing was connected to"
             )
@@ -289,6 +295,7 @@ __all__ = [
     "AddressUnresolvedError",
     "LabOverride",
     "Pinned",
+    "ResolverNotWiredError",
     "refusal",
     "url_host",
 ]

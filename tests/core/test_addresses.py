@@ -205,8 +205,12 @@ def test_an_address_literal_is_checked_without_a_lookup() -> None:
     assert dns.queries == []
 
 
-def test_no_resolver_fails_closed() -> None:
-    with pytest.raises(AddressUnresolvedError, match="no resolver"):
+def test_no_resolver_fails_closed_and_loudly() -> None:
+    """A wiring bug, not a fact about the target: never an `inconclusive`."""
+    from core.addresses import ResolverNotWiredError
+
+    assert not issubclass(ResolverNotWiredError, AddressUnresolvedError)
+    with pytest.raises(ResolverNotWiredError, match="no resolver"):
         AddressPolicy().pin("example.test", None)
 
 

@@ -16,7 +16,7 @@ import re
 from dataclasses import dataclass
 from urllib.parse import urlsplit
 
-from core.addresses import AddressRefusedError
+from core.addresses import AddressRefusedError, AddressUnresolvedError, ResolverNotWiredError
 from core.context import ScanContext
 from core.evidence import redact_body
 from core.http import CapturedResponse, HttpClient, MissingFixtureError, OutOfScopeError
@@ -55,6 +55,9 @@ def describe_transport_failure(exc: BaseException) -> str:
         text = f"{exc.summary}, so it was not connected to" + (
             "" if exc.literal else " (often split-horizon DNS or a stale record)"
         )
+    elif isinstance(exc, AddressUnresolvedError):
+        # D60: the policy's own lookup failed (before D60, httpx's said so)
+        text = f"DNS lookup failed: {msg}"
     elif "CERTIFICATE_VERIFY_FAILED" in msg:
         reason = msg.split("certificate verify failed:", 1)[-1].split(" (_ssl", 1)[0]
         text = f"TLS certificate verification failed ({reason.strip().rstrip('.')})"
@@ -162,7 +165,7 @@ class _Fetcher:
         self.count += 1
         try:
             response = self.http.get(url)
-        except (MissingFixtureError, ScanKilledError):
+        except (MissingFixtureError, ScanKilledError, ResolverNotWiredError):
             raise
         except OutOfScopeError:
             return Fetched(
