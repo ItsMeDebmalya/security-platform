@@ -368,3 +368,28 @@
   signed_off_at: 2026-10-10
   review_evidence: "iana.org/protocols lists the registry; iana.org/help/licensing-terms (CC0 1.0 for the Protocol Registries); the caveat above"
 
+- name: iana-special-purpose-address-registries
+  version: "IPv4 and IPv6 registries, both updated 2025-10-09; fetched 2026-10-12"
+  licence: CC0 1.0 (IANA Protocol Registries)
+  spdx: CC0-1.0
+  source: "https://www.iana.org/assignments/iana-ipv4-special-registry/iana-ipv4-special-registry-1.csv and https://www.iana.org/assignments/iana-ipv6-special-registry/iana-ipv6-special-registry-1.csv"
+  purpose: "ADR-036 / D60: test data only. The address policy (core/addresses.py) is checked against every row of IANA's special-purpose address registries"
+  isolation: data
+  # Its own entry, not folded under iana-rdap-dns-bootstrap: each entry says what
+  # was checked and when (operator, 2026-10-12). It references that entry's CC0
+  # determination rather than inheriting its sign-off.
+  # Terms, checked 2026-10-12 for these files, not assumed from the publisher:
+  # https://www.iana.org/help/licensing-terms (the Joint Statement of IANA and
+  # IETF, 10 November 2021) dedicates "Protocol Registries" to CC0 1.0, and
+  # defines them as "the technical protocol registry data directly linked at
+  # either https://www.iana.org/protocols or https://www.ietf.org/assignments/".
+  # Both registries are directly linked from https://www.iana.org/protocols
+  # ("IPv4 Special-Purpose Address Space", "IPv6 Special-Purpose Address Space").
+  # CAVEAT: that page links each registry's page; the CSV files are the same
+  # registry data in another format, published on the registry's page.
+  # Vendored unmodified at tests/core/data/iana/ (sha256 e3e39e76...128d73 for
+  # IPv4, 775feea0...cfce2139 for IPv6). Not shipped in any scanner.
+  signed_off_by: PENDING (operator sign-off requested 2026-10-12)
+  signed_off_at: PENDING
+  review_evidence: "iana.org/protocols links both registries; iana.org/help/licensing-terms (CC0 1.0 for Protocol Registries, as defined there); the caveat above"
+

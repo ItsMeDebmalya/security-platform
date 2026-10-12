@@ -32,7 +32,14 @@ from core.authz import Scope
 from core.context import ScanContext
 from core.models import Asset
 from core.tls import RecordingTlsBackend, TlsClient
-from corpus.generators.tls_lab import LabServer, mint, mint_chain, mint_three_level
+from corpus.generators.tls_lab import (
+    LAB_ADDRESSES,
+    LabDns,
+    LabServer,
+    mint,
+    mint_chain,
+    mint_three_level,
+)
 from scanners.tls import TlsScanner
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -156,6 +163,9 @@ def generate(only: set[str] | None = None) -> None:
                 server, anchor = _build(Path(tmp), case_id, spec, port)
             try:
                 ctx = ScanContext(
+                    # D60: the lab listens on loopback, so it needs the lab policy.
+                    dns=LabDns(),
+                    addresses=LAB_ADDRESSES,
                     tls=TlsClient(
                         scope=SCOPE,
                         backend=RecordingTlsBackend(directory),

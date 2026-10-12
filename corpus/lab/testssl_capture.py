@@ -59,13 +59,13 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import NameOID
 
+from core.addresses import AddressPolicy, LabOverride
 from core.authz import Scope
 from core.dns import DnsResponse
 from core.testssl import (
     CHECK_TO_TESTSSL_ID,
     TESTSSL_CONNECTION_BUDGET,
     TESTSSL_VERSION,
-    LabOverride,
     LiveTestsslClient,
     available,
 )
@@ -214,8 +214,10 @@ def main() -> int:
             timeout_s=300,
             dns=_LoopbackDns(),
             scope=Scope(frozenset({NAME})),
-            lab_override=LabOverride(
-                reason="lab capture: ordinary local server on loopback", allow_non_global=True
+            addresses=AddressPolicy(
+                lab_override=LabOverride(
+                    reason="lab capture: ordinary local server on loopback", allow_non_global=True
+                )
             ),
         )
         try:

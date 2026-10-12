@@ -19,6 +19,8 @@ from core.dns import DnsResponse
 from core.evidence import capture_http_pair, dns_evidence
 from core.http import HttpClient, RecordingHttpBackend, ReplayHttpBackend
 from core.models import Asset, Finding, HttpPairEvidence, RedactionReceipt
+from corpus.generators.tls_lab import LabDns
+from tests.core.named_transport import named
 from tests.core.test_redaction import AWS, GHP
 from tests.core.test_redaction_storage import _finding_kwargs
 
@@ -27,11 +29,15 @@ TARGET = Asset(type="domain", value=HOST)
 SLACK = "xoxb-1234567890-abcdefghij"
 
 
+PUBLIC_DNS = LabDns("93.184.215.14")
+"""D60: every name resolves to one public literal; MockTransport opens no socket."""
+
+
 def _client(handler, backend=None) -> HttpClient:
     scope = Scope(frozenset({HOST, f"www.{HOST}", "crt.sh"}))
     if backend is None:
-        return HttpClient(scope=scope, transport=httpx.MockTransport(handler))
-    return HttpClient(scope=scope, backend=backend)
+        return HttpClient(scope=scope, transport=named(handler), dns=PUBLIC_DNS)
+    return HttpClient(scope=scope, backend=backend, dns=PUBLIC_DNS)
 
 
 def _site(body: str, headers: dict[str, str] | None = None):

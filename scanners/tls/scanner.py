@@ -25,6 +25,7 @@ HTTP record/replay (ledger D2/D10), and the A+ to F grade is deferred (D9).
 
 from __future__ import annotations
 
+import ipaddress
 from collections.abc import Callable
 from datetime import UTC, datetime
 from urllib.parse import urlsplit
@@ -68,6 +69,7 @@ from scanners.tls.checks import (
 from scanners.tls.checks import requires_authorisation as _requires_authorisation
 
 NO_VERDICT_FOR_ERROR = {
+    "address_refused": "blocked_prerequisite",
     "timeout": "timeout",
     "connect_error": "blocked_prerequisite",
     "tls_error": "ambiguous_response",
@@ -114,7 +116,7 @@ LEGACY_CIPHER_CHECK_IDS = tuple(CHECK_TO_TESTSSL_ID)
 @register
 class TlsScanner(BaseScanner):
     name = "tls"
-    version = "1.4.2"
+    version = "1.4.3"
     vantage = "external_unauthenticated"
     engagement = "defensive"
     supported_modes = frozenset({"light", "standard"})
@@ -252,6 +254,10 @@ class _Scan:
                 reason = mapped
                 break
 
+        if error.startswith("address_refused:"):
+            self._address_refused(error.removeprefix("address_refused:"))
+            return
+
         self._emit(
             CHECKS["tls-no-handshake"],
             no_verdict_reason=reason,
@@ -271,6 +277,46 @@ class _Scan:
                 "is, check that the service is running and that a firewall is not refusing "
                 f"the connection. If it is not, scan the port that does - `--target "
                 f"https://{self.host}:<port>`."
+            ),
+            signals=[self._signal(CHECKS["tls-no-handshake"], NEGOTIATION, ratio=1.0)],
+        )
+        self.checks.append(
+            CheckRun(check_id="tls-no-handshake", location=self._location(), outcome="inconclusive")
+        )
+
+    def _address_refused(self, why: str) -> None:
+        """D60 (ADR-036): the name resolves to a non-global address, so nothing
+        was connected to. Said as what it is, never as an unreachable server,
+        and never as a clean result."""
+        try:
+            ipaddress.ip_address(self.host.strip("[]"))
+            literal = True
+        except ValueError:
+            literal = False
+        self._emit(
+            CHECKS["tls-no-handshake"],
+            no_verdict_reason="blocked_prerequisite",
+            description=(
+                f"We could not test {self.host}'s TLS: {why}, so it was not connected to. "
+                "Our scanner does not connect to loopback, private, link-local or otherwise "
+                "non-global addresses, so nothing about this server's TLS was observed."
+            ),
+            impact=(
+                "Unknown for TLS: this address is not reachable from the public internet, "
+                "so an external scan cannot judge it."
+                if literal
+                else "Unknown for TLS. The record itself may matter: a public name that "
+                "resolves to a private or reserved address usually means split-horizon DNS "
+                "(an internal answer leaking to public resolvers) or a stale record pointing "
+                "somewhere it should not, and either can tell outsiders about internal "
+                "addressing."
+            ),
+            remediation=(
+                "Scan the public name or address this service is reached by."
+                if literal
+                else f"Check the DNS records for {self.host}. If the name is meant to be "
+                "public, point it at the public address and scan again. If it is internal "
+                "only, remove it from public DNS."
             ),
             signals=[self._signal(CHECKS["tls-no-handshake"], NEGOTIATION, ratio=1.0)],
         )

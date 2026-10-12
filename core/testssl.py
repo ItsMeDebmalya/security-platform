@@ -57,6 +57,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol
 
+from core.addresses import AddressPolicy, AddressRefusedError, AddressUnresolvedError
 from core.authz import Scope
 from core.cost import CostMeter
 from core.killswitch import KillSwitch
@@ -217,28 +218,6 @@ class TestsslNotPermittedError(TestsslUnavailableError):
 
 
 @dataclass(frozen=True)
-class LabOverride:
-    """Permission to run testssl.sh without proof of a dedicated address.
-
-    For the lab capture and the corpus recordings against public test
-    endpoints only. Never reachable from a customer-facing code path: a test
-    walks `cli/`, `scanners/`, `core/` (outside this module), `api/` and `web/`
-    for any route to it (its name or an alias, an attribute or string naming
-    it, a `lab_override=` keyword or assignment, an import from `corpus/`),
-    and the client accepts only a real instance.
-    `reason` is recorded in every fixture made under it.
-    """
-
-    reason: str
-    allow_non_global: bool = False
-    """Lab only: permit loopback and private addresses (the local capture)."""
-
-    def __post_init__(self) -> None:
-        if not self.reason.strip():
-            raise ValueError("a lab override must say why it is being used")
-
-
-@dataclass(frozen=True)
 class LegacyCipherFinding:
     """One testssl.sh vulnerability verdict, already reduced to the worst
     severity when testssl reported the same `id` more than once (dh512's
@@ -266,8 +245,8 @@ class LegacyCipherReport:
     """Resolved but past `MAX_ADDRESSES`. Non-empty means a clean result
     covers only part of the host."""
     per_address: dict[str, dict[str, LegacyCipherFinding]] = field(default_factory=dict)
-    lab_override: str | None = None
-    """The override's reason, when the run was made under one."""
+    lab_reason: str | None = None
+    """The lab override's reason, when the run was made under one."""
 
     def for_check(self, check_id: str) -> LegacyCipherFinding | None:
         testssl_id = CHECK_TO_TESTSSL_ID.get(check_id)
@@ -331,14 +310,6 @@ def _ipv4_literal(value: str) -> bool:
     except ValueError:
         return False
     return True
-
-
-def _not_global(address: str) -> bool:
-    """Loopback, RFC 1918, link-local (169.254.169.254 included), shared,
-    documentation, multicast, broadcast and unspecified: none of it is
-    anyone's public site."""
-    ip = ipaddress.IPv4Address(address)
-    return not ip.is_global or ip.is_multicast
 
 
 def environment() -> dict[str, str]:
@@ -553,15 +524,17 @@ class LiveTestsslClient:
     """Runs the real subprocess under the platform's controls (D59).
 
     `ScanContext` hands it the scan's DNS client, scope, kill switch, target
-    rate limiter and cost meter, the same way it wires every other client.
-    `lab_override` is never set on a customer-facing path; without it the
-    four checks do not run (`TestsslNotPermittedError`).
+    rate limiter, cost meter and address policy, the same way it wires every
+    other client. The policy carries a lab override only in the lab; without
+    one the four checks do not run (`TestsslNotPermittedError`). Its addresses
+    come from the platform's one address policy (D60, ADR-036), which
+    superseded the local non-global rule D59 put here.
     """
 
     timeout_s: int = DEFAULT_TIMEOUT_S
     dns: Any = None
     scope: Scope | None = None
-    lab_override: LabOverride | None = None
+    addresses: AddressPolicy | None = None
     killswitch: KillSwitch | None = None
     ratelimit: Any = None
     cost: CostMeter | None = None
@@ -572,7 +545,7 @@ class LiveTestsslClient:
         if self.killswitch is not None:
             self.killswitch.check(scan_id=self.scan_id, org_id=self.org_id)
 
-    def _addresses(self, host: str) -> tuple[list[str], list[str]]:
+    def _resolve_addresses(self, host: str) -> tuple[list[str], list[str]]:
         if self.scope is None or not self.scope.permits(host):
             raise TestsslArgumentRefusedError(
                 f"{host} is outside the scope of this scan; testssl.sh was not started"
@@ -580,37 +553,33 @@ class LiveTestsslClient:
         if self.dns is None:
             raise TestsslUnavailableError("no DNS client to resolve the target's addresses")
         self._alive()
-        answer = self.dns.query(host, "A")
-        if answer.rcode not in ("NOERROR", "NODATA"):
-            raise TestsslUnavailableError(
-                f"{host} could not be resolved ({answer.rcode}); testssl.sh was not started"
-            )
-        addresses = list(dict.fromkeys(a for a in answer.records if _ipv4_literal(a)))
+        try:
+            pinned = self._policy().pin(host, self.dns)
+        except AddressRefusedError as exc:
+            raise TestsslArgumentRefusedError(f"{exc}; testssl.sh was not started") from exc
+        except AddressUnresolvedError as exc:
+            raise TestsslUnavailableError(f"{exc}; testssl.sh was not started") from exc
+        addresses = [a for a in pinned.addresses if _ipv4_literal(a)]
         if not addresses:
             raise TestsslArgumentRefusedError(
                 f"{host} has no IPv4 address (no A record; it may be IPv6-only); "
                 "testssl.sh is run against IPv4 addresses only"
             )
-        allow_non_global = (
-            isinstance(self.lab_override, LabOverride) and self.lab_override.allow_non_global
-        )
-        refused = [a for a in addresses if _not_global(a)]
-        if refused and not allow_non_global:
-            raise TestsslArgumentRefusedError(
-                f"{host} resolves to {', '.join(refused)}, which is not a global address "
-                "(loopback, private, link-local or otherwise reserved); testssl.sh was not started"
-            )
         return addresses[:MAX_ADDRESSES], addresses[MAX_ADDRESSES:]
 
+    def _policy(self) -> AddressPolicy:
+        return self.addresses if isinstance(self.addresses, AddressPolicy) else AddressPolicy()
+
     def legacy_ciphers(self, host: str, port: int) -> LegacyCipherReport:
-        if not isinstance(self.lab_override, LabOverride):
+        lab_reason = self._policy().lab_reason
+        if lab_reason is None:
             raise TestsslNotPermittedError(
                 "not run: the dedicated-address condition is unproven. testssl.sh's "
                 "legacy-cipher tests can send hellos with no SNI, which on a shared address "
                 "reach a site that is not this customer's, and we cannot yet show that "
                 f"{host}'s address serves only this customer (ADR-023, D59)"
             )
-        tested, untested = self._addresses(host)
+        tested, untested = self._resolve_addresses(host)
         per_address: dict[str, dict[str, LegacyCipherFinding]] = {}
         with _host_lock(host):
             for address in tested:
@@ -636,7 +605,7 @@ class LiveTestsslClient:
             addresses_tested=tuple(tested),
             addresses_untested=tuple(untested),
             per_address=per_address,
-            lab_override=self.lab_override.reason,
+            lab_reason=lab_reason,
         )
 
 
@@ -679,7 +648,7 @@ def _report_to_dict(report: LegacyCipherReport) -> dict[str, Any]:
         "addresses_tested": list(report.addresses_tested),
         "addresses_untested": list(report.addresses_untested),
         "per_address": {a: _findings_to_dict(f) for a, f in report.per_address.items()},
-        "lab_override": report.lab_override,
+        "lab_reason": report.lab_reason,
     }
 
 
@@ -692,7 +661,7 @@ def _report_from_dict(data: dict[str, Any]) -> LegacyCipherReport:
         addresses_tested=tuple(data.get("addresses_tested", ())),
         addresses_untested=tuple(data.get("addresses_untested", ())),
         per_address={a: _findings_from_dict(f) for a, f in data.get("per_address", {}).items()},
-        lab_override=data.get("lab_override"),
+        lab_reason=data.get("lab_reason"),
     )
 
 
@@ -759,7 +728,6 @@ __all__ = [
     "TESTSSL_ENV_KEYS",
     "TESTSSL_PATH",
     "TESTSSL_VERSION",
-    "LabOverride",
     "LegacyCipherFinding",
     "LegacyCipherReport",
     "LiveTestsslClient",

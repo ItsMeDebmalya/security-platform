@@ -45,7 +45,7 @@ from typing import Any
 from core.authz import Scope
 from core.testssl import CROSSCHECK_ARGS, TESTSSL_PATH, environment, guard_invocation
 from core.tls import TlsClient, TlsObservation
-from corpus.generators.tls_lab import LabServer, mint, mint_chain
+from corpus.generators.tls_lab import LAB_ADDRESSES, LabDns, LabServer, mint, mint_chain
 
 ROOT = Path(__file__).resolve().parents[2]
 TESTSSL = TESTSSL_PATH
@@ -266,7 +266,10 @@ def main() -> int:
         with tempfile.TemporaryDirectory() as tmp:
             server, anchor = _serve(Path(tmp), case_id, spec, port)
             try:
-                client = TlsClient(scope=scope, trust_anchor=anchor)
+                # D60: the lab listens on loopback, so it needs the lab policy.
+                client = TlsClient(
+                    scope=scope, trust_anchor=anchor, dns=LabDns(), addresses=LAB_ADDRESSES
+                )
                 observation = client.inspect(port=port, host="localhost", servername="localhost")
                 protocols = client.supported_protocols("localhost", port, servername="localhost")
                 findings = run_testssl("localhost", port)

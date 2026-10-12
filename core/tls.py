@@ -41,6 +41,17 @@ asking "ignoring expiry, does the chain build to a trusted root?"
 independently of the date verdict. Still behavioural, still no
 `get_unverified_chain()` — just a second path-building attempt with one
 variable removed.
+
+**D60: the address checked is the address connected to** (ADR-036).
+`TlsClient` resolves the host once per handshake through the scan's
+`DnsClient`, checks every address with `core.addresses`, and hands the
+backend the checked literals. `SystemTlsBackend` connects only to those, and
+every connection of one handshake (the observation, the verification, the
+hostname check, the D17 re-verify) goes to the same address, with the name
+as SNI. It never passes a name to `socket.create_connection`, so the
+operating system's resolver is never asked and cannot answer differently.
+A refused name is a `RawHandshake` with `error="address_refused:..."` and no
+connection at all.
 """
 
 from __future__ import annotations
@@ -61,6 +72,7 @@ from cryptography import x509
 from cryptography.hazmat.primitives import hashes
 from cryptography.x509.oid import ExtensionOID, NameOID
 
+from core.addresses import AddressPolicy, AddressRefusedError, AddressUnresolvedError
 from core.authz import Scope
 from core.cost import CostMeter
 from core.http import OutOfScopeError
@@ -232,6 +244,9 @@ class TlsObservation:
     probe was not run - it is only meaningful, and only attempted, when the
     ordinary verify already failed, since a trusted chain has nothing left to
     unmask."""
+    address: str | None = None
+    """D60: the checked address every connection went to; `None` on a
+    fixture recorded before D60, or when nothing was connected to."""
 
     @property
     def hostname_matches(self) -> bool | None:
@@ -268,6 +283,7 @@ class TlsObservation:
             "certificate": self.certificate.to_dict() if self.certificate else None,
             "verify_code_no_time": self.verify_code_no_time,
             "verify_message_no_time": self.verify_message_no_time,
+            **({"address": self.address} if self.address is not None else {}),
         }
 
 
@@ -289,6 +305,8 @@ class RawHandshake:
     elapsed_ms: int = 0
     verify_code_no_time: int | None = None
     verify_message_no_time: str | None = None
+    address: str | None = None
+    """D60: the checked address connected to (absent from older fixtures)."""
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -305,6 +323,7 @@ class RawHandshake:
             "openssl_hostname_match": self.openssl_hostname_match,
             "verify_code_no_time": self.verify_code_no_time,
             "verify_message_no_time": self.verify_message_no_time,
+            **({"address": self.address} if self.address is not None else {}),
         }
 
     @classmethod
@@ -324,6 +343,7 @@ class RawHandshake:
             openssl_hostname_match=data.get("openssl_hostname_match"),
             verify_code_no_time=data.get("verify_code_no_time"),
             verify_message_no_time=data.get("verify_message_no_time"),
+            address=data.get("address"),
         )
 
 
@@ -331,6 +351,11 @@ class RawHandshake:
 
 
 class TlsBackend(Protocol):
+    """`connects` says whether `handshake` opens sockets. One that does is
+    handed `addresses`, the checked literals, and connects only to them (D60)."""
+
+    connects: bool
+
     def handshake(
         self,
         host: str,
@@ -378,7 +403,14 @@ def _verifying_context(trust_anchor: str | None) -> ssl.SSLContext:
 
 
 class SystemTlsBackend:
-    """Real sockets. Constructed by the CLI or the worker, never by a scanner."""
+    """Real sockets. Constructed by the CLI or the worker, never by a scanner.
+
+    D60: connects only to the checked `addresses` it is handed, never to a
+    name. The first address that accepts the observing connection is used for
+    every later connection of the same handshake, so the trust verdicts are
+    about the server that was observed."""
+
+    connects = True
 
     def handshake(
         self,
@@ -390,12 +422,20 @@ class SystemTlsBackend:
         max_version: ssl.TLSVersion | None = None,
         trust_anchor: str | None = None,
         timeout_s: float = DEFAULT_TIMEOUT_S,
+        addresses: tuple[str, ...] | None = None,
     ) -> RawHandshake:
+        if not addresses:
+            raise ValueError(
+                "the live TLS backend connects only to a checked address; "
+                "TlsClient resolves and checks the host first (D60)"
+            )
         started = time.monotonic()
         observed_at = dt.datetime.now(dt.UTC)
+        address = addresses[0]
 
         try:
-            with socket.create_connection((host, port), timeout=timeout_s) as raw:
+            raw, address = _connect_first(addresses, port, timeout_s)
+            with raw:
                 context = _observing_context(min_version, max_version)
                 with context.wrap_socket(raw, server_hostname=servername or host) as tls:
                     der = tls.getpeercert(binary_form=True)
@@ -423,8 +463,12 @@ class SystemTlsBackend:
                 elapsed_ms=int((time.monotonic() - started) * 1000),
             )
 
-        trusted, code, message = self._verify(host, port, servername, trust_anchor, timeout_s)
-        hostname_match = self._verify_hostname(host, port, servername, der, trust_anchor, timeout_s)
+        trusted, code, message = self._verify(
+            host, address, port, servername, trust_anchor, timeout_s
+        )
+        hostname_match = self._verify_hostname(
+            address, port, servername, der, trust_anchor, timeout_s
+        )
 
         code_no_time: int | None = None
         message_no_time: str | None = None
@@ -434,7 +478,7 @@ class SystemTlsBackend:
             # is what keeps every already-passing corpus case's fixtures
             # unchanged.
             _, code_no_time, message_no_time = self._verify(
-                host, port, servername, trust_anchor, timeout_s, no_check_time=True
+                host, address, port, servername, trust_anchor, timeout_s, no_check_time=True
             )
 
         return RawHandshake(
@@ -451,11 +495,12 @@ class SystemTlsBackend:
             elapsed_ms=int((time.monotonic() - started) * 1000),
             verify_code_no_time=code_no_time,
             verify_message_no_time=message_no_time,
+            address=address,
         )
 
     @staticmethod
     def _verify_hostname(
-        host: str,
+        address: str,
         port: int,
         servername: str | None,
         der: bytes | None,
@@ -502,7 +547,7 @@ class SystemTlsBackend:
             context.hostname_checks_common_name = False
             context.verify_mode = ssl.CERT_REQUIRED
             with (
-                socket.create_connection((host, port), timeout=timeout_s) as raw,
+                socket.create_connection((address, port), timeout=timeout_s) as raw,
                 context.wrap_socket(raw, server_hostname=servername),
             ):
                 return True
@@ -520,6 +565,7 @@ class SystemTlsBackend:
     @staticmethod
     def _verify(
         host: str,
+        address: str,
         port: int,
         servername: str | None,
         trust_anchor: str | None,
@@ -528,7 +574,7 @@ class SystemTlsBackend:
         no_check_time: bool = False,
     ) -> tuple[bool, int | None, str | None]:
         try:
-            with socket.create_connection((host, port), timeout=timeout_s) as raw:
+            with socket.create_connection((address, port), timeout=timeout_s) as raw:
                 context = _verifying_context(trust_anchor)
                 if no_check_time:
                     context.verify_flags |= NO_CHECK_TIME
@@ -540,6 +586,23 @@ class SystemTlsBackend:
             return False, None, str(getattr(exc, "reason", None) or exc)
         except OSError as exc:
             return False, None, f"connect_error:{exc.strerror or exc}"
+
+
+def _connect_first(
+    addresses: tuple[str, ...], port: int, timeout_s: float
+) -> tuple[socket.socket, str]:
+    """A connection to the first checked address that accepts one, and which it was.
+
+    Only literals reach `socket.create_connection`, so the system resolver is
+    never consulted (D60)."""
+    last: OSError | None = None
+    for address in addresses:
+        try:
+            return socket.create_connection((address, port), timeout=timeout_s), address
+        except OSError as exc:
+            last = exc
+    assert last is not None
+    raise last
 
 
 def _fixture_name(host: str, port: int, servername: str | None, version: str) -> str:
@@ -555,6 +618,10 @@ class RecordingTlsBackend:
         self._store = FixtureStore(Path(directory))
         self._inner = inner or SystemTlsBackend()
 
+    @property
+    def connects(self) -> bool:
+        return bool(getattr(self._inner, "connects", False))
+
     def handshake(
         self, host: str, port: int, servername: str | None, **kwargs: Any
     ) -> RawHandshake:
@@ -566,6 +633,8 @@ class RecordingTlsBackend:
 
 class ReplayTlsBackend:
     """Serves frozen handshakes and never opens a socket."""
+
+    connects = False
 
     def __init__(self, directory: str | Path) -> None:
         self._store = FixtureStore(Path(directory))
@@ -606,6 +675,11 @@ class TlsClient:
     ratelimit: Any = None
     scan_id: str = "local"
     org_id: str = "org_internal"
+    dns: Any = None
+    """The scan's `DnsClient`, wired in by `ScanContext` (D60)."""
+    addresses: AddressPolicy | None = None
+    """The scan's `AddressPolicy`, wired in by `ScanContext`; a client never
+    given one uses the default, which has no override (D60)."""
 
     def inspect(
         self, host: str, port: int = DEFAULT_PORT, *, servername: str | None = None
@@ -662,6 +736,25 @@ class TlsClient:
             )
         if self.killswitch is not None:
             self.killswitch.check(scan_id=self.scan_id, org_id=self.org_id)
+        pinned: dict[str, Any] = {}
+        if getattr(self.backend, "connects", False):
+            # D60: one lookup, through the scan's resolver; only checked
+            # literals go down to the socket.
+            policy = self.addresses or AddressPolicy()
+            try:
+                pinned["addresses"] = policy.pin(a_label(host) or host, self.dns).addresses
+            except AddressRefusedError as exc:
+                return RawHandshake(
+                    reachable=False,
+                    observed_at=dt.datetime.now(dt.UTC),
+                    error=f"address_refused:{exc.summary}",
+                )
+            except AddressUnresolvedError as exc:
+                return RawHandshake(
+                    reachable=False,
+                    observed_at=dt.datetime.now(dt.UTC),
+                    error=f"connect_error:{exc}",
+                )
         if self.ratelimit is not None:
             self.ratelimit.acquire(host)
 
@@ -676,6 +769,7 @@ class TlsClient:
             max_version=max_version,
             trust_anchor=self.trust_anchor,
             timeout_s=self.timeout_s,
+            **pinned,
         )
         if self.cost is not None:
             self.cost.record_request()
@@ -704,6 +798,7 @@ class TlsClient:
             elapsed_ms=raw.elapsed_ms,
             verify_code_no_time=raw.verify_code_no_time,
             verify_message_no_time=raw.verify_message_no_time,
+            address=raw.address,
         )
 
 

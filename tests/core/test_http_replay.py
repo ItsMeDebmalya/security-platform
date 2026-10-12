@@ -20,12 +20,14 @@ from core.http import (
     SystemHttpBackend,
 )
 from core.models import Asset
+from tests.core.named_transport import PUBLIC_DNS, named
 
 SCOPE = Scope.for_target(Asset(type="domain", value="example.com"))
 
 
 def _recording_client(handler, directory, **kwargs):
-    inner = SystemHttpBackend(transport=httpx.MockTransport(handler))
+    inner = SystemHttpBackend(transport=named(handler))
+    kwargs.setdefault("dns", PUBLIC_DNS)
     return HttpClient(scope=SCOPE, backend=RecordingHttpBackend(directory, inner), **kwargs)
 
 
