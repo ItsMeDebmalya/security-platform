@@ -89,11 +89,30 @@ def declared_reasons(scanner: str) -> dict[str, frozenset[str]]:
     }
 
 
+class StateChangeRefusedError(ValueError):
+    """A result records a change made to a target, which no scan may make yet (ADR-034)."""
+
+
 def enforce(result: ScanResult) -> ScanResult:
-    """The result, if every `not_applicable` run's reason was declared by its check."""
+    """The result, if it keeps the safety claims that are enforced, not promised.
+
+    - ADR-032: every `not_applicable` run's reason was declared by its check.
+    - ADR-034: no finding records a `state_change`. ADR-004 is absolute until
+      ADR-025's preconditions exist and a later ADR lifts this guard. A schema that
+      merely permits it would leave "we don't" resting on authors' discipline;
+      this makes it "we can't".
+    """
     bad = undeclared(result.telemetry.checks_run, declared_reasons(result.scanner))
     if bad:
         raise UndeclaredNotApplicableError(
             f"{result.scanner} reports not_applicable with undeclared reasons: {bad} (ADR-032)"
+        )
+    changed = sorted(
+        f"{f.check_id}@{f.location}" for f in result.findings if f.state_change is not None
+    )
+    if changed:
+        raise StateChangeRefusedError(
+            f"{result.scanner} reports changes made to a target: {changed}. No scan may "
+            "change a target (ADR-004); this guard holds until a later ADR lifts it (ADR-034)"
         )
     return result

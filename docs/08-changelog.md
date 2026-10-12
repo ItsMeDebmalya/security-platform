@@ -611,3 +611,22 @@ Then restore the entry-point lines in `CLAUDE.md` and `SPEC.md`, and the revert 
   - docs/21 is regenerated from the code (email: 20 checks; the D35 contradiction fixed; D56 caveats);
   - docs/24 and docs/25 are re-reconciled.
 
+## v4.0-pre.19 — ADR-034: contract extension, Stage A (host targets, vantage and engagement tags, finding links, state-change fields) (2026-10-12)
+
+**What changed. Additive: every new field is optional, so existing findings, results and stored rows stay valid. Finding IDs are unchanged.**
+- **`contracts/finding.schema.json` and `core/models.py`:**
+  - the asset gains `host` and `addresses` (host only);
+  - findings gain `vantage`, `engagement` (not `mode`, which means depth), `links` (`explains` / `chains_to`, no self-links or repeats) and `state_change` (offensive only);
+  - the schema has three new examples.
+- **`core/applicability.enforce`** refuses any result carrying a `state_change`, because ADR-004 stays absolute.
+- **`BaseScanner`** gains `vantage` and `engagement`. domscout, email, tls, web and example declare `external_unauthenticated` and `defensive` and pass them on every finding, as does the `secret-exposed` helper. Correlation stories leave both `null`.
+- **Versions:** email 1.5.2, tls 1.4.1, domscout 1.3.3, web 1.0.6. **No corpus baseline moved.**
+- The agent architecture ADR is renumbered to ADR-035.
+
+**Revert.** Revert the merge commit. Findings stored after this change carry the new keys; they would fail validation under the old models, so strip the four keys and `target.addresses` first.
+- **After the independent review:**
+  - `links` is `uniqueItems`;
+  - `addresses` refuses IPv6 scope ids;
+  - the registry refuses a scanner with `null` tags;
+  - `FindingStore` refuses a finding with a `state_change`.
+

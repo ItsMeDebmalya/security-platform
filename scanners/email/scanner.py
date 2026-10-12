@@ -73,7 +73,9 @@ NO_VERDICT_FOR_RCODE = {
 @register
 class EmailScanner(BaseScanner):
     name = "email"
-    version = "1.5.1"
+    version = "1.5.2"
+    vantage = "external_unauthenticated"
+    engagement = "defensive"
     supported_modes = frozenset({"light", "standard"})
     target_types = frozenset({"domain"})
 
@@ -154,6 +156,8 @@ class _Scan:
             self.findings,
             scanner=self.scanner.name,
             scanner_version=self.scanner.version,
+            vantage=self.scanner.vantage,
+            engagement=self.scanner.engagement,
             target=self.target,
             org_id=self.ctx.org_id,
             scan_id=self.ctx.scan_id,
@@ -1766,6 +1770,8 @@ class _Scan:
                 org_id=self.ctx.org_id,
                 scanner=self.scanner.name,
                 scanner_version=self.scanner.version,
+                vantage=self.scanner.vantage,
+                engagement=self.scanner.engagement,
                 check_id=check.check_id,
                 title=check.title,
                 target=self.target,

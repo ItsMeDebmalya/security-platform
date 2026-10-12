@@ -271,6 +271,24 @@ Phase 4 correlation needs to relate findings *across scanners* about *different 
 
 `related_assets` is the cheap hedge: every scanner records the other entities a finding touches. It costs nothing now and means Phase 4 is a query rather than a migration. **The full attack-path data model is still unresolved and is tracked as an open question — it must be validated by the end of Phase 3, before Phase 4 work starts.**
 
+### Vantage, engagement, links and state changes
+
+*Added 2026-10-12, Stage A, [ADR-034](02-decisions.md#adr-034--contract-extension-stage-a-host-targets-vantage-and-engagement-tags-finding-links-state-change-fields). All optional; `null` means "not recorded", never a guess.*
+
+```jsonc
+"vantage": "external_unauthenticated",  // external_unauthenticated | authenticated | agent
+"engagement": "defensive",              // defensive | offensive (the v4 plan's "mode"; `mode` means depth)
+"links": [                              // this finding explains / chains_to another, by id
+  { "relation": "explains", "finding_id": "sha256:…" }
+],
+"state_change": null                    // offensive only; refused at runtime until a later ADR
+```
+
+- **Targets.** `target.type` may be `host`, a server reported by the agent, with optional `addresses`.
+- **Scanner tags.** Every scanner declares its vantage and engagement once (`BaseScanner`) and stamps them on each finding. The four shipped scanners are `external_unauthenticated` and `defensive`.
+- **Links.** They are the structured finding-to-finding relation `related_assets` never was. They are not yet the full attack-path model above, which is still open.
+- **State changes.** `state_change` is defined so offensive work needs no second migration. `core.applicability.enforce` refuses any result carrying one, so "we don't change targets" is enforced, not promised. The authorisation gate is the first claim enforced that way.
+
 ---
 
 ## Evidence

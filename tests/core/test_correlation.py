@@ -102,6 +102,28 @@ class TestLoaderIsStrictAndLoud:
 
 
 class TestCorrelationPass:
+    def test_a_story_records_no_vantage_or_engagement(self, make_finding, tmp_path) -> None:
+        """ADR-034: a story is computed from findings, not observed from anywhere."""
+        rules = load_composition_rules(_write(tmp_path, GOOD_RULES))
+        tags = {"vantage": "external_unauthenticated", "engagement": "defensive"}
+        premises = [
+            make_finding(scanner="email", check_id="spoofing-possible", **tags),
+            make_finding(scanner="tls", check_id="tls-protocol-obsolete", **tags),
+        ]
+
+        (story,) = correlate(
+            findings=premises,
+            asset_graph=AssetGraph(),
+            primary_target=Asset(type="domain", value="example.com"),
+            org_id="org_internal",
+            scan_id="01J8STORY0000000000000000",
+            rules=rules,
+            now=datetime(2026, 8, 28, 12, 0, tzinfo=UTC),
+        )
+
+        assert (story.vantage, story.engagement) == (None, None)
+        assert all(p.vantage == "external_unauthenticated" for p in premises)
+
     def test_both_premises_present_emits_one_inherited_story(self, make_finding, tmp_path) -> None:
         rules = load_composition_rules(_write(tmp_path, GOOD_RULES))
         email_finding = make_finding(

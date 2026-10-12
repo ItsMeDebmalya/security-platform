@@ -13,6 +13,8 @@ class _Dummy(BaseScanner):
     version = "1.0.0"
     supported_modes = frozenset({"light"})
     target_types = frozenset({"domain"})
+    vantage = "external_unauthenticated"
+    engagement = "defensive"
 
     def run(self, target, mode, ctx):  # pragma: no cover - not exercised here
         raise NotImplementedError

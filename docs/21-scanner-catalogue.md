@@ -51,7 +51,7 @@ Below 0.40 confidence nothing is reported.
 
 ---
 
-## web — Website Scanner (Tool 4a, v1.0.5)
+## web — Website Scanner (Tool 4a, v1.0.6)
 
 21 checks, all Light, all passive. At most 12 page requests per scan, though redirect hops can add more (D26).
 
@@ -87,7 +87,7 @@ Live basis: 13 real hosts, every claim hand-verified with `curl`, cross-checked 
 
 ---
 
-## email — Email Security Scanner (Tool 1, v1.5.1)
+## email — Email Security Scanner (Tool 1, v1.5.2)
 
 **DMARC is read under RFC 9989 first** (v1.4.0). Where RFC 7489, still deployed, gives a different verdict, the finding states both and is `suspected`, at the severity of the worst case (ADR-017). **Which DMARC record applies** (v1.3.0) is found by RFC 9989's DNS tree walk (§4.10). A subdomain inherits its parent's `sp=` (or `np=`) policy. An inherited policy is stated under both RFCs and held at `suspected`, because RFC 7489 receivers choose with a Public Suffix List we do not consult (D49). Several DMARC records at one name are all discarded, as both RFCs require.
 
@@ -125,7 +125,7 @@ Live basis: 13 real hosts, every claim hand-verified with `curl`, cross-checked 
 
 ---
 
-## tls — SSL/TLS Analyzer (Tool 2, v1.4.0)
+## tls — SSL/TLS Analyzer (Tool 2, v1.4.1)
 
 19 checks, declared passive under ADR-023 (ordinary TLS handshakes). 8 run in Light, and 11 more in Standard. **Exception, ledger D56 (2026-10-12):** the four testssl.sh checks below run `testssl.sh --vulnerable`, testssl.sh's whole vulnerability suite. That suite includes malformed-input probes, which ADR-023 classes as **active** and says we do not send. Until the invocation is narrowed to the four cipher tests these checks read, those four are not passive in practice, whatever their declaration says.
 
@@ -159,7 +159,7 @@ Live basis: badssl.com test hosts and operator infrastructure, plus 67 facts cro
 
 ---
 
-## domscout — DNS & Subdomain Enumeration (Tool 3, v1.3.2)
+## domscout — DNS & Subdomain Enumeration (Tool 3, v1.3.3)
 
 7 checks, all Light, all passive (`secret-exposed` is emitted by core's helper, ADR-029). Every lookup goes to a public service (CT logs, public resolvers, RDAP), never to the target, apart from at most one ordinary HTTPS page load per takeover candidate.
 

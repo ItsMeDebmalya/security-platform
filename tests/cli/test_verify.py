@@ -46,6 +46,8 @@ class FakeScanner(BaseScanner):
     version = "1.0.0"
     supported_modes = frozenset({"light"})
     target_types = frozenset({"domain"})
+    vantage = "external_unauthenticated"
+    engagement = "defensive"
 
     def requires_authorisation(self, mode: Mode) -> bool:
         return _Slot.active

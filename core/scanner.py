@@ -12,7 +12,7 @@ from abc import ABC, abstractmethod
 from typing import ClassVar
 
 from core.context import ScanContext
-from core.models import Asset, Mode, ScanResult
+from core.models import Asset, Engagement, Mode, ScanResult, Vantage
 
 SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+$")
 
@@ -30,6 +30,11 @@ class BaseScanner(ABC):
     version: ClassVar[str]
     supported_modes: ClassVar[frozenset[Mode]]
     target_types: ClassVar[frozenset[str]]
+    vantage: ClassVar[Vantage | None] = None
+    engagement: ClassVar[Engagement | None] = None
+    """ADR-034: where this scanner observes from, and the nature of its interaction
+    with the target. A scanner that emits findings declares both and passes them on
+    every finding it creates; a contract test checks every registered scanner."""
     service_hosts: ClassVar[frozenset[str]] = frozenset()
     """Public third-party hosts this scanner talks to beyond the target
     itself (a CT log, an RDAP service). Additive and defaulted to empty so

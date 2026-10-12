@@ -323,6 +323,8 @@ def secret_exposure_findings(
     org_id: str,
     scan_id: str,
     log: ExposureLog | None = None,
+    vantage: str | None = None,
+    engagement: str | None = None,
 ) -> list[Finding]:
     """One `secret-exposed` finding per exposed resource not already reported.
 
@@ -348,6 +350,8 @@ def secret_exposure_findings(
                 org_id=org_id,
                 scanner=scanner,
                 scanner_version=scanner_version,
+                vantage=vantage,
+                engagement=engagement,
                 check_id=CHECK_ID,
                 title=TITLE,
                 target=target,

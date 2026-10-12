@@ -12,7 +12,13 @@
     "description", "impact", "remediation",
     "first_seen", "first_seen_scan_id", "last_seen", "last_seen_scan_id"
   ],
+  "if": { "required": ["state_change"], "properties": { "state_change": { "type": "object" } } },
+  "then": { "required": ["engagement"], "properties": { "engagement": { "const": "offensive" } } },
   "properties": {
+    "vantage": { "enum": ["external_unauthenticated", "authenticated", "agent", null], "description": "ADR-034 (additive): where the finding was observed from. null = not recorded (every finding before ADR-034); never backfilled." },
+    "engagement": { "enum": ["defensive", "offensive", null], "description": "ADR-034 (additive): the nature of the interaction with the target, defensive or offensive. Not named mode, which means depth. null = not recorded." },
+    "links": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/finding_link" }, "description": "ADR-034 (additive): this finding explains or chains to other findings, by id. No repeats (uniqueItems). No self-links: enforced by the model only, because JSON Schema cannot compare a link with the finding's own id." },
+    "state_change": { "oneOf": [ { "$ref": "#/$defs/state_change" }, { "type": "null" } ], "description": "ADR-034 (additive): allowed only when engagement is offensive." },
     "id": {
       "type": "string",
       "pattern": "^sha256:[0-9a-f]{64}$",
@@ -163,8 +169,56 @@
       "additionalProperties": false,
       "required": ["type", "value"],
       "properties": {
-        "type": { "enum": ["domain", "url", "ip", "cidr", "repo", "cloud_account", "image", "email"] },
-        "value": { "type": "string", "minLength": 1 }
+        "type": { "enum": ["domain", "url", "ip", "cidr", "repo", "cloud_account", "image", "email", "host"], "description": "host (ADR-034): a server reported by the agent; value is its hostname, or its IP address when it has none." },
+        "value": { "type": "string", "minLength": 1 },
+        "addresses": {
+          "type": "array",
+          "items": { "anyOf": [ { "format": "ipv4", "type": "string" }, { "format": "ipv6", "type": "string" } ] },
+          "description": "ADR-034 (additive): the IP addresses the agent reported. Allowed only on a host asset. format is advisory (not asserted by default, like date-time); the model enforces IP literals, refusing IPv6 scope ids, so it agrees with these formats when they are asserted."
+        }
+      },
+      "if": { "required": ["addresses"], "properties": { "addresses": { "minItems": 1 } } },
+      "then": { "properties": { "type": { "const": "host" } } }
+    },
+    "finding_link": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["relation", "finding_id"],
+      "properties": {
+        "relation": { "enum": ["explains", "chains_to"], "description": "explains = this finding explains the linked one (inside-out correlation); chains_to = an attack-path step to it. Only the forward direction is stored." },
+        "finding_id": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+      }
+    },
+    "state_change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["changes", "cleanup"],
+      "description": "ADR-034: what an offensive test changed on the target, and how it was undone. Emitted by nothing in the Alpha; refused at runtime until a later ADR lifts the guard (ADR-004, ADR-025).",
+      "properties": {
+        "changes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["action", "what", "where"],
+            "properties": {
+              "action": { "enum": ["created", "modified", "deleted"] },
+              "what": { "type": "string", "minLength": 1 },
+              "where": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "cleanup": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status"],
+          "properties": {
+            "status": { "enum": ["not_needed", "pending", "done", "failed", "not_possible"] },
+            "performed_at": { "type": ["string", "null"], "format": "date-time" },
+            "detail": { "type": "string" }
+          }
+        }
       }
     },
     "cost": {
@@ -235,6 +289,314 @@
       "last_seen": "2026-08-22T09:14:00Z",
       "last_seen_scan_id": "01J8ZZZZZZZZZZZZZZZZZZZZZZ",
       "cost": { "requests": 3, "wall_ms": 412, "ai_tokens": 0 }
+    },
+    {
+      "id": "sha256:3067d73f49ae0699c68b53aba56ee35abd986d04f51fbdcd8ed6e3998243c732",
+      "org_id": "org_internal",
+      "scanner": "email",
+      "scanner_version": "1.0.0",
+      "check_id": "dmarc-policy-none",
+      "renamed_from": [],
+      "title": "DMARC policy is set to 'none'",
+      "target": {
+        "type": "domain",
+        "value": "example.com"
+      },
+      "location": "$",
+      "instance_key": null,
+      "severity": "medium",
+      "confidence": 0.97,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_txt_parse",
+          "likelihood_ratio": 12.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "DMARC records are unambiguous when they parse"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_reparse"
+      },
+      "evidence": [
+        {
+          "kind": "dns_answer",
+          "label": "TXT at _dmarc.example.com",
+          "captured_at": "2026-08-22T09:14:00Z",
+          "test": {
+            "query": {
+              "name": "_dmarc.example.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=none"
+              ],
+              "ttl": 300
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-9f3a.example.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null
+            }
+          },
+          "control_rationale": "random-label probe proves the zone has no TXT wildcard"
+        }
+      ],
+      "related_assets": [
+        {
+          "type": "domain",
+          "value": "example.com",
+          "relation": "observed_on"
+        }
+      ],
+      "status": "open",
+      "status_history": [],
+      "description": "The domain publishes a DMARC record whose policy is 'none'.",
+      "impact": "Receiving mail servers are told to take no action on mail that fails authentication.",
+      "remediation": "Change p=none to p=quarantine, then p=reject once rua reports are clean.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7489"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-1021"
+        ]
+      },
+      "first_seen": "2026-08-22T09:14:00Z",
+      "first_seen_scan_id": "01J8ZZZZZZZZZZZZZZZZZZZZZZ",
+      "last_seen": "2026-08-22T09:14:00Z",
+      "last_seen_scan_id": "01J8ZZZZZZZZZZZZZZZZZZZZZZ",
+      "cost": {
+        "requests": 3,
+        "wall_ms": 412,
+        "ai_tokens": 0
+      },
+      "vantage": "external_unauthenticated",
+      "engagement": "defensive"
+    },
+    {
+      "id": "sha256:d20e3308509f64fb65f597307ec18ed1bfbc56889a852c700426480cbfa94db4",
+      "org_id": "org_internal",
+      "scanner": "host",
+      "scanner_version": "1.0.0",
+      "check_id": "ssh-root-login",
+      "renamed_from": [],
+      "title": "SSH allows root login",
+      "target": {
+        "type": "host",
+        "value": "web-01.internal",
+        "addresses": [
+          "10.0.0.5"
+        ]
+      },
+      "location": "/etc/ssh/sshd_config",
+      "instance_key": null,
+      "severity": "medium",
+      "confidence": 0.97,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_txt_parse",
+          "likelihood_ratio": 12.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "DMARC records are unambiguous when they parse"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_reparse"
+      },
+      "evidence": [
+        {
+          "kind": "dns_answer",
+          "label": "TXT at _dmarc.example.com",
+          "captured_at": "2026-08-22T09:14:00Z",
+          "test": {
+            "query": {
+              "name": "_dmarc.example.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=none"
+              ],
+              "ttl": 300
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-9f3a.example.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null
+            }
+          },
+          "control_rationale": "random-label probe proves the zone has no TXT wildcard"
+        }
+      ],
+      "related_assets": [],
+      "status": "open",
+      "status_history": [],
+      "description": "sshd_config sets PermitRootLogin yes.",
+      "impact": "A stolen or guessed root password gives full control of the host.",
+      "remediation": "Set PermitRootLogin no and reload sshd.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7489"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-1021"
+        ]
+      },
+      "first_seen": "2026-08-22T09:14:00Z",
+      "first_seen_scan_id": "01J8ZZZZZZZZZZZZZZZZZZZZZZ",
+      "last_seen": "2026-08-22T09:14:00Z",
+      "last_seen_scan_id": "01J8ZZZZZZZZZZZZZZZZZZZZZZ",
+      "cost": {
+        "requests": 3,
+        "wall_ms": 412,
+        "ai_tokens": 0
+      },
+      "vantage": "agent",
+      "engagement": "defensive",
+      "links": [
+        {
+          "relation": "explains",
+          "finding_id": "sha256:3067d73f49ae0699c68b53aba56ee35abd986d04f51fbdcd8ed6e3998243c732"
+        }
+      ]
+    },
+    {
+      "id": "sha256:2721cd1626c3e10b8db5a2c940544f80ce4c95ca757f02df64d85956a8660018",
+      "org_id": "org_internal",
+      "scanner": "authz",
+      "scanner_version": "1.0.0",
+      "check_id": "race-duplicate-coupon",
+      "renamed_from": [],
+      "title": "A coupon can be redeemed twice",
+      "target": {
+        "type": "domain",
+        "value": "example.com"
+      },
+      "location": "/api/coupons/redeem",
+      "instance_key": null,
+      "severity": "medium",
+      "confidence": 0.97,
+      "confidence_provisional": true,
+      "state": "confirmed",
+      "no_verdict_reason": null,
+      "detection_methods": [
+        {
+          "method": "dns_txt_parse",
+          "likelihood_ratio": 12.0,
+          "independence_class": "dns",
+          "prior": 0.5,
+          "prior_justification": "DMARC records are unambiguous when they parse"
+        }
+      ],
+      "validation": {
+        "attempted": true,
+        "outcome": "passed",
+        "method": "independent_reparse"
+      },
+      "evidence": [
+        {
+          "kind": "dns_answer",
+          "label": "TXT at _dmarc.example.com",
+          "captured_at": "2026-08-22T09:14:00Z",
+          "test": {
+            "query": {
+              "name": "_dmarc.example.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NOERROR",
+              "records": [
+                "v=DMARC1; p=none"
+              ],
+              "ttl": 300
+            }
+          },
+          "control": {
+            "query": {
+              "name": "sp-wildcard-probe-9f3a.example.com",
+              "rrtype": "TXT",
+              "resolver": "1.1.1.1"
+            },
+            "answer": {
+              "rcode": "NXDOMAIN",
+              "records": [],
+              "ttl": null
+            }
+          },
+          "control_rationale": "random-label probe proves the zone has no TXT wildcard"
+        }
+      ],
+      "related_assets": [],
+      "status": "open",
+      "status_history": [],
+      "description": "Two concurrent requests redeemed one coupon twice.",
+      "impact": "Coupons can be redeemed more than once.",
+      "remediation": "Make redemption atomic.",
+      "references": [
+        "https://www.rfc-editor.org/rfc/rfc7489"
+      ],
+      "taxonomy": {
+        "cwe": [
+          "CWE-1021"
+        ]
+      },
+      "first_seen": "2026-08-22T09:14:00Z",
+      "first_seen_scan_id": "01J8ZZZZZZZZZZZZZZZZZZZZZZ",
+      "last_seen": "2026-08-22T09:14:00Z",
+      "last_seen_scan_id": "01J8ZZZZZZZZZZZZZZZZZZZZZZ",
+      "cost": {
+        "requests": 3,
+        "wall_ms": 412,
+        "ai_tokens": 0
+      },
+      "vantage": "authenticated",
+      "engagement": "offensive",
+      "state_change": {
+        "changes": [
+          {
+            "action": "created",
+            "what": "a second redemption of test coupon T-1",
+            "where": "/api/coupons/redeem"
+          }
+        ],
+        "cleanup": {
+          "status": "done",
+          "performed_at": "2026-08-22T09:20:00Z",
+          "detail": "redemption reversed through the admin API"
+        }
+      }
     }
   ]
 }

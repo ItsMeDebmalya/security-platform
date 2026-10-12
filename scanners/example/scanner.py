@@ -46,6 +46,8 @@ way it misleads is a wildcard zone or a broken resolver, and both are checked.""
 class ExampleScanner(BaseScanner):
     name = "example"
     version = "1.0.0"
+    vantage = "external_unauthenticated"
+    engagement = "defensive"
     supported_modes = frozenset({"light", "standard"})
     target_types = frozenset({"domain"})
 
@@ -149,6 +151,8 @@ class ExampleScanner(BaseScanner):
             org_id=ctx.org_id,
             scanner=self.name,
             scanner_version=self.version,
+            vantage=self.vantage,
+            engagement=self.engagement,
             check_id=CHECK_ID,
             title=f"{target.value} has no A record",
             target=target,
@@ -209,6 +213,8 @@ class ExampleScanner(BaseScanner):
             org_id=ctx.org_id,
             scanner=self.name,
             scanner_version=self.version,
+            vantage=self.vantage,
+            engagement=self.engagement,
             check_id=CHECK_ID,
             title=f"Could not determine whether {target.value} has an A record",
             target=target,

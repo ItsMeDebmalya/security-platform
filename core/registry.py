@@ -22,6 +22,13 @@ class ScannerRegistry:
             raise ValueError(f"{name} must declare at least one supported mode")
         if not scanner.target_types:
             raise ValueError(f"{name} must declare at least one target type")
+        # ADR-034: a registered scanner emits findings, so it declares where it
+        # observes from and the nature of its interaction; null would read as
+        # "not recorded", which is true only of findings made before ADR-034.
+        if getattr(scanner, "vantage", None) is None:
+            raise ValueError(f"{name} must declare its vantage (ADR-034)")
+        if getattr(scanner, "engagement", None) is None:
+            raise ValueError(f"{name} must declare its engagement (ADR-034)")
         if name in self._scanners:
             raise ValueError(f"{name} is already registered")
         self._scanners[name] = scanner
