@@ -36,6 +36,8 @@ All five are registered in [`tools/registry.yaml`](../tools/registry.yaml) with 
 
 ## 2. Where this runs
 
+**Since D60 (2026-10-12, [ADR-036](02-decisions.md#adr-036--one-address-policy-no-connection-to-a-non-global-address-and-the-address-checked-is-the-address-connected-to)), `scan run` will not connect to these targets live:** they are on loopback, and the platform's address policy refuses non-global addresses from every customer-facing path, with no flag to relax it. Recording them goes through an entry point in `corpus/`, which holds the only lab override. None exists yet for these containers; it is to be built when the first check that needs them is (the web lab and the TLS lab already have theirs).
+
 **The scanner and the targets run on the same machine.** That is not incidental — it is what makes `127.0.0.1` the right address and `self_owned` an honest authorisation method. Clone the repo onto the host that runs the containers, and run the CLI from there.
 
 A WSL2 distro is a good place for both. Docker and the scanner live inside the distro; nothing is published beyond its loopback interface.

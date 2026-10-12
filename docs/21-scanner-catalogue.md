@@ -56,7 +56,7 @@ Below 0.40 confidence nothing is reported.
 
 ---
 
-## web — Website Scanner (Tool 4a, v1.0.6)
+## web — Website Scanner (Tool 4a, v1.0.7)
 
 21 checks, all Light, all passive. At most 12 page requests per scan, though redirect hops can add more (D26).
 
@@ -130,7 +130,7 @@ Live basis: 13 real hosts, every claim hand-verified with `curl`, cross-checked 
 
 ---
 
-## tls — SSL/TLS Analyzer (Tool 2, v1.4.2)
+## tls — SSL/TLS Analyzer (Tool 2, v1.4.3)
 
 19 checks, declared passive under ADR-023 (ordinary TLS handshakes). 8 run in Light, and 11 more in Standard, of which **4 are unavailable to customers** (see the Availability column). **Ledger D56, fixed 2026-10-12 (PR #44):** the four testssl.sh checks below used to run `testssl.sh --vulnerable`, whose malformed-input probes ADR-023 classes as active. They now run only the four cipher tests they read (`--rc4 --sweet32 --freak --logjam`), under an exact argument and environment allowlist enforced at runtime ([ADR-023](02-decisions.md#adr-023--passive-is-ordinary-negotiation-only-malformed-input-is-active), D56 amendment). testssl.sh also sends connection- and protocol-detection handshakes, one ordinary `GET /` and one large well-formed ClientHello on every run, all accepted as passive there. **Ledger D59 (2026-10-12): these four do not run outside the lab.** Their SSLv2 hellos carry no SNI, so on a shared address they would reach a site that is not the customer's, and we cannot yet show an address is dedicated. Live Standard scans report them `inconclusive` with that reason. Their Status below rests on the badssl.com recordings, made under an explicit lab override, and stays as recorded. Their Availability column says they are unavailable to every customer, and why.
 
@@ -164,7 +164,7 @@ Live basis: badssl.com test hosts and operator infrastructure, plus 67 facts cro
 
 ---
 
-## domscout — DNS & Subdomain Enumeration (Tool 3, v1.3.3)
+## domscout — DNS & Subdomain Enumeration (Tool 3, v1.4.0)
 
 7 checks, all Light, all passive (`secret-exposed` is emitted by core's helper, ADR-029). Every lookup goes to a public service (CT logs, public resolvers, RDAP), never to the target, apart from at most one ordinary HTTPS page load per takeover candidate.
 
@@ -173,7 +173,7 @@ Live basis: badssl.com test hosts and operator infrastructure, plus 67 facts cro
 | Check ID | What it detects, and why it matters | Mode | Severity | Highest state, and the evidence that gets it there | Status | Availability |
 |---|---|---|---|---|---|---|
 | `subdomains-ct-log` | Inventory of subdomains named in Certificate Transparency logs that still resolve | light | info | `informational` | WORKING. The frozen fixtures' crt.sh response shape is unverified (ledger D34) | Available |
-| `dns-records` | Inventory of the DNS records observed for the domain and its subdomains | light | info | `informational` | WORKING | Available |
+| `dns-records` | Inventory of the DNS records observed for the domain and its subdomains. Since v1.4.0 (D60) it also names any name that resolves to a non-global address (private, loopback, link-local and the like), which usually means split-horizon DNS or a stale record; our scans do not connect to such addresses | light | info | `informational` | WORKING (the non-global note is unit-tested only: the synthetic corpus uses documentation addresses, D60) | Available |
 | `dnssec-status` | DNSSEC is not deployed: no DS/DNSKEY, so DNS answers can be forged in transit | light | low | `confirmed`: DS and DNSKEY, read at the zone the name belongs to (the nearest SOA owner), re-queried through an independent second resolver, agree. Agreement rules out one resolver's glitch, not a shared failure (D36) | WORKING for the unsigned case (live, an operator domain). D53 fixed in v1.3.1: a subdomain is judged by its zone, live-verified on `www.nixi.in` (signed zone, clear; case `real-subdomain-signed`) | Available |
 | `domain-expiring` | The domain registration expires within 30 days, after which anyone can re-register it | light | medium | `suspected`: a single source, the registry's RDAP record read twice, from the registry's own server (IANA bootstrap, ADR-031). `not_applicable` for a special-use name (ADR-032) | UNDETERMINED (D28 fixed, v1.3.0): reads the expiry live at Verisign, PIR and NIXI, hand-verified (`corpus/crosscheck/d28-registry-responses/`), but no real domain within 30 days has been scanned | Available |
 | `domain-expired` | The domain registration has already expired | light | high | `suspected`: as above | UNDETERMINED (D28 fixed, v1.3.0): the same read, live; no real expired registration has been scanned | Available |
