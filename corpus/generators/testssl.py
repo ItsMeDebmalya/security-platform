@@ -73,7 +73,10 @@ OVERRIDE = LabOverride(
         "corpus recording against badssl.com, a public TLS test service run for exactly this "
         "(ADR-027). Its test names share addresses it operates itself, so a hello with no SNI "
         "reaches badssl.com's own default site, not an unrelated party (D59)"
-    )
+    ),
+    # The waiver names its targets (ADR-036 decision 10); no networks, since
+    # badssl.com's addresses are global and need no permission.
+    hosts=frozenset(CASES.values()),
 )
 """D59: the dedicated-address condition cannot be proven for badssl.com
 either. The recordings run under this explicit override, and its reason is

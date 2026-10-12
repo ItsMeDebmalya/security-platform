@@ -36,7 +36,48 @@ All five are registered in [`tools/registry.yaml`](../tools/registry.yaml) with 
 
 ## 2. Where this runs
 
-**Since D60 (2026-10-12, [ADR-036](02-decisions.md#adr-036--one-address-policy-no-connection-to-a-non-global-address-and-the-address-checked-is-the-address-connected-to)), `scan run` will not connect to these targets live:** they are on loopback, and the platform's address policy refuses non-global addresses from every customer-facing path, with no flag to relax it. Recording them goes through an entry point in `corpus/`, which holds the only lab override. None exists yet for these containers; it is to be built when the first check that needs them is (the web lab and the TLS lab already have theirs).
+**How to scan them (since 2026-10-12).** `scan run` will not connect to these targets: they are on loopback, and the platform's address policy refuses non-global addresses from every customer-facing path (D60, [ADR-036](02-decisions.md#adr-036--one-address-policy-no-connection-to-a-non-global-address-and-the-address-checked-is-the-address-connected-to)). It also resolves names only through public resolvers, which answer NXDOMAIN for `localhost`. Use the **lab entry point** instead (ADR-036 decision 10). It takes the same arguments and prints the same output:
+
+```bash
+make targets-up
+uv run python -m corpus.lab.scan web --target http://127.0.0.1:3000 --target-type url   # Juice Shop
+uv run python -m corpus.lab.scan web --target http://127.0.0.1:4280 --target-type url   # DVWA
+uv run python -m corpus.lab.scan web --target http://127.0.0.1:5000 --target-type url   # VAmPI
+uv run python -m corpus.lab.scan web --target http://localhost:5001 --target-type url   # VAmPI, safe; localhost works here
+```
+
+It scans only boxes listed in [`corpus/lab/inventory.yaml`](../corpus/lab/inventory.yaml) (today: `localhost`, `127.0.0.1`). **That file may never contain a production address, network or name**; the rule and its reason are in ADR-036 decision 10. A target outside it is refused before anything runs:
+
+```
+$ uv run python -m corpus.lab.scan web --target http://10.0.0.5/ --target-type url
+refused: 10.0.0.5 is not in the lab inventory (corpus/lab/inventory.yaml). The lab path scans only purpose-built lab boxes listed there (ADR-036 decision 10); use `scan run` for anything else.
+```
+
+Everything else is the customer path's own code: the authorisation check, the scope, the kill switch, rate limits, cost and redaction. ADR-036 decision 10 has the table of what is and is not bypassed.
+
+**A real transcript** (2026-10-12). The containers were not started for it: the machine it was taken on runs other services, so a stand-in was used, Python's `http.server` on `127.0.0.1:18765` serving a directory listing. The findings describe that stand-in, not Juice Shop:
+
+```
+$ uv run python -m corpus.lab.scan web --target http://localhost:18765/ --target-type url
+web 1.0.7 light http://localhost:18765/ -> succeeded
+
+severity  conf   state          check                            location
+medium    0.98   confirmed      web-csp-missing                  /
+medium    0.98   confirmed      web-clickjacking-unprotected     /
+medium    0.97   suspected      web-directory-listing            /
+medium    0.50   inconclusive   web-https-redirect-missing       /
+medium    0.50   inconclusive   web-hsts-missing                 /
+low       0.98   confirmed      web-xcto-missing                 /
+low       0.98   suspected      web-version-disclosure           /
+low       0.50   inconclusive   web-hsts-weak                    /
+low       0.50   inconclusive   web-mixed-content                /
+info      0.98   informational  web-referrer-policy-missing      /
+info      0.98   informational  web-security-txt-missing         /.well-known/security.txt
+
+21 check(s) ran, 19% inconclusive, 0 not applicable, 6 request(s)
+```
+
+The four `inconclusive`s are expected for an `http://` target: it has no HTTPS origin to judge.
 
 **The scanner and the targets run on the same machine.** That is not incidental — it is what makes `127.0.0.1` the right address and `self_owned` an honest authorisation method. Clone the repo onto the host that runs the containers, and run the CLI from there.
 

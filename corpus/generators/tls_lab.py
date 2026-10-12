@@ -277,7 +277,8 @@ def _load_key(path: Path) -> object:
 LAB_ADDRESSES = AddressPolicy(
     lab_override=LabOverride(
         reason="local lab server on loopback (corpus/generators/tls_lab.py)",
-        allow_non_global=True,
+        networks=("127.0.0.1/32",),
+        hosts=frozenset({"localhost", "127.0.0.1"}),
     )
 )
 """D60 (ADR-036): the lab's address policy. Lab servers listen on loopback,

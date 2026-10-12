@@ -81,6 +81,7 @@ class FakeLimiter:
 
 
 def lab(**kwargs) -> LabOverride:
+    kwargs.setdefault("hosts", frozenset({"example.test", "localhost"}))
     return LabOverride(reason="unit test", **kwargs)
 
 
@@ -132,6 +133,20 @@ def test_without_the_override_nothing_is_resolved_and_nothing_starts(runs) -> No
     assert c.dns.queries == []
 
 
+def test_an_override_that_does_not_name_the_target_does_not_waive_the_condition(runs) -> None:
+    """Lab entry point, condition 4: the waiver keys off the target, not off an
+    override merely being present."""
+    c = LiveTestsslClient(
+        dns=FakeDns({"example.test": PUBLIC[:1]}),
+        scope=Scope(frozenset({"example.test"})),
+        addresses=AddressPolicy(lab_override=lab(hosts=frozenset({"localhost"}))),
+    )
+    with pytest.raises(NotPermittedError, match="dedicated"):
+        c.legacy_ciphers("example.test", 443)
+    assert runs == []
+    assert c.dns.queries == []
+
+
 def test_a_not_permitted_refusal_is_the_scanners_inconclusive_path() -> None:
     from core.testssl import TestsslUnavailableError
 
@@ -143,29 +158,124 @@ DEFINED_IN = ROOT / "core" / "addresses.py"
 """D60: the one override lives in the one address policy (ADR-036)."""
 
 
+IMPORTERS = ("import_module", "__import__")
+"""Import by string: allowed only as a direct call whose module path visibly
+starts outside `corpus` (core's scanner discovery imports `scanners.*`)."""
+
+LOADERS = (
+    "run_module",
+    "run_path",
+    "spec_from_file_location",
+    "spec_from_loader",
+    "find_spec",
+    "module_from_spec",
+    "exec_module",
+    "load_module",
+    "SourceFileLoader",
+    "zipimporter",
+)
+"""Code loading by path or module name: never needed on a customer path."""
+
+READY_MADE = ("LAB_ADDRESSES", "OVERRIDE")
+"""Names under which `corpus/` exports a ready-made override or lab policy."""
+
+LAB_PACKAGES = ("corpus", "tests")
+"""Packages that hold ready-made overrides (`tests/` helpers turn one on by default)."""
+
+
+def _imports_outside_corpus(call: ast.Call) -> bool:
+    if not call.args or call.keywords:
+        return False
+    first = call.args[0]
+    if isinstance(first, ast.JoinedStr) and first.values:
+        first = first.values[0]
+    if not (isinstance(first, ast.Constant) and isinstance(first.value, str)):
+        return False  # dynamic: cannot be shown not to reach corpus/
+    head = first.value.split(".", 1)[0]
+    return head not in ("", *LAB_PACKAGES)
+
+
+def _docstrings(tree: ast.AST) -> set[int]:
+    return {
+        id(node.body[0].value)
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Module | ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef)
+        and node.body
+        and isinstance(node.body[0], ast.Expr)
+        and isinstance(node.body[0].value, ast.Constant)
+    }
+
+
 def _override_uses(tree: ast.AST) -> list[tuple[int, str]]:
-    """Any way a module could reach a lab override: the name (called, aliased
-    or referenced), an attribute or `getattr` string naming it, a
-    `lab_override=` keyword or assignment, or an import from `corpus`, which
-    holds ready-made overrides."""
+    """Any way a module could reach a lab override:
+    - the name (called, aliased or referenced), an attribute or `getattr`
+      string naming it, a `lab_override=` keyword or assignment;
+    - an `AddressPolicy` given any positional argument (round 2: the
+      override can be passed positionally; it is keyword-only now too);
+    - an import from `corpus`, which holds ready-made overrides, by statement,
+      by string (`import_module`, `__import__`, aliased or not), by loader
+      (`runpy`, `spec_from_file_location`), or a `corpus.` module path in any
+      string (`sys.modules[...]`).
+    Also (round 3): `sys.path`, more loaders, the ready-made policy names,
+    and imports from `tests/` as well as `corpus/`.
+
+    What this is: a tripwire that keeps ordinary code honest, not a proof
+    against someone deliberately evading it. Deliberate obfuscation (a name
+    assembled from pieces, `exec` of a built string) is code review's job."""
     uses = []
+    direct = {id(n.func) for n in ast.walk(tree) if isinstance(n, ast.Call)}
+    docstrings = _docstrings(tree)
     for node in ast.walk(tree):
-        if isinstance(node, ast.Name) and node.id == "LabOverride":
-            uses.append((node.lineno, "name"))
-        elif isinstance(node, ast.Attribute) and node.attr in ("LabOverride", "lab_override"):
-            uses.append((node.lineno, f"attribute {node.attr}"))
+        name = (
+            node.id
+            if isinstance(node, ast.Name)
+            else node.attr
+            if isinstance(node, ast.Attribute)
+            else None
+        )
+        if name == "LabOverride":
+            uses.append((node.lineno, "name"))  # type: ignore[attr-defined]
+        elif name in READY_MADE:
+            uses.append((node.lineno, f"ready-made lab policy {name}"))  # type: ignore[attr-defined]
+        elif (
+            isinstance(node, ast.Attribute)
+            and node.attr == "path"
+            and (getattr(node.value, "id", None) == "sys")
+        ):
+            uses.append((node.lineno, "sys.path"))
+        elif isinstance(node, ast.Attribute) and node.attr == "lab_override":
+            uses.append((node.lineno, "attribute lab_override"))
+        elif name in IMPORTERS + LOADERS and id(node) not in direct:
+            uses.append((node.lineno, f"reference to {name} that is not a call"))  # type: ignore[attr-defined]
         elif isinstance(node, ast.Constant) and node.value in ("LabOverride", "lab_override"):
             uses.append((node.lineno, f"string {node.value!r}"))
+        elif (
+            isinstance(node, ast.Constant)
+            and isinstance(node.value, str)
+            and id(node) not in docstrings
+            and node.value.startswith(("corpus.", "corpus/", "tests.", "tests/"))
+        ):
+            uses.append((node.lineno, f"lab module or path {node.value!r}"))
         elif isinstance(node, ast.keyword) and node.arg == "lab_override":
             uses.append((node.value.lineno, "keyword lab_override"))
-        elif isinstance(node, ast.ImportFrom) and (node.module or "").split(".")[0] == "corpus":
+        elif isinstance(node, ast.ImportFrom) and (node.module or "").split(".")[0] in LAB_PACKAGES:
             uses.append((node.lineno, f"import from {node.module}"))
-        elif isinstance(node, ast.ImportFrom) and any(a.name == "LabOverride" for a in node.names):
-            uses.append((node.lineno, "import LabOverride"))
-        elif isinstance(node, ast.Import) and any(
-            a.name.split(".")[0] == "corpus" for a in node.names
+        elif isinstance(node, ast.ImportFrom) and any(
+            a.name in ("LabOverride", *IMPORTERS, *LOADERS) for a in node.names
         ):
-            uses.append((node.lineno, "import corpus"))
+            uses.append((node.lineno, "import of LabOverride or an importer"))
+        elif isinstance(node, ast.Call):
+            called = getattr(node.func, "id", None) or getattr(node.func, "attr", None)
+            if called in IMPORTERS and not _imports_outside_corpus(node):
+                uses.append((node.lineno, "import by string"))
+            elif called in LOADERS:
+                uses.append((node.lineno, f"code loaded by {called}"))
+            elif called == "AddressPolicy" and node.args:
+                uses.append((node.lineno, "AddressPolicy given a positional argument"))
+        elif isinstance(node, ast.Import) and any(
+            a.name.split(".")[0] in LAB_PACKAGES for a in node.names
+        ):
+            uses.append((node.lineno, "import of a lab package"))
     return uses
 
 
@@ -192,10 +302,50 @@ def test_no_customer_facing_code_path_can_reach_the_lab_override() -> None:
         "from corpus.generators.testssl import OVERRIDE",
         "HttpClient(scope=s, addresses=AddressPolicy(lab_override=o))",
         "client.lab_override = something",
+        "import importlib\nimportlib.import_module('corpus.lab.scan')",
+        "__import__('corpus.generators.testssl')",
+        "import importlib\nimportlib.import_module(name)",
+        # Review of the lab entry point, round 2: aliased and runpy routes.
+        "from importlib import import_module as im\nim('corpus.lab.scan')",
+        "import importlib\nim = importlib.import_module",
+        "import runpy\nrunpy.run_module('corpus.lab.scan')",
+        "import runpy\nrunpy.run_path(path)",
+        "import importlib.util\nimportlib.util.spec_from_file_location('x', p)",
+        "import sys\nsys.modules['corpus.lab.scan']",
+        "AddressPolicy(override)",
+        # Round 3: sys.path, more loaders, ready-made policies, tests/.
+        "import sys\nsys.path.insert(0, 'corpus')",
+        "from importlib.machinery import SourceFileLoader\nSourceFileLoader('m', p).load_module()",
+        "import importlib.util as u\nu.module_from_spec(u.find_spec(name))",
+        "spec.loader.exec_module(module)",
+        "path = 'corpus/generators/tls_lab.py'",
+        "ScanContext(addresses=LAB_ADDRESSES)",
+        "from tests.core.test_testssl_scope import client",
+        "import tests.core.test_testssl_scope",
     ],
 )
 def test_the_walk_catches_indirect_routes(source) -> None:
     assert _override_uses(ast.parse(source))
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "import importlib\nimportlib.import_module(f'scanners.{name}')",
+        "import importlib\nimportlib.import_module('json')",
+        "__import__('os')",
+        "ROOT = Path('corpus')",
+        '"""Reads corpus/fixtures, as the harness does."""',
+    ],
+)
+def test_the_walk_does_not_flag_ordinary_code(source) -> None:
+    assert _override_uses(ast.parse(source)) == []
+
+
+def test_address_policy_takes_its_override_by_keyword_only() -> None:
+    """Round 2: a positional override slipped past the `lab_override=` rule."""
+    with pytest.raises(TypeError):
+        AddressPolicy(lab())  # type: ignore[misc]
 
 
 def test_anything_but_a_real_lab_override_is_not_permission(runs) -> None:
@@ -203,7 +353,7 @@ def test_anything_but_a_real_lab_override_is_not_permission(runs) -> None:
 
     c = client(override=False)
     c.addresses = SimpleNamespace(  # type: ignore[assignment]
-        lab_reason="x", lab_override=SimpleNamespace(reason="x", allow_non_global=True)
+        lab_reason="x", lab_override=SimpleNamespace(reason="x", networks=("127.0.0.1/32",))
     )
     with pytest.raises(NotPermittedError):
         c.legacy_ciphers("example.test", 443)
@@ -313,7 +463,7 @@ def test_the_lab_override_can_allow_a_non_global_address(runs) -> None:
     c = LiveTestsslClient(
         dns=FakeDns({"localhost": ["127.0.0.1"]}),
         scope=Scope(frozenset({"localhost"})),
-        addresses=AddressPolicy(lab_override=lab(allow_non_global=True)),
+        addresses=AddressPolicy(lab_override=lab(networks=("127.0.0.1/32",))),
     )
     report = c.legacy_ciphers("localhost", 8443)
     assert report.addresses_tested == ("127.0.0.1",)
@@ -321,6 +471,8 @@ def test_the_lab_override_can_allow_a_non_global_address(runs) -> None:
 
 def test_a_host_outside_the_scope_is_refused_before_any_lookup(runs) -> None:
     c = client()
+    # Named by the override, so the scope check (not the waiver) is what refuses.
+    c.addresses = AddressPolicy(lab_override=lab(hosts=frozenset({"elsewhere.test"})))
     with pytest.raises(RefusedError, match="scope"):
         c.legacy_ciphers("elsewhere.test", 443)
     assert c.dns.queries == [] and runs == []

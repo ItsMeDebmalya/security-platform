@@ -571,8 +571,11 @@ class LiveTestsslClient:
         return self.addresses if isinstance(self.addresses, AddressPolicy) else AddressPolicy()
 
     def legacy_ciphers(self, host: str, port: int) -> LegacyCipherReport:
-        lab_reason = self._policy().lab_reason
-        if lab_reason is None:
+        policy = self._policy()
+        lab_reason = policy.lab_reason
+        # Waived only for a target the lab override names (ADR-036 decision 10):
+        # an override merely being present is not enough.
+        if lab_reason is None or not policy.waives_dedicated_address(host):
             raise TestsslNotPermittedError(
                 "not run: the dedicated-address condition is unproven. testssl.sh's "
                 "legacy-cipher tests can send hellos with no SNI, which on a shared address "

@@ -53,7 +53,14 @@ select = ["E", "F", "I", "UP", "B", "SIM", "N", "RUF"]
 [tool.mypy]
 python_version = "3.13"
 strict = true
-files = ["core", "cli", "scanners", "corpus/lab/tls_capture.py", "corpus/lab/testssl_capture.py"]
+files = [
+    "core",
+    "cli",
+    "scanners",
+    "corpus/lab/tls_capture.py",
+    "corpus/lab/testssl_capture.py",
+    "corpus/lab/scan.py",
+]
 
 [[tool.mypy.overrides]]
 module = ["tests.*"]

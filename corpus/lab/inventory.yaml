@@ -1,0 +1,20 @@
+# The lab inventory: everything the lab entry point (corpus/lab/scan.py) may scan.
+#
+# THIS INVENTORY MUST never contain a production address, network or name.
+# It is for purpose-built lab boxes only: boxes we created to be scanned.
+# (ADR-036 decision 10.) The fleet is reached through agent snapshots, never
+# through this path. Adding the fleet's subnet "so the agent can be tested
+# properly" would turn this into a way to scan production machines with the
+# address policy disabled, which is exactly what this file exists to prevent.
+#
+# Rules, enforced when the file is loaded and in tests/corpus/test_lab_scan.py:
+# - name: `localhost` or an RFC 2606 reserved name (.test, .example, .invalid,
+#   .localhost), never a real domain;
+# - address: non-global, and inside core.addresses.LAB_NETWORKS, which is
+#   loopback only until docs/26 Step 3 adds the lab VMs' own network by a
+#   reviewed change to core;
+# - each name once.
+# Changes to this file are reviewed like code.
+
+boxes:
+  - {name: localhost, address: 127.0.0.1}
