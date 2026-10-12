@@ -4,7 +4,7 @@
 
 *Every check the four shipped scanners run: what it finds, which mode runs it, how sure it can get, and whether it works in production today.*
 
-**How this was made (2026-10-08).**
+**How this was made (first 2026-10-08; regenerated 2026-10-12).** On 2026-10-12, every row's check ID, mode and severity was diffed against each scanner's `CHECKS` table (all match), and each section's counts and version were re-read from the code.
 - **Check IDs, titles, severities and modes** are read from each scanner's `CHECKS` table (`scanners/<name>/checks.py`), with nothing typed from memory.
 - **Highest states** come from two places. One is the scanner code: where it sets a validation and where it adds a second independence class. The other is `core/state.py`. Both were cross-checked by replaying every corpus case through the real scanners.
 - **Status** comes from recorded live evidence: [the ledger](14-progress-ledger.md) and `corpus/crosscheck/`.
@@ -41,7 +41,7 @@ Below 0.40 confidence nothing is reported.
 
 **Light and Standard.**
 - **Light** is passive: ordinary requests anyone could make, such as DNS lookups, normal page loads, normal TLS handshakes, and public registries and logs. It needs no proof that you own the target.
-- **Standard** adds more checks. Today every Standard check in these four scanners is also passive under [ADR-023](02-decisions.md#adr-023--passive-is-ordinary-negotiation-only-malformed-input-is-active), so a Standard scan reaches no ownership gate (ledger D27). The ownership gate is built and applies to the first *active* check, whenever one ships.
+- **Standard** adds more checks. Every Standard check in these four scanners is *declared* passive under [ADR-023](02-decisions.md#adr-023--passive-is-ordinary-negotiation-only-malformed-input-is-active), so `core/authz.py` lets a Standard scan run with no ownership record (ledger D27). The ownership gate is built and applies to the first check declared *active*. **Exception, ledger D56:** the four testssl.sh checks currently send active probes despite their declaration (see the tls section). [ADR-033](02-decisions.md#adr-033--mvp-alpha-scope-one-combined-release-the-linux-agent-moves-into-alpha-tool-4b-deferred) sets who may run Standard in the Alpha.
 - Deep/Validated mode does not exist yet.
 
 **Status column.**
@@ -87,17 +87,17 @@ Live basis: 13 real hosts, every claim hand-verified with `curl`, cross-checked 
 
 ---
 
-## email — Email Security Scanner (Tool 1, v1.5.0)
+## email — Email Security Scanner (Tool 1, v1.5.1)
 
 **DMARC is read under RFC 9989 first** (v1.4.0). Where RFC 7489, still deployed, gives a different verdict, the finding states both and is `suspected`, at the severity of the worst case (ADR-017). **Which DMARC record applies** (v1.3.0) is found by RFC 9989's DNS tree walk (§4.10). A subdomain inherits its parent's `sp=` (or `np=`) policy. An inherited policy is stated under both RFCs and held at `suspected`, because RFC 7489 receivers choose with a Public Suffix List we do not consult (D49). Several DMARC records at one name are all discarded, as both RFCs require.
 
 **Live basis (2026-10-08):** email live run 2, 45 domains, all 146 non-informational findings hand-verified, with checkdmarc as the external cross-check ([verification](../corpus/crosscheck/email-live/2026-10-08-run2/verification.md)). **A check that made a false claim on a live target is BROKEN until it is fixed.** DMARC claims are judged against RFC 9989, which obsoletes RFC 7489 (ledger D44).
 
-18 checks, all passive DNS. Nothing is sent to the domain's mail servers. 10 run in Light, and 8 more in Standard. `secret-exposed` is not in the scanner's `CHECKS` table: core's helper emits it (`core/exposure.py`, ADR-029).
+20 checks, all passive DNS. Nothing is sent to the domain's mail servers. 10 run in Light, and 10 more in Standard. *(Regenerated 2026-10-12: this line said 18 checks and 8 in Standard; the code has 20 and 10.)* `secret-exposed` is not in the scanner's `CHECKS` table: core's helper emits it (`core/exposure.py`, ADR-029).
 
 **`confirmed` means one thing here.** A finding reaches `confirmed` when the same records, re-queried through a **second public resolver**, give the same answer (validation passed). That rules out a glitch at one resolver. **It is not independent corroboration of the record.** Both resolvers read the same authoritative servers, and both validate DNSSEC, so they fail together on a broken zone (ledger D36).
 
-**Every email check is UNDETERMINED until the live re-verification closes (ledger D35).** The earlier live sweep was not archived, and the corpus cannot make the second-resolver step fail.
+**Live re-verification closed D35 on 2026-10-08** (email live run 2). Each check's status below rests on that run or later live evidence. The corpus still cannot make the second-resolver step fail, so live runs, not the corpus, are what show that step working. *(Regenerated 2026-10-12: this line still said every email check was UNDETERMINED pending D35, contradicting the rows below.)*
 
 | Check ID | What it detects, and why it matters | Mode | Severity | Highest state, and the evidence that gets it there | Status |
 |---|---|---|---|---|---|
@@ -127,7 +127,7 @@ Live basis: 13 real hosts, every claim hand-verified with `curl`, cross-checked 
 
 ## tls — SSL/TLS Analyzer (Tool 2, v1.4.0)
 
-19 checks, all passive under ADR-023 (ordinary TLS handshakes). 8 run in Light, and 11 more in Standard.
+19 checks, declared passive under ADR-023 (ordinary TLS handshakes). 8 run in Light, and 11 more in Standard. **Exception, ledger D56 (2026-10-12):** the four testssl.sh checks below run `testssl.sh --vulnerable`, testssl.sh's whole vulnerability suite. That suite includes malformed-input probes, which ADR-023 classes as **active** and says we do not send. Until the invocation is narrowed to the four cipher tests these checks read, those four are not passive in practice, whatever their declaration says.
 
 **No tls check has a validation step, so none reaches `confirmed`.** The ceiling is `highly_likely`. It is reached only when two independent readings agree: our own reading of the certificate, and the trust path (OpenSSL's verification). Single-reading checks stop at `suspected`.
 

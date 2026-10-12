@@ -591,3 +591,23 @@ Then restore the entry-point lines in `CLAUDE.md` and `SPEC.md`, and the revert 
 
 **Revert.** Revert the merge commit. A registry's redirect to an in-scope host, such as the scanned site, is then followed again, though never parsed (D28).
 
+## v4.0-pre.18 — ADR-033: MVP Alpha scope; the Linux agent moves into Alpha; Tool 4b deferred (2026-10-12)
+
+**What changed.** A decision only, with no code.
+- The first release is one combined MVP Alpha: customer Light scanning plus internal fleet assessment by a read-only Linux agent.
+- The agent moves into Alpha, superseding [docs/19](19-v4-roadmap.md)'s MVP exclusion (§2) and Phase 2 placement (§3).
+- No new external scanners. The flow engine is minimal and deterministic.
+- Reports come in JSON, HTML and PDF, with scores, our branding, and AI summaries under a mandatory fact-check test.
+- Tool 4b is deferred past Alpha, against ADR-020's commitment; the claim itself is not withdrawn.
+
+**Docs.**
+- Added: docs/24 (scope), docs/25 (report; data points reconciled against the scanner catalogue, and the agent's marked PLANNED) and docs/26 (the working build plan).
+- docs/19 gains a banner. SPEC.md gains a pointer and its "4b next" lines are corrected. docs/03's 4b row points to ADR-033. CLAUDE.md's CURRENT STATE is updated.
+
+**Revert.** Delete ADR-033 and the three documents, and remove the banner and pointers. docs/19's original MVP line then applies again.
+- **Amended before merge (operator review, 2026-10-12):**
+  - the release roadmap is archived at `docs/archive/release-roadmap-2026-10-06.md` with an ARCHIVED banner, and ADR-033 cites it;
+  - ADR-033 adds the terminology rule, records that Phase 1 stays open (docs/26 drives planning), and sets the customer boundary: Light for any domain, Light plus passive Standard for DNS-TXT-verified owners (the four testssl.sh checks excluded until D56), and deep only by signed agreement after Alpha;
+  - docs/21 is regenerated from the code (email: 20 checks; the D35 contradiction fixed; D56 caveats);
+  - docs/24 and docs/25 are re-reconciled.
+

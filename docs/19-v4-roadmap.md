@@ -1,5 +1,7 @@
 # Integrated Security Platform — Development Roadmap (Draft v1)
 
+> **Current release scope is set by [ADR-033](02-decisions.md#adr-033--mvp-alpha-scope-one-combined-release-the-linux-agent-moves-into-alpha-tool-4b-deferred) and [docs/24-alpha-scope.md](24-alpha-scope.md) (12 October 2026), not by this document.** The first release is an **MVP Alpha**: customer Light scanning plus our internal server fleet assessed by the Linux agent, built to [docs/26](26-alpha-build-sequence.md). **The Linux agent is in the Alpha**, which supersedes this roadmap's exclusion of it from the MVP (§2) and its Phase 2 placement (§3). No new external scanners are added, the flow engine is minimal and deterministic, and Tool 4b is deferred past the Alpha. This roadmap is kept as written, as the record of the original plan.
+
 **Companion to: Draft Plan (v4)**
 *Prepared for initial review · updated 1 October 2026 to add the web presentation layer · to be refined on feedback*
 
