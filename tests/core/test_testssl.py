@@ -371,6 +371,42 @@ def test_the_pinned_environment_passes_its_own_guard(tmp_path) -> None:
     guard_invocation(_valid_argv(tmp_path), environment())
 
 
+@pytest.mark.parametrize(
+    "allowed",
+    [
+        pytest.param((), id="empty-runs-everything"),
+        pytest.param(("--vulnerable", "--quiet"), id="suite-wide"),
+        pytest.param(("--rc4", "--quiet"), id="undeclared-subset"),
+    ],
+)
+def test_the_guard_refuses_an_undeclared_argument_list(tmp_path, allowed) -> None:
+    argv = [
+        str(TESTSSL_PATH),
+        *allowed,
+        "--jsonfile-pretty",
+        str(tmp_path / "o.json"),
+        "example.test:443",
+    ]
+    with pytest.raises(RefusedError):
+        guard_invocation(argv, _valid_env(), allowed_args=allowed)
+
+
+def test_the_declared_lists_are_exactly_the_two_callers() -> None:
+    from core.testssl import CROSSCHECK_ARGS, DECLARED_ARG_LISTS
+
+    assert {EXPECTED_ARGS, CROSSCHECK_ARGS} == DECLARED_ARG_LISTS
+    assert CROSSCHECK_ARGS == ("--protocols", "--server-defaults", "--quiet")
+
+
+def test_the_subprocess_never_reads_a_terminal(monkeypatch) -> None:
+    """testssl.sh can prompt interactively; with an inherited stdin a scan
+    could block until the timeout."""
+    calls = _capture_run(monkeypatch)
+    LiveTestsslClient().legacy_ciphers("example.test", 443)
+    ((_, kwargs),) = calls
+    assert kwargs["stdin"] is subprocess.DEVNULL
+
+
 def test_a_refused_target_never_starts_the_subprocess(monkeypatch) -> None:
     """A host that would parse as a flag is refused before testssl.sh runs,
     and the refusal is the scanner's ordinary `inconclusive` path."""

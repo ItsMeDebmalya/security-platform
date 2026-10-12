@@ -29,6 +29,7 @@ single ChangeCipherSpec sent early but before application data. Two
 legitimate shapes testssl.sh does not send are flagged falsely: a
 ClientHello split across records whose continuation begins with 0x01, and
 0-RTT early data followed by a HelloRetryRequest.
+
 The primary proof that we send only what we declare is the argument
 allowlist and runtime guard in `core/testssl.py`; this analyser is the
 positive check on a real run (`corpus/lab/testssl_capture.py`).

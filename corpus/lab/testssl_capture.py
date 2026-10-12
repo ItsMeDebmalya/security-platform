@@ -22,8 +22,10 @@ analyser tests in `tests/corpus/test_tls_capture.py`.
 **What this proves, and what it does not** (ADR-023, D56 amendment): it
 shows positive behaviour only. Against a normal server the narrowed run
 sends only handshakes plus one ordinary GET. It cannot show that the old
-`--vulnerable` invocation would have failed it, because a normal server
-does not provoke those probes. The server here is the system's own modern
+`--vulnerable` invocation would have failed it: it was never run against
+`--vulnerable`, by choice, and most of what that suite sends is outside
+what the analyser inspects. A provoking server would not supply that
+evidence. The server here is the system's own modern
 OpenSSL with default settings. **Do not replace it with a deliberately
 vulnerable one:** no vulnerable crypto infrastructure was built for this, by
 choice, and none should be added.

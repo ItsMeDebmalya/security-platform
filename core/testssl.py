@@ -92,7 +92,7 @@ line in case one ever does. `--quiet` drops the banner. The complete command lin
 and `guard_invocation` refuses anything else before the subprocess starts.
 
 Some traffic runs regardless of the selection, and is accepted as passive in
-the ADR-023 amendment: a reverse-DNS lookup (to DNS, not the target); a bare
+the ADR-023 amendment: forward and reverse DNS lookups (to DNS, not the target); a bare
 TCP connect and testssl.sh's connection- and protocol-detection handshakes
 (TLS 1.3 hellos including pre-RFC draft versions, TLS 1.2 hellos, and, only
 if those all fail, TLS 1.1/1.0/SSLv3 and SSLv2 hellos, plus up to seven
@@ -101,6 +101,18 @@ service; and one large but well-formed ClientHello (129 cipher suites) that
 detects an old-hardware size-limit bug. No flag disables any of it, and all
 of it is well-formed handshakes or an ordinary request.
 """
+
+CROSSCHECK_ARGS: tuple[str, ...] = ("--protocols", "--server-defaults", "--quiet")
+"""The corpus cross-check's allowlist (`corpus/crosscheck/testssl.py`):
+ordinary protocol and certificate handshakes, no vulnerability tests.
+Declared here, beside the runtime list, so the guard can refuse any list
+that is not declared."""
+
+DECLARED_ARG_LISTS: frozenset[tuple[str, ...]] = frozenset({TESTSSL_ARGS, CROSSCHECK_ARGS})
+"""Every argument list any caller may run testssl.sh with. `guard_invocation`
+refuses an `allowed_args` that is not one of these, so a caller cannot widen
+its own list by passing, say, `("--vulnerable",)`, or `()`, which testssl.sh
+treats as "run everything"."""
 
 TESTSSL_ENV_KEYS: tuple[str, ...] = ("PATH", "LANG")
 """The only environment variables the subprocess receives.
@@ -219,10 +231,13 @@ def guard_invocation(
     The environment must be exactly `PATH` (inherited, so testssl.sh can find
     bash and its tools) and `LANG=C`. Pinned by `tests/core/test_testssl.py`.
 
-    `allowed_args` lets another caller of the same binary declare its own
-    exact list (`corpus/crosscheck/testssl.py`); the default is this
-    module's.
+    `allowed_args` selects one of `DECLARED_ARG_LISTS`; anything else is
+    refused. The default is the runtime wrapper's list.
     """
+    if allowed_args not in DECLARED_ARG_LISTS:
+        raise TestsslArgumentRefusedError(
+            f"testssl.sh argument list is not a declared one: {allowed_args!r}"
+        )
     expected_head = [str(TESTSSL_PATH), *allowed_args, "--jsonfile-pretty"]
     head, rest = argv[: len(expected_head)], argv[len(expected_head) :]
     if head != expected_head or len(rest) != 2:
@@ -263,6 +278,7 @@ def _run_raw(host: str, port: int, *, timeout_s: int) -> dict[str, Any]:
             subprocess.run(
                 argv,
                 env=env,
+                stdin=subprocess.DEVNULL,
                 capture_output=True,
                 timeout=timeout_s,
                 check=False,
@@ -426,6 +442,8 @@ class ReplayTestsslClient:
 
 __all__ = [
     "CHECK_TO_TESTSSL_ID",
+    "CROSSCHECK_ARGS",
+    "DECLARED_ARG_LISTS",
     "TESTSSL_ARGS",
     "TESTSSL_ENV_KEYS",
     "TESTSSL_PATH",

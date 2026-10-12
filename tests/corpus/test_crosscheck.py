@@ -162,6 +162,7 @@ def test_the_crosscheck_invocation_is_its_declared_allowlist(monkeypatch) -> Non
     assert tuple(cmd[1:4]) == crosscheck.CROSSCHECK_ARGS
     assert cmd[4] == "--jsonfile-pretty" and cmd[6] == "localhost:8443" and len(cmd) == 7
     assert set(kwargs["env"]) == set(TESTSSL_ENV_KEYS)
+    assert kwargs["stdin"] is subprocess.DEVNULL
 
 
 def test_the_crosscheck_refuses_a_target_that_is_a_flag(monkeypatch) -> None:

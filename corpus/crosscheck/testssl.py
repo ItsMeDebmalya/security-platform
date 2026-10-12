@@ -43,17 +43,17 @@ from pathlib import Path
 from typing import Any
 
 from core.authz import Scope
-from core.testssl import TESTSSL_PATH, environment, guard_invocation
+from core.testssl import CROSSCHECK_ARGS, TESTSSL_PATH, environment, guard_invocation
 from core.tls import TlsClient, TlsObservation
 from corpus.generators.tls_lab import LabServer, mint, mint_chain
 
 ROOT = Path(__file__).resolve().parents[2]
 TESTSSL = TESTSSL_PATH
 
-CROSSCHECK_ARGS: tuple[str, ...] = ("--protocols", "--server-defaults", "--quiet")
-"""No `--severity` filter: it drops findings rated OK, which are precisely
-the facts we agree on. Filtering them would leave a cross-check that only
-ever sees problems."""
+# CROSSCHECK_ARGS is declared in core.testssl, beside the runtime list. No
+# `--severity` filter: it drops findings rated OK, which are precisely the
+# facts we agree on. Filtering them would leave a cross-check that only ever
+# sees problems.
 BASE_PORT = 15400
 
 _KEY_BITS = re.compile(r"(\d+)\s*bits")
@@ -83,6 +83,7 @@ def run_testssl(host: str, port: int, timeout_s: int = 180) -> dict[str, str]:
         subprocess.run(
             argv,
             env=env,
+            stdin=subprocess.DEVNULL,
             capture_output=True,
             timeout=timeout_s,
             check=False,
