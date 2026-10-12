@@ -57,7 +57,7 @@ One deliberate, additive migration. All new fields optional, so existing finding
 - [x] Mode tag: defensive · offensive (named `engagement`, since `mode` means depth; ADR-034)
 - [x] Finding links (one finding explains or chains to another), the basis for inside-out correlation
 - [x] State-affecting fields (what changed, cleanup record), defined now to avoid a second migration later
-- [ ] ADR, schema + models, drift test green, independent review
+- [x] ADR, schema + models, drift test green, independent review (ADR-034; round 1 NOT CLEAN, fixed; round 2 CLEAN)
 
 **Exit:** contract supports host findings and links; all corpus baselines unchanged.
 
