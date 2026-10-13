@@ -167,7 +167,6 @@ LOADERS = (
     "run_path",
     "spec_from_file_location",
     "spec_from_loader",
-    "find_spec",
     "module_from_spec",
     "exec_module",
     "load_module",
@@ -176,7 +175,7 @@ LOADERS = (
 )
 """Code loading by path or module name: never needed on a customer path."""
 
-READY_MADE = ("LAB_ADDRESSES", "OVERRIDE")
+READY_MADE = ("LAB_ADDRESSES", "TESTSSL_LAB_OVERRIDE")
 """Names under which `corpus/` exports a ready-made override or lab policy."""
 
 LAB_PACKAGES = ("corpus", "tests")
@@ -216,14 +215,25 @@ def _override_uses(tree: ast.AST) -> list[tuple[int, str]]:
       by string (`import_module`, `__import__`, aliased or not), by loader
       (`runpy`, `spec_from_file_location`), or a `corpus.` module path in any
       string (`sys.modules[...]`).
-    Also (round 3): `sys.path`, more loaders, the ready-made policy names,
-    and imports from `tests/` as well as `corpus/`.
+    Also (round 3): `sys.path` (aliased too), more loaders, the ready-made
+    policy names, and imports from `tests/` as well as `corpus/`. Not
+    flagged, deliberately: `find_spec` alone (the usual optional-dependency
+    check; `module_from_spec` is the loading step and is flagged), and the
+    common constant name `OVERRIDE` (the corpus export is named
+    `TESTSSL_LAB_OVERRIDE` so the rule can be precise).
 
     What this is: a tripwire that keeps ordinary code honest, not a proof
     against someone deliberately evading it. Deliberate obfuscation (a name
     assembled from pieces, `exec` of a built string) is code review's job."""
     uses = []
     direct = {id(n.func) for n in ast.walk(tree) if isinstance(n, ast.Call)}
+    sys_names = {"sys"} | {
+        alias.asname
+        for n in ast.walk(tree)
+        if isinstance(n, ast.Import)
+        for alias in n.names
+        if alias.name == "sys" and alias.asname
+    }
     docstrings = _docstrings(tree)
     for node in ast.walk(tree):
         name = (
@@ -240,9 +250,15 @@ def _override_uses(tree: ast.AST) -> list[tuple[int, str]]:
         elif (
             isinstance(node, ast.Attribute)
             and node.attr == "path"
-            and (getattr(node.value, "id", None) == "sys")
+            and getattr(node.value, "id", None) in sys_names
         ):
             uses.append((node.lineno, "sys.path"))
+        elif (
+            isinstance(node, ast.ImportFrom)
+            and node.module == "sys"
+            and any(a.name == "path" for a in node.names)
+        ):
+            uses.append((node.lineno, "sys.path imported by name"))
         elif isinstance(node, ast.Attribute) and node.attr == "lab_override":
             uses.append((node.lineno, "attribute lab_override"))
         elif name in IMPORTERS + LOADERS and id(node) not in direct:
@@ -299,7 +315,7 @@ def test_no_customer_facing_code_path_can_reach_the_lab_override() -> None:
         "AddressPolicy(lab_override=object())",
         "ScanContext(addresses=AddressPolicy(lab_override=x))",
         "import core.testssl\ngetattr(core.testssl, 'LabOverride')('x')",
-        "from corpus.generators.testssl import OVERRIDE",
+        "from corpus.generators.testssl import TESTSSL_LAB_OVERRIDE",
         "HttpClient(scope=s, addresses=AddressPolicy(lab_override=o))",
         "client.lab_override = something",
         "import importlib\nimportlib.import_module('corpus.lab.scan')",
@@ -315,6 +331,9 @@ def test_no_customer_facing_code_path_can_reach_the_lab_override() -> None:
         "AddressPolicy(override)",
         # Round 3: sys.path, more loaders, ready-made policies, tests/.
         "import sys\nsys.path.insert(0, 'corpus')",
+        # Follow-up to round 3: aliased forms of sys.path.
+        "from sys import path\npath.insert(0, 'corpus')",
+        "import sys as s\ns.path.append('corpus')",
         "from importlib.machinery import SourceFileLoader\nSourceFileLoader('m', p).load_module()",
         "import importlib.util as u\nu.module_from_spec(u.find_spec(name))",
         "spec.loader.exec_module(module)",
@@ -335,6 +354,10 @@ def test_the_walk_catches_indirect_routes(source) -> None:
         "import importlib\nimportlib.import_module('json')",
         "__import__('os')",
         "ROOT = Path('corpus')",
+        # Follow-up to round 3: ordinary code the walk must not push into workarounds.
+        "import importlib.util\nHAVE_PDF = importlib.util.find_spec('weasyprint') is not None",
+        "class Mode(Enum):\n    OVERRIDE = 1",
+        "settings.OVERRIDE",
         '"""Reads corpus/fixtures, as the harness does."""',
     ],
 )

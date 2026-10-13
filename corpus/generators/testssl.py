@@ -68,7 +68,7 @@ RESOLVERS = ["1.1.1.1", "8.8.8.8"]
 """The same public resolvers `cli/main.py` uses for a live scan."""
 SCOPE = Scope(frozenset({host for host in CASES.values()}))
 
-OVERRIDE = LabOverride(
+TESTSSL_LAB_OVERRIDE = LabOverride(
     reason=(
         "corpus recording against badssl.com, a public TLS test service run for exactly this "
         "(ADR-027). Its test names share addresses it operates itself, so a hello with no SNI "
@@ -91,7 +91,7 @@ def _live() -> LiveTestsslClient:
     return LiveTestsslClient(
         dns=_dns(),
         scope=SCOPE,
-        addresses=AddressPolicy(lab_override=OVERRIDE),
+        addresses=AddressPolicy(lab_override=TESTSSL_LAB_OVERRIDE),
     )
 
 
