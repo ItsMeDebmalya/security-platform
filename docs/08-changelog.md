@@ -737,6 +737,44 @@ Then restore the entry-point lines in `CLAUDE.md` and `SPEC.md`, and the revert 
 
 **Revert.** Revert the merge commit.
 
+## v4.0-pre.27 — What a run counted: the live/replay divergence, domscout's broad handlers, the web figure (2026-10-13)
+
+**What changed. No scanner version changed; no `core/` file changed; no gate number moved.**
+- **`cli/replay_counts.py` (new):** a recorded run writes `manifest.json` beside its fixtures with
+  what it counted, broken down by protocol (`http_sends`, `dns_queries`, `tls_handshakes`) plus the
+  meter's own total. A replay reads it and reports both, naming the difference:
+  `4 request(s) replayed (6 live: 2 more DNS queries - the address pin a replay does not need)`.
+  With no manifest, or one it cannot read, a replay says what it did and claims no live number. A
+  difference no counter accounts for is reported as unattributed. **D64**, which also explains why
+  making a replay perform the address pin to match the number was rejected.
+- **`cli/main.py` and `corpus/lab/scan.py`:** `_execute` gains a keyword-only `counts`, filled in
+  with what the run counted; `scan run --record` and the lab entry point both write the manifest,
+  and `scan run --replay` reports the comparison (on stderr in `--format json`, so a parser of that
+  output is unaffected).
+- **`scanners/domscout/scanner.py`:** `ResolverNotWiredError` and `MissingFixtureError` are
+  re-raised ahead of the three `except Exception` handlers, so a wiring or fixture error is no
+  longer reported to a customer as "we could not determine this". Ordinary network failures are
+  still an honest `inconclusive`. **D66.**
+- **`corpus/generators/domscout.py` and the `servfail` fixtures:** the case's crt.sh failure is now
+  a 503, a failure the fixture format can hold, instead of a raised transport error that recorded no
+  fixture at all — which is why the case had been asserting an inconclusive that a
+  `MissingFixtureError` was producing. **D67.** Same findings, same gate (60 checks, 1 claim, PASS).
+- **`SPEC.md`:** the web Light row and gate paragraph are corrected from the corpus run — 255
+  checks and 12 claims, not 234 and 10 — with both corrections left visible and the date the figure
+  went wrong (2026-10-10, commit 5c2c83a) stated. The dated 2026-10-07 `make corpus` block now says
+  it is history. **D68.**
+- **`docs/02-decisions.md` (ADR-036):** why a replay counts fewer requests, and the rule it sets —
+  any count we publish says what it counted and under what conditions.
+- **`docs/23-value-add-backlog.md`:** the operator's four entries (7 scan receipt, 8 cross-validated
+  findings, 9 tool manifest, 10 agent command receipt), recorded with his cost and unknowns as
+  written. **Docs only; none is started.** #10 is recorded before ADR-035 on purpose.
+- **Ledger:** D64–D68, and a dated section. The 2026-10-12 "not investigated" line stands as
+  written.
+
+**Revert.** Revert the merge commit. Replay then reports its own count with nothing to compare it
+to, domscout's handlers swallow wiring errors again, and the `servfail` case returns to passing for
+the wrong reason.
+
 ## v4.0-pre.26 — The lab entry point (ADR-036 decision 10) (2026-10-12)
 
 **What changed. No scanner version and no corpus number changed; the customer path's behaviour is unchanged.**

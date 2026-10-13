@@ -21,6 +21,10 @@
 | 4 | Protection for parked domains | S | PROPOSED · **QUICK WIN** |
 | 5 | Group findings by fix | M | PROPOSED |
 | 6 | Change alerts and fix evidence | M | PROPOSED |
+| 7 | Scan receipt: a verifiable record of what we did | L | PROPOSED (operator, 2026-10-13) |
+| 8 | Cross-validated findings: two methods, and when they disagree | M–L | PROPOSED (operator, 2026-10-13) |
+| 9 | Tool manifest, generated from the register | S | PROPOSED (operator, 2026-10-13) |
+| 10 | Agent command receipt | S if designed in, L if retrofitted | PROPOSED (operator, 2026-10-13) |
 
 ---
 
@@ -94,3 +98,98 @@
   - "Regressed" requires a finding that was verified fixed to reappear, and records both observations.
   - The auditor record holds evidence only after redaction (ADR-028), and says "compliance readiness", never "compliant" (ADR-011).
 - **Effort.** M: diffing store snapshots and an export format, both reusing what exists.
+
+---
+
+*Items 7–10 are the operator's, recorded on 2026-10-13 with his cost and unknowns as written.
+**Docs only. None of them is started.** They are recorded before ADR-035 deliberately: #10 is
+cheap designed into the collector and dear retrofitted, so the agent architecture should be
+written knowing it exists.*
+
+## 7. Scan receipt: a signed, verifiable record of what the platform did
+
+- **What it does.** Issues, with the report, a signed and independently checkable record of what the
+  platform did during a scan: every request sent, every name resolved, every address connected to,
+  timestamps, tool versions, and what was refused and why.
+- **Customer value (the operator's reasoning).** Every scanner claims to be safe; none can prove
+  what it actually sent. A customer letting an automated tool near their infrastructure is taking
+  our word for it. A receipt turns our safety promises from marketing into evidence, and it is the
+  natural artefact to hand an auditor or an incident reviewer. It protects us too: if a customer
+  blames a scan for an outage, the receipt is the record.
+- **Where the data already is.** The evidence store, the cost meter, and D60's refusal records
+  (recorded and replayed, with the URL redacted).
+- **Cost, as written.** Most of the data already exists. The work is assembling it, deciding what
+  signing means here, and keeping secrets out. **Signing is the part to scope carefully before
+  committing.**
+- **Guardrails.**
+  - **Every count in it must say what it counted and under what conditions** — the rule D64 set.
+    A receipt reading "6 requests" with no such statement is D64 in front of an auditor, and
+    `telemetry.requests` conflates DNS lookups, HTTP sends, TLS handshakes and testssl.sh's fixed
+    connection budget in that one number (**D65**, a contract migration). A receipt is a reason to
+    do that migration, not a place to paper over it.
+  - Nothing in it is written at display time: it is assembled from what was redacted at capture
+    (ADR-028, hard constraint 5).
+  - It records refusals as refusals, which is the part that proves the controls ran.
+- **Unknowns, not to be resolved by assumption.** What signing means here — what key, held by whom,
+  checkable by whom, and what a verifier is actually trusting. Whether a receipt is per scan or per
+  report. Whether a customer-visible receipt can name our resolvers and infrastructure.
+- **Effort.** L: new infrastructure (signing) and an artefact format, on data that mostly exists.
+
+## 8. Cross-validated findings: two independent methods, and when they disagree
+
+- **What it does.** Where two independent methods reach the same conclusion, the finding says so;
+  where they disagree, it says that too, and does not resolve it silently.
+- **Customer value (the operator's reasoning).** This is the strongest honest answer to "how do I
+  know your scanner isn't making it up". The audit already proved the underlying point: our evidence
+  was weakest exactly where only one method had looked. A finding that says "confirmed by two
+  independent observations" carries weight no confidence score does, and one that says "two methods
+  disagreed, here's both" is the honesty the product is premised on.
+- **Where it came from.** `detection_methods[]` with independence classes is already in the frozen
+  contract, and `core/confidence.py` already prices independent agreement.
+- **Cost, as written.** Needs **method provenance recorded per observation**, which the contract may
+  not express yet. **Check before promising.**
+- **Guardrails.**
+  - Disagreement is never averaged away: both observations are shown, and the state is whatever the
+    weaker evidence supports. `state` is computed by `core/state.py`, never hand-set.
+  - "Independent" means a different `independence_class`, not the same request read twice — the
+    `FakeResolver` lesson in D35, where the corpus's second resolver could never disagree.
+  - Two methods agreeing is evidence, not proof: it raises confidence, it does not manufacture
+    `confirmed`, which still requires validation to have run and passed.
+- **Effort.** M–L: M if the contract already carries per-observation provenance, L if it needs an
+  additive migration with an ADR.
+
+## 9. Tool manifest, generated from the register
+
+- **What it does.** Publishes every third-party tool, data feed and corpus source with its version,
+  licence and named sign-off — **generated from `tools/registry.yaml`, never written by hand.**
+- **Customer value (the operator's reasoning).** Enterprise and government procurement asks for
+  this, and CERT-In-conscious customers will ask sooner. We already maintain the register with named
+  sign-offs, which is more than most competitors do and more than we currently get credit for.
+  Generating it from the register means it cannot drift from reality, which is the only version
+  worth publishing.
+- **Guardrails.**
+  - A test that the published manifest matches the register, so the two cannot diverge — the same
+    discipline as `docs/21-scanner-catalogue.md`, which is derived and regenerated, not hand-edited.
+  - **A PENDING sign-off publishes as PENDING**, with its caveat, never as cleared. The register
+    holds at least one (the IANA licensing page, awaiting the operator's own reading).
+  - It states licences, not conclusions: it never implies a tool is permitted for a use its licence
+    does not permit (ADR-003, hard constraint 3).
+- **Effort.** S: a generator plus the test.
+
+## 10. Agent command receipt
+
+- **What it does.** Delivers, with each snapshot, every command the collector ran on a host — exact
+  arguments, exit status, and what was read — visible to the server's owner.
+- **Customer value (the operator's reasoning).** This is what gets the agent accepted onto 50
+  servers and later onto customer machines. The person responsible for a server does not want
+  assurances that an agent is read-only; they want to see what it did. A receipt makes "read-only"
+  checkable by the one person whose approval matters, and it gives the internal rollout
+  authorisation something concrete to point at.
+- **Cost, as written.** Low if designed into the collector from the start, considerably higher if
+  retrofitted — **which is why it is recorded now, before ADR-035.**
+- **Guardrails.**
+  - It is the same rule as #7: the receipt says what was run and under what conditions, and a count
+    in it says what it counted (**D64**).
+  - What was read is named, never reproduced, and nothing in it is a secret (hard constraint 5).
+  - A command the collector refused to run, and why, belongs in the receipt as much as one it ran.
+- **Effort.** S designed in, L retrofitted. **This is an input to ADR-035, not a follow-on from it.**
