@@ -25,6 +25,15 @@ from typing import Any, cast, get_args
 import typer
 from ulid import ULID
 
+from cli.replay_counts import (
+    Counts,
+    counting_http_backend,
+    counting_resolver,
+    counting_tls_backend,
+    divergence_note,
+    read_manifest,
+    write_manifest,
+)
 from core.addresses import AddressPolicy
 from core.applicability import enforce
 from core.assetgraph import AssetGraph, seed_asset_graph
@@ -151,6 +160,7 @@ def run(
     """Run one scanner against one target."""
     if store is not None:
         _refuse_read_only_store(store, "scan run --store")
+    counts = Counts()
     try:
         result = _execute(
             scanner_name=scanner_name,
@@ -159,6 +169,7 @@ def run(
             record=record,
             replay=replay,
             scope_file=scope_file,
+            counts=counts,
         )
     except KeyError as exc:
         _echo(str(exc).strip('"'), err=False)
@@ -179,13 +190,32 @@ def run(
     # Re-validated at the storage boundary, so nothing mutated since it was built
     # reaches the file or the terminal unredacted (ADR-028; review of D21, 6).
     result = ScanResult.model_validate(result.model_dump())
+    # D64: a recorded run writes down what it counted, by protocol, so its
+    # replay can report both totals instead of quietly reporting a different
+    # number for the same field.
+    if record is not None:
+        write_manifest(record, counts=counts, requests_counted=result.telemetry.requests)
+    note = (
+        divergence_note(
+            replay_total=result.telemetry.requests,
+            replay_counts=counts,
+            manifest=read_manifest(replay),
+        )
+        if replay is not None
+        else None
+    )
     payload = result.model_dump_json(indent=2)
     if out is not None:
         out.write_text(payload + "\n")
     if output_format == "json":
         _echo(payload)
+        # Said, not hidden - but on stderr, so a parser of this output is
+        # unaffected. The manifest beside the fixtures is the machine-readable
+        # record of the same fact.
+        if note is not None:
+            _echo(note, err=True)
     else:
-        _print_table(result)
+        _print_table(result, requests_note=note)
 
     if store is not None:
         with FindingStore(store) as fstore:
@@ -472,6 +502,7 @@ def _execute(
     scan_id: str | None = None,
     address_policy: AddressPolicy | None = None,
     wrap_resolver: Callable[[Resolver], Resolver] | None = None,
+    counts: Counts | None = None,
 ) -> ScanResult:
     """Build one scan's context and run it.
 
@@ -482,6 +513,10 @@ def _execute(
     may reach and how lab names resolve; the authorisation check, the name
     scope, the kill switch, rate limits, cost and redaction below are the
     same for both callers.
+
+    `counts` is filled in, if given, with what this run counted by protocol,
+    which is how a recorded run and its replay can be compared rather than
+    silently disagreeing about one total (D64, `cli/replay_counts.py`).
     """
     registry = discover()
     scanner = registry.get(scanner_name)()
@@ -498,16 +533,19 @@ def _execute(
     tls_backend: Any
     http_backend: Any
     testssl_client: Any
+    tally = counts if counts is not None else Counts()
     if replay is not None:
-        resolver = ReplayResolver(replay)
-        tls_backend = ReplayTlsBackend(replay)
-        http_backend = ReplayHttpBackend(replay)
+        resolver = counting_resolver(ReplayResolver(replay), tally)
+        tls_backend = counting_tls_backend(ReplayTlsBackend(replay), tally)
+        http_backend = counting_http_backend(ReplayHttpBackend(replay), tally)
         testssl_client = ReplayTestsslClient(replay)
     elif record is not None:
         live: Resolver = SystemResolver(DEFAULT_RESOLVERS)
-        resolver = RecordingResolver(wrap_resolver(live) if wrap_resolver else live, record)
-        tls_backend = RecordingTlsBackend(record)
-        http_backend = RecordingHttpBackend(record)
+        resolver = counting_resolver(
+            RecordingResolver(wrap_resolver(live) if wrap_resolver else live, record), tally
+        )
+        tls_backend = counting_tls_backend(RecordingTlsBackend(record), tally)
+        http_backend = counting_http_backend(RecordingHttpBackend(record), tally)
         testssl_client = RecordingTestsslClient(record)
     else:
         resolver = SystemResolver(DEFAULT_RESOLVERS)
@@ -578,7 +616,7 @@ def _breaches(result: ScanResult, fail_on: str) -> bool:
     )
 
 
-def _print_table(result: ScanResult) -> None:
+def _print_table(result: ScanResult, *, requests_note: str | None = None) -> None:
     _echo(
         f"\n{result.scanner} {result.scanner_version} "
         f"{result.mode} {result.target.value} -> {result.outcome}"
@@ -598,9 +636,10 @@ def _print_table(result: ScanResult) -> None:
             )
     not_applicable = result.not_applicable_count()
     ran = len(result.telemetry.checks_run) - not_applicable
+    requests = requests_note or f"{result.telemetry.requests} request(s)"
     _echo(
         f"\n{ran} check(s) ran, {result.inconclusive_rate():.0%} inconclusive, "
-        f"{not_applicable} not applicable, {result.telemetry.requests} request(s)"
+        f"{not_applicable} not applicable, {requests}"
     )
     for run in result.telemetry.checks_run:
         if run.outcome == "not_applicable":

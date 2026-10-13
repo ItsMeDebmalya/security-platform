@@ -328,16 +328,25 @@ def _cases() -> dict[str, tuple[str, object, FakeHttpBackend, str]]:
         "light",
     )
 
-    # 8. servfail: DNS + crt.sh + RDAP all fail -> inconclusive, not "nothing".
+    # 8. servfail: DNS fails and crt.sh cannot be read -> inconclusive, not
+    # "nothing".
+    #
+    # D66: crt.sh answers 503 here rather than raising a transport error. The
+    # case used to raise, which recorded *no* HTTP fixture at all: the replay
+    # then failed to find one and the scanner's `except Exception` turned that
+    # `MissingFixtureError` into the very inconclusive the case was asserting.
+    # The case passed because two different things - "the source could not be
+    # read" and "nobody recorded it" - were indistinguishable. A 503 is a
+    # failure the fixture format can actually hold, so what replays is what was
+    # recorded. The transport-error path is covered where a raise can be
+    # simulated honestly, in
+    # tests/scanners/domscout/test_wiring_errors_are_not_inconclusive.py.
     d = "corpus-broken.test"
     test_url, control_url = crtsh_urls(d)
     cases["servfail"] = (
         d,
         ServfailResolver(),
-        FakeHttpBackend(
-            {},
-            fail={test_url, control_url},
-        ),
+        FakeHttpBackend({test_url: (503, ""), control_url: (503, "")}),
         "light",
     )
     return cases

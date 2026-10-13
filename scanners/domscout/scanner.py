@@ -29,7 +29,7 @@ from datetime import UTC, date, datetime
 from typing import Any
 from urllib.parse import urlsplit
 
-from core.addresses import refusal
+from core.addresses import ResolverNotWiredError, refusal
 from core.applicability import not_applicable
 from core.assetgraph import DiscoveredAsset
 from core.confidence import ConfidenceEngine, Signal
@@ -41,6 +41,7 @@ from core.exposure import secret_exposure_findings
 from core.http import CapturedResponse, HttpClient
 from core.models import Asset, CheckRun, Finding, Mode, ScanResult, Telemetry
 from core.registry import register
+from core.replay import MissingFixtureError
 from core.scanner import BaseScanner
 from core.tls import a_label
 from scanners.domscout import ct, dnssec, rdap_bootstrap, rdapp, takeover
@@ -55,6 +56,21 @@ from scanners.domscout.checks import (
 )
 from scanners.domscout.checks import requires_authorisation as _requires_authorisation
 from scanners.domscout.takeover import TakeoverFingerprint
+
+NEVER_INCONCLUSIVE = (ResolverNotWiredError, MissingFixtureError)
+"""Errors that are never a statement about the target (D66).
+
+The `except Exception` handlers below turn a failed fetch into an
+`inconclusive` finding, which is the honest answer for a network failure:
+the source could not be read, and that is a fact about the scan worth
+reporting. It is a false statement for these two, which are about us:
+`ResolverNotWiredError` means the scan was built without a resolver, which
+D60 settled is a scan error and never an inconclusive, and
+`MissingFixtureError` means a replay asked for an interaction nobody
+recorded, so the check never ran. Telling a customer "we could not
+determine this" about either is defect class (e) - the wrapper reporting
+something the check never established - so they are re-raised.
+"""
 
 NO_VERDICT_FOR_RCODE = {
     "SERVFAIL": "servfail",
@@ -205,6 +221,8 @@ class _Scan:
             # D54: a service host is only ever reached at its own address.
             test_response = self.http.get(test_url, follow_redirects=False)
             control_response = self.http.get(control_url, follow_redirects=False)
+        except NEVER_INCONCLUSIVE:
+            raise
         except Exception as exc:
             self._inconclusive_http(
                 "subdomains-ct-log",
@@ -703,6 +721,8 @@ class _Scan:
             # is never fetched in its place.
             test_response = self.http.get(url, follow_redirects=False)
             control_response = self.http.get(url, follow_redirects=False)
+        except NEVER_INCONCLUSIVE:
+            raise
         except Exception as exc:
             unread(
                 f"The registry's RDAP server ({host}) could not be reached for "
@@ -940,6 +960,8 @@ class _Scan:
         if needs_http:
             try:
                 http_response = self.http.get(url)
+            except NEVER_INCONCLUSIVE:
+                raise
             except Exception as exc:
                 self._inconclusive_http(
                     "subdomain-takeover",

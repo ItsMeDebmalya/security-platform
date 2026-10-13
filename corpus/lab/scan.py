@@ -43,6 +43,7 @@ from cli.main import (
     _execute,
     _print_table,
 )
+from cli.replay_counts import Counts, write_manifest
 from core.addresses import AddressPolicy, LabOverride, refusal
 from core.authz import AuthorisationDeniedError
 from core.dns import DnsResponse, MissingFixtureError, Resolver
@@ -160,6 +161,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         return 1
 
+    counts = Counts()
     try:
         result = _execute(
             scanner_name=args.scanner,
@@ -170,6 +172,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             scope_file=args.scope_file,
             address_policy=AddressPolicy(lab_override=inventory.override()),
             wrap_resolver=inventory.resolver,
+            counts=counts,
         )
     except KeyError as exc:
         _echo(str(exc).strip('"'))
@@ -189,6 +192,11 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     # Re-validated at the storage boundary, as `scan run` does (ADR-028).
     result = ScanResult.model_validate(result.model_dump())
+    # D64: and the same manifest `scan run --record` writes, so a lab recording
+    # replayed through `scan run --replay` can say what the live run counted
+    # rather than reporting a different number for the same field.
+    if args.record is not None:
+        write_manifest(args.record, counts=counts, requests_counted=result.telemetry.requests)
     if args.output_format == "json":
         _echo(result.model_dump_json(indent=2))
     else:

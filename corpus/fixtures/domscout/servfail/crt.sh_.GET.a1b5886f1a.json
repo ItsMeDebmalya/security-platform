@@ -1,0 +1,10 @@
+{
+  "body": "",
+  "body_truncated": false,
+  "elapsed_ms": 1,
+  "headers": {},
+  "redaction_receipts": [],
+  "redactions": [],
+  "status": 503,
+  "url": "https://crt.sh/?q=%25.corpus-broken.test&output=json"
+}
