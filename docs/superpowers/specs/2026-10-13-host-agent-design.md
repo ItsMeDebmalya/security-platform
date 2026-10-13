@@ -31,6 +31,9 @@ This spec decides the seven things Step 2 lists, and one the operator added when
 | 6 | The command receipt, designed in rather than retrofitted (docs/23 item 10) | §8 |
 | 7 | The platform side: the `host` scanner and how a snapshot becomes findings | §9 |
 | 8 | **The artefact rule** the operator carried over from the replay work (D39/D63/D67) | §2 |
+| 9 | **The unsupported-runtime case** — a host with no usable Python still produces a snapshot | §3.3 |
+| 10 | `agent/` as a new top-level directory: the alternatives considered, not just the outcome | §11 |
+| 11 | Where Red Hat's CC BY 4.0 attribution has to appear, as a Step 8 design input | §7.4 |
 
 ---
 
@@ -68,6 +71,13 @@ certainly not a clear. The same discipline as `ResolverNotWiredError` after D66.
 ---
 
 ## 3. Language and runtime floor
+
+**Decision: Linux only.** Confirmed by the operator, 2026-10-13: **no Windows, no macOS, no BSD in
+Alpha.** Stated here rather than implied by the allowlist's paths. A non-Linux host is out of scope
+for the collector entirely; it is not a host that reports `unavailable`, it is a host the collector
+is never put on. (The one place this surfaces technically: `sys.platform` is checked as the
+collector's second act, after §3.3's interpreter check, and a non-Linux platform exits non-zero with
+that message and writes no snapshot — there is no partial snapshot to misread.)
 
 **Decision: Python 3, standard library only, no third-party package, no build step, no compiled
 artefact.** One language for the collector and the platform; auditable by reading one directory; no
@@ -119,6 +129,42 @@ hosts; it must not drag the platform with it. mypy's own floor is 3.8, so `agent
 `python_version = 3.8` and the 3.6 syntax floor is the AST test's job. **Neither test proves it runs
 on 3.6** (3.1, item 4); they stop it drifting past the floor between now and the lab boxes.
 
+### 3.3 The unsupported runtime — an R2 hole, closed
+
+The operator found this: §3 above assumed a usable `python3` exists. On a host with only python2, a
+`python3` below the floor, or no Python at all — RHEL 7 and Ubuntu 16.04 are real possibilities in a
+fleet nobody has inventoried yet — the collector as described produces **nothing**. Nothing is an
+absence, and R2 forbids absences. Worse, the hosts that cannot run it are by construction **the
+oldest and least-patched machines in the fleet**, so a fleet report that quietly omits them omits
+exactly the hosts the report exists to find. That is the worst available failure mode for this
+product.
+
+**Decision: the collector's first act is to detect its own interpreter, and an unsupported runtime
+produces a valid snapshot rather than no snapshot.**
+
+- A tiny **entry shim** (`agent/__main__.py`, and the `agent.py` single-file bundle) is written to a
+  dialect every Python 3 and Python 2.7 can at least *parse*: no annotations, no f-strings, no
+  keyword-only arguments — nothing past 2.7 syntax — so it does not die with a `SyntaxError` before
+  it can report the problem. It checks `sys.version_info` against the floor constant and nothing
+  else, then imports the real collector only if the check passes.
+- On an unsupported runtime it writes a **valid snapshot** at the requested path: the real
+  `snapshot_version`, the real `schema`, `collected_at`, the host identity it can obtain without
+  running anything (hostname, and `/etc/os-release` read as text if readable), and a `manifest` in
+  which **every declared section is present with `status: "unavailable"` and
+  `reason: "unsupported_runtime"`**. `sections` is empty, `counts` reflects zero commands, and the
+  `receipt` records the interpreter that was found.
+- The snapshot records what was found, so the finding is actionable rather than merely negative:
+  `runtime: {"found": "2.7.5", "executable": "/usr/bin/python", "required": "3.6", "searched":
+  ["/usr/bin/python3", "/usr/libexec/platform-python", …]}`.
+- **No Python at all** is the one case the collector cannot report on its own, because it cannot run.
+  It is covered by the fleet probe (plan task A5), which is POSIX `sh` precisely so that the hosts
+  without a usable Python are the ones it still works on. A host that appears in the probe and
+  produces no snapshot is a known gap, not a silent one.
+- **The platform side:** a snapshot whose sections are all `unavailable: unsupported_runtime` is a
+  first-class result — the `host` scanner reports **a host it could not assess**, with the
+  interpreter version it found and the floor it needed. Not an error, not a clear, not an empty
+  pass. A test asserts the fleet view counts that host as unassessed and names it.
+
 ---
 
 ## 4. The snapshot format
@@ -141,6 +187,7 @@ One file per host, JSON, UTF-8, newline-terminated, written to a path the operat
   ],
   "sections": { "os_release": {...}, "packages": {...}, ... },
   "receipt": { ... },                               // §8, inside the artefact, not beside it
+  "self_hash": "sha256:…",                          // over the snapshot with this field excluded
   "counts": {                                       // D64/D65: each count says what it counted
     "commands_run": 11, "commands_refused": 0, "commands_failed": 1,
     "files_read": 7, "files_refused": 0, "bytes_read": 48213,
@@ -170,6 +217,16 @@ Rules that are part of the format, not of the implementation:
   fields masked. This is what makes a snapshot reviewable by the person who owns the server.
 - **Size cap**, with truncation recorded per item (never silent), and a total cap that, if hit,
   becomes an `error` section rather than a half-written file.
+- **A self-hash, and what it is honestly for.** `self_hash` is SHA-256 over the serialised snapshot
+  with the `self_hash` field itself excluded (the field set to `null`, then the canonical
+  serialisation hashed — the procedure is written down so a reader can recompute it). It catches
+  **truncation and accidental corruption in transit**, which is a real risk when a file is copied by
+  hand off fifty machines.
+  **It is not tamper-evidence and this spec must not be read as claiming it is:** a writer who
+  changes the content can recompute the hash. It detects accident, not intent. Signing — the thing
+  that would detect intent — stays deferred to docs/23 item 7, and the format leaves room for a
+  detached signature. A mismatch on the platform side is a **scan error** naming the mismatch, since
+  a corrupt artefact is precisely what R1 says may not be claimed from.
 
 ---
 
@@ -297,6 +354,23 @@ A package the feed does not cover is `inconclusive` with that reason, not silenc
 - **No feed is bundled into the repo in Step 2.** The feed is fetched and vendored deliberately, with
   `source` + `reviewed_on` per entry and a freshness bound, like the EOL and fingerprint tables.
 
+### 7.4 Where Red Hat's attribution has to appear — named, so Step 8 inherits it
+
+CC BY 4.0 requires attribution to Red Hat **and a link to the original**. "We will attribute
+somewhere" is not a design input; a place is. So, named now, as a requirement on the report spec
+(docs/25) and on Step 8:
+
+| Where | What appears | Why there |
+|---|---|---|
+| **Each finding that rests on the feed**, in its evidence block | the source name, the advisory/CVE id, and the **link to Red Hat's page for that advisory** | the attribution travels with the claim, so it survives a finding being exported, quoted or read alone |
+| **The report's data-sources section**, once per report (JSON, HTML and PDF alike) | "Vulnerability data for RHEL-family hosts: Red Hat Security Data, © Red Hat, Inc., licensed CC BY 4.0", with the link to `access.redhat.com/security/data` and the licence link | the once-per-document notice, in the format a reader of a PDF can actually see |
+| **The JSON report**, machine-readable | a `data_sources[]` entry with `name`, `licence`, `licence_url`, `source_url`, `retrieved_on` | a consumer of the JSON inherits the obligation rather than stripping it |
+| **`tools/registry.yaml`** | the entry itself, with the licence text and the obligation spelled out | the register is where the obligation is discovered before use, not after |
+
+The same shape covers Ubuntu (CC BY-SA 4.0, whose ShareAlike clause is about publishing a *derived
+database*, not about this attribution), so the mechanism is one `data_sources[]` concept rather than
+a per-vendor special case. **Rendering it is Step 8's work; owing it is recorded now.**
+
 ---
 
 ## 8. The command receipt, designed in (docs/23 item 10)
@@ -345,6 +419,24 @@ describes or go missing in transit.
   receipt as plain text, so the person whose approval the rollout needs can read what the agent did
   without parsing JSON. That is the whole point of the backlog entry.
 
+### 8.1 `--explain-plan` — what *will* run, before it runs
+
+`--explain` is after the fact. The operator's point: the server owner whose approval the rollout
+needs wants to see what will run **before** it runs, and that is the thing that gets the agent
+accepted onto a fleet at all.
+
+**`--explain-plan` prints the allowlists in full and executes nothing.** Every command with its
+argv template, its `reason_id`, its reason in prose, its timeout and caps, and whether it needs
+root; every file path with the keys it may extract and what the platform will judge from them; and
+**every exclusion, listed explicitly** — `/etc/shadow`, private keys, `~/.ssh`, `.env`, credential
+caches — because what the agent refuses to read is the part that earns the approval.
+
+It is nearly free: the allowlists are already data (§5) with a reason per entry, and the renderer is
+the same plain-text formatter `--explain` uses. Constraints: it runs no command, opens no
+allowlisted file, needs no root, and a test asserts that invoking it executes nothing (a
+`subprocess` seam that fails the test if touched) and that **every allowlist entry and every
+exclusion appears in the output** — so the printed plan cannot drift from the enforced one.
+
 ---
 
 ## 9. The platform side: the `host` scanner
@@ -362,12 +454,26 @@ describes or go missing in transit.
 - Findings cite the section they rest on and the receipt line that produced it, so every host
   finding's evidence chain ends at a command with its exact arguments. A control-vs-test pair is the
   allowlist entry's declared expectation versus what the snapshot holds.
-- `state` is computed by `core/state.py` as always; nothing is hand-set; `confirmed` needs validation
-  to have run and passed, which for a host fact means a second, independent observation in the same
-  snapshot (a package's version from the package database *and* the binary's own reported version,
-  for instance) — which is docs/23 item 8's shape, so the scanner records
-  `detection_methods[]` with independence classes from the first finding rather than being
-  retrofitted.
+- **`state`, and the independence ceiling — resolved in favour of §5.1.** An earlier draft of this
+  section said `confirmed` comes from "a second, independent observation in the same snapshot (a
+  package's version from the package database *and* the binary's own reported version)". The
+  operator caught that this contradicts §5.1: running `<binary> --version` for a package just
+  discovered in the package database **is an argument derived from collected data**, which is the
+  exact thing §5.1 exists to forbid. §5.1 is the safety rule, so §5.1 wins and that sentence is
+  withdrawn.
+  **Decision: `confirmed` is not reachable for package findings in Alpha. They cap at
+  `highly_likely`, and this spec says so plainly** rather than claiming an independence the
+  allowlist cannot deliver. One package-database reading is one observation; `core/state.py` is left
+  to do its job with the evidence that actually exists.
+  The route to `confirmed` later is the other option the operator offered, and it is written down
+  here so it is not reinvented: a **small, fixed, explicitly allowlisted set of version commands**
+  (each its own entry, its own `reason_id`, its own constant argv — `sshd -V`, `openssl version`,
+  and so on), with `confirmed` reachable **only for the packages those entries cover** and
+  `highly_likely` everywhere else. That stays inside §5.1 because the argv is still a constant. It
+  is not in Alpha.
+  The scanner still records `detection_methods[]` with independence classes from the first finding
+  (docs/23 item 8's shape, designed in rather than retrofitted) — the classes are honest about
+  there being one method, which is the point.
 - The corpus: **snapshots recorded from the Step 3 lab boxes**, never hand-written — and per the
   artefact rule, a case that asserts "the collector could not read X" must contain a snapshot in
   which X's section is present with status `error`, not a snapshot missing the section. That is the
@@ -377,11 +483,36 @@ describes or go missing in transit.
 
 ## 10. What this spec deliberately does not decide
 
-- **The fleet's OS and Python mix** — the operator confirms or corrects §3's assumption before Step 4.
-  If the floor rises to 3.8, §3.1's cost disappears.
-- **Which distributions Alpha supports**, which depends on the Debian licence question (§7.3).
+- **The fleet's OS and Python mix** — the operator confirms or corrects §3's assumption before Step 4,
+  from the **fleet probe** (plan task A5), which he runs. If the floor rises to 3.8, §3.1's cost
+  disappears. Until the probe comes back, the 3.6 floor stands as a *stated assumption*, in one
+  constant, with §3.1's costs recorded. **Linux-only is not on this list: the operator confirmed it
+  (§3).**
+- **Which distributions Alpha supports.** The operator's instruction, 2026-10-13: **do not restrict
+  Alpha's distribution support yet** — that decision waits on A5's results. The Debian licence
+  question (§7.3) is separate and he is asking the Debian security team directly.
 - **Signing the snapshot or the receipt.** That is docs/23 item 7 (scan receipt), whose cost note
   says signing is the part to scope carefully before committing. The snapshot format leaves room for
   a detached signature; nothing is signed in Alpha, and nothing claims to be verifiable yet.
 - **Transport and enrolment.** No listener, no auto-update, no upload in Alpha (ADR-033, docs/26).
 - **The always-on agent**, which is explicitly post-Alpha.
+
+---
+
+## 11. `agent/` as a new top-level directory — the alternatives, not just the outcome
+
+CLAUDE.md says the only new top-level directories in this migration are `api/` and `web/`, and that
+anything else STOPs and asks. So the decision is recorded with what it was weighed against, which is
+what ADR-035 needs; the outcome alone would not satisfy the rule.
+
+| Option | Why not |
+|---|---|
+| **`scanners/host/collector/`** — ship the collector inside the scanner | The collector runs on someone else's machine; the scanner runs on ours. Nesting it under `scanners/` makes the stdlib-only, 3.6-floor, no-`core/`-import rules a property of a subdirectory of a package that violates all three, and the import test becomes a rule about a path rather than about a boundary. It also implies the scanner may import the collector, which must never happen. |
+| **`core/agent/`** | `core/` is the platform's shared services and is imported by everything. Putting ship-to-host code there inverts the dependency the design depends on: the collector must be unable to reach `core/`, and no test phrased as "`core/x` may not import `core/y`" is credible for long. |
+| **`tools/agent/`** | `tools/` is the register of third-party tools we wrap and their licences. The collector is ours; filing it there confuses provenance, which is the one thing `tools/` is for. |
+| **A separate repository** | Honest about the boundary, and the right answer eventually. Today it costs a second CI, a second review path and a version-skew problem between collector and scanner in the same release — for Alpha, where the two are designed and gated together. Recorded as the likely post-Alpha move, so this is reversible rather than permanent. |
+| **`agent/`, a new top-level** — chosen | The boundary is the point: a directory whose whole contract is "standard library only, 3.6 syntax, imports nothing from this repo but itself". That contract is testable at the directory level (§3.2), reviewable by reading one directory, and visible to anyone who looks at the repo root. A thing that ships to other people's machines should be visible at the top level, not buried. |
+
+**Cost accepted:** one more top-level directory, and CLAUDE.md's list needs updating alongside
+ADR-035 (not a silent third entry). **Not a precedent:** the next new top-level directory asks
+again.

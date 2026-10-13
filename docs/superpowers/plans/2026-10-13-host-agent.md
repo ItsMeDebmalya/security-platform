@@ -55,6 +55,13 @@ The snapshot is to the `host` scanner what a fixture directory is to `--replay`.
    what makes the receipt reviewable by the server's owner.
 6. **The 3.6 floor.** Syntax check passes, and the collector is *not* claimed to run on 3.6 until it
    has run on a 3.6 lab box (Step 3).
+7. **The host that cannot run it.** python2-only, python3 below the floor, no Python at all: the
+   first two must still produce a valid snapshot marked `unsupported_runtime`, and the third must
+   appear as a known gap via A5's probe rather than as a host missing from the fleet view.
+8. **`--explain-plan` drifting from the enforced allowlist.** Add an entry or an exclusion and
+   assert it appears in the printed plan; assert the mode executes nothing.
+9. **An independence claim the allowlist cannot deliver.** `confirmed` must be unreachable for
+   package findings in Alpha — attack any path that reaches it.
 
 ---
 
@@ -65,29 +72,71 @@ The snapshot is to the `host` scanner what a fixture directory is to `--replay`.
       assumption** and §3.1's costs recorded; the versioned snapshot; the two allowlists; data
       minimisation; the vulnerability-data decision with its licence evidence; the receipt designed
       in; **the artefact rule (R1/R2) as a numbered decision**, since it is the one that changes the
-      shape of everything else. Record `agent/` as a new top-level directory, which CLAUDE.md
-      requires a deliberate decision for.
+      shape of everything else. **`agent/` as a new top-level directory with the alternatives
+      considered** (spec §11 — `scanners/host/collector/`, `core/agent/`, `tools/agent/`, a separate
+      repo — not just the outcome, since CLAUDE.md requires the decision), and **CLAUDE.md's own
+      list of permitted new top-level directories updated in the same change**, never silently.
+      Also: the **unsupported-runtime decision** (spec §3.3) and **Linux-only, confirmed by the
+      operator**, both as numbered decisions; the **`confirmed` ceiling for package findings** (spec
+      §9: they cap at `highly_likely` in Alpha, because independence would need an argument derived
+      from collected data, which §5.1 forbids); and the **self-hash as corruption detection, not
+      tamper-evidence** (spec §4), with signing deferred to docs/23 item 7.
 - [ ] **A2. `tools/registry.yaml`:** entries for the Ubuntu security data (CC BY-SA 4.0, URL + the
       README's licence sentence), Red Hat Security Data (CC BY 4.0 + its attribution requirement),
       and Debian Security Tracker (**licence not stated** — recorded as the finding, not a guess).
       All three **PENDING**, awaiting the operator, in the IANA pattern. Note Red Hat's OVAL v2
-      deprecation.
-- [ ] **A3. Ledger:** the Debian licence question; the attribution obligation Red Hat's CC BY 4.0
-      puts on report text; the Python-3.6-floor cost and the fact that nothing has run on 3.6 here;
-      the deliberate duplication of redaction patterns in `agent/` with its reason.
+      deprecation. Each entry carries **where its attribution must appear** (spec §7.4), so the
+      obligation is discovered in the register before use, not after.
+- [ ] **A3. Ledger:** the Debian licence question (**the operator is asking the Debian security team
+      directly**, and Alpha's distribution support is **not** restricted pending A5); the attribution
+      obligation Red Hat's CC BY 4.0 puts on report text, **as a named input to Step 8** (spec §7.4);
+      the Python-3.6-floor cost and the fact that nothing has run on 3.6 here; the deliberate
+      duplication of redaction patterns in `agent/` with its reason; **the `confirmed` ceiling for
+      package findings and the fixed version-command allowlist that would lift it post-Alpha**; and
+      **the §9 contradiction itself** — an earlier draft claimed an independence §5.1 forbids, caught
+      in review — kept visible rather than silently edited out, per the operator's ledger rule.
 - [ ] **A4. docs/26:** tick Step 2's items; `SPEC.md` gains the `host` scanner as **PLANNED** with no
       numbers (no figure is published before a gate exists).
 
+- [ ] **A5. The fleet probe** — `tools/fleet-probe.sh`, which the **operator runs across the fleet**;
+      it unblocks the floor question that §3 currently assumes. **POSIX `sh`, not Python**, precisely
+      because the hosts in question may be the ones without a usable Python. One line per host:
+      hostname; `ID` and `VERSION_ID` from `/etc/os-release`; the `python3` version if any; whether
+      `/usr/libexec/platform-python` exists (and its version). **Read-only: no installation, no
+      network call, nothing written** — output to stdout only.
+      It is the smallest rehearsal of the collector's own discipline, and written that way
+      deliberately: a fixed list of paths it may read, no `PATH` lookup for the interpreters it
+      checks, and an **honest `not_found` in the field rather than an empty column or silence** — the
+      probe's own R2. `set -u`, no bashisms, no `local`, works under `dash` and `busybox sh`; a short
+      header line naming the fields; one line per host even when everything on it fails.
+      Tested here against fake `/etc/os-release` trees (present, absent, malformed, no `python3`,
+      platform-python only) with `dash` if available, since `sh` on this box is not the `sh` on
+      theirs.
+      **Deliverable back from the operator:** the distinct combinations and rough counts, which
+      decide §3's floor and (separately from the licence question) Alpha's distribution support.
+
 **Exit:** ADR-035, this plan and the spec approved by the operator. **Nothing below starts first.**
+A5 is the one task whose *output* comes from the operator, so it is built first within Phase A and
+the rest of Phase A does not wait on his results.
 
 ## Phase B — The snapshot contract, tests first
 
 - [ ] **B1.** `agent/snapshot.py`: the format of §4 as construction helpers — `manifest`, per-section
       `status`, the named `counts`. Tests first, including: manifest and sections cannot disagree;
       "collected and empty" is distinguishable from `unavailable` and from `error`; an unknown status
-      is impossible to construct.
+      is impossible to construct. Plus **`self_hash`**: the documented exclude-then-hash procedure,
+      a test that recomputation matches, and a test that a single mutated byte is detected — with the
+      docstring saying plainly that it detects corruption, **not tampering**.
 - [ ] **B2.** The 3.6 floor test and the stdlib-only import test (both over `agent/`), plus the ruff
       per-directory config that stops `UP` modernising the directory.
+- [ ] **B2b. The entry shim and the unsupported-runtime snapshot** (spec §3.3). `agent/__main__.py`
+      parses under Python 2.7 syntax — a test asserts that with `ast.parse(..., feature_version=(2,
+      7))`-equivalent checks plus a literal "no annotations, no f-strings" scan — checks
+      `sys.version_info` against the single floor constant, then checks `sys.platform` for Linux.
+      Tests first: on an unsupported interpreter it writes a **valid** snapshot whose every manifest
+      section is `unavailable: unsupported_runtime` with the interpreter it found recorded, and on a
+      non-Linux platform it writes **no** snapshot and exits non-zero. The matching platform-side
+      test lives in F1: such a host is reported **unassessed and named**, never clear.
 - [ ] **B3.** `agent/redact.py` with its own pattern set, and the test that it is a superset of
       `core/redaction.py`'s token families, comparing the definitions directly.
 
@@ -120,11 +169,23 @@ The snapshot is to the `host` scanner what a fixture directory is to `--replay`.
 - [ ] **E2.** The determinism test (two runs, timestamps masked).
 - [ ] **E3.** `--explain`: the receipt as plain text for the server's owner. A test that it names
       every command and every refusal.
+- [ ] **E4. `--explain-plan`** (spec §8.1): the full allowlists printed and **nothing executed** —
+      every command with its argv template, `reason_id`, prose reason, timeout and caps and
+      `needs_root`; every file path with the keys it may extract; **every exclusion listed
+      explicitly**. Tests: invoking it runs no command and opens no allowlisted file (a `subprocess`
+      and an `open` seam that fail the test if touched), and **every allowlist entry and every
+      exclusion appears in the output**, so the printed plan cannot drift from the enforced one.
+      This is the mode that gets the agent accepted onto a fleet, so it ships with the receipt, not
+      after it.
 
 ## Phase F — The `host` scanner (platform side)
 
 - [ ] **F1.** Snapshot reader: unknown `snapshot_version` → scan error; manifest/sections
-      disagreement → scan error; malformed → scan error. Tests first, one per failure.
+      disagreement → scan error; malformed → scan error; **`self_hash` mismatch → scan error naming
+      the mismatch** (a corrupt artefact is what R1 forbids claiming from). Tests first, one per
+      failure. Plus the §3.3 case: an all-`unsupported_runtime` snapshot is a first-class result —
+      **a host reported as unassessed, with the interpreter found and the floor required**, counted
+      and named in the fleet view, never clear and never silently absent.
 - [ ] **F2.** Checks over `collected` sections only; a section that is `error` or `unavailable`
       produces an `inconclusive` **naming the reason**, never a pass. Tests first.
 - [ ] **F3.** Evidence: each finding cites its section and the receipt line behind it;
@@ -145,9 +206,13 @@ The snapshot is to the `host` scanner what a fixture directory is to `--replay`.
 
 ## Open questions carried into the plan, not resolved by it
 
-- **The fleet's OS/Python mix** (operator, before Step 4). If the floor is 3.8+, B2's constant and
-  §3.1's annotation cost go away.
-- **Debian's data licence** (A2) — ask, or restrict Alpha to Ubuntu and RHEL-family and say so.
+- **The fleet's OS/Python mix** — answered by **A5**, which the operator runs. If the floor is 3.8+,
+  B2's constant and §3.1's annotation cost go away. Until then the 3.6 floor is a stated assumption
+  in one constant.
+- **Alpha's distribution support** — **deliberately not restricted yet** (operator, 2026-10-13); it
+  waits on A5, separately from the Debian licence question.
+- **Debian's data licence** (A2) — **the operator is asking the Debian security team directly**;
+  registered PENDING with "licence not stated" as the finding, not a guess.
 - **Signing** (docs/23 item 7): out of Alpha; the format leaves room, and nothing claims to be
   verifiable until it is.
 - **Nothing here has run on Python 3.6.** It cannot, on this machine. The claim stays "written and
