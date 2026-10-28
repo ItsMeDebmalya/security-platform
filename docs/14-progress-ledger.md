@@ -2377,3 +2377,231 @@ no existing kind is touched.
 **Also noted, for the ADR-035 approval:** PR #53 is **15 days old and still unapproved** as of
 2026-10-28. Phase A has not started, correctly. D75 is a reason to re-read §9 before approving, not a
 reason to re-open the design.
+
+## 2026-10-28 · Production readiness: the gaps named, with conditions (D76–D84)
+
+From the 2026-10-28 readiness audit (15 production questions, answered against the repo rather than
+from memory) and the operator's plan of the same day. **The audit's honest frame, kept here because it
+is the thing that makes the list readable:** most of those 15 questions are written for the product
+that does not exist yet — there is no `api/`, no `web/`, no accounts, no users, no HTTP surface, no
+deployment and no release. The repo scored well on the axes that are *this product's own subject
+matter* (evidence, refusals, redaction, deny-by-default scope, errors-as-errors) and scored as
+pre-production on the axes that belong to running a SaaS. **Every gap below traces to the SaaS part
+not being built.** The danger is not the gaps; it is answering "yes" to the tenancy, authorisation and
+audit questions later because the words `org_id` and `authz` already appear in the codebase.
+
+| # | Gap | Condition | Status |
+|---|---|---|---|
+| D76 | No application logging anywhere | Resolved **before `api/` ships** | OWED |
+| D77 | No dependency CVE scanning | Standalone and cheap; do it now | OWED |
+| D78 | CI has never executed | **First green run before Step 4**; now gates PR #53 | IN PROGRESS 2026-10-28 |
+| D79 | `org_id` is folded into no part of `finding_id` | Named risk, tied to the tenancy ADR (D80) | RECORDED |
+| D80 | Tenancy and permissions ADR | **Step 7 prerequisite**; approved Part E2 scope (D69) | OWED, not written |
+| D81 | Logging and audit ADR | **Step 7 prerequisite**; approved Part E2 scope (D69) | OWED, not written |
+| D82 | Minimal alerting | **Step 6 requirement** (before 50 agents and scheduled scans) | OWED, not designed |
+| D83 | Rollback and data-migration discipline | **Step 9 requirement** | RECORDED |
+| D84 | Review cadence for findings, fixtures and upstream feeds | Standing, from Alpha onward | RECORDED |
+
+### D76 — There is no application logging. At all.
+
+`grep -rn "import logging\|getLogger"` over `core/`, `cli/`, `scanners/` and `contracts/` returns
+**zero hits** (checked 2026-10-28). Output is 30 `print(`/`_echo` calls. So two of the readiness
+questions — "are application logs sufficient to debug production issues" and "are critical failures,
+unusual behaviour and suspicious activity detected" — have the same answer: **no, because there are
+no logs and no detection.**
+
+**Today that is defensible.** Everything runs one-shot from a terminal with a human in front of it,
+and the corpus, the receipts and the evidence model carry what logs usually carry. `docs/11-operations.md`
+plans observability; nothing implements it.
+
+**It stops being defensible the moment `api/` exists** and a scan runs with nobody watching. So the
+condition is **before `api/` ships**, not "when operations work gets scheduled" — and note the
+ordering consequence: **D81's audit log cannot be built on a logging floor that does not exist**, and
+per D69 the audit log is what a named differentiator rests on. D76 is therefore upstream of a selling
+point, not merely of debuggability.
+
+### D77 — No dependency CVE scanning, and we have run 67 days without it
+
+No `pip-audit`, no `safety`, no `.github/dependabot.yml` (`.github/` holds `workflows/` only).
+**Licences are enforced** — `make licence-check` / `cli.licences` implements ADR-003 — but **known
+CVEs in the 9 runtime dependencies are checked by nothing.**
+
+**How long we ran without it, recorded as the operator asked:** the repository's first commit is
+`e4477a2`, **2026-08-22**. So **67 days to 2026-10-28**, the whole life of the project, with 9 runtime
+dependencies (`pydantic`, `jsonschema`, `pyyaml`, `python-ulid`, `dnspython`, `httpx`, `typer`,
+`cryptography`, `idna`) and a locked `uv.lock`. No vulnerability in them has been ruled out; none has
+been found either, because nothing looked.
+
+**Mildly embarrassing for a security-scanning product**, and the cheapest item on this list: a
+`pip-audit` CI step plus `.github/dependabot.yml`. **Scheduled after D78** at the operator's
+direction, because adding a step to a pipeline that has never run would be adding a step to something
+we cannot see work. Exceptions, if any are ever needed, are **dated and reasoned** in a list — never a
+bare ignore flag.
+
+### D78 — CI exists, is well built, and has never executed
+
+`.github/workflows/ci.yml` runs lint, format, typecheck, the licence policy, the full test suite and
+`cli.corpus --check-baseline`, uploads the corpus scores on failure as well as success, and carries a
+`workflow_dispatch` trigger whose own comment says why:
+
+> *"Lets you trigger a run by hand from the Actions tab, without pushing a commit. This is how you
+> check the pipeline works at all — D1 in the ledger was open for a week because a workflow that has
+> never run is indistinguishable from one that does not work."*
+
+`gh run list` returns **no runs at all**, on any branch, including no `workflow_dispatch` — confirmed
+twice, 2026-10-13 and 2026-10-28. The workflow was added **2026-09-01** (`7315f26`), so it has sat
+unexecuted for **57 days**. Its own comment is the indictment.
+
+**Consequence, stated plainly: every gate in this repository is a local gate on one machine.** Lint,
+typecheck, licence, 91 test files, the corpus baseline — all of it is verified by the assistant on one
+box whose state nobody has audited. **This is the same defect class as D28, D31, D67 and the
+unexecuted Python 3.6 floor**: a check that has never been independently executed is indistinguishable
+from one that does not work, and an Alpha whose pitch is proof-over-assertion cannot rest on gates
+nobody but us has run.
+
+**Operator's direction, 2026-10-28:** get to a first green run, and **it gates PR #53** — one more day
+on a 15-day-old PR is worth making it the first PR this repository has ever validated off the
+assistant's machine. **Failure is expected and each failure is a finding, not a nuisance**: a gate that
+passes locally and fails in CI is reporting real hidden local state, and it gets reported before it is
+fixed. **If the first run exposes something about the corpus baseline or the licence check
+specifically, that is a finding and gets its own D number.**
+
+### D79 — `org_id` exists on every row and is in no part of `finding_id`
+
+`core/store.py`'s own docstring is honest about it:
+
+> *"the primary key is `(id, org_id)` — two orgs can observe what happens to be the same deterministic
+> id without colliding, though in practice `org_id` is folded into no part of `finding_id` today and
+> that is a known simplification, not a claim that it will always hold."*
+
+Finding identity is `sha256(scanner + check_id + target + normalise(location) + instance_key)`
+(CLAUDE.md). **No tenant component.** Today `org_id` is `"org_internal"` everywhere
+(`core/context.py:84`), so nothing can collide and the simplification is free.
+
+**The day `org_id` varies, it stops being a simplification and becomes a cross-tenant identity
+question**, and there are at least three parts to it, none decided: whether two customers who both own
+the same asset (a shared CDN hostname, a jointly administered domain) produce one finding id or two;
+whether finding history can be carried across a tenancy change without rewriting ids; and what happens
+to **rows already written** under the single-tenant assumption, since ids are deterministic precisely
+so that history survives, and changing the formula retroactively closes and reopens every finding —
+the exact failure `scanner_version`'s exclusion from the formula exists to prevent.
+
+**Tied to D80.** The tenancy ADR must answer "does `org_id` enter finding identity, and what happens to
+existing rows", and must answer it **before** any row is written under a varying `org_id` — which is
+Step 7 at the latest. Recorded as a named risk, not a defect: the behaviour today is correct for today.
+
+### D80 — Tenancy and permissions ADR (Step 7 prerequisite; approved Part E2 scope)
+
+Per **D69** this is not a new idea: `docs/18` Part E2 already commits us to zero standing access,
+break-glass, separation of duties and per-tenant encryption. **Not to be written yet** (operator,
+2026-10-28). What it must settle, recorded now so the scope does not drift:
+
+- **The tenancy boundary, and where it is enforced** — one place, checked, not sprinkled.
+- **The two or three roles Alpha actually needs**, deliberately *not* a general RBAC system. A role
+  model built for a product with no users is a guess that later constrains the product.
+- **How `core/authz.py`'s scope authorisation relates to user permissions.** These are **different
+  axes and they will be conflated** — `core/authz.py` authorises *scanning a target* (ownership proof,
+  outbound scope); it says nothing about *who is asking*. The ADR must state the distinction in those
+  terms, because the shared word "authorisation" is the trap.
+- **Whether `org_id` enters finding identity, and what that means for existing rows** (D79).
+- **Deny-by-default at every endpoint**, in the shape `core/authz.py` already uses for scope.
+
+### D81 — Logging and audit ADR (Step 7 prerequisite; approved Part E2 scope)
+
+Also approved Part E2 scope (D69), also **not to be written yet**. What it must settle:
+
+- **Which events are audit-logged:** authorisation decisions, scan launches, report access,
+  kill-switch activations, administrative actions.
+- **What is never logged**, with the redaction path **proved on raw output** — the same test shape as
+  the collector's canary test (ADR-035 §6.5): plant canaries of every family, assert on the raw bytes,
+  error paths included, because an error message is exactly where a value leaks.
+- **How an entry ties to a user and to a scan.** Today `status_history` ties a change to a *scan*, not
+  a person; there is no user to tie to, which is why this waits for D80.
+- **An honest definition of tamper resistance: append-only with a per-entry hash chain, claimed as
+  exactly that and no more.** The same honesty as ADR-035's `self_hash` — a hash chain written by the
+  same process that writes the entries detects accident and casual edit, not a determined operator
+  with write access. If stronger is required, it is external anchoring, and that is a separate decision
+  with a separate cost. **Do not let "immutable" in Part E2 be satisfied by a word.**
+
+**Recorded against both D80 and D81:** Part E2 *and* Part H2 commit us to a **customer-visible access
+log** — the customer seeing which of our staff opened their data, when, and under whose approval — and
+the plan names it a differentiator ("Every vendor says 'trust our internal controls.' We show the log.
+That converts a promise into evidence"). **It is impossible without the audit log underneath it.** So
+D81 is a prerequisite for a named selling point, and anything that weakens per-person attribution or
+append-only handling silently removes something we sell. See D69.
+
+### D82 — Minimal alerting, as a Step 6 requirement
+
+Full monitoring stays a v1.0 item and is **not** in scope here. But **Step 6 puts ~50 agents and
+scheduled scans into production**, and at that point nobody is watching a terminal. Before Step 6 we
+need to know about: **kill-switch activations**, **rate-limit breaches**, **repeated authorisation
+denials**, and **scan failures**. That is the whole list — deliberately four things, not a monitoring
+stack.
+
+Depends on D76 (there is nothing to alert *from* today). **Not designed now**, recorded against Step 6
+at the operator's direction.
+
+### D83 — Rollback and data-migration discipline, as a Step 9 requirement
+
+Ledger-only, no work. Today there is no release process, no migration tooling, and one SQLite file with
+`PRAGMA user_version` as its only version marker; `core/store.py` was deliberately written so the
+Postgres move (ADR-009) swaps the driver rather than the shape. Before Step 9: schema changes
+backward-compatible within a release, a release that can be rolled back **without data loss**, and
+migrations with a tested down path — or an explicit statement that a given migration has none, which
+is a decision rather than a discovery. Related: D73 (the retention clock) and D79 (ids under a varying
+`org_id`), both of which constrain what a migration may do to existing rows.
+
+### D84 — A review cadence for findings, fixtures and upstream feeds
+
+Ledger-only, no work. Three things decay in this repo and all three have bitten us:
+
+- **Open findings** — the ledger is the register and it is current, but nothing schedules a re-read, so
+  items age quietly (PR #53 sat 15 days; D65 and the domscout regeneration are both owed).
+- **Stale fixtures** — the committed domscout fixtures are known stale against today's generator
+  (`resolver: null` vs `1.1.1.1`, `servfail` carrying DS/DNSKEY answers no longer queried), which is
+  why the full regeneration is scheduled before Step 4.
+- **Deprecated upstream feeds**, with the **worked example already in hand: Red Hat is retiring OVAL
+  v2** in favour of CSAF/VEX (found 2026-10-13 while gathering licence evidence). Had we not looked at
+  the licence, we would have built the host scanner's matcher on a deprecated feed and discovered it
+  when it stopped updating — which is the quiet-failure shape this cadence exists to catch.
+
+A cadence, not a tool: on a stated interval, re-read the ledger's open items, re-run the generators and
+diff the committed fixtures, and re-check each registered upstream source for deprecation and licence
+change. Interval and owner to be set when it is scheduled.
+
+### Addendum to D70 — the operator's decisions on the E3 family (2026-10-28)
+
+The split is **accepted**, with one check held back:
+
+- **Access half: into Alpha as module 8**, after modules 1–4 and before the fleet view (module 7), for
+  the reasons given in D70. The operator's own framing of its value: **log delete rights is the
+  strongest finding in the Alpha set** — "an attacker being able to destroy the evidence of their own
+  activity is the kind of thing a server owner acts on the same day."
+- **Module spec note, required:** log delete rights is **derived logic over group membership and POSIX
+  ACLs**, not a read. It is the module's highest-value *and* most error-prone check, so it needs **a
+  real positive on a lab box with a deliberately over-permissive group before it reaches the fleet,
+  plus a negative** — docs/24's standing rule, applied with teeth to the one check most likely to be
+  subtly wrong.
+- **"Service account scope" is held back and backlogged, with its open question stated**, so nobody
+  re-proposes it as cheap:
+  1. It requires "a defensible notion of *broader than it needs*", and **we do not have one.** An
+     account's permissions being wider than an assumed baseline is a **heuristic, and no heuristic is
+     proof** (standing rule).
+  2. The alternative the operator floated — *a permission granted that no running process under that
+     account has exercised* — is **still inference**, and it additionally requires **observation over
+     time**, which a **one-shot collector structurally cannot provide** (ADR-033: not a daemon, no
+     listener, runs once and exits). It is therefore not merely harder; it is out of reach for Alpha's
+     agent architecture, and it would need the post-Alpha always-on agent before it could even be
+     attempted factually.
+  3. What stays in is factual: **modes, owners, group expansion, delete rights on parent directories,
+     and ACLs where present.**
+- **Exposure half: after Alpha, gated on a passivity ADR**, not folded into Alpha. The operator's
+  expectation, recorded in advance so the ADR is judged against it rather than written to it: **the
+  honest answer is likely "requires verified ownership"**, which follows from **ADR-033 decision 8** —
+  *ownership proof is the boundary of consent, not a measure of blast radius*. If that is where it
+  lands, `/backup.sql` and `/.env` are **not Light features at all**, and the scope question is larger
+  than the checks. The ADR gets written when Tool 4b forces it.
+- **docs/24 is edited either way, now**, because the failure here was **invisibility, not
+  engineering**: the post-Alpha list was adjacent enough to look like coverage. The family appears with
+  an explicit status — module 8 in Alpha, exposure half deferred pending the passivity ADR, service
+  account scope backlogged with its open question.
