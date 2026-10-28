@@ -34,6 +34,8 @@ This spec decides the seven things Step 2 lists, and one the operator added when
 | 9 | **The unsupported-runtime case** — a host with no usable Python still produces a snapshot | §3.3 |
 | 10 | `agent/` as a new top-level directory: the alternatives considered, not just the outcome | §11 |
 | 11 | Where Red Hat's CC BY 4.0 attribution has to appear, as a Step 8 design input | §7.4 |
+| 12 | **The evidence-contract migration** host findings rest on (D75, folding in D65) | §12 |
+| 13 | **A snapshot is hostile input**, and what the platform does about it | §13 |
 
 ---
 
@@ -442,8 +444,13 @@ exclusion appears in the output** — so the printed plan cannot drift from the 
 ## 9. The platform side: the `host` scanner
 
 - `scanners/host/`, on the **existing frozen contract**, extended in Step 1 already: `host` target
-  type, `vantage: agent`, `engagement: defensive` (ADR-034). **No contract change is needed and none
-  is proposed.**
+  type, `vantage: agent`, `engagement: defensive` (ADR-034).
+- **Correction (2026-10-28, D75). An earlier draft of this section said "No contract change is needed
+  and none is proposed." That is wrong, and the claim is withdrawn rather than edited away.** The
+  `host` scanner needs one additive contract migration, specified in **§12**. The error is instructive:
+  it was made by checking that `host`, `vantage: agent` and `engagement: defensive` already existed —
+  the *target* side of the contract — and never checking the *evidence* side, where host findings
+  actually land. It was found by costing Part E3's access matrix (D70), not by reviewing §9.
 - Ingest: `scan run host --target <hostname> --snapshot <file>` reads a snapshot the operator has
   copied. **The collector never dials out and the platform never reaches into a host**; API upload
   comes after Step 7, as docs/26 says.
@@ -516,3 +523,255 @@ what ADR-035 needs; the outcome alone would not satisfy the rule.
 **Cost accepted:** one more top-level directory, and CLAUDE.md's list needs updating alongside
 ADR-035 (not a silent third entry). **Not a precedent:** the next new top-level directory asks
 again.
+
+---
+
+## 12. The evidence-contract migration — one migration, one ADR (D75, folding in D65)
+
+§9's withdrawn sentence hid a real decision. Host findings have to carry evidence, and
+`contracts/evidence.schema.json` has nowhere for it to go. This section specifies the whole migration,
+because the operator's instruction is to **get the command-output shape right once: every host finding
+in the product will rest on it.**
+
+### 12.1 What the contract holds today
+
+The evidence `kind` enum is `http_pair`, `oob_callback`, `timing`, `dns_answer`, `tls_handshake`,
+`screenshot`, `file_excerpt`. The last two live in a `$defs` block named **`reserved`**, whose own
+description says:
+
+> *"screenshot and file_excerpt are reserved. Their shapes are specified when the first scanner needs
+> them; until then they carry the base fields and a stated rationale for their control."*
+
+**The `host` scanner is that first scanner.** So this is **the contract working as designed** — a slot
+left deliberately for the case that has now arrived — and it is still *a deliberate, additive migration
+with an ADR*, which CLAUDE.md requires for `contracts/`. It is cheap. It is not a formality, and it is
+not done by editing a schema and moving on.
+
+### 12.2 Three shapes, one question
+
+Three things need an evidence shape, and all three are the same question — *what does it mean to have
+observed a fact on a host?* — so they are settled together rather than one per module:
+
+1. **A file-derived fact** → `file_excerpt`, moved out of `reserved` and specified.
+2. **A command-derived fact** → **no kind exists at all.** A finding resting on `dpkg-query` output is
+   not an HTTP pair and not a file excerpt. This is the real finding in D75.
+3. **An access matrix** (Part E3 / module 8, per D70) → a third shape, arriving next.
+
+### 12.3 `command_output` — the new kind, specified now
+
+The operator's four required elements, plus what the artefact rule forces:
+
+```
+{
+  "kind": "command_output",
+  "control_rationale": "...",            // base field, as every kind carries
+  "data": {
+    "argv": ["/usr/bin/dpkg-query", "-W", "-f=${Package}\t${Version}\n"],
+    "exit_status": 0,
+    "output": "...",                     // the RELEVANT output, not the whole stream
+    "output_selection": {                // R1: how `output` was reduced from what was captured
+      "method": "lines_matching" | "whole" | "first_n_bytes",
+      "detail": "package name == 'openssl'",
+      "captured_bytes": 41233,
+      "truncated": false
+    },
+    "receipt_ref": {"reason_id": "packages.debian", "command_index": 3},
+    "collected_at": "2026-10-13T09:14:22Z",
+    "host_ref": "sha256:…(16)"           // the snapshot's machine_id fingerprint, never a hostname-only link
+  }
+}
+```
+
+Rules that are part of the shape:
+
+- **`argv` is the exact argv, as the allowlist declared it and the receipt recorded it.** Not a
+  reconstructed command line, not a shell string — a reader must be able to run it themselves. This is
+  what makes a host finding's evidence chain end at something checkable.
+- **`output` is the *relevant* output and `output_selection` says how it was chosen.** A kind that
+  stored a reduced string with no account of the reduction would be a fresh instance of the exact
+  defect D64/D67 are about: a published artefact whose content does not say what it is. The full
+  stream's size and truncation state come from the receipt, so the two can be compared.
+- **`receipt_ref` ties the evidence to the receipt line that produced it** (§8), which is how R1 is
+  enforced at the evidence level: evidence that cites no receipt line is evidence for something the
+  snapshot does not record, and the scanner refuses it.
+- **A non-zero `exit_status` is legitimate evidence**, not an error to hide — some allowlist entries
+  expect it on some systems (§5.1). Evidence that a command *failed* is how an `inconclusive` proves
+  it is honest rather than lazy (R2).
+- **It goes through redaction like everything else** (§6.4), and `output` is subject to the same
+  deny-list at the value level.
+- **Control-vs-test:** the allowlist entry's declared expectation is the control; this output is the
+  test. `control_rationale` states the pair in words, as every kind must.
+
+### 12.4 `file_excerpt` — specified, not invented
+
+```
+{
+  "kind": "file_excerpt",
+  "control_rationale": "...",
+  "data": {
+    "path": "/etc/ssh/sshd_config",
+    "keys": {"PermitRootLogin": "yes"},   // named keys only — never the file
+    "excerpt": "PermitRootLogin yes",     // the line(s) the keys came from, redacted
+    "line_numbers": [34],
+    "stat": {"mode": "0644", "owner_uid": 0, "size_bytes": 3321},
+    "receipt_ref": {"reason_id": "ssh.config", "file_index": 1},
+    "collected_at": "...", "host_ref": "sha256:…(16)"
+  }
+}
+```
+
+`keys` carries only what the file allowlist entry declared it may extract (§5.2) — **a file is read; a
+file is not stored.** `stat` is in the shape because for several checks the *mode* is the finding, and
+because module 8 needs it (12.5). The `screenshot` kind stays reserved: nothing needs it, and
+specifying a shape no scanner uses is how a contract acquires dead weight.
+
+### 12.5 `access_matrix` — the third shape, specified with the other two
+
+Part E3's stated output is "an access matrix per file type — who can read, write, export, delete". The
+reason to specify it *now* rather than when module 8 is built is D70's cost argument: retrofitting a
+matrix onto an evidence kind already specified without it is the same retrofit the receipt was designed
+to avoid.
+
+```
+{
+  "kind": "access_matrix",
+  "control_rationale": "...",
+  "data": {
+    "subject_kind": "file" | "directory",
+    "path": "/var/log/app.log",
+    "stat": {"mode": "0644", "owner_uid": 0, "owner_group_gid": 4},
+    "parent_stat": {"mode": "0775", "owner_uid": 0, "owner_group_gid": 4},
+    "acl": [...] | null,                   // null means "no ACL support observed", never "no ACL"
+    "principals": [
+      {"principal": "group:adm", "members_observed": 7,
+       "read": true, "write": false, "delete": true, "basis": "parent_directory_write"}
+    ],
+    "derivation": "mode+group+acl",        // how the rights were derived, not asserted
+    "receipt_ref": {...}, "collected_at": "...", "host_ref": "..."
+  }
+}
+```
+
+- **`basis` per right, and `derivation` for the matrix**, because delete rights come from the *parent
+  directory*, not the file — the operator's point about module 8's hardest check. A matrix that stated
+  "can delete: true" without saying it came from the parent's write bit would be an assertion dressed
+  as an observation.
+- **`acl: null` means we did not observe ACL support** — not that no ACL exists. R2 at field level: the
+  absence of a capability and the absence of a restriction are different facts.
+- **`members_observed`, not `members`**: group membership from a host snapshot is what the collector
+  could read, and on a host with remote directory services that is not the whole group. Stating the
+  count as *observed* keeps the finding honest about its own completeness.
+
+### 12.6 Folding in D65
+
+D65 (ledgered 2026-10-13, not fixed) is that `Telemetry.requests` conflates HTTP sends, DNS queries,
+TLS handshakes and `core/testssl.py`'s fixed connection budget. `Telemetry` is in frozen `contracts/`,
+so splitting it was always "an additive migration with an ADR, not an edit" — **which is exactly the
+migration this section already requires.** Doing both in one migration rather than two is the whole
+argument:
+
+- Add `counts` alongside `requests`: `{http_sends, dns_queries, tls_handshakes, testssl_budget,
+  other}`. **`requests` stays, unchanged in meaning**, so every existing reader and every recorded
+  fixture keeps working; it becomes a derived total whose definition is finally written down.
+- `cli/replay_counts.py` already records this exact breakdown per run (D64), so the migration is
+  mechanical rather than archaeological — that was the reason for naming those fields then.
+- The `host` scanner must not be given a field called `requests` at all (§4): a snapshot read performs
+  no requests, and a count that means two things by run mode is the defect D64 exists to prevent.
+
+### 12.7 The migration's rules
+
+- **Additive only.** No existing kind changes shape, no field is removed or re-typed, no enum value is
+  withdrawn. Every artefact valid today stays valid.
+- **One ADR** covering: `file_excerpt` out of `reserved`, `command_output` as a new kind,
+  `access_matrix` as a new kind, `Telemetry.counts` (D65), and the statement that `screenshot` stays
+  reserved with the reason.
+- **Tests before the schema change**, per the standing rule: a conformance case per new kind, a case
+  asserting every kind rejects evidence with no `receipt_ref`, a round-trip case for an existing
+  artefact proving nothing it contains became invalid, and a case asserting `requests` still equals
+  what it equalled before.
+- **Independent review before merge**, because this touches `contracts/` — the same bar as a `core/`
+  change, and arguably higher: `contracts/` is frozen and a mistake here is in every future artefact.
+- **Phase A owns it** (plan task A6). **Nothing in Phase B may construct evidence before it lands.**
+
+---
+
+## 13. A snapshot is hostile input (operator, 2026-10-28)
+
+The one readiness question the repo audit could not cover, because the path does not exist yet.
+
+**The threat, stated plainly.** A snapshot arrives from a host. **If that host is compromised, an
+attacker controls every byte of it** — and a compromised host is not a hypothetical population, it is
+*the population this product exists to find*. Those bytes are then rendered into JSON, HTML and PDF
+that a customer opens, and into terminal output an operator reads. §4 and §9 handle a **broken**
+snapshot (unknown version, manifest disagreement, malformed, self-hash mismatch → scan error). They do
+**not** handle a **malicious** one.
+
+**The reasoning is D60's, not a probability estimate:** the question is never whether the input is
+likely to be bad, it is what happens when it is. Four decisions, **tests first**.
+
+### 13.1 Pre-parse limits — refused before anything is interpreted
+
+Checked **before** `json.loads`, on the raw bytes, because a parser is the thing being defended:
+
+| Limit | Why it exists |
+|---|---|
+| Total file size | A multi-gigabyte snapshot is a denial of the scan pipeline, not a scan |
+| JSON nesting depth | Deep nesting is a stack-exhaustion primitive against any recursive reader; Python's own parser recurses |
+| Per-field string length | One field holding megabytes reaches a report renderer, a PDF engine and a log line |
+| Array length, per array | A million-element `manifest` is the same attack wearing a different hat |
+| Total key count | Defends against breadth where the others defend depth |
+
+**Exceeding any limit is a scan error, never a truncation.** This is the rule the operator stated and
+it is the right way round: truncating hostile input *keeps* it and makes the artefact disagree with
+what we claim about it — a direct R1 violation, and a worse outcome than refusing the file. The limits
+are **named constants in one module with their reasons**, the way the 3.6 floor is one constant.
+
+### 13.2 No snapshot value is ever a path, a filename or a command argument on our side
+
+**The collector's allowlist rule, in reverse.** §5.1 forbids the *collector* from deriving an argument
+from collected data; §13 forbids the *platform* from deriving a filesystem or process operation from
+received data. Concretely, nothing from a snapshot may become: a path or path component, a filename
+(including a corpus case name, a report filename or an export path), a command argument, a URL we
+fetch, an SQL identifier, or a format string. A `hostname` field is a **value we display**, never a
+value we open — and `host_ref` is a fingerprint precisely so that identity is not a filesystem name.
+A test asserts it with hostile fixtures: `../../etc/passwd`, `/dev/stdin`, a NUL byte, a 4 KB name, a
+name that is `.` and one that is empty.
+
+### 13.3 Output encoding at every render boundary, proved by planted payloads
+
+Encoding is per boundary, because each boundary has a different escape:
+
+- **JSON** — serialised, never concatenated.
+- **HTML/PDF** — contextual escaping; a value never reaches a template unescaped, and never becomes
+  markup, an attribute, a URL scheme or a style.
+- **Terminal** — **ANSI escape sequences stripped or made visible**, because a terminal is a renderer
+  too: control sequences can rewrite the line above, hide text, retitle a window, and in the worst case
+  are read back by the emulator. An operator reading a scan result is a target.
+
+**The test the operator specified, as one property:** plant `<script>alert(1)</script>`, an ANSI
+sequence (`\x1b[2J\x1b[1;1H` and a colour run), and **a very long single-line value** in snapshot
+fields, then assert they appear **harmlessly** in JSON, HTML, PDF and terminal output. "Harmlessly" is
+asserted positively — the payload is *present and inert*, visible as text — not merely "absent", since
+a test that only checks absence passes when the value was silently dropped, and a dropped value is an
+R1 failure. The long-line case covers the layout denial that is not an injection at all.
+
+Also in scope, and easy to miss: **a value rendered into a log line or an error message** goes through
+the same boundary rules. An error that quotes hostile input is an injection path with a different name.
+
+### 13.4 Types and shapes validated before use, never inferred from the version
+
+A known `snapshot_version` says *which schema we expect*, not *that this file matches it*. So every
+field is validated before use — type, shape, enum membership, required-ness — and a field that is the
+wrong type is a **scan error naming the field**, not a coerced value and not a `None` flowing inward.
+`status` must be one of the three words; `counts` values must be non-negative integers; timestamps must
+parse; `manifest` must be a list of objects with the required keys. **The version is never evidence of
+conformance**, which is the same mistake as trusting a server's declared `Content-Type`.
+
+### 13.5 What this is not
+
+Not authentication. A validated snapshot is **well-formed, not trustworthy**: the facts in it still
+come from a machine that may be lying, and no amount of validation changes that. What the platform
+claims is "this is what the host reported", never "this is true of the host" — and the receipt inside
+the snapshot is what makes that distinction legible to a reader. Authenticating the *source* is signing
+(docs/23 item 7); detecting *corruption* is the self-hash (§4); neither is this section's job. **This
+section only ensures a hostile snapshot cannot harm the platform, the report or the reader.**

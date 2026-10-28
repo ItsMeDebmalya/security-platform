@@ -9,7 +9,8 @@
 host with a command receipt inside it, and a platform-side `host` scanner that turns a snapshot into
 findings on the existing frozen contract — with the artefact discipline of D39/D63/D67 built in,
 so nothing the platform claims is absent from the artefact and no collection error can read as
-"clean".
+"clean" — and with the snapshot treated as **hostile input**, because the hosts whose snapshots we
+read are the population this product exists to find compromise in.
 
 **Spec:** `docs/superpowers/specs/2026-10-13-host-agent-design.md`. Read it before any task; §2 (the
 artefact rule) governs every other section.
@@ -39,6 +40,8 @@ The snapshot is to the `host` scanner what a fixture directory is to `--replay`.
   `engagement: defensive` (ADR-034). `state` never hand-set.
 - Line length 100, ruff `E,F,I,UP,B,SIM,N,RUF`, mypy strict. **`UP` must not be allowed to rewrite
   `agent/` to 3.9+ syntax** — per-directory ruff config, with the reason in the config.
+- **No value received from a host is ever used as a path, filename, command argument, URL, SQL
+  identifier or format string** (spec §13.2). The collector's allowlist rule, in reverse.
 - Commit trailer per the active session; `.claude/` is never staged.
 
 ## Review focus (what a reviewer should attack)
@@ -60,7 +63,10 @@ The snapshot is to the `host` scanner what a fixture directory is to `--replay`.
    appear as a known gap via A5's probe rather than as a host missing from the fleet view.
 8. **`--explain-plan` drifting from the enforced allowlist.** Add an entry or an exclusion and
    assert it appears in the printed plan; assert the mode executes nothing.
-9. **An independence claim the allowlist cannot deliver.** `confirmed` must be unreachable for
+9. **A hostile snapshot.** Assume the host is compromised — it is the population we scan. Attack the
+   parser, the renderers, the terminal, and anything that turns a received string into a filesystem or
+   process operation. A validated snapshot is **well-formed, not trustworthy**.
+10. **An independence claim the allowlist cannot deliver.** `confirmed` must be unreachable for
    package findings in Alpha — attack any path that reaches it.
 
 ---
@@ -114,6 +120,21 @@ The snapshot is to the `host` scanner what a fixture directory is to `--replay`.
       theirs.
       **Deliverable back from the operator:** the distinct combinations and rough counts, which
       decide §3's floor and (separately from the licence question) Alpha's distribution support.
+
+- [ ] **A6. The evidence-contract migration** (spec §12, D75) — **its own ADR and its own reviewed PR**,
+      because it touches frozen `contracts/`. One additive migration: `file_excerpt` moved out of the
+      `reserved` block and specified; **`command_output` as a new kind** (argv, exit status, the
+      relevant output *with* `output_selection` saying how it was reduced, and `receipt_ref` tying it
+      to the receipt line); **`access_matrix`** as a new kind (per-right `basis`, `derivation`,
+      `acl: null` meaning "not observed", `members_observed` not `members`) so module 8 is not a
+      retrofit; **`Telemetry.counts`** alongside an unchanged `requests` (**D65**, mechanical because
+      `cli/replay_counts.py` already records the breakdown); and `screenshot` left reserved with the
+      reason. **Tests before the schema change**: a conformance case per kind, a case that every kind
+      rejects evidence with no `receipt_ref`, a round-trip proving no artefact valid today became
+      invalid, and a case that `requests` still equals what it equalled before.
+      **Independent review before merge** — the `core/` bar or higher, since a mistake in `contracts/`
+      is in every future artefact.
+      **Blocks Phase B: nothing may construct evidence before this lands.**
 
 **Exit:** ADR-035, this plan and the spec approved by the operator. **Nothing below starts first.**
 A5 is the one task whose *output* comes from the operator, so it is built first within Phase A and
@@ -186,6 +207,23 @@ the rest of Phase A does not wait on his results.
       failure. Plus the §3.3 case: an all-`unsupported_runtime` snapshot is a first-class result —
       **a host reported as unassessed, with the interpreter found and the floor required**, counted
       and named in the fleet view, never clear and never silently absent.
+- [ ] **F1b. The snapshot is hostile input** (spec §13). **Tests first, and before F2 reads a single
+      field.** (a) **Pre-parse limits** on the raw bytes — total size, JSON nesting depth, per-field
+      string length, per-array length, total key count — each a named constant with its reason, and
+      **exceeding any one is a scan error, never a truncation** (truncating hostile input keeps it and
+      makes the artefact disagree with what we claim: an R1 violation). (b) **No snapshot value becomes
+      a path, path component, filename, command argument, URL, SQL identifier or format string** — the
+      collector's §5.1 rule in reverse — tested with `../../etc/passwd`, `/dev/stdin`, a NUL byte, a
+      4 KB name, `.`, and the empty string. (c) **Types and shapes validated before use**, never
+      inferred from a known `snapshot_version`; a wrong type is a scan error **naming the field**, not
+      a coercion and not a `None` flowing inward.
+- [ ] **F1c. Output encoding at every render boundary** (spec §13.3). JSON serialised not
+      concatenated; HTML/PDF contextually escaped; **terminal ANSI escape sequences stripped or made
+      visible**, because an operator reading output is a target. The planted-payload test:
+      `<script>alert(1)</script>`, an ANSI sequence, and **a very long single-line value**, asserted
+      **present and inert** in JSON, HTML, PDF and terminal output — asserted positively, because a
+      test that only checks absence passes when the value was silently dropped, and a dropped value is
+      an R1 failure. Log lines and error messages are render boundaries too.
 - [ ] **F2.** Checks over `collected` sections only; a section that is `error` or `unavailable`
       produces an `inconclusive` **naming the reason**, never a pass. Tests first.
 - [ ] **F3.** Evidence: each finding cites its section and the receipt line behind it;
