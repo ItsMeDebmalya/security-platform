@@ -323,6 +323,22 @@ One-line: takes a network (not a domain), inventories devices, and reports expos
 
 ---
 
+### A20. Host / Server Assessment — the Linux agent (`host`), **PLANNED, not built** *(new in Alpha, [ADR-033](docs/02-decisions.md#adr-033--mvp-alpha-scope-one-combined-release-the-linux-agent-moves-into-alpha-tool-4b-deferred) and [ADR-035](docs/02-decisions.md#adr-035--the-host-agent-a-thin-one-shot-collector-an-artefact-the-platform-replays-and-judgements-made-platform-side))*
+
+One-line: a read-only collector runs once on a Linux host and writes one snapshot; the platform replays that snapshot into findings through a `host` scanner. **It is not an external scanner** — Alpha adds none (docs/24 §6). New value goes here.
+
+- **The inside view, which is the differentiator:** an external tool sees an open port; with the agent the platform can say *why* it is open, whether the host firewall allows it, and which configuration line to change (docs/24 §5).
+- **The agent collects and never judges.** No severity, no threshold, no CVE comparison on the host. Every judgement is platform-side, so a rule we get wrong can be corrected and re-run against snapshots already collected (ADR-035 decision 2). `state` is still set only by `core/state.py`.
+- **The artefact rule governs the snapshot (ADR-035 decision 1).** R1: the `manifest` declares every section with an explicit `status`, and a report may not claim a check ran unless the artefact holds what it ran on. R2: a collection error is recorded as an error, never an absence that reads as "clean" — including the **unsupported-runtime** case, which produces a valid snapshot marking every section unavailable rather than a host that silently vanishes from the fleet view.
+- **Read-only and Linux-only in Alpha.** No Windows, macOS or BSD. It changes nothing, installs nothing, and suggests fixes without applying them; ADR-004 applies unchanged.
+- **Package findings cap at `highly_likely`** (ADR-035 decision 9): the available second detection method would need an argument derived from collected data, which the allowlist forbids, so the independence `confirmed` requires is not available in Alpha. Vulnerability matching uses the distribution's own fixed-version-per-release data and **refuses CVE-range matching**; an uncovered package is `inconclusive`, never a pass.
+- **Modules:** the seven in [docs/24 §5](docs/24-alpha-scope.md), plus **module 8, the Part E3 access half** (scheduled after modules 1–4 and before the fleet view). Each module must fire on a real positive on a lab box before it reaches the fleet.
+- **Blocked on one additive contract migration** (ADR-035 decision 12, ledger D75): host findings land on the evidence side of the frozen contract, which has no kind for command output. Nothing may construct evidence before that migration lands.
+- **Status: PLANNED, nothing built.** Phase A (the decisions) is complete except the vulnerability-data licence sign-off, which is the operator's.
+- **Gate: not yet set, and no number is published before one exists.** The fleet is ~50 of our own servers under one internal written authorisation, so its first evidence is internal; that is a weaker independence claim than a customer corpus and the gate has to say so when it is written.
+
+---
+
 ## Platform features, B1–B12
 
 All **Not built** — Phase 6, per [docs/03-roadmap.md](docs/03-roadmap.md); nothing has a UI before then (ADR-001, ADR-012). Content source: [docs/reference/product-spec.md](docs/reference/product-spec.md) B1–B12, unchanged from v2 except where noted.
@@ -426,6 +442,7 @@ Verified against the repo and `make corpus` (2026-10-07) — see the run at the 
 | A18 Security Score & Reporting | Not built | n/a (inherits) | — |
 | A19a IoT Device Exposure | Not built | precision ≥0.95, recall corpus-relative | — |
 | A19b IoT Device Vulnerability | Not built | precision ≥0.90, recall corpus-relative | — |
+| A20 Host / Server Assessment (`host`, the Linux agent) | **PLANNED, not built** (ADR-035; docs/26 Step 2 done, Steps 3–5 to come) | **not yet set** — no number is published before a gate exists | — |
 | B1–B12 Platform features | Not built (Phase 6/7) | n/a | — |
 | Scanner Contract | **Foundation built** | n/a | frozen, `contracts/*.schema.json` |
 | Asset graph | **Foundation built** | n/a | 0b.2 |

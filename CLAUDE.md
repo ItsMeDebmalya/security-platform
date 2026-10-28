@@ -37,7 +37,10 @@ core/measurement.py, core/registry.py, core/authz.py, core/ratelimit.py
 The 4 files in contracts/ are the FROZEN contract — change only via a deliberate,
 additive migration with an ADR, never ad hoc.
 The 4 validated scanners (domscout, email, tls, web) must not be regenerated.
-The only NEW top-level dirs in this migration are api/ and web/.
+The only NEW top-level dirs in this migration are api/, web/ and agent/.
+agent/ is the host collector (ADR-035 decision 17, which records the alternatives
+considered). It is stdlib-only Python at a 3.6 syntax floor and must import
+NOTHING from core/ or contracts/ - a 3.13-only dependency would be one import away.
 If a task seems to require rebuilding any of the above, STOP and ask me.
 
 ## Repository state
@@ -56,7 +59,7 @@ Read `docs/14-progress-ledger.md` for where things stand — including **standin
 - `SPEC.md` — **the canonical build specification: what each tool must do, current status, gates.** Authority for "what to build," replacing `docs/reference/product-spec.md` in that role.
 - `docs/00-context.md` — product, strategy, standards
 - `docs/01-architecture.md` — **the Scanner Contract, finding/evidence model, confidence engine**
-- `docs/02-decisions.md` — ADRs 001–034 and 036 (035 is reserved for the agent architecture)
+- `docs/02-decisions.md` — ADRs 001–036 (035 is the agent architecture, accepted 2026-10-28)
 - `docs/03-roadmap.md` — phases 0, **0b (foundation for the calendar)**, 1–7 with accuracy gates
 - `docs/04-phase-0-foundations.md`, `docs/05-phase-1-first-tools.md` — task-level plans
 - `docs/06-guidelines.md` — rules for all code

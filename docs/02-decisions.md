@@ -1083,6 +1083,111 @@ In both cases the parser, the scope rule and the gate each did their job. The ga
 
 ---
 
+## ADR-035 — The host agent: a thin one-shot collector, an artefact the platform replays, and judgements made platform-side
+
+**Status.** Accepted 2026-10-28 (operator), from a design reviewed in two rounds — six required changes in the first, three in the second (the §9 correction and the hostile-snapshot decisions). Design: [the spec](superpowers/specs/2026-10-13-host-agent-design.md); build order: [the plan](superpowers/plans/2026-10-13-host-agent.md); ledger D69–D75. This is docs/26 **Step 2**. The number was reserved for it by ADR-033 and docs/26. It adds a new top-level directory and (by decision 12) one additive change to frozen `contracts/`, so that migration gets **its own ADR and its own independent review**.
+
+**Context.** ADR-033 moved the Linux agent into Alpha, and Alpha's new value goes into the agent's modules rather than into new external scanners (docs/24 §5, §6). The fleet is ~50 of our own servers under one internal written authorisation. Nothing of the agent is built: this ADR is the decision record that Phase A produces before any collector code exists.
+
+The shape of the problem is not "write an agent". It is that **a host snapshot is a recorded artefact the platform replays into findings — the same shape as a corpus fixture** — and this repository has already paid for every lesson that shape teaches. D39 (a recording that replayed as something else), D63 and D67 (a run that counted what it had not done), and D64 (output reduced without saying how) were all the same defect: an artefact that read as more complete, or more innocent, than it was. The agent is the first thing we have built where that defect would be invisible by default, because the artefact arrives from a machine nobody is watching.
+
+**What this ADR claims, and only this:** the agent **collects and reports; it never judges, never changes anything, and never hides what it could not do.** It does not claim the snapshot is trustworthy (decision 13), that the self-hash is tamper-evidence (decision 6), or that package findings are independently confirmed (decision 9).
+
+**Decision.**
+
+1. **The artefact rule, and it is first because it changes the shape of everything else.** Two parts, named R1 and R2 throughout the spec and the plan:
+   - **R1 — everything claimed is present.** The snapshot carries a `manifest` declaring **every** section with an explicit `status`. A section the platform expects and the manifest does not declare is a snapshot error, not a quiet gap. A report may not claim a check ran unless the artefact contains what it ran on.
+   - **R2 — a collection error is recorded as an error, never an absence that reads as "clean".** "I could not look" and "there is nothing there" are different facts and must not collapse into one. This is the rule D39/D63/D67 were each a local failure of.
+
+   The operator's reason, recorded in his words because it is the product argument and not an engineering preference: *a fleet report that quietly omits the oldest, least-patched machines is the worst possible failure mode for this product.* Those machines are exactly the ones that fail to collect.
+
+2. **A thin one-shot collector; every judgement is platform-side.** The agent runs, writes one snapshot, and exits. It holds no state between runs, has no daemon, no scheduler, no socket, and no persistent process. It contains **no rule about what is or is not a vulnerability** — not one severity, not one threshold, not one CVE comparison. Those live in the platform, which replays the snapshot into findings through the same path a corpus fixture takes.
+
+   This is not tidiness. It is what makes the agent's output **re-judgeable**: a rule we get wrong today can be corrected and re-run against every snapshot already collected, without going back to the fleet. An agent that decided things would make its mistakes permanent at the moment of collection. It is also what keeps `core/state.py` the only thing that sets `state`, as the accuracy rules require.
+
+3. **Read-only, and no exploitation — ADR-004 applies unchanged and absolutely.** The agent changes nothing, starts nothing, stops nothing, installs nothing, and writes nothing outside its own snapshot destination. It suggests fixes and never applies them (docs/24 §5). There is no "remediation mode" and none is deferred for later: the agent having write access to fifty production servers is a capability this ADR declines to create.
+
+4. **Linux-only in Alpha, stated and not implied** (confirmed by the operator, 2026-10-28). **No Windows, no macOS, no BSD.** The fleet is Linux and the collection techniques — `/etc/os-release`, the distribution package databases, the distributions' own security data — are Linux-specific. A second platform is a second set of every decision below, not a port.
+
+5. **The language: stdlib-only Python, with the 3.6 floor held as a stated assumption and not as a fact.** The collector uses the standard library only — no pip install on a production host, no wheel to build, no dependency to audit per host. The floor is **Python 3.6** (Ubuntu 18.04's 3.6.9; RHEL 8's 3.6.8 at `/usr/libexec/platform-python`), enforced mechanically by `ast.parse(..., feature_version=(3, 6))` plus a test that every import is stdlib.
+
+   **What this costs, recorded rather than discovered later** (spec §3.1): no f-string `=`, no walrus, no `dataclasses`, no `typing` features after 3.6, no `subprocess` conveniences added since, and ordered-dict behaviour relied on as an implementation detail rather than a guarantee. mypy runs at `python_version = 3.8` because 3.6 is below what it supports, so the syntax floor and the type-check floor are **different numbers** and the `ast` check is what actually holds the line.
+
+   **The honest limit: nothing has ever executed on 3.6 here.** This box is 3.13 only. The floor is a syntax constraint we enforce, not a runtime we have tested, and it stays that way until the fleet probe (decision 14) says which runtimes exist. **Alpha's distribution support is deliberately not restricted yet** — that decision waits on the probe's results rather than on an assumption.
+
+6. **A versioned snapshot, with a `self_hash` that is corruption detection and explicitly not tamper-evidence.** The snapshot carries a format version, and the platform refuses a version it does not know rather than guessing at the fields. `self_hash` is SHA-256 over the snapshot with that field excluded.
+
+   **The spec may not describe it as tamper-evidence, and neither may any report** (operator): a writer who changes the content can recompute the hash. It catches truncation and accidental corruption in transit, which is a real and common failure, and nothing more. **Signing — which would be tamper-evidence — stays deferred to docs/23 item 7**, unbuilt and unscheduled.
+
+7. **Two allowlists, and no argument is ever derived from collected data.** Commands and files are enumerated in advance; nothing else runs and nothing else is read.
+   - **Commands:** argv only, `shell=False`, invoked from fixed binary directories and never through `PATH`, under a scrubbed environment (`LC_ALL=C`, `TZ=UTC`). Each entry carries a **reason**, a `reason_id`, a timeout, output caps, and whether it needs root. Read-only verbs only.
+   - **Files:** each entry names the specific keys it may extract. The agent does not read a file whole because it happens to be in the list.
+   - **The rule that does the work: no argument to any command is derived from anything the agent collected.** A target-shaped value that reached an argv would be the agent executing the host's own content. This is the rule decision 9's ceiling follows from, and it is not negotiable for a convenience.
+
+8. **Data minimisation, and never a secret value.** The agent collects the minimum that proves a finding. Secrets are reported **by type only**, key material as **fingerprints only**, and redaction happens **at capture, not at display** (hard constraint 5, ADR-028). A test asserts that a snapshot never contains a secret value — asserted over snapshots the collector actually produced, not over a hand-written example.
+
+9. **Package findings cap at `highly_likely` in Alpha. The ceiling is honest and it is stated here because an earlier draft claimed otherwise.**
+
+   `confirmed` requires a second, independent detection method. For a package discovered in the package database, the available second method is running that package's own binary with `--version` — **an argument derived from collected data, which decision 7 forbids.** So the independence is not available, and the finding caps at `highly_likely`.
+
+   **An earlier draft of the spec claimed `confirmed` here, and the claim is withdrawn rather than edited away** (operator-found, ledger D75's neighbour): §9 and §5.1 of the spec contradicted each other and §9 was the wrong one. *An honest ceiling is better than an independence claim the allowlist cannot deliver.* A fixed, pre-enumerated version-command allowlist would lift the ceiling post-Alpha; it is not in Alpha and is ledgered as such.
+
+   The ordinary rule still applies on top of this: **version strings lie**, because distributions backport patches — which is also why decision 10 refuses CVE-range matching.
+
+10. **Vulnerability data: the distribution's own fixed-version-per-release data, and no CVE-range matching.** A CVE's upstream "affected: < 1.2.3" range is wrong on a distribution that backported the fix into 1.2.2-ubuntu4. We match against what the distribution itself says is fixed in which release. **A package the data does not cover produces `inconclusive`, never a pass** — R2 at the data layer.
+
+    **Licence evidence gathered, not assumed** (and the register, decision 11, is where it lives):
+    - **Ubuntu security data — CC BY-SA 4.0.** Usable; share-alike understood.
+    - **Red Hat Security Data — CC BY 4.0**, with an attribution-and-link requirement. Red Hat is **retiring OVAL v2** in favour of CSAF/VEX, so the format is a moving target and that is recorded now rather than discovered at Step 8.
+    - **Debian Security Tracker — licence not stated.** Registered **PENDING with "licence not stated" as the finding**, which is the honest record; it is not read as permissive because it is public. **The operator is asking the Debian security team directly.**
+    - **OSV.dev** is per-upstream, so its licence is not one answer.
+
+11. **Red Hat's attribution is a design input to Step 8, named in four places** (spec §7.4), so the obligation is discovered in the register before use rather than after a report has shipped: per finding, with its advisory link; a once-per-report data-sources notice in JSON, HTML **and** PDF; a machine-readable `data_sources[]`; and the entry in `tools/registry.yaml`.
+
+12. **The evidence contract needs one additive migration, and saying it did not was an error worth recording.** Host findings land on the **evidence** side of the frozen contract, where there is no kind for command output at all. One additive migration (spec §12) adds `command_output`, specifies `file_excerpt` out of the `reserved` block, adds `access_matrix` for the Part E3 access half, and adds `Telemetry.counts` alongside an unchanged `requests` (folding in **D65**). `screenshot` stays reserved, with the reason.
+
+    **It gets its own ADR and its own independently reviewed PR** — the `core/` bar or higher, because a mistake in `contracts/` is in every future artefact — and **it blocks Phase B: nothing may construct evidence before it lands.**
+
+    The error is instructive and is kept visible per the ledger rule (**D75**): the spec claimed "no contract change is needed and none is proposed", reached by checking that `host`, `vantage: agent` and `engagement: defensive` already existed — **the target side of the contract — and never checking the evidence side, where host findings actually land.** It was found by costing Part E3's access matrix, not by reviewing §9. A claim checked against one side of a contract is not checked.
+
+13. **A validated snapshot is well-formed, not trustworthy.** The snapshot arrives from a machine that may be the compromised one. Following D60's reasoning — the question is not whether input is likely to be bad, but what happens when it is:
+    - **Pre-parse limits** on total size, nesting depth, per-field string length, array length and total key count. **Exceeding any limit is a scan error, never a truncation** — a truncated artefact is an R1 violation wearing a success.
+    - **No received value becomes a path, filename, argument, URL, SQL identifier or format string** on our side.
+    - **Output encoding at every render boundary**, terminal ANSI included, proven by a planted-payload test that asserts the payload **present and inert** rather than absent — absence passes just as well when the value was silently dropped, and a dropped value is its own R1 failure.
+    - **Types validated before use, never inferred from the declared version.**
+
+14. **The unsupported runtime is a reported case, not a silent skip** — the R2 hole the operator found in review. The collector detects its own interpreter version as its **first act**. On an unsupported runtime it writes a **valid snapshot whose manifest marks every section unavailable with reason `unsupported_runtime`**, recording the interpreter version found. The entry shim is kept **parsable by Python 2.7** so a host with only 2.7 can still report rather than die at a syntax error and vanish from the fleet view.
+
+    Its companion is the **fleet probe** (`tools/fleet-probe.sh`), deliberately **POSIX `sh` and not Python**, because the hosts this question is about may be exactly the ones without a usable Python and a probe that needs the thing it is looking for answers nothing. Read-only, allowlisted paths, no `PATH` lookup, and an honest `not_found` rather than an empty column — the probe's own R2. The operator runs it across the fleet; its results decide decision 5's floor and Alpha's distribution support.
+
+15. **`--explain` and `--explain-plan`.** `--explain` accounts for a run after the fact. **`--explain-plan` prints the complete allowlist — every command with its argv template and its reason, every file path with the keys it may extract, every exclusion — and executes nothing.** The operator's reason: it is the thing that gets the agent accepted onto a fleet. A fleet owner can read exactly what it will touch before it touches anything.
+
+16. **The receipt is inside the snapshot, designed in from the start and not added later.** Every command the collector ran is recorded in the artefact it produced — argv, exit status, how its output was reduced — so the snapshot answers "what did you do to my machine" from itself, without a separate log that can be absent. Decision 12's `receipt_ref` is what ties each piece of evidence back to its receipt line.
+
+17. **`agent/` is a new top-level directory, and here is why it beats the alternatives.** CLAUDE.md requires the decision and not merely the outcome, and it names `api/` and `web/` as the only new top-level directories in this migration, so **this ADR amends that list and CLAUDE.md is updated in the same change** rather than silently drifting.
+
+    | Alternative | Why not |
+    |---|---|
+    | `scanners/host/collector/` | Scanners run inside our process against our `ScanContext`; the collector runs on someone else's machine with no `ScanContext` and no ambient clients. Putting it there invites a scanner-shaped import and breaks the architectural invariant that scanners get everything ambient from the context. |
+    | `core/agent/` | `core/` is the validated shared library every scanner imports. The collector must import **nothing** from it — it is stdlib-only at a 3.6 floor, while `core/` is 3.13 — so a 3.13-only dependency would be one import away, and the stdlib-only test would be guarding a boundary that looks internal. |
+    | `tools/agent/` | `tools/` holds operator utilities and third-party fetchers that are not shipped product. The agent is shipped product that runs on customer-adjacent hosts; filing it with the helper scripts mis-states what it is. |
+    | A separate repository | The honest long-term answer for an independently released artefact, and rejected **for now**: it would split the snapshot format from the platform that replays it across two repositories with no shared test run, which is precisely the drift the contract freeze exists to prevent. Revisit when the snapshot format is stable and signed (docs/23 item 7). |
+
+    The platform side that **replays** snapshots is not in `agent/`; it goes where the rest of the replay path lives.
+
+**Not covered — deliberately, so the gap is not read as an oversight.**
+
+- **Signing the snapshot.** Deferred to docs/23 item 7. Until then decision 6's framing holds, and no report may imply otherwise.
+- **Any write, fix or remediation.** Declined, not deferred (decision 3).
+- **Windows, macOS, BSD.** Out of Alpha (decision 4).
+- **CVE-range matching, and `confirmed` for package findings.** Both refused on purpose (decisions 9 and 10).
+- **Which distributions Alpha supports.** Open until the fleet probe answers (decisions 5 and 14).
+- **The AI model that writes report summaries.** Owed before Step 8 and not decided here; Part I's constraint stands — **never customer data on a free tier** — recorded so it cannot later be solved by reaching for a convenient free API.
+
+**Reversal cost.** Low while Phase A is all that exists: this ADR, a spec, a plan and one shell script. It rises sharply at the first collected snapshot, because decision 1 is a promise about artefacts already in the store, and again at decision 12's migration, which lands in frozen `contracts/` and is therefore additive-only by construction. The decision most expensive to reverse is **2** — once judgements live in the agent, every snapshot already collected carries that version's opinions and cannot be re-judged.
+
+---
+
 ## ADR-036 — One address policy: no connection to a non-global address, and the address checked is the address connected to
 
 **Status.** Accepted 2026-10-12 (operator), from a design the operator reviewed point by point before implementation; ledger D60. It changes `core/`, so it gets an independent review before merge. *Numbering (operator):* this takes 036, and **ADR-035 stays reserved for the agent architecture** (docs/26 Step 2), because docs/26 and ADR-033 already name it there.
