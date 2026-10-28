@@ -91,14 +91,22 @@
   review_evidence: "installed package metadata (License-Expression or License field) and the bundled licence file in its dist-info"
 
 - name: dnspython
-  version: "2.8.0"
+  version: "2.9.0"
   licence: ISC
   spdx: ISC
   source: https://github.com/rthalley/dnspython
   purpose: the live resolver behind core/dns.py
   isolation: library
+  # 2026-10-28, D91: upgraded 2.8.0 -> 2.9.0 for GHSA-45c3-73f7-pv4m
+  # (CVE-2026-114605). A crafted DNS message makes dns.name.from_wire_parser()
+  # burn CPU on name decompression. We parse untrusted DNS wire data from third
+  # party nameservers on every domscout scan, so this is our threat model and
+  # not a theoretical one. Licence unchanged (ISC).
   signed_off_by: satwik
   signed_off_at: 2026-08-22
+  reviewed_by: Debmalya Dey
+  reviewed_at: 2026-10-28
+  review_evidence: "licence re-read at the 2.9.0 tag: unchanged ISC. Version bumped for GHSA-45c3-73f7-pv4m, not for a licence change"
   reviewed_by: Debmalya Dey
   reviewed_at: 2026-10-09
   review_evidence: "installed package metadata (License-Expression or License field) and the bundled licence file in its dist-info"

@@ -1,6 +1,6 @@
 UV := uv
 
-.PHONY: web-lab-up web-lab-down install test lint format typecheck licence-check rfc-check targets-up targets-down targets-status crosscheck corpus scan check
+.PHONY: web-lab-up web-lab-down install test lint format typecheck licence-check cve-check rfc-check targets-up targets-down targets-status crosscheck corpus scan check
 
 install:
 	$(UV) sync
@@ -25,6 +25,9 @@ rfc-check:
 licence-check:
 	$(UV) run python -m cli.licences
 
+cve-check:
+	$(UV) run python -m cli.cves
+
 targets-up:
 	docker compose up -d
 	@echo "waiting for targets to answer..."
@@ -47,7 +50,7 @@ corpus:
 scan:
 	$(UV) run python -m cli.main $(ARGS)
 
-check: lint typecheck test licence-check
+check: lint typecheck test licence-check cve-check
 
 web-lab-up:
 	$(UV) run python -m corpus.generators.web certs

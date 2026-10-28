@@ -1,0 +1,40 @@
+# Dependabot: tell us about a new dependency version without waiting for
+# someone to think of checking.
+#
+# It is the complement to the CI gate, not a substitute: pip-audit fails the
+# build on a vulnerability that is already in the tree, and Dependabot opens the
+# PR that gets it out. Neither one alone closes the gap D77 recorded.
+#
+# Dependabot opens PRs. Per the operator's standing rule, nothing merges without
+# being told - and note D85: until the trigger defect is fixed, a Dependabot PR
+# will arrive with no CI run attached, exactly like every other PR here, and has
+# to be certified by an explicit workflow_dispatch before it is believed.
+version: 2
+updates:
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    labels:
+      - "dependencies"
+    groups:
+      # One PR for the dev tooling, which cannot reach a customer, and separate
+      # PRs for runtime dependencies, which can. A grouped runtime bump would
+      # hide which change moved a corpus number.
+      dev-tooling:
+        dependency-type: "development"
+        patterns:
+          - "*"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    commit-message:
+      prefix: "chore(ci)"
+    labels:
+      - "dependencies"

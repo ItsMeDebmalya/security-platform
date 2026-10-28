@@ -2931,3 +2931,83 @@ that a future reader finds a decision rather than what looks like a copy-paste**
 obligation it creates is explicit: a change to a redaction pattern in `core/` is not finished until
 the `agent/` copy is changed with it, and that needs a test that compares the two sets rather than a
 reviewer remembering.
+
+---
+
+### D91 — Dependency CVE scanning, and the clean report that was wrong. D77 closed.
+
+**D77 is closed:** `cli/cves.py` runs in CI and in `make check`, `.github/dependabot.yml` exists, and
+`tools/cve-exceptions.yaml` holds the accepted list, which is **empty**. **We ran 67 days with no
+dependency CVE scanning** (from `e4477a2`, 2026-08-22, to today) — recorded as the operator asked.
+
+**The first real run found two vulnerabilities, and both reach our threat model.** Neither was an
+exception candidate and both were fixed by upgrading:
+
+| Package | Was | Advisory | Now |
+|---|---|---|---|
+| `dnspython` (direct) | 2.8.0 | **GHSA-45c3-73f7-pv4m / CVE-2026-114605** | 2.9.0 |
+| `certifi` (transitive, via httpx) | 2026.7.22 | **PYSEC-2026-4320 / GHSA-6q48-6c7w-9gw2** | 2026.10.23 |
+
+- **dnspython:** a crafted DNS message makes `dns.name.from_wire_parser()` burn CPU on name
+  decompression. **We parse untrusted DNS wire data from third-party nameservers on every domscout
+  scan.** In a multi-tenant service, a customer-supplied domain whose nameserver answers with crafted
+  messages is a CPU-exhaustion vector against us. The advisory states there is no workaround. The
+  `pyproject.toml` floor is raised to `>=2.9` so a fresh resolve cannot pick 2.8 again, and the
+  registry entry carries the reason.
+- **certifi:** the bundle shipped the `emSign ECC Root CA - G3` root, and eight eMudhra intermediates
+  chaining to it have compromised private keys. **This is the trust store our TLS scanner renders
+  verdicts from.** An attacker with one of those keys could present a valid-looking certificate for
+  any hostname — and a scanner whose job is to say whether a certificate chain is sound must not be
+  validating against a bundle with revoked-but-trusted roots.
+
+**The finding that matters more than either of them: the run before these reported "No known
+vulnerabilities found".**
+
+That run was `uvx pip-audit --strict` with **no `-r`**. With no requirements file, pip-audit audits
+the ambient environment — and under `uvx` the ambient environment is **pip-audit's own**, not ours. It
+audited 27 unrelated packages, found nothing, exited 0, and said so. Had that gone into CI as written,
+the repository would have had a green dependency gate, permanently, over a tree containing a CPU
+exhaustion bug in its DNS parser and a compromised root in its trust store.
+
+**This is the same defect as D39, D63, D64 and D67, in a new place:** an artefact that reads as more
+complete, or more innocent, than it is. It is also the exact failure D78 and D85 were about one level
+up — the difference between a gate that passed and a gate that *looked at the thing it claims to
+check*. Caught here only because the result was surprising enough to verify, which is not a control.
+
+**So it is a control now, in three enforced places** rather than a comment:
+
+1. `cli/cves.py` **exports the locked graph from `uv.lock` and passes it explicitly.** It never audits
+   an ambient environment.
+2. **A report naming no dependencies raises**, with the message naming this entry. An audit that
+   covered nothing cannot report clean.
+3. **The nine declared runtime dependencies must all appear in the audited set**, or the gate exits 2
+   saying it is "not reporting on what we ship". R1 applied to the gate itself: everything claimed is
+   present. A test asserts the gate's own list of nine matches `pyproject.toml`, so the two cannot
+   drift.
+
+Proven on real data, not only on fixtures: the gate's own pipeline run over the **pre-upgrade** lock
+reports both vulnerabilities and would exit 1; over the post-upgrade lock it audits 40 locked packages
+and exits 0.
+
+**The exception list is designed to expire.** Each entry needs `id`, `package`, `reason`,
+`accepted_by` and `review_by`. **An expired exception fails the build whether or not the vulnerability
+is fixed**, because an exception without an expiry is a permanent silent acceptance. **A stale
+exception — one for a vulnerability no longer reported — also fails**, with "remove it", because it
+misstates the current state of the tree. `reason` is specified as *why it does not reach us*: the file
+says in as many words that "we do not call the affected function" is a reason and "not exploitable" is
+an opinion.
+
+**Scope stated rather than implied.** The audit covers the **whole locked graph, transitive packages
+included** — wider than `cli/licences.py`, deliberately, since `certifi` is transitive and was one of
+the two. What is *enforced* is the presence of the nine runtime dependencies. The transitive **licence**
+sweep remains a Phase 6 task and is untouched by this.
+
+**No scanner result changed.** The corpus baseline is identical after the upgrade — all five scanners
+PASS with the same numbers — so no `scanner_version` is bumped. **The honest caveat:** the baseline is
+*replayed*, so it shows no regression in the replay path. It does not prove live dnspython behaviour
+is unchanged, because the replay does not parse wire-format DNS. A live domscout run would, and has
+not been done for this upgrade.
+
+**Dependabot's limitation, recorded with it:** it will open PRs that, per **D85**, arrive with **no CI
+run attached** like every other PR here, and must be certified by explicit dispatch before being
+believed. It also merges nothing by itself, per the standing rule.
