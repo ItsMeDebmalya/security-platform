@@ -2115,3 +2115,584 @@ conditions, or it is this defect at customer scale.
 *(Historical note — the pre-Tool-3 "Next", now superseded:)* **Tool 3 (DNS & Subdomain Enumeration)**, whose recall definition is the thing to settle before writing any of it — "all subdomains that exist" is not a knowable set, and reporting corpus-relative recall as though it were absolute is the specific dishonesty this product exists to avoid. Phase 0b is complete: the recording layer, the asset graph, passivity declarations, the calendar, the finding store plus `scan verify`, and now the correlation pass are all in place for Tool 3 to build on — in particular, Tool 3 is the first scanner positioned to actually *discover* assets onto the graph rather than only read one seeded for it, and the first real chance to prove the correlation pass's cross-scanner rule on genuine (not relabelled) shared assets.
 
 HTTP record/replay (0b.3, 0b.4) landed, which unblocks D10 (HSTS) and Tool 4 in its entirety whenever those are picked up.
+
+## 2026-10-28 · Alignment check against the approved plan (docs/18): four deviations, two drifts found while checking
+
+The operator re-read the approved plan (`docs/18-v4-plan.md`) before the production-readiness work and
+found four places where the repo has drifted from it or where approved scope was never scheduled.
+All four are recorded here with an owner and a condition. **None is built.** Two further drifts
+surfaced while checking his four, and are recorded with them (D74, D75).
+
+| # | What | Status |
+|---|---|---|
+| D69 | Part E2 is approved scope, not a new readiness idea — and it gates a named differentiator | OWED, reframed |
+| D70 | Part E3's check family is promised scope and is unscheduled | ASSESSED, awaiting a scheduling decision |
+| D71 | The Alpha collector is a named deviation from Part G1 | RECORDED, deviation accepted |
+| D72 | AI summaries have no model or hosting decision, and Part I sets a hard constraint | OWED before Step 8 |
+| D73 | When the one-year retention clock starts for internal fleet findings | OPEN QUESTION, decide before Stage B |
+| D74 | docs/24 module 5 judges log retention against 180 days; Part F3 says one year governs | DRIFT, found 2026-10-28 |
+| D75 | ADR-035's spec says "no contract change is needed"; that is wrong | CORRECTION to an unapproved spec |
+
+### D69 — Part E2 is approved scope. The readiness items implement it; they do not add to it.
+
+Two of the production-readiness items — the tenancy/permissions ADR and the logging/audit ADR — were
+framed in conversation as new work. **They are not.** `docs/18` **Part E2** already commits us, in the
+approved plan, to: **zero standing access** (engineers work against metadata and synthetic data by
+default), **break-glass** (time-boxed, reason recorded, approved by a second person, expires
+automatically), **separation of duties** (whoever administers the infrastructure cannot grant
+themselves data access), **per-tenant encryption** (no single key opens everything), an **immutable
+audit log** (every read, export, restore or delete, in a log operators cannot edit), a **secrets
+vault**, and **backup controls** (encrypted, two-person restore, restores audited). The Decision Log's
+review point #1 answered "both readings adopted" and called (a) *mandatory*.
+
+So these two ADRs are **approved commitments being given an owner and a date**, and the ledger records
+them that way. The honest gap is not that the commitment is missing from the plan; it is that
+**nothing in the repo implements any of it**, and the 2026-10-28 readiness audit found there is no
+application logging at all — zero `logging` imports across `core/`, `cli/`, `scanners/`,
+`contracts/` — which is the floor the immutable audit log has to stand on.
+
+**And it gates a selling point, not housekeeping.** Part E2 *and* Part H2 both commit to a
+**customer-visible access log**: the customer sees which of our staff opened their data, when, and
+under whose approval. Part E2 says why it matters — "Every vendor says 'trust our internal controls.'
+We show the log. That converts a promise into evidence" — and H2 lists it as a supporting
+differentiator. **It depends entirely on the audit log.** An audit log that is not immutable, not
+attributable to a person, and not exportable to the customer cannot support it. Therefore:
+
+> **The audit specification is a prerequisite for a named differentiator.** It is not internal
+> hygiene that can be deferred to whenever operations work gets scheduled. Anything that weakens the
+> audit log's immutability or per-person attribution silently removes a thing we sell.
+
+Related, and already recorded in the 2026-10-28 readiness audit: no user-attributable audit trail
+exists today (`status_history` attributes a change to a *scan*, not a person), and `org_id` is on
+every store row from the first migration but is `"org_internal"` throughout, with `core/store.py`'s
+own docstring calling the simplification by name. **Do not read the presence of `org_id` and
+`core/authz.py` as evidence that tenancy or authorisation of *people* exists. Neither does.**
+
+### D70 — Part E3's check family: promised scope, unscheduled. Assessed, not built.
+
+**Confirmed as the operator described it.** Part E3 specifies a defensive check family "delivered
+mainly through the Linux agent", in two halves — access review (log file permissions, log delete
+rights, backup permissions, config permissions, privilege review, service account scope) and exposure
+review (backups in web paths, exposed config files, exposed log endpoints, secrets in retrievable
+files, backup encryption, retention and integrity) — with a stated output: **an access matrix per
+file type (who can read, write, export, delete), plus exposure findings.** The Decision Log's review
+point #1 answered "both readings adopted", and said (b) "is low additional cost once the Linux agent
+exists".
+
+**It appears nowhere in the build.** Not in docs/24's seven Alpha modules, not in the
+capacity-permitting list (Docker posture, database/cache exposure), not in the post-Alpha list
+(file-integrity monitoring, rootkit indicators, SUID inventories, kernel hardening, scheduled-task
+audits — adjacent, but none of them is the access matrix). Checked 2026-10-28.
+
+**The exposure half, against the shipped web scanner (v1.0.7, 24 check ids read from the source):**
+
+| Part E3 exposure check | Covered today? |
+|---|---|
+| Secrets in retrievable files | **Yes** — `web-secret-in-response`, with the canary rule behind it |
+| Log endpoints exposed | **Partly** — `web-debug-mode` catches debug mode; a login-less log *viewer* needs path candidates |
+| Backups in web paths (`/backup.sql`) | **No** — only obliquely, if `web-directory-listing` or `web-robots-paths` happens to disclose the path |
+| Config files exposed (`.env` over HTTP) | **No** — same reason |
+| Backup encryption | **No, and not externally observable** — agent-side only |
+| Retention and integrity | **No** externally; partly agent-side via module 5 — see **D74** |
+
+The two "No"s that matter (`/backup.sql`, `/.env`) are **not a scanner-build problem. They are a mode
+decision**, and that is the finding: requesting candidate paths nobody disclosed to us is **path
+enumeration**, which Web Light is passive-only by design and does not do. So the exposure half is
+blocked on a passivity question — is a GET on a guessed path Light, Standard, or neither — not on
+engineering effort. That question belongs in an ADR before any of it is built, and it is the same
+question Tool 4b's passivity ADR was always going to have to answer.
+
+**The access half, costed as an eighth agent module.** Most of its *raw facts* are already free: the
+ADR-035 collector's file allowlist records `mode`, `owner_uid` and presence per entry (spec §5.2, §8),
+and module 3 already reads sudo configuration while module 4 already maps listening ports to
+processes. What is **not** free:
+
+- **Log delete rights** is the valuable check in the family — "an attacker can destroy the evidence of
+  their own activity" — and it is the one that is real work. Delete permission is a property of the
+  *parent directory*, not the file, expanded through group membership and possibly POSIX ACLs. That is
+  derived logic over collected facts, in the scanner, not another read.
+- **Service account scope** ("the application account has far broader read access than the
+  application needs") is the genuinely new engineering: it needs the cross product of accounts,
+  groups and allowlisted paths, and a defensible notion of "more than it needs".
+- **The access matrix is a new evidence shape**, and it lands on `contracts/` — see **D75**.
+
+**Cost, honestly bounded:** the access half is **M**, roughly comparable to one existing agent module
+plus a contract migration, and it is **cheaper now than later** — every file entry would need its
+`mode`/`owner` semantics revisited afterwards, and the matrix shape would be retrofitted onto an
+evidence kind already specified without it, which is exactly the retrofit ADR-035 was written to avoid
+for the receipt. The exposure half is **S in code and a decision in cost**: blocked on the passivity
+ADR, cheap once it exists.
+
+**Recommendation (for the operator's scheduling decision, not acted on):**
+
+1. **Split the family.** It is one plan section but two different kinds of work, and scheduling it as
+   one item is why it fell through the gap.
+2. **The access half: schedule into Alpha as module 8, sequenced after modules 1–4 and before the
+   fleet view (module 7).** Reason: it rides the collector's existing file allowlist, its facts are
+   already being collected, and the matrix is a per-host artefact the fleet view would otherwise have
+   to be re-plumbed to aggregate. It also carries the strongest single finding in the family (log
+   delete rights), and it is defensive-only, so it raises no ADR-004 question.
+3. **The exposure half: immediately after Alpha, gated on a passivity ADR** that decides whether a GET
+   on an undisclosed candidate path is Light, Standard or neither. Do not fold it into Alpha: the
+   honest answer may be that it needs verified ownership, and in that case it is not a Light feature at
+   all and the scope question is bigger than the checks.
+4. Either way, **docs/24 is edited so the family appears in the module list with its status**, because
+   the thing that went wrong here was a promised section being invisible in the build plan — not the
+   engineering.
+
+### D71 — The Alpha collector, as a named deviation from Part G1
+
+Part G1 describes an agent that is read-only, least privilege, resource-capped, with **outbound-only
+connections**, **signed binaries**, a **one-time enrolment token**, a **clean uninstall**, and which
+"collects facts and **sends them to us**". Alpha's collector (ADR-033, ADR-035) has **no network
+capability at all, no signature, no enrolment, and writes one file that a human moves.** Until now
+that narrowing existed only as a series of local decisions inside two ADRs. Recorded here as one
+deviation, so that anyone who reads Part G and then watches a demo finds the gap already explained
+rather than discovering it.
+
+| Part G1 says | Alpha does | Why | What closes it |
+|---|---|---|---|
+| Outbound-only connections; sends facts to us | **No network capability whatsoever**; writes a file, moved by hand | Narrower than promised, not broader. No transport means no credential on the host, no enrolment secret to leak, no outbound allowlist to argue with a firewall team, and nothing to compromise if the collector is wrong. It also keeps ADR-004 trivially true. | Transport **after Step 7** (docs/26), when `api/` exists to receive it |
+| Signed binaries | Unsigned plain `.py` files | There is no binary to sign: it is stdlib Python source read by the host's own interpreter, which is itself a deliberate auditability choice (ADR-035 §3). Signing the snapshot is the related question, and `self_hash` is explicitly **not** it — it detects corruption, not tampering. | Signing per **docs/23 item 7** (scan receipt), whose own note says signing is the part to scope before committing |
+| One-time enrolment token | No enrolment | Enrolment is meaningless without transport, and a token on 50 hosts with nothing to authenticate to is a liability with no benefit. | Follows transport, after Step 7 |
+| Clean uninstall | `rm` of a directory | Honest rather than narrowed: nothing is installed, no service, no unit file, no cron, no state outside the snapshot path. This one is *stronger* than Part G1, not weaker. | Nothing owed |
+| Read-only, least privilege, resource-capped | **Held, and tightened** | Unprivileged by default, argv-only with `shell=False`, fixed binary directories not `PATH`, a scrubbed environment, per-entry timeouts and output caps, `needs_root` declared per entry. | Nothing owed |
+
+**The deviation is accepted by the operator (2026-10-28) and is the right call for Alpha.** What it
+costs is Part G2's demo: "the agent reads the truth" is still true, but in Alpha it is true of a file
+someone carried, not of a fleet reporting in. Say that in any demo rather than letting Part G set the
+expectation.
+
+### D72 — AI summaries in Alpha have no model or hosting decision. Part I's constraint is hard.
+
+ADR-033 puts **AI-written summaries under a mandatory fact-check test** in Alpha, and docs/25 specifies
+them in the report. Those summaries operate on findings — **which are customer data.** No model or
+hosting decision is recorded anywhere in the repo: not in the ADRs, not in docs/24, not in docs/25,
+not in docs/26, and `tools/registry.yaml` holds no model entry. Checked 2026-10-28.
+
+**The constraint, stated here so it cannot be solved later by reaching for a convenient free API.**
+Part I is explicit, and it is a three-stage plan, not a preference:
+
+> Prototype — free hosted tiers (Groq, Google AI Studio) — **"Never customer data on a free tier."**
+> Production — **self-hosted Qwen3 (Apache 2.0)** — data never leaves our infrastructure, no
+> per-token cost, **supports our India residency obligation**, becomes a selling point.
+> Fallback — a cheap paid API kept configured, so a rate limit never breaks production.
+
+Two consequences the plan makes unavoidable:
+
+1. **Alpha's summaries are not prototype work.** They run on real findings from real servers — our own
+   fleet in Step 6, customers after Step 9 — so the free-tier stage does not apply to them. A free
+   hosted tier is available for *developing the prompt against synthetic findings*, and for nothing else.
+2. **This is a residency decision, not only a vendor choice.** Part F3 makes India residency a Phase 1
+   architectural decision; sending findings to a hosted model outside India is the same class of
+   mistake as storing them outside India, and it is not fixed by deleting them afterwards.
+
+**Owed: a model and hosting decision, as an ADR, before Step 8 (the report) begins.** It must state
+the model, where it runs, what data reaches it, what the fallback is and under what conditions, and
+the licence evidence for the weights in `tools/registry.yaml` under the IANA pattern (Qwen3 is cited
+as Apache 2.0 in the plan — **that is a citation to be verified, not evidence**, exactly as the Ubuntu
+and Red Hat data licences were). The fact-check test ADR-033 already mandates is a separate obligation
+and does not substitute for this one.
+
+### D73 — When does the one-year retention clock start? Open question, decide before Stage B.
+
+Part F3 resolves the CERT-In 180-day / DPDP one-year conflict in favour of **one year**, and states the
+consequences we accepted: storage roughly doubles so tiering is required, **India residency becomes a
+Phase 1 architectural decision**, write-once handling for security logs so retention is defensible,
+and — the sentence that makes this urgent — **"it cannot be retrofitted: logs already deleted are gone
+forever."**
+
+docs/26 puts compliance foundations at **Step 9**, before external users. That satisfies the letter of
+the obligation for *customer* data. **But Step 6 brings findings from ~50 production servers into
+existence first**, and Stage B of the rollout (docs/24 §7: "a few non-critical production servers")
+puts real fleet data on disk before any retention discipline exists. Today those findings would land in
+a local SQLite file with no residency statement, no tiering, no write-once handling, and no retention
+policy — and whatever is deleted or overwritten before Step 9 is gone.
+
+**The question, for a deliberate decision rather than a default:**
+
+1. **Do the one-year rule and the India residency requirement apply to internal fleet findings from
+   Step 6?** The DPDP framing is about personal data and system/processing logs; our own servers'
+   posture findings are arguably neither. **The plan does not say, and guessing either way is wrong**:
+   guessing "no" risks a gap we cannot repair; guessing "yes" imposes tiered storage on Step 6 and
+   could stall the rollout.
+2. **If yes, what is the minimum that must exist before Stage B?** The candidate floor is small and
+   worth naming: a stated storage location with its residency, append-only handling for findings and
+   their status history, no destructive delete path, and a recorded retention start date — explicitly
+   *not* the full Step 9 architecture.
+3. **Either way, record the start date of the clock**, because the one irreversible mistake is
+   discovering in 2027 that we cannot say when the retention window opened.
+
+**Recommendation:** answer (1) before Stage B, not before Step 6 — lab-box findings carry no fleet
+data and need nothing. Treat (2)'s floor as cheap insurance regardless of the answer, since "never
+destructively delete a finding" is already how `core/store.py` behaves (`ingest()` will not close what
+a scan does not mention; only `scan verify` may close) and is therefore nearly free to commit to now
+and expensive to reverse later.
+
+### D74 — Drift found while checking D70: module 5 judges retention against the wrong number
+
+`docs/24` module 5 (CERT-In readiness) says it reports "log retention against **the 180-day
+requirement**". Part F3 decided that where CERT-In's 180 days and DPDP's one year overlap, **the
+stricter governs, so one year**. A module that judges a host's log retention against 180 days would
+therefore report a host as compliant at, say, 200 days when the governing obligation is 365 — and it
+would do so in a module whose entire purpose is compliance readiness. It would also be the product
+contradicting its own plan in customer-visible output.
+
+Unbuilt, so this costs one line to fix: module 5 judges against **one year**, and names both
+obligations with the reason the stricter one applies. Recorded rather than quietly corrected, per the
+standing rule. **Not fixed in this entry** — docs/24 is edited when module 5 is scheduled, or with
+D70's docs/24 edit if that is approved first, whichever comes first.
+
+### D75 — Correction: ADR-035's spec claims no contract change is needed. It is wrong.
+
+The host-agent design (`docs/superpowers/specs/2026-10-13-host-agent-design.md` §9, PR #53, **not
+approved**) states: "No contract change is needed and none is proposed." Checking D70's access-matrix
+output against `contracts/evidence.schema.json` showed that is false.
+
+The schema's evidence kinds are `http_pair`, `oob_callback`, `timing`, `dns_answer`, `tls_handshake`,
+`screenshot`, `file_excerpt` — and the last two are in a `$defs` block named **`reserved`**, whose own
+description says: *"screenshot and file_excerpt are reserved. Their shapes are specified when the
+first scanner needs them; until then they carry the base fields and a stated rationale for their
+control."*
+
+So:
+
+- **The `host` scanner is that first scanner.** Specifying `file_excerpt`'s shape is a **contract
+  change** — additive, and *anticipated by the contract itself*, which is why the reserved slot
+  exists, so it is cheap and in no way a freeze violation. But it is a deliberate additive migration
+  with an ADR, which is precisely what CLAUDE.md requires for `contracts/`, and §9 said it was not.
+- **Worse, command output has no evidence kind at all.** A finding resting on `dpkg-query` output is
+  not a file excerpt and not any other listed kind. Either `file_excerpt`'s specified shape is made
+  broad enough to carry "an allowlisted read, with its receipt line" (file *or* command), or a new
+  kind is added. **That is a design decision, and it is now the first thing the ADR-035 review has to
+  settle**, because every host finding's evidence depends on it.
+- D70's access matrix is a third shape on the same question, which is the argument for settling it
+  once, now, rather than per module.
+
+**Owed:** §9 corrected in the spec, and the contract decision added to Phase A of the plan, **before
+Phase B writes anything that constructs evidence**. The claim stays visible here rather than being
+edited out of the spec silently. Nothing about the rest of ADR-035 changes: it remains additive, and
+no existing kind is touched.
+
+**Also noted, for the ADR-035 approval:** PR #53 is **15 days old and still unapproved** as of
+2026-10-28. Phase A has not started, correctly. D75 is a reason to re-read §9 before approving, not a
+reason to re-open the design.
+
+## 2026-10-28 · Production readiness: the gaps named, with conditions (D76–D84)
+
+From the 2026-10-28 readiness audit (15 production questions, answered against the repo rather than
+from memory) and the operator's plan of the same day. **The audit's honest frame, kept here because it
+is the thing that makes the list readable:** most of those 15 questions are written for the product
+that does not exist yet — there is no `api/`, no `web/`, no accounts, no users, no HTTP surface, no
+deployment and no release. The repo scored well on the axes that are *this product's own subject
+matter* (evidence, refusals, redaction, deny-by-default scope, errors-as-errors) and scored as
+pre-production on the axes that belong to running a SaaS. **Every gap below traces to the SaaS part
+not being built.** The danger is not the gaps; it is answering "yes" to the tenancy, authorisation and
+audit questions later because the words `org_id` and `authz` already appear in the codebase.
+
+| # | Gap | Condition | Status |
+|---|---|---|---|
+| D76 | No application logging anywhere | Resolved **before `api/` ships** | OWED |
+| D77 | No dependency CVE scanning | Standalone and cheap; do it now | OWED |
+| D78 | CI has never executed | **First green run before Step 4**; now gates PR #53 | IN PROGRESS 2026-10-28 |
+| D79 | `org_id` is folded into no part of `finding_id` | Named risk, tied to the tenancy ADR (D80) | RECORDED |
+| D80 | Tenancy and permissions ADR | **Step 7 prerequisite**; approved Part E2 scope (D69) | OWED, not written |
+| D81 | Logging and audit ADR | **Step 7 prerequisite**; approved Part E2 scope (D69) | OWED, not written |
+| D82 | Minimal alerting | **Step 6 requirement** (before 50 agents and scheduled scans) | OWED, not designed |
+| D83 | Rollback and data-migration discipline | **Step 9 requirement** | RECORDED |
+| D84 | Review cadence for findings, fixtures and upstream feeds | Standing, from Alpha onward | RECORDED |
+
+### D76 — There is no application logging. At all.
+
+`grep -rn "import logging\|getLogger"` over `core/`, `cli/`, `scanners/` and `contracts/` returns
+**zero hits** (checked 2026-10-28). Output is 30 `print(`/`_echo` calls. So two of the readiness
+questions — "are application logs sufficient to debug production issues" and "are critical failures,
+unusual behaviour and suspicious activity detected" — have the same answer: **no, because there are
+no logs and no detection.**
+
+**Today that is defensible.** Everything runs one-shot from a terminal with a human in front of it,
+and the corpus, the receipts and the evidence model carry what logs usually carry. `docs/11-operations.md`
+plans observability; nothing implements it.
+
+**It stops being defensible the moment `api/` exists** and a scan runs with nobody watching. So the
+condition is **before `api/` ships**, not "when operations work gets scheduled" — and note the
+ordering consequence: **D81's audit log cannot be built on a logging floor that does not exist**, and
+per D69 the audit log is what a named differentiator rests on. D76 is therefore upstream of a selling
+point, not merely of debuggability.
+
+### D77 — No dependency CVE scanning, and we have run 67 days without it
+
+No `pip-audit`, no `safety`, no `.github/dependabot.yml` (`.github/` holds `workflows/` only).
+**Licences are enforced** — `make licence-check` / `cli.licences` implements ADR-003 — but **known
+CVEs in the 9 runtime dependencies are checked by nothing.**
+
+**How long we ran without it, recorded as the operator asked:** the repository's first commit is
+`e4477a2`, **2026-08-22**. So **67 days to 2026-10-28**, the whole life of the project, with 9 runtime
+dependencies (`pydantic`, `jsonschema`, `pyyaml`, `python-ulid`, `dnspython`, `httpx`, `typer`,
+`cryptography`, `idna`) and a locked `uv.lock`. No vulnerability in them has been ruled out; none has
+been found either, because nothing looked.
+
+**Mildly embarrassing for a security-scanning product**, and the cheapest item on this list: a
+`pip-audit` CI step plus `.github/dependabot.yml`. **Scheduled after D78** at the operator's
+direction, because adding a step to a pipeline that has never run would be adding a step to something
+we cannot see work. Exceptions, if any are ever needed, are **dated and reasoned** in a list — never a
+bare ignore flag.
+
+### D78 — CI exists, is well built, and has never executed
+
+`.github/workflows/ci.yml` runs lint, format, typecheck, the licence policy, the full test suite and
+`cli.corpus --check-baseline`, uploads the corpus scores on failure as well as success, and carries a
+`workflow_dispatch` trigger whose own comment says why:
+
+> *"Lets you trigger a run by hand from the Actions tab, without pushing a commit. This is how you
+> check the pipeline works at all — D1 in the ledger was open for a week because a workflow that has
+> never run is indistinguishable from one that does not work."*
+
+`gh run list` returns **no runs at all**, on any branch, including no `workflow_dispatch` — confirmed
+twice, 2026-10-13 and 2026-10-28. The workflow was added **2026-09-01** (`7315f26`), so it has sat
+unexecuted for **57 days**. Its own comment is the indictment.
+
+**Consequence, stated plainly: every gate in this repository is a local gate on one machine.** Lint,
+typecheck, licence, 91 test files, the corpus baseline — all of it is verified by the assistant on one
+box whose state nobody has audited. **This is the same defect class as D28, D31, D67 and the
+unexecuted Python 3.6 floor**: a check that has never been independently executed is indistinguishable
+from one that does not work, and an Alpha whose pitch is proof-over-assertion cannot rest on gates
+nobody but us has run.
+
+**Operator's direction, 2026-10-28:** get to a first green run, and **it gates PR #53** — one more day
+on a 15-day-old PR is worth making it the first PR this repository has ever validated off the
+assistant's machine. **Failure is expected and each failure is a finding, not a nuisance**: a gate that
+passes locally and fails in CI is reporting real hidden local state, and it gets reported before it is
+fixed. **If the first run exposes something about the corpus baseline or the licence check
+specifically, that is a finding and gets its own D number.**
+
+### D79 — `org_id` exists on every row and is in no part of `finding_id`
+
+`core/store.py`'s own docstring is honest about it:
+
+> *"the primary key is `(id, org_id)` — two orgs can observe what happens to be the same deterministic
+> id without colliding, though in practice `org_id` is folded into no part of `finding_id` today and
+> that is a known simplification, not a claim that it will always hold."*
+
+Finding identity is `sha256(scanner + check_id + target + normalise(location) + instance_key)`
+(CLAUDE.md). **No tenant component.** Today `org_id` is `"org_internal"` everywhere
+(`core/context.py:84`), so nothing can collide and the simplification is free.
+
+**The day `org_id` varies, it stops being a simplification and becomes a cross-tenant identity
+question**, and there are at least three parts to it, none decided: whether two customers who both own
+the same asset (a shared CDN hostname, a jointly administered domain) produce one finding id or two;
+whether finding history can be carried across a tenancy change without rewriting ids; and what happens
+to **rows already written** under the single-tenant assumption, since ids are deterministic precisely
+so that history survives, and changing the formula retroactively closes and reopens every finding —
+the exact failure `scanner_version`'s exclusion from the formula exists to prevent.
+
+**Tied to D80.** The tenancy ADR must answer "does `org_id` enter finding identity, and what happens to
+existing rows", and must answer it **before** any row is written under a varying `org_id` — which is
+Step 7 at the latest. Recorded as a named risk, not a defect: the behaviour today is correct for today.
+
+### D80 — Tenancy and permissions ADR (Step 7 prerequisite; approved Part E2 scope)
+
+Per **D69** this is not a new idea: `docs/18` Part E2 already commits us to zero standing access,
+break-glass, separation of duties and per-tenant encryption. **Not to be written yet** (operator,
+2026-10-28). What it must settle, recorded now so the scope does not drift:
+
+- **The tenancy boundary, and where it is enforced** — one place, checked, not sprinkled.
+- **The two or three roles Alpha actually needs**, deliberately *not* a general RBAC system. A role
+  model built for a product with no users is a guess that later constrains the product.
+- **How `core/authz.py`'s scope authorisation relates to user permissions.** These are **different
+  axes and they will be conflated** — `core/authz.py` authorises *scanning a target* (ownership proof,
+  outbound scope); it says nothing about *who is asking*. The ADR must state the distinction in those
+  terms, because the shared word "authorisation" is the trap.
+- **Whether `org_id` enters finding identity, and what that means for existing rows** (D79).
+- **Deny-by-default at every endpoint**, in the shape `core/authz.py` already uses for scope.
+
+### D81 — Logging and audit ADR (Step 7 prerequisite; approved Part E2 scope)
+
+Also approved Part E2 scope (D69), also **not to be written yet**. What it must settle:
+
+- **Which events are audit-logged:** authorisation decisions, scan launches, report access,
+  kill-switch activations, administrative actions.
+- **What is never logged**, with the redaction path **proved on raw output** — the same test shape as
+  the collector's canary test (ADR-035 §6.5): plant canaries of every family, assert on the raw bytes,
+  error paths included, because an error message is exactly where a value leaks.
+- **How an entry ties to a user and to a scan.** Today `status_history` ties a change to a *scan*, not
+  a person; there is no user to tie to, which is why this waits for D80.
+- **An honest definition of tamper resistance: append-only with a per-entry hash chain, claimed as
+  exactly that and no more.** The same honesty as ADR-035's `self_hash` — a hash chain written by the
+  same process that writes the entries detects accident and casual edit, not a determined operator
+  with write access. If stronger is required, it is external anchoring, and that is a separate decision
+  with a separate cost. **Do not let "immutable" in Part E2 be satisfied by a word.**
+
+**Recorded against both D80 and D81:** Part E2 *and* Part H2 commit us to a **customer-visible access
+log** — the customer seeing which of our staff opened their data, when, and under whose approval — and
+the plan names it a differentiator ("Every vendor says 'trust our internal controls.' We show the log.
+That converts a promise into evidence"). **It is impossible without the audit log underneath it.** So
+D81 is a prerequisite for a named selling point, and anything that weakens per-person attribution or
+append-only handling silently removes something we sell. See D69.
+
+### D82 — Minimal alerting, as a Step 6 requirement
+
+Full monitoring stays a v1.0 item and is **not** in scope here. But **Step 6 puts ~50 agents and
+scheduled scans into production**, and at that point nobody is watching a terminal. Before Step 6 we
+need to know about: **kill-switch activations**, **rate-limit breaches**, **repeated authorisation
+denials**, and **scan failures**. That is the whole list — deliberately four things, not a monitoring
+stack.
+
+Depends on D76 (there is nothing to alert *from* today). **Not designed now**, recorded against Step 6
+at the operator's direction.
+
+### D83 — Rollback and data-migration discipline, as a Step 9 requirement
+
+Ledger-only, no work. Today there is no release process, no migration tooling, and one SQLite file with
+`PRAGMA user_version` as its only version marker; `core/store.py` was deliberately written so the
+Postgres move (ADR-009) swaps the driver rather than the shape. Before Step 9: schema changes
+backward-compatible within a release, a release that can be rolled back **without data loss**, and
+migrations with a tested down path — or an explicit statement that a given migration has none, which
+is a decision rather than a discovery. Related: D73 (the retention clock) and D79 (ids under a varying
+`org_id`), both of which constrain what a migration may do to existing rows.
+
+### D84 — A review cadence for findings, fixtures and upstream feeds
+
+Ledger-only, no work. Three things decay in this repo and all three have bitten us:
+
+- **Open findings** — the ledger is the register and it is current, but nothing schedules a re-read, so
+  items age quietly (PR #53 sat 15 days; D65 and the domscout regeneration are both owed).
+- **Stale fixtures** — the committed domscout fixtures are known stale against today's generator
+  (`resolver: null` vs `1.1.1.1`, `servfail` carrying DS/DNSKEY answers no longer queried), which is
+  why the full regeneration is scheduled before Step 4.
+- **Deprecated upstream feeds**, with the **worked example already in hand: Red Hat is retiring OVAL
+  v2** in favour of CSAF/VEX (found 2026-10-13 while gathering licence evidence). Had we not looked at
+  the licence, we would have built the host scanner's matcher on a deprecated feed and discovered it
+  when it stopped updating — which is the quiet-failure shape this cadence exists to catch.
+
+A cadence, not a tool: on a stated interval, re-read the ledger's open items, re-run the generators and
+diff the committed fixtures, and re-check each registered upstream source for deprecation and licence
+change. Interval and owner to be set when it is scheduled.
+
+### Addendum to D70 — the operator's decisions on the E3 family (2026-10-28)
+
+The split is **accepted**, with one check held back:
+
+- **Access half: into Alpha as module 8**, after modules 1–4 and before the fleet view (module 7), for
+  the reasons given in D70. The operator's own framing of its value: **log delete rights is the
+  strongest finding in the Alpha set** — "an attacker being able to destroy the evidence of their own
+  activity is the kind of thing a server owner acts on the same day."
+- **Module spec note, required:** log delete rights is **derived logic over group membership and POSIX
+  ACLs**, not a read. It is the module's highest-value *and* most error-prone check, so it needs **a
+  real positive on a lab box with a deliberately over-permissive group before it reaches the fleet,
+  plus a negative** — docs/24's standing rule, applied with teeth to the one check most likely to be
+  subtly wrong.
+- **"Service account scope" is held back and backlogged, with its open question stated**, so nobody
+  re-proposes it as cheap:
+  1. It requires "a defensible notion of *broader than it needs*", and **we do not have one.** An
+     account's permissions being wider than an assumed baseline is a **heuristic, and no heuristic is
+     proof** (standing rule).
+  2. The alternative the operator floated — *a permission granted that no running process under that
+     account has exercised* — is **still inference**, and it additionally requires **observation over
+     time**, which a **one-shot collector structurally cannot provide** (ADR-033: not a daemon, no
+     listener, runs once and exits). It is therefore not merely harder; it is out of reach for Alpha's
+     agent architecture, and it would need the post-Alpha always-on agent before it could even be
+     attempted factually.
+  3. What stays in is factual: **modes, owners, group expansion, delete rights on parent directories,
+     and ACLs where present.**
+- **Exposure half: after Alpha, gated on a passivity ADR**, not folded into Alpha. The operator's
+  expectation, recorded in advance so the ADR is judged against it rather than written to it: **the
+  honest answer is likely "requires verified ownership"**, which follows from **ADR-033 decision 8** —
+  *ownership proof is the boundary of consent, not a measure of blast radius*. If that is where it
+  lands, `/backup.sql` and `/.env` are **not Light features at all**, and the scope question is larger
+  than the checks. The ADR gets written when Tool 4b forces it.
+- **docs/24 is edited either way, now**, because the failure here was **invisibility, not
+  engineering**: the post-Alpha list was adjacent enough to look like coverage. The family appears with
+  an explicit status — module 8 in Alpha, exposure half deferred pending the passivity ADR, service
+  account scope backlogged with its open question.
+
+## 2026-10-28 · D78 resolved: CI's first runs are green. D85: the triggers that have never fired.
+
+**The first CI run in this repository's history** executed 2026-10-28, 57 days after the workflow was
+committed (`7315f26`, 2026-09-01) and 67 days after the first commit. Run `40648078549`,
+`workflow_dispatch` on `main` at `e413efa`.
+
+### D78 — resolved. Every gate passed on the first attempt.
+
+| Step | Result |
+|---|---|
+| Set up job, checkout, install uv, install dependencies (`uv sync --locked`) | success |
+| **Lint** (`ruff check` + `ruff format --check`) | success |
+| **Typecheck** (`mypy`) | success |
+| **Licence policy** (`cli.licences`) | success |
+| **Unit tests** (`pytest`, 91 test files) | success |
+| **Corpus** (`cli.corpus --check-baseline`) | success |
+| Keep the corpus scores (artifact upload) | success |
+
+**Conclusion: `success`.** Then dispatched on both open branches: `docs/plan-alignment-ledger`
+(PR #54) and `docs/adr-035-agent-architecture` (PR #53) — **both green**, and #53 re-run after the §12/§13
+commit so the certified sha is the one that would merge.
+
+**This is a weaker result than it looks, and it is worth being precise about why.** The operator and the
+assistant both expected failure, and the reasoning was sound: a gate that has only ever run on one
+machine usually depends on something about that machine. **It did not.** `uv sync --locked`,
+`.python-version` at 3.13.15 pinned in both places, no network-dependent test, no absolute path, no
+host-specific fixture. So the finding is: **the local gates were honest.** `make check` and
+`make corpus` on this box were reporting what a clean checkout reports.
+
+What that does **not** mean: it does not retroactively validate the 15 days before today, and it does
+not change the argument for the gate. A workflow that has never run is still indistinguishable from one
+that does not work — **we now know which, and only as of today.** The three numbers in the corpus
+baseline and the licence policy have, for the first time, been executed somewhere other than the
+assistant's machine.
+
+**Also learned, a small honest note:** this is the first evidence that `uv.lock` resolves cleanly on a
+host that is not this one, which is the dependency-level version of the same point and is the reason
+D77's `pip-audit` step is worth adding to a pipeline we can now see work.
+
+### D85 — Neither `push` nor `pull_request` has ever triggered a run. Only manual dispatch works.
+
+**Found while resolving D78, and it is the more serious finding of the two.** Queried directly:
+
+| Trigger | Runs, all time |
+|---|---|
+| `workflow_dispatch` | **3** (all today, all green) |
+| `pull_request` | **0** |
+| `push` | **0** |
+
+The workflow declares all three (`on: push: branches: [main]`, `pull_request`, `workflow_dispatch`).
+Tested deliberately today, not inferred:
+
+1. Pushing a new branch and opening **PR #54** produced **no run** — `statusCheckRollup` on the PR is
+   empty and the head commit has **zero check-runs**.
+2. Pushing a commit to **PR #53's** existing branch (a `synchronize` event) produced **no run**.
+3. `workflow_dispatch` via the API produced a run **immediately**, three times.
+
+Ruled out from the API: the workflow is registered and `state: active`; repository Actions are
+`enabled: true` with `allowed_actions: "all"`; the repo is private, **not** a fork, **not** archived;
+`ci.yml` is present on the default branch (`origin/main`), which is what `pull_request` needs; and the
+`concurrency` block cannot be the cause, because a cancelled run would still appear in the list and none
+does. Zero `push` runs all time also means **every merge of PRs #22–#52 pushed `main` without
+triggering anything** — so this is not new today, it has been true for the repository's whole life.
+
+**The cause is not visible from the API** and the honest statement is that I do not know it. It lives in
+one of two places only the operator can see:
+
+- **Settings → Actions → General** on the repository — in particular anything restricting which events
+  may run workflows.
+- **The account's billing / Actions spending page** — a private repository with exhausted included
+  minutes and no spending limit can have webhook-triggered runs refused while an explicit API dispatch
+  still succeeds. The one dispatch's billable time reported `total_ms: 0`, which is consistent with
+  included minutes but is not proof of anything.
+
+**Why it matters more than D78 did.** The gate exists and works, but **nothing connects it to a PR.**
+A merge today passes no check automatically; the "green" above is green because it was *asked for by
+hand*, three times, by the person who wrote the code. That is better than nothing and it is **not** an
+independent gate — it is the same defect D78 named, one level up: a trigger that has never fired is
+indistinguishable from one that does not work.
+
+**Owed, and it belongs with the operator because the fix is in settings:**
+
+1. The operator checks both places above and reports what he finds.
+2. Until it is fixed, **every PR is certified by an explicit `workflow_dispatch` on its branch head, and
+   the run id and sha are recorded in the PR**, so "CI green" always names which commit was tested. Done
+   for #53 and #54 today.
+3. Once events fire, **a required status check on `main`** is the thing that makes it a gate rather than
+   a habit — and that is a decision for the operator, since it changes how merges work.
+4. **Do not treat a dispatched green run as equivalent** to one a PR triggered. A hand-asked gate tests
+   what the asker chose to test.
