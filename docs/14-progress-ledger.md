@@ -2605,3 +2605,94 @@ The split is **accepted**, with one check held back:
   engineering**: the post-Alpha list was adjacent enough to look like coverage. The family appears with
   an explicit status — module 8 in Alpha, exposure half deferred pending the passivity ADR, service
   account scope backlogged with its open question.
+
+## 2026-10-28 · D78 resolved: CI's first runs are green. D85: the triggers that have never fired.
+
+**The first CI run in this repository's history** executed 2026-10-28, 57 days after the workflow was
+committed (`7315f26`, 2026-09-01) and 67 days after the first commit. Run `40648078549`,
+`workflow_dispatch` on `main` at `e413efa`.
+
+### D78 — resolved. Every gate passed on the first attempt.
+
+| Step | Result |
+|---|---|
+| Set up job, checkout, install uv, install dependencies (`uv sync --locked`) | success |
+| **Lint** (`ruff check` + `ruff format --check`) | success |
+| **Typecheck** (`mypy`) | success |
+| **Licence policy** (`cli.licences`) | success |
+| **Unit tests** (`pytest`, 91 test files) | success |
+| **Corpus** (`cli.corpus --check-baseline`) | success |
+| Keep the corpus scores (artifact upload) | success |
+
+**Conclusion: `success`.** Then dispatched on both open branches: `docs/plan-alignment-ledger`
+(PR #54) and `docs/adr-035-agent-architecture` (PR #53) — **both green**, and #53 re-run after the §12/§13
+commit so the certified sha is the one that would merge.
+
+**This is a weaker result than it looks, and it is worth being precise about why.** The operator and the
+assistant both expected failure, and the reasoning was sound: a gate that has only ever run on one
+machine usually depends on something about that machine. **It did not.** `uv sync --locked`,
+`.python-version` at 3.13.15 pinned in both places, no network-dependent test, no absolute path, no
+host-specific fixture. So the finding is: **the local gates were honest.** `make check` and
+`make corpus` on this box were reporting what a clean checkout reports.
+
+What that does **not** mean: it does not retroactively validate the 15 days before today, and it does
+not change the argument for the gate. A workflow that has never run is still indistinguishable from one
+that does not work — **we now know which, and only as of today.** The three numbers in the corpus
+baseline and the licence policy have, for the first time, been executed somewhere other than the
+assistant's machine.
+
+**Also learned, a small honest note:** this is the first evidence that `uv.lock` resolves cleanly on a
+host that is not this one, which is the dependency-level version of the same point and is the reason
+D77's `pip-audit` step is worth adding to a pipeline we can now see work.
+
+### D85 — Neither `push` nor `pull_request` has ever triggered a run. Only manual dispatch works.
+
+**Found while resolving D78, and it is the more serious finding of the two.** Queried directly:
+
+| Trigger | Runs, all time |
+|---|---|
+| `workflow_dispatch` | **3** (all today, all green) |
+| `pull_request` | **0** |
+| `push` | **0** |
+
+The workflow declares all three (`on: push: branches: [main]`, `pull_request`, `workflow_dispatch`).
+Tested deliberately today, not inferred:
+
+1. Pushing a new branch and opening **PR #54** produced **no run** — `statusCheckRollup` on the PR is
+   empty and the head commit has **zero check-runs**.
+2. Pushing a commit to **PR #53's** existing branch (a `synchronize` event) produced **no run**.
+3. `workflow_dispatch` via the API produced a run **immediately**, three times.
+
+Ruled out from the API: the workflow is registered and `state: active`; repository Actions are
+`enabled: true` with `allowed_actions: "all"`; the repo is private, **not** a fork, **not** archived;
+`ci.yml` is present on the default branch (`origin/main`), which is what `pull_request` needs; and the
+`concurrency` block cannot be the cause, because a cancelled run would still appear in the list and none
+does. Zero `push` runs all time also means **every merge of PRs #22–#52 pushed `main` without
+triggering anything** — so this is not new today, it has been true for the repository's whole life.
+
+**The cause is not visible from the API** and the honest statement is that I do not know it. It lives in
+one of two places only the operator can see:
+
+- **Settings → Actions → General** on the repository — in particular anything restricting which events
+  may run workflows.
+- **The account's billing / Actions spending page** — a private repository with exhausted included
+  minutes and no spending limit can have webhook-triggered runs refused while an explicit API dispatch
+  still succeeds. The one dispatch's billable time reported `total_ms: 0`, which is consistent with
+  included minutes but is not proof of anything.
+
+**Why it matters more than D78 did.** The gate exists and works, but **nothing connects it to a PR.**
+A merge today passes no check automatically; the "green" above is green because it was *asked for by
+hand*, three times, by the person who wrote the code. That is better than nothing and it is **not** an
+independent gate — it is the same defect D78 named, one level up: a trigger that has never fired is
+indistinguishable from one that does not work.
+
+**Owed, and it belongs with the operator because the fix is in settings:**
+
+1. The operator checks both places above and reports what he finds.
+2. Until it is fixed, **every PR is certified by an explicit `workflow_dispatch` on its branch head, and
+   the run id and sha are recorded in the PR**, so "CI green" always names which commit was tested. Done
+   for #53 and #54 today.
+3. Once events fire, **a required status check on `main`** is the thing that makes it a gate rather than
+   a habit — and that is a decision for the operator, since it changes how merges work.
+4. **Do not treat a dispatched green run as equivalent** to one a PR triggered. A hand-asked gate tests
+   what the asker chose to test.
