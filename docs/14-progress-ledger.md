@@ -2696,3 +2696,83 @@ indistinguishable from one that does not work.
    a habit — and that is a decision for the operator, since it changes how merges work.
 4. **Do not treat a dispatched green run as equivalent** to one a PR triggered. A hand-asked gate tests
    what the asker chose to test.
+
+---
+
+### D85 addendum (2026-10-28) — the workflow file is exonerated, and the order I checked in was wrong
+
+**The operator's challenge, and it was the right one.** On reading the entry above he said the most
+likely cause was *in the file, not the API*: four dispatch runs and zero of everything else, for the
+repository's whole life, is the signature of `ci.yml` declaring only `workflow_dispatch`, or declaring
+the other two behind `branches:` / `paths:` / `paths-ignore:` filters that never match. He added the
+sharpest form of it — **both open PRs were docs-only, so a `paths-ignore` covering `docs/**` or `**.md`
+would suppress runs on both and be indistinguishable, from where I was standing, from a settings
+problem.**
+
+**Checked, verbatim, from `origin/main`:**
+
+```yaml
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+```
+
+Exactly what it declares:
+
+- **`push`** — declared, filtered to `branches: [main]`. The filter is correct and matches every merge
+  of #22–#52, each of which pushed `main`.
+- **`pull_request`** — declared with **no filters at all**: no `types:`, no `branches:`, no `paths:`.
+  As permissive as the syntax allows.
+- **`workflow_dispatch`** — declared.
+
+There is **no `paths:` or `paths-ignore:` anywhere in the file**, so the docs-only objection does not
+apply: a docs commit on `main` should have fired, and a docs-only PR should have fired. Also checked:
+`ci.yml` is the only file in `.github/workflows/`; the file is byte-identical on both PR branches and
+`origin/main` (`git diff origin/main -- .github/workflows/ci.yml` is empty); the default branch is
+`main`, so `branches: [main]` is not naming a branch that does not exist.
+
+**So the file is not the cause, and the settings and billing pages stand.** The operator's hypothesis
+was wrong on the facts and correct as a method, which is the part worth keeping.
+
+**The method error, recorded because it is the same error this ledger exists to catch.** I concluded
+"the cause is not visible from the API" without ever printing the `on:` block as a deliberate check. I
+had read the file earlier — for D78, to quote its `workflow_dispatch` comment — and let that stand in
+for having verified the triggers. **Reaching for a settings explanation before reading the file is the
+same reasoning as trusting a gate nobody ran:** an assumption carried forward because it was convenient
+and never tested. The file turning out innocent does not make skipping the check right; it only means
+this time the cost was a wasted hypothesis rather than a wrong fix.
+
+**Reproduced live, on `main`, after the merges.** Merging **#54** (`38fbea8`) and then **#53**
+(`0869b2e`) pushed the default branch twice, thirty seconds apart, at 08:19 UTC. **Zero `push` runs
+resulted.** The run list still holds five runs, all time, all `workflow_dispatch`. This is the strongest
+evidence in the entry and it rules out anything stale about the observations above: the defect is current,
+it is on the default branch, and it is not an artefact of how the test branches were pushed.
+
+**Discounted as the explanation (the operator's reasoning, recorded):** a private repository on a free
+account has 2,000 included minutes a month, and `billable total_ms: 0` reads as *not billed* rather than
+*exhausted*. Billing therefore remains possible but unlikely, and the settings page is the first place to
+look.
+
+### D86 — The required status check on `main` must not be enabled until a PR-triggered run is seen. Ordering, not preference.
+
+**Decided 2026-10-28 by the operator**, and recorded because getting the order wrong is unrecoverable
+without further settings access.
+
+A required status check is the thing that converts the dispatch discipline from a habit into a gate —
+that much is agreed and is item 3 of D85. **But if `pull_request` never fires and the check is made
+required now, every merge deadlocks:** the required check can never report, so nothing can ever merge,
+including the PR that would fix it.
+
+**The sequence, in this order and no other:**
+
+1. Fix D85 — the operator reads the settings and billing pages and reports.
+2. **Confirm a PR-triggered run actually appears on a real PR.** Not inferred from a settings change
+   looking correct; observed, with the run id recorded.
+3. *Then* make the check required on `main`.
+
+**In the meantime** the interim rule of D85 item 2 stands unchanged — certify each PR by explicit
+`workflow_dispatch` on its branch head, record the run id and sha on the PR, and name the commit tested
+rather than claiming "CI green" in the abstract. With its caveat attached, every time: **a hand-asked
+gate tests what the asker chose to test.**
