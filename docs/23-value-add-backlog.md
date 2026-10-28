@@ -193,3 +193,34 @@ written knowing it exists.*
   - What was read is named, never reproduced, and nothing in it is a secret (hard constraint 5).
   - A command the collector refused to run, and why, belongs in the receipt as much as one it ran.
 - **Effort.** S designed in, L retrofitted. **This is an input to ADR-035, not a follow-on from it.**
+
+---
+
+## 11. Service account scope: permissions broader than the account needs
+
+**Status: HELD BACK from Alpha, with its open question unresolved** (operator, 2026-10-28). It was
+part of Part E3's access half; module 8 ships without it (docs/24 §5).
+
+- **What it would do.** Report that a service account's permissions are broader than its job
+  requires — a `nginx` user that can read `/etc/shadow`, a backup account with write access to
+  application code, a daemon running as a member of groups it never uses.
+- **Customer value.** Real, and the inside view is the only place it can be seen: no external scan
+  can tell you what a local service account may touch.
+- **Why it is held back, and this is the whole reason.** "Broader than it needs" is a **heuristic,
+  and no heuristic is proof** (the operator's standing rule, and the same bar that keeps a dedicated
+  address from being asserted by inference — D59). The finding would be our opinion about someone
+  else's deployment, presented as a security defect, with no fact underneath it. A platform whose
+  entire claim is evidence and calibrated confidence cannot ship that.
+- **The open question, which travels with this entry rather than being dropped.** *What does a given
+  service account actually need?* An answer has to be factual and host-derived — not inferred from
+  the account's name, not from a convention, and not from what we would have configured. Candidates
+  worth examining when this is picked up: the unit file's own declared paths, observed access over a
+  recorded window, and packaged defaults as shipped by the distribution. Each of those is itself a
+  claim that would need its own positive and negative evidence.
+- **Until it is answered, this check stays out.** Either someone supplies a factual definition of
+  what the account needs, or there is no finding here — only a guess with a severity attached.
+- **What would NOT close it.** A confidence cap. Capping a heuristic at `suspected` makes the number
+  honest and leaves the claim unfounded; the problem is that there is no evidence, not that the
+  evidence is weak.
+- **Effort.** Unknown, and deliberately not estimated: the cost is dominated by the unanswered
+  question, not by the code.

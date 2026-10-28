@@ -67,6 +67,8 @@ All modules are **read-only**, collect the **minimum data** needed, and **sugges
 
 ### Alpha modules (priority order; every module and data point below is PLANNED)
 
+*Module 8 was added on 28 October 2026 and is numbered last but **built after modules 1–4 and before module 7**, the fleet view. Numbering is left alone deliberately: "module 5" is referenced by number elsewhere (ledger D74), and renumbering would silently move what those references point at.*
+
 | # | Module | What it reports |
 |---|---|---|
 | 1 | **Patch & vulnerability** | Installed packages, pending security updates, known vulnerabilities, with distribution backports taken into account |
@@ -76,6 +78,22 @@ All modules are **read-only**, collect the **minimum data** needed, and **sugges
 | 5 | **CERT-In readiness** | Logging and audit enabled, log retention against the 180-day requirement, time synchronisation against NIC/NPL servers |
 | 6 | **Root cause for web findings** | Web server and PHP configuration on disk (directory listing, version disclosure, TLS settings), pinpointing the exact setting to change |
 | 7 | **Fleet view** | Patch compliance %, hosts needing a reboot, drift from the fleet baseline, "one update fixes N findings on M hosts" |
+| 8 | **Access review (who can read and delete what)** | Per-path read, write and delete rights on sensitive files and log directories, with the **basis** for each right (owner, group, mode, POSIX ACL) and whether an ACL was actually observed |
+
+#### Module 8 and the rest of Part E3 — why the split, decided 28 October 2026
+
+Part E3 of [the approved plan](18-v4-plan.md) is a check family that **appeared in none of this document's lists** until now — not in the Alpha modules, not in "if capacity allows", not in "after Alpha". It was approved scope that was never scheduled, and the diagnosis matters more than the omission: **the engineering was not the failure, invisibility was.** It is recorded here rather than only in the ledger so the same gap cannot recur by this document staying silent.
+
+E3 splits in two, and the halves have different blockers.
+
+**The access-review half is module 8, in Alpha** (ledger D70). Most of the raw facts come free from the collector's file allowlist — `mode`, `owner_uid`, `owner_gid` are read anyway. The real work is not reading them:
+
+- **Log delete rights are derived, not read.** Whether a principal can delete a log file is a property of the *parent directory*, expanded through group membership and POSIX ACLs — not of the file's own mode. It is **derived logic over facts, which is exactly the kind of reasoning that produces a confident wrong answer**, so it needs a **real positive on a lab box with a deliberately over-permissive group, and a negative** before it ships. Not a fixture written from the same reasoning as the check (ADR-017).
+- **It needs a new evidence shape.** The access matrix lands on the **evidence** side of the frozen contract, so it is part of the one additive migration in [ADR-035](02-decisions.md#adr-035--the-host-agent-a-thin-one-shot-collector-an-artefact-the-platform-replays-and-judgements-made-platform-side) decision 12 — specified now so module 8 is not a retrofit. Per right it carries a `basis` and a `derivation`; `acl: null` means **not observed**, never "no ACL"; and `members_observed` rather than `members`, because a group's full membership may not be visible from the host.
+
+**"Service account scope" is held back and backlogged** (operator, 28 October 2026). The check would report that a service account's permissions are "broader than it needs". **That is a heuristic, and no heuristic is proof.** Either someone supplies a factual definition of what a given service account *needs* — one that does not reduce to our opinion about someone else's deployment — or the check stays out. The open question travels with the backlog entry rather than being dropped.
+
+**The exposure half comes after Alpha, and it is gated on a decision, not on engineering.** Of E3's six exposure checks, measured against the web scanner's 24 shipped check ids: one is fully covered (`web-secret-in-response`), one partly (`web-debug-mode`), two are agent-side (backup encryption, retention integrity), and two — probing for `/backup.sql` and `/.env` — are **blocked on a mode decision**, because path enumeration is not passive. That needs its own **passivity ADR**, and the expected honest answer is **"requires verified ownership"**: ownership proof is the boundary of consent, not a measure of blast radius ([ADR-033](02-decisions.md#adr-033--mvp-alpha-scope-one-combined-release-the-linux-agent-moves-into-alpha-tool-4b-deferred) decision 8). It is not scheduled until that ADR exists.
 
 **If capacity allows:** Docker host posture (socket permissions, privileged or root containers) and database/cache exposure (MySQL, PostgreSQL, Redis bound publicly or without authentication, read from config only).
 
