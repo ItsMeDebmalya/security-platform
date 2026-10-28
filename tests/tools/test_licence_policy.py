@@ -12,6 +12,8 @@ import yaml
 
 from cli.licences import (
     APPROVED_SPDX,
+    ATTRIBUTION_REQUIRED_SPDX,
+    DATA_ONLY_SPDX,
     FORBIDDEN_TOOLS,
     ISOLATION_REQUIRED_SPDX,
     REGISTRY_PATH,
@@ -151,3 +153,104 @@ def test_registry_versions_match_the_lockfile(registry):
     ]
 
     assert drift == []
+
+
+# --- ADR-003 amendment (2026-10-28): CC BY / CC BY-SA for data sources -------
+#
+# The operator's decision, with its scope. These two licences are approved for
+# DATA SOURCES only, never for code, and every such entry must carry the
+# attribution obligation in the register so it is discovered before use rather
+# than after a report ships.
+
+
+def test_the_two_cc_licences_are_approved():
+    assert "CC-BY-4.0" in APPROVED_SPDX
+    assert "CC-BY-SA-4.0" in APPROVED_SPDX
+
+
+def test_a_cc_licence_on_code_is_refused():
+    """Scoped to data sources: the scope is enforced, not merely written down."""
+    problems = check_registry(
+        [
+            {
+                "name": "something",
+                "version": "1",
+                "licence": "CC BY 4.0",
+                "spdx": "CC-BY-4.0",
+                "source": "https://example.invalid",
+                "purpose": "x",
+                "isolation": "library",
+                "attribution": "wherever",
+            }
+        ]
+    )
+
+    assert any("data" in p for p in problems), problems
+
+
+@pytest.mark.parametrize("spdx", ["CC-BY-4.0", "CC-BY-SA-4.0"])
+def test_a_cc_data_source_without_attribution_is_refused(spdx):
+    """CC BY's whole condition is attribution. An entry that does not say where
+    it must appear records the licence and drops the obligation."""
+    problems = check_registry(
+        [
+            {
+                "name": "something",
+                "version": "1",
+                "licence": spdx,
+                "spdx": spdx,
+                "source": "https://example.invalid",
+                "purpose": "x",
+                "isolation": "data",
+            }
+        ]
+    )
+
+    assert any("attribution" in p for p in problems), problems
+
+
+@pytest.mark.parametrize("spdx", ["CC-BY-4.0", "CC-BY-SA-4.0"])
+def test_a_complete_cc_data_source_passes(spdx):
+    problems = check_registry(
+        [
+            {
+                "name": "something",
+                "version": "1",
+                "licence": spdx,
+                "spdx": spdx,
+                "source": "https://example.invalid",
+                "purpose": "x",
+                "isolation": "data",
+                "attribution": "per finding, once per report, data_sources[], the register",
+            }
+        ]
+    )
+
+    assert problems == []
+
+
+def test_every_cc_entry_in_the_shipped_registry_is_data_and_attributed(registry):
+    """The rule applied to what we actually ship, not only to fabricated rows."""
+    cc = [e for e in registry if str(e["spdx"]).startswith("CC-BY")]
+    assert cc, "the ADR-003 amendment registered no data sources"
+    for entry in cc:
+        assert entry["isolation"] == "data", entry["name"]
+        assert str(entry.get("attribution", "")).strip(), entry["name"]
+
+
+def test_debian_is_not_registered_because_its_licence_is_unstated(registry):
+    """ADR-035 decision 10 and D92: Debian's tracker states no licence.
+
+    The register has no way to hold an unlicensed candidate - it is a flat list
+    and every entry is gated - so Debian is deliberately absent rather than
+    registered under a guessed or placeholder licence. If this test starts
+    failing because someone added it, the licence question was answered and
+    that answer belongs in the entry.
+    """
+    assert not [e for e in registry if "debian" in str(e["name"]).lower()]
+
+
+def test_the_two_constant_sets_say_the_same_thing():
+    """Both conditions attach to the same two licences; if they ever diverge
+    the divergence should be deliberate and visible here."""
+    assert DATA_ONLY_SPDX == ATTRIBUTION_REQUIRED_SPDX == {"CC-BY-4.0", "CC-BY-SA-4.0"}
