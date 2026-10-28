@@ -79,15 +79,17 @@ One deliberate, additive migration. All new fields optional, so existing finding
 
 ## Step 2 — Agent design · 3–5 days
 
-- [ ] ADR-035: the architecture above (renumbered from ADR-034: the contract extension took 034)
-- [ ] Language decision (see "Decisions needed" below)
-- [ ] Snapshot format, versioned
-- [ ] Command and file allowlists, with the reason for each entry
-- [ ] Data-minimisation rules, and a test that the snapshot never contains a secret value
-- [ ] Vulnerability data source chosen, licence evidence gathered for sign-off
-- [ ] Spec and implementation plan (`docs/superpowers/`)
+- [x] ADR-035: the architecture above (renumbered from ADR-034: the contract extension took 034) — accepted 2026-10-28 after two review rounds
+- [x] Language decision (see "Decisions needed" below) — stdlib-only Python, 3.6 syntax floor **held as a stated assumption, not a fact**: nothing has executed on 3.6 here, and the floor is confirmed or moved by the fleet probe's results
+- [x] Snapshot format, versioned — with a `self_hash` that is corruption detection and **explicitly not** tamper-evidence (signing stays deferred to docs/23 item 7)
+- [x] Command and file allowlists, with the reason for each entry — argv only, `shell=False`, fixed binary directories never `PATH`, and **no argument derived from collected data**
+- [x] Data-minimisation rules, and a test that the snapshot never contains a secret value — specified; the test is written in Phase F against snapshots the collector actually produced, not a hand-written example
+- [x] Vulnerability data source chosen, licence evidence gathered for sign-off — the distribution's own fixed-version-per-release data, **no CVE-range matching**; evidence gathered for Ubuntu (CC BY-SA 4.0), Red Hat (CC BY 4.0 + attribution, OVAL v2 retiring) and Debian (**licence not stated** — the operator is asking the Debian security team directly). **Sign-off is the operator's and is PENDING.** Registering the three in `tools/registry.yaml` is blocked: ADR-003's approved list carries neither CC BY nor CC BY-SA, so it needs an ADR-003 amendment first (ledger D87)
+- [x] Spec and implementation plan (`docs/superpowers/`) — [spec](superpowers/specs/2026-10-13-host-agent-design.md), [plan](superpowers/plans/2026-10-13-host-agent.md)
 
-**Exit:** ADR-035, spec and plan approved by Debmalya.
+Also delivered in Step 2, beyond the list above: the **artefact rule (R1/R2)** as ADR-035's first decision; the **unsupported-runtime** case closing an R2 hole; **`--explain-plan`**; **`agent/` as a new top-level directory** with the alternatives recorded and CLAUDE.md updated in the same change; the **hostile-snapshot** decisions; **one additive evidence-contract migration** (D75), which gets its own ADR and reviewed PR and **blocks Phase B**; and **`tools/fleet-probe.sh`**, which the operator runs across the fleet.
+
+**Exit:** ADR-035, spec and plan approved by Debmalya. **Done — approved 2026-10-28** (PR #53 merged). Outstanding from this step, both with the operator: the vulnerability-data licence sign-off (D87) and the fleet probe's results.
 
 ---
 
@@ -215,9 +217,9 @@ Must be complete **before any external user**.
 
 | Decision | Options | Lean |
 |---|---|---|
-| Collector language | Python standard library only, or a single Go binary | Python standard library only for Alpha: one language, easy to audit. Revisit if the fleet's Python versions vary too much |
+| Collector language | Python standard library only, or a single Go binary | **Decided (ADR-035 decision 5): Python standard library only for Alpha**, at a 3.6 syntax floor enforced by `ast.parse(feature_version=(3, 6))`. The revisit trigger is the fleet probe, not a guess at how much the versions vary |
 | Vulnerability data | OSV.dev, distribution security trackers, or a combination | Decided in ADR-035 after licence evidence is gathered |
-| Fleet OS mix | Needed from Debmalya | Determines lab box distributions and the collector's minimum Python version |
+| Fleet OS mix | Needed from Debmalya | Determines lab box distributions and the collector's minimum Python version. **`tools/fleet-probe.sh` is built and handed over (2026-10-28)**; awaiting the distinct OS and Python combinations from the fleet. Alpha's distribution support is deliberately **not** restricted until then |
 
 ---
 

@@ -2699,6 +2699,241 @@ indistinguishable from one that does not work.
 
 ---
 
+### D85 addendum (2026-10-28) — the workflow file is exonerated, and the order I checked in was wrong
+
+**The operator's challenge, and it was the right one.** On reading the entry above he said the most
+likely cause was *in the file, not the API*: four dispatch runs and zero of everything else, for the
+repository's whole life, is the signature of `ci.yml` declaring only `workflow_dispatch`, or declaring
+the other two behind `branches:` / `paths:` / `paths-ignore:` filters that never match. He added the
+sharpest form of it — **both open PRs were docs-only, so a `paths-ignore` covering `docs/**` or `**.md`
+would suppress runs on both and be indistinguishable, from where I was standing, from a settings
+problem.**
+
+**Checked, verbatim, from `origin/main`:**
+
+```yaml
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+```
+
+Exactly what it declares:
+
+- **`push`** — declared, filtered to `branches: [main]`. The filter is correct and matches every merge
+  of #22–#52, each of which pushed `main`.
+- **`pull_request`** — declared with **no filters at all**: no `types:`, no `branches:`, no `paths:`.
+  As permissive as the syntax allows.
+- **`workflow_dispatch`** — declared.
+
+There is **no `paths:` or `paths-ignore:` anywhere in the file**, so the docs-only objection does not
+apply: a docs commit on `main` should have fired, and a docs-only PR should have fired. Also checked:
+`ci.yml` is the only file in `.github/workflows/`; the file is byte-identical on both PR branches and
+`origin/main` (`git diff origin/main -- .github/workflows/ci.yml` is empty); the default branch is
+`main`, so `branches: [main]` is not naming a branch that does not exist.
+
+**So the file is not the cause, and the settings and billing pages stand.** The operator's hypothesis
+was wrong on the facts and correct as a method, which is the part worth keeping.
+
+**The method error, recorded because it is the same error this ledger exists to catch.** I concluded
+"the cause is not visible from the API" without ever printing the `on:` block as a deliberate check. I
+had read the file earlier — for D78, to quote its `workflow_dispatch` comment — and let that stand in
+for having verified the triggers. **Reaching for a settings explanation before reading the file is the
+same reasoning as trusting a gate nobody ran:** an assumption carried forward because it was convenient
+and never tested. The file turning out innocent does not make skipping the check right; it only means
+this time the cost was a wasted hypothesis rather than a wrong fix.
+
+**Reproduced live, on `main`, after the merges.** Merging **#54** (`38fbea8`) and then **#53**
+(`0869b2e`) pushed the default branch twice, thirty seconds apart, at 08:19 UTC. **Zero `push` runs
+resulted.** The run list still holds five runs, all time, all `workflow_dispatch`. This is the strongest
+evidence in the entry and it rules out anything stale about the observations above: the defect is current,
+it is on the default branch, and it is not an artefact of how the test branches were pushed.
+
+**Discounted as the explanation (the operator's reasoning, recorded):** a private repository on a free
+account has 2,000 included minutes a month, and `billable total_ms: 0` reads as *not billed* rather than
+*exhausted*. Billing therefore remains possible but unlikely, and the settings page is the first place to
+look.
+
+### D86 — The required status check on `main` must not be enabled until a PR-triggered run is seen. Ordering, not preference.
+
+**Decided 2026-10-28 by the operator**, and recorded because getting the order wrong is unrecoverable
+without further settings access.
+
+A required status check is the thing that converts the dispatch discipline from a habit into a gate —
+that much is agreed and is item 3 of D85. **But if `pull_request` never fires and the check is made
+required now, every merge deadlocks:** the required check can never report, so nothing can ever merge,
+including the PR that would fix it.
+
+**The sequence, in this order and no other:**
+
+1. Fix D85 — the operator reads the settings and billing pages and reports.
+2. **Confirm a PR-triggered run actually appears on a real PR.** Not inferred from a settings change
+   looking correct; observed, with the run id recorded.
+3. *Then* make the check required on `main`.
+
+**In the meantime** the interim rule of D85 item 2 stands unchanged — certify each PR by explicit
+`workflow_dispatch` on its branch head, record the run id and sha on the PR, and name the commit tested
+rather than claiming "CI green" in the abstract. With its caveat attached, every time: **a hand-asked
+gate tests what the asker chose to test.**
+
+---
+
+## 2026-10-28 — Phase A: ADR-035 accepted, the probe built, and what Phase A could not finish
+
+PRs #54 and #53 merged (in that order, on the operator's instruction), making them the first merges
+the CI gate has ever seen — by explicit dispatch, since D85 means no merge triggers anything. `main`
+at `0869b2e` certified green by run `40656050940`. Phase A then ran as approved in
+[the plan](superpowers/plans/2026-10-13-host-agent.md).
+
+### D87 — ADR-003's approved licence list carries neither CC BY nor CC BY-SA, so A2 cannot register the vulnerability data sources. Blocked on an operator decision.
+
+**Found while doing A2, by trying to do it.** The three data sources ADR-035 decision 10 chose are
+licensed CC BY-SA 4.0 (Ubuntu) and CC BY 4.0 (Red Hat), with Debian's unstated. `cli/licences.py`
+holds `APPROVED_SPDX` and **neither `CC-BY-4.0` nor `CC-BY-SA-4.0` is on it**:
+
+```
+MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, PSF-2.0, MPL-2.0,
+Unlicense, CC0-1.0, public-data
+```
+
+`check_registry` has **no exception path** — not a PENDING state, not a "recorded but not in use"
+state. An entry with an unapproved SPDX value is a hard failure with the message *"is not on the
+approved licence list. Raise it as an open question rather than adding it."* So writing the three
+entries would have turned `make licence-check` red, and the first merge the gate ever sees would
+have been the one that broke it.
+
+**Three things I did not do, and why each was refused:**
+
+1. **Add the two values to `APPROVED_SPDX`.** That amends **ADR-003**, which is a policy decision
+   with legal consequences and is the operator's, not a line of code I get to change to make my own
+   task complete. The check's own error message says to raise it, and raising it is this entry.
+2. **Register them with a false SPDX value**, such as the existing `public-data` placeholder. It
+   would pass the gate and record something untrue about a share-alike licence. `public-data` already
+   sits on the approved list as a non-SPDX placeholder, which is a separate smell worth noting.
+3. **Invent a `status: PROPOSED` field** so the checker skips entries not yet in the tree. There is a
+   genuine argument for it — these sources are not vendored, not fetched, and used by no code, so
+   gating them now checks a thing that is not there — but inventing a schema and a gate semantics to
+   unblock myself is a design decision dressed up as a chore. It is recorded as an option, not taken.
+
+**The real question for the operator, and it is not a formality.** CC BY 4.0 is straightforward:
+attribute and link, and ADR-035 decision 11 already names the four places that attribution must
+appear. **CC BY-SA 4.0 is the one that needs thought.** Share-alike binds *adaptations*. If a report
+says "package X is fixed in 1.2.2-ubuntu4 per USN-1234", is that an adaptation of Ubuntu's database,
+a factual extract, or a collection? The answer decides whether share-alike reaches our report text —
+which is a licence question about the product's output, not about an embedded component, and it is
+the kind of question this register exists to surface **before** use rather than after a report ships.
+
+**What exists in the meantime:** the licence evidence is gathered and recorded in ADR-035 decision 10
+and in docs/26 Step 2, so nothing is lost; what is missing is the register entry and the sign-off.
+**A2 is the one Phase A task that is not complete, and it is not complete because the decision above
+has not been made.** The Debian enquiry is separate and also with the operator.
+
+### D88 — Phase A delivered: what is now written down, and the limits that came with it
+
+**A1 — ADR-035 accepted** (docs/02-decisions.md), 17 numbered decisions. The artefact rule R1/R2 is
+decision **1**, deliberately, because it changes the shape of everything else. Also recorded as
+numbered decisions, each because the operator required the decision and not merely the outcome: the
+unsupported runtime; **Linux-only** stated rather than implied; the `confirmed` ceiling for package
+findings with the withdrawn claim named; the `self_hash` as corruption detection and **not**
+tamper-evidence; `agent/` as a new top-level directory **with the four alternatives and why each
+loses** (`scanners/host/collector/`, `core/agent/`, `tools/agent/`, a separate repository).
+
+**CLAUDE.md was updated in the same change, not left to drift.** Its "the only NEW top-level dirs in
+this migration are api/ and web/" line now names `agent/` and carries the constraint that `agent/`
+imports nothing from `core/` or `contracts/`; its ADR range now reads 001–036 instead of claiming 035
+is reserved.
+
+**A4 — docs/26 Step 2 ticked**, every item annotated with what was actually decided rather than a bare
+`[x]`, and `SPEC.md` gained **A20, the `host` scanner, as PLANNED with no numbers**. The gate column
+says "not yet set — no number is published before a gate exists", and the section states the thing a
+future reader needs: the fleet is ~50 of **our own** servers, so the agent's first evidence is
+internal, which is a weaker independence claim than a customer corpus and the gate must say so when
+it is written.
+
+**docs/24 edited for E3**, as the operator directed, "either way, now": module 8 added, its build
+position stated (after modules 1–4, before the fleet view) **without renumbering**, because "module 5"
+is referenced by number in D74 and renumbering would silently move what that points at. The reason
+for the whole edit is recorded in the document in the operator's terms — **the engineering was not the
+failure, invisibility was** — so this cannot recur by docs/24 staying silent. Service account scope is
+backlogged as docs/23 item 11 with its open question intact, and the exposure half is noted as gated
+on the passivity ADR.
+
+**A6 is specified and not built**, as designed: it is the evidence-contract migration, it gets its own
+ADR and its own independently reviewed PR, and it **blocks Phase B**.
+
+### D89 — The fleet probe is built and handed over, and it is tested further than the plan asked
+
+`tools/fleet-probe.sh` (A5). POSIX `sh`, `set -u`, no bashisms, no `local`, no `pipefail`. One
+tab-separated line per host: hostname, `ID` and `VERSION_ID`, the `python3` version if any, and
+`/usr/libexec/platform-python` with its version. Read-only: no installation, no network call, nothing
+written. The header is a `#` comment so output concatenated across the fleet stays parseable, and
+`--no-header` suppresses it for loops.
+
+**It rehearses the collector's discipline rather than describing it:**
+
+- A fixed path allowlist, declared in one place at the top of the file, and `--explain` prints every
+  path it may read and every program it may execute and then **reads nothing**. That is
+  `--explain-plan`'s ancestor and it exists for the same reason: a fleet owner can see what it touches
+  before trusting it.
+- **No `PATH` lookup** for the interpreters — absolute paths only, so what it reports is the
+  interpreter the agent would actually get.
+- **`/etc/os-release` is parsed, never sourced.** Sourcing it executes whatever is in it.
+- Its own **R2**: `not_found` for absent, `unreadable` for present-but-unreadable, `unparsable` for
+  present-but-unsafe, `present_but_failed` for an interpreter that is there and will not run. **Never
+  an empty field**, because an empty field reads as "fine" and this probe exists to find the hosts
+  that are not.
+
+**Tested under `dash` and `busybox sh`** — the plan asked for `dash` alone; both are here, and `sh` on
+this box *is* dash, so naming it again would not have been a second shell. 19 cases × 2 shells, 36
+passed and 2 skipped, in `tests/tools/test_fleet_probe.py`, so it is in `make test` and in CI rather
+than hand-verified once. The cases include the two floor hosts (Ubuntu 18.04 / 3.6.9, RHEL 8
+platform-python / 3.6.8), a host with **no Python at all**, a missing `/etc/os-release`, a file with
+none of the keys we want, the `/usr/lib/os-release` fallback, and an assertion that nothing under the
+tree it reads is created, removed or changed.
+
+**Hostile input, mirroring the spec's §13 at this much smaller scale**, because `/etc/os-release` on a
+compromised host is attacker-controlled text: a planted **tab** cannot add a column and shift every
+later field; a planted **newline** cannot invent a host row; shell metacharacters stay text. The
+sourcing test asserts the payload **present and inert** — the value arrives and is reported
+`unparsable` — rather than merely asserting a marker file is absent, because an absence test passes
+just as well when the value was silently dropped, and a dropped value is its own R1 failure.
+
+**Two honest limits.**
+
+1. **The `unreadable` branch is unproven here.** The test for it is skipped because this session runs
+   as root, and root reads a `0o000` file regardless. That is not a gap in the probe — the permission
+   check cannot be exercised by a user who bypasses permissions — but it is untested code and is
+   recorded as such rather than counted as covered.
+2. **Still nothing has executed on Python 3.6.** The probe tells us which runtimes exist; it does not
+   make this box able to run them. The floor stays a syntax constraint we enforce, not a runtime we
+   have tested.
+
+**Run on this host, as the one real data point available:** `nms1 ubuntu 24.04 3.12.3 not_found`. Note
+the 3.12.3 — `.python-version` pins 3.13.15, but that interpreter is uv-managed, and the agent would
+get the **system** `python3`. The probe reporting 3.12.3 is it reporting the right thing, and it is a
+small preview of why the fleet's answer cannot be guessed from a developer box.
+
+**Owed from the operator:** the distinct OS and Python combinations with rough counts. Those decide
+ADR-035 decision 5's floor and Step 3's lab distributions. **Alpha's distribution support stays
+deliberately unrestricted until they arrive** — not restricted by a guess in the meantime.
+
+### D90 — The duplication of redaction patterns in `agent/`, deliberate, and the reason recorded before it looks like a mistake
+
+`agent/` is stdlib-only at a 3.6 syntax floor and imports nothing from `core/`, which is 3.13. So the
+redaction patterns that `core/` already holds (ADR-028) will exist **twice** once the collector is
+built: once in `core/`, once in `agent/`.
+
+This is a real cost and the wrong half can drift. It is accepted because the alternative is worse:
+importing `core/` into the collector would put a 3.13-only dependency one import away from a 3.6
+host, and the stdlib-only test would be guarding a boundary that looks internal. **Recorded now so
+that a future reader finds a decision rather than what looks like a copy-paste** — and so the
+obligation it creates is explicit: a change to a redaction pattern in `core/` is not finished until
+the `agent/` copy is changed with it, and that needs a test that compares the two sets rather than a
+reviewer remembering.
+
+---
+
 ### D91 — Dependency CVE scanning, and the clean report that was wrong. D77 closed.
 
 **D77 is closed:** `cli/cves.py` runs in CI and in `make check`, `.github/dependabot.yml` exists, and
