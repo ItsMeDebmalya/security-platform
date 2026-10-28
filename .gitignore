@@ -15,3 +15,6 @@ corpus/crosscheck/web-light/collected.md
 
 # Showcase canaries on company domains: evidence kept out of git (canary policy, 2026-10-10)
 corpus/crosscheck/showcase/
+
+# Written and removed by cli/cves.py while it audits the locked graph.
+.cve-requirements.txt

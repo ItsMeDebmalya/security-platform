@@ -44,6 +44,14 @@ jobs:
       - name: Licence policy
         run: uv run python -m cli.licences
 
+      # Added 2026-10-28 (D77, D91). It audits the LOCKED graph explicitly -
+      # pip-audit with no -r audits whatever environment it is in, which is how
+      # the first run here reported "no known vulnerabilities" while two sat in
+      # ours. Accepted vulnerabilities live in tools/cve-exceptions.yaml with a
+      # reason and an expiry; an expired or stale entry fails the build.
+      - name: Dependency vulnerabilities
+        run: uv run python -m cli.cves
+
       - name: Unit tests
         run: uv run pytest
 
