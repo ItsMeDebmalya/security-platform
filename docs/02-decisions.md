@@ -130,6 +130,70 @@ The GPL tools are **testssl.sh (GPLv2), ScoutSuite (GPL), and MobSF (GPLv3)**.
 
 Long term, replace testssl.sh with our own implementation for speed anyway.
 
+### Amendment, 2026-10-28 — CC BY 4.0 and CC BY-SA 4.0 approved for **data sources**, never for code
+
+**Status.** Decided by the operator, 2026-10-28; ledger **D92**. It arose from ADR-035 decision 10: the
+host agent's vulnerability matching uses the distributions' own security data, which is CC BY-SA 4.0
+(Ubuntu) and CC BY 4.0 (Red Hat). **Neither was on the approved list**, `cli/licences.py` has no
+exception path, and so A2 could not register them without either amending this ADR or recording
+something untrue. The check's own error message says to raise it rather than add it; this is that
+raise, answered.
+
+**The question, in the form that makes it answerable.** Does *"package X is fixed in 1.2.2-ubuntu4 per
+USN-1234"* **adapt** Ubuntu's database, or **extract a fact** from it? It looks hard only while two
+different uses are conflated. They have different answers.
+
+**Use (a) — reporting individual facts in a customer report. Extraction of fact, not adaptation.**
+That a particular version fixes a particular vulnerability is a fact about the world, and facts do not
+carry copyright. Share-alike attaches to *adaptations of the licensed work*; quoting a handful of
+determinations in a report about one customer's hosts does not produce an adaptation of Ubuntu's
+database. **Attribution and a link are owed, and we give them**, through the same mechanism as Red
+Hat's (ADR-035 decision 11). **Share-alike does not reach our report text.**
+
+**Use (b) — vendoring the feed.** This is where share-alike plausibly bites, and the plan does say
+feeds are vendored with their source and a review date. The distinction that is the condition of this
+approval:
+
+- **A verbatim cache of the vendor's data, with its licence notice intact, is redistribution** — which
+  CC BY-SA permits on its own terms. **Approved.**
+- **Restructuring it, merging several vendors into one normalised schema of our own construction, and
+  shipping that, is a derived database.** It is the hard case. **Out of scope until it has its own
+  decision.** If Step 5's matcher starts wanting it, **stop and raise it** rather than building it.
+
+**The decision.**
+
+1. **`CC-BY-4.0` and `CC-BY-SA-4.0` join `APPROVED_SPDX`, scoped to data sources.** The scope is
+   **enforced, not merely written here**: `DATA_ONLY_SPDX` in `cli/licences.py` fails the build if
+   either licence appears on an entry whose `isolation` is not `data`. Allowing them onto code would
+   quietly extend the approval past the reasoning that justifies it.
+2. **Every such entry carries an `attribution` field** naming where in a report the attribution must
+   appear, enforced by `ATTRIBUTION_REQUIRED_SPDX`. Recording a licence without its obligation is how
+   the obligation comes to be discovered after a report has shipped.
+3. **Ubuntu and Red Hat are registered** against this amendment, so `make licence-check` passes
+   honestly rather than through a placeholder licence or an invented "proposed" state. Both are
+   **PENDING** the operator's sign-off, in the IANA pattern. Neither is vendored, fetched or used by
+   any code yet.
+4. **Debian's Security Tracker is deliberately *not* registered.** It **states no licence**, and the
+   register is a flat list in which every entry is gated, so there is nowhere to hold an unlicensed
+   candidate without recording a guess. "Licence not stated" remains the finding (ADR-035 decision 10),
+   and the operator is asking the Debian security team directly. A test asserts Debian is absent, so
+   adding it later is a deliberate act that must bring an answer with it.
+5. **A normalised multi-vendor database is out of scope**, per use (b) above, until it has its own
+   decision.
+
+**The limit on this reasoning, recorded at the operator's own instruction and not softened.** *The
+operator is not a lawyer and this is a judgement call, not legal advice.* **This amendment requires
+legal review before any external customer receives a report resting on this data**, alongside the terms
+of service and the authorisation agreement that already need one (docs/24 §8). Our posture is
+**compliance readiness, never certainty** (ADR-011) — and that applies to our own licence reasoning as
+much as to a customer's controls. Each registered entry's `review_evidence` says so in as many words,
+so the requirement travels with the data rather than living only here.
+
+**Note on `public-data`.** The approved list already carries `public-data`, which is not an SPDX
+identifier but a placeholder. It is left alone by this amendment and recorded as a separate smell: a
+non-identifier on a list of identifiers is a place where something unlicensed could be filed and look
+approved.
+
 **Reversal cost.** Very high — this is a legal posture, and an embedded commercial tool discovered late means removing it and rebuilding under time pressure.
 
 ---

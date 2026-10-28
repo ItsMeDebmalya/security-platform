@@ -103,6 +103,52 @@ Also delivered in Step 2, beyond the list above: the **artefact rule (R1/R2)** a
 
 **Exit:** lab boxes reproducible from the repo.
 
+### What Step 3 needs from the operator, beyond the probe output
+
+*Written 2026-10-28 at the operator's request, so hardware can be arranged in parallel with the fleet
+probe rather than serially after it. **The probe decides which distributions; it does not change the
+count or the kinds below**, so this list can be acted on now.*
+
+**Containers are not enough, and the reason is specific, not general: a container shares the host's
+kernel.** That single fact takes four of the eight Alpha modules out of a container's reach.
+
+| Needs | Why | Modules |
+|---|---|---|
+| **A real VM (or a real machine)** | A container has no kernel of its own, so "kernel updated but the old one still running" and "a reboot is pending" cannot be produced in one — the state does not exist to collect. A host firewall is namespaced, and a container's netfilter view is not the fleet's. Service enumeration assumes a real init. Time synchronisation against NIC/NPL servers needs a host clock, which a container does not have. | **2** (OS, kernel, reboot), **4** (services, firewall, inside-out correlation), **5** (CERT-In readiness: time sync), and the reboot half of **1** |
+| **Containers are fine** | These read packages and configuration files on disk, which is exactly what a container image is. | **1** (packages, minus reboot state), **3** (SSH config), **6** (web/PHP config on disk) |
+| **Either, with one caveat** | Module **8** needs POSIX ACLs and a deliberately over-permissive group. Containers can carry both, but ACL behaviour on an overlay filesystem is not the fleet's ext4/xfs behaviour, and module 8's whole difficulty is derived logic over group membership and ACLs. **Prefer the VM for its real positive.** | **8** (access review) |
+
+**The ask, concretely:**
+
+1. **One VM, minimum — two preferred.** One deliberately misconfigured, one clean. A single VM can host
+   the misconfigured case and the containers can supply package negatives, but **module 8 and module 4
+   each need a positive *and* a negative**, and flipping one box between states is how a "negative" ends
+   up being the positive box with the finding not yet noticed.
+2. **Three to five containers**, one per distribution family the probe reports — so the count follows
+   the probe, the *requirement* does not. Pinned by digest and registered in `tools/registry.yaml`.
+3. **At least three snapshot sources in total.** Module **7** is the fleet view: "drift from the fleet
+   baseline" and "one update fixes N findings on M hosts" are meaningless at N=1, M=1. Three is the
+   smallest number at which the module can produce a real positive.
+4. **Not on this server.** This machine runs other services, and the lab boxes are deliberately
+   misconfigured — root SSH login, password authentication, a publicly bound database. They need their
+   own host.
+5. **Purpose-built, never repurposed.** A box we created to be scanned, not a production machine
+   cleaned up for the role. [ADR-036](02-decisions.md#adr-036--one-address-policy-no-connection-to-a-non-global-address-and-the-address-checked-is-the-address-connected-to)
+   decision 10's prohibition is absolute: **the lab inventory may never contain a production address,
+   network or name.**
+
+**One engineering prerequisite the operator should know about, because it is not free.** The lab entry
+point can currently reach **loopback only**: `core.addresses.LAB_NETWORKS` is `127.0.0.0/8` and
+`::1/128`. Reaching lab VMs on their own network needs that constant widened, which is **a change to
+`core/` and therefore needs an independent review before merge**. It must name the lab network
+specifically — a fleet-shaped `10.0.0.0/8` would be refused when the override is constructed, which is
+the guard working as designed. So: **tell us the lab network when the hardware exists**, and that
+reviewed change is the first task of Step 3.
+
+**What the probe output changes, and only this:** which distributions the containers run, whether the
+3.6 floor holds, and whether any fleet host needs the unsupported-runtime path exercised deliberately
+in the lab.
+
 ---
 
 ## Step 4 — Collector v0, `host` scanner, ingest · 1–2 weeks

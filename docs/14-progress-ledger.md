@@ -3011,3 +3011,87 @@ not been done for this upgrade.
 **Dependabot's limitation, recorded with it:** it will open PRs that, per **D85**, arrive with **no CI
 run attached** like every other PR here, and must be certified by explicit dispatch before being
 believed. It also merges nothing by itself, per the standing rule.
+
+---
+
+### D92 — ADR-003 amended: CC BY and CC BY-SA approved for data sources only. D87 closed; A2 complete.
+
+**D87 is closed.** The operator decided the question on 2026-10-28 and gave his reasoning, which is
+recorded in full as an amendment inside **ADR-003** rather than summarised here. In short: the question
+*"does 'package X is fixed in 1.2.2-ubuntu4 per USN-1234' adapt Ubuntu's database, or extract a fact
+from it?"* splits into two uses with different answers, and **conflating them is what made it look
+hard**.
+
+- **Use (a), reporting individual facts in a customer report:** extraction of fact. Facts carry no
+  copyright, share-alike attaches to *adaptations*, and quoting determinations in a report about one
+  customer's hosts produces no adaptation of the database. Attribution and a link are owed and given.
+  **Share-alike does not reach our report text.**
+- **Use (b), vendoring:** a **verbatim** cache with the licence notice intact is redistribution, which
+  CC BY-SA permits. **Restructuring and merging several vendors into one normalised schema is a derived
+  database, is the hard case, and is out of scope until it has its own decision.** If Step 5's matcher
+  starts wanting that, **stop and raise it.**
+
+**What changed, and what is enforced rather than stated.** `CC-BY-4.0` and `CC-BY-SA-4.0` are on
+`APPROVED_SPDX`, and two new constants hold the scope:
+
+- **`DATA_ONLY_SPDX`** — either licence on an entry whose `isolation` is not `data` **fails the build**.
+  Allowing them onto code would quietly extend the approval past the reasoning that justifies it.
+- **`ATTRIBUTION_REQUIRED_SPDX`** — such an entry must carry an `attribution` field naming where in a
+  report the attribution appears. **Recording a licence without its obligation is how the obligation
+  comes to be discovered after a report has shipped.**
+
+Ubuntu and Red Hat are now registered, both **PENDING** the operator's sign-off in the IANA pattern,
+and `make licence-check` reports **28 registered components, no violations** — passing honestly, not
+through a placeholder licence or an invented "proposed" state. The three workarounds D87 refused stay
+refused. **Neither source is vendored, fetched, or used by any code**; the entries exist so the
+obligation is found in the register before use (ADR-035 decision 11).
+
+**Debian is deliberately absent from the register**, not registered under a guess. Its tracker states
+no licence, and the register is a flat list in which every entry is gated, so **there is nowhere to
+hold an unlicensed candidate**. "Licence not stated" remains the finding. A test asserts Debian's
+absence, so adding it later is a deliberate act that has to bring an answer with it. The operator is
+asking the Debian security team directly.
+
+**The limit on the reasoning, recorded at the operator's own instruction and not softened:** he is not
+a lawyer and this is a judgement call, not legal advice. **Legal review is required before any external
+customer receives a report resting on this data**, alongside the terms of service and the authorisation
+agreement that already need one. Each registered entry's `review_evidence` says so, so the requirement
+travels with the data rather than living only in the ADR. Our posture is compliance readiness, never
+certainty (ADR-011) — and that applies to our own licence reasoning as much as to a customer's
+controls.
+
+**Noted separately:** the approved list already carried **`public-data`**, which is not an SPDX
+identifier but a placeholder. Left alone by this amendment, and recorded as a smell — a non-identifier
+on a list of identifiers is a place where something unlicensed could be filed and look approved.
+
+### D93 — A condition on the certifi and dnspython upgrades: the corpus baseline did not verify the live paths, and a live spot-check is owed before we next rely on live output.
+
+**The operator's condition on PR #57, 2026-10-28, recorded here rather than left in a PR description —
+because a caveat in a merged PR's body is a caveat nobody will read at the moment it matters.**
+
+**certifi is the sharper one.** The upgrade changed the **trust store our TLS scanner renders verdicts
+from**. A replayed handshake does **not** re-verify the chain against the new store, so an identical
+corpus baseline proves **no replay-path regression and nothing whatever about live behaviour**. A live
+host that verified before the upgrade **could now legitimately fail** — the removed roots were removed
+because intermediates chaining to them have compromised private keys, so a new failure would most
+likely be *correct*, and a correct new failure is still a changed verdict we must not meet for the
+first time in front of someone.
+
+**dnspython is the same reasoning, more weakly.** The replay does not parse wire-format DNS at all, so
+the baseline says nothing about the live DNS path either. The change is in name decompression, which a
+replay never exercises.
+
+**The condition, and when it falls due.** **Before the next time we rely on live TLS output** — a
+demonstration, a hand-verification run, or the first fleet scan, whichever comes first — run a **live
+spot-check against the TLS scanner's hand-verified hosts** and record the result here.
+
+- If **no verdict changed**, record that, with the host list and the date. A null result is the point of
+  the check and is worth writing down.
+- If **any verdict changed**, that is **a finding with its own entry**, and probably a *correct* one.
+  It is not to be filed as noise, and it is not to be assumed correct either: ADR-017 — the chain is
+  re-checked by hand before the new verdict is believed.
+
+**What this does not license.** It is not a reason to delay the upgrade; both vulnerabilities reach our
+threat model (D91) and shipping the old versions to avoid a verification task would be the wrong trade.
+It is a reason not to **claim** the live paths are verified. **The honest statement today is: the
+replay path is unaffected, and the live TLS and DNS paths are unverified since this upgrade.**

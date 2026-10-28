@@ -401,3 +401,59 @@
   signed_off_at: PENDING
   review_evidence: "iana.org/protocols links both registries; iana.org/help/licensing-terms (CC0 1.0 for Protocol Registries, as defined there); the caveat above"
 
+
+# --- Vulnerability data for the host agent (ADR-035 decision 10) ------------
+# Approved under the ADR-003 amendment of 2026-10-28 (operator decision, ledger
+# D92): CC BY 4.0 and CC BY-SA 4.0 are permitted for DATA SOURCES only, never
+# for code, and every entry carries where its attribution must appear.
+#
+# NEITHER IS VENDORED, FETCHED OR USED BY ANY CODE YET. The entries exist so
+# the obligation is discovered in the register before use rather than after a
+# report has shipped (ADR-035 decision 11).
+#
+# Debian's Security Tracker is deliberately ABSENT rather than registered: it
+# states no licence, and this register is a flat list in which every entry is
+# gated, so there is nowhere to hold an unlicensed candidate without recording
+# a guess. The finding lives in ADR-035 decision 10 and ledger D92. The
+# operator is asking the Debian security team directly.
+
+- name: ubuntu-security-data
+  version: "not yet vendored; no snapshot taken"
+  licence: CC BY-SA 4.0
+  spdx: CC-BY-SA-4.0
+  source: https://ubuntu.com/security
+  purpose: "ADR-035 decision 10: fixed-version-per-release data for package findings on Ubuntu hosts. No CVE-range matching"
+  isolation: data
+  attribution: >-
+    Per finding, with the USN link; a once-per-report data-sources notice in
+    JSON, HTML and PDF; a machine-readable data_sources[] entry; and this
+    register. Share-alike: approved for (a) reporting individual facts in a
+    customer report and (b) a VERBATIM vendored cache with the licence notice
+    intact. A normalised multi-vendor database is a derived database and is out
+    of scope until it has its own decision.
+  # Licence not yet read from the source by the operator; the SPDX value above
+  # is from the published terms as summarised in ADR-035 decision 10 and is
+  # exactly what his sign-off is for.
+  signed_off_by: PENDING (operator sign-off requested 2026-10-28)
+  signed_off_at: PENDING
+  review_evidence: "ADR-003 amendment 2026-10-28 approves CC-BY-SA-4.0 for data sources with the use-(a)/use-(b) distinction; LEGAL REVIEW REQUIRED before any external customer receives a report resting on this data"
+
+- name: redhat-security-data
+  version: "not yet vendored; no snapshot taken"
+  licence: CC BY 4.0
+  spdx: CC-BY-4.0
+  source: https://access.redhat.com/security/data
+  purpose: "ADR-035 decision 10: fixed-version-per-release data for package findings on RHEL-family hosts. No CVE-range matching"
+  isolation: data
+  attribution: >-
+    Per finding, with the advisory link; a once-per-report data-sources notice
+    in JSON, HTML and PDF; a machine-readable data_sources[] entry; and this
+    register. ADR-035 decision 11 names these four places so Step 8 inherits
+    them as a design input.
+  # CAVEAT, recorded before use rather than discovered during Step 5: Red Hat is
+  # RETIRING OVAL v2 in favour of CSAF/VEX. Whatever consumes this must target
+  # the format that will still exist, and the version field above must name the
+  # actual feed and snapshot date once one is taken.
+  signed_off_by: PENDING (operator sign-off requested 2026-10-28)
+  signed_off_at: PENDING
+  review_evidence: "ADR-003 amendment 2026-10-28 approves CC-BY-4.0 for data sources; attribution-and-link obligation recorded above; LEGAL REVIEW REQUIRED before any external customer receives a report resting on this data"

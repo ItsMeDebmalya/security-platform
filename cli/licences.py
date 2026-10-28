@@ -41,9 +41,32 @@ APPROVED_SPDX = frozenset(
         "Unlicense",
         "CC0-1.0",
         "public-data",
+        # ADR-003 amendment, 2026-10-28 (operator decision; ledger D92).
+        # DATA SOURCES ONLY - see DATA_ONLY_SPDX below, which enforces that.
+        "CC-BY-4.0",
+        "CC-BY-SA-4.0",
     }
 )
 """Embeddable. Anything not on this list needs an ADR before it enters the tree."""
+
+DATA_ONLY_SPDX = frozenset({"CC-BY-4.0", "CC-BY-SA-4.0"})
+"""Approved for data sources, never for code (ADR-003 amendment, 2026-10-28).
+
+The approval rests on a distinction the ADR records: reporting an individual
+fact from a vendor's security data is extraction of fact, which carries no
+copyright and so share-alike does not reach our report text; vendoring a
+VERBATIM cache with its licence notice intact is redistribution, which CC BY-SA
+permits on its own terms. Restructuring several vendors' feeds into one
+normalised database of our own construction is a derived database, is the hard
+case, and is OUT OF SCOPE until it has its own decision.
+
+Allowing these onto code would quietly extend the approval past the reasoning
+that justified it, so the isolation mode is checked rather than trusted."""
+
+ATTRIBUTION_REQUIRED_SPDX = frozenset({"CC-BY-4.0", "CC-BY-SA-4.0"})
+"""Attribution is the whole condition of CC BY, so an entry that does not say
+WHERE the attribution must appear has recorded the licence and dropped the
+obligation. The register is where that obligation is discovered before use."""
 
 ISOLATION_REQUIRED_SPDX = frozenset(
     {
@@ -131,6 +154,22 @@ def check_registry(registry: list[dict[str, Any]]) -> list[str]:
             problems.append(
                 f"{name}: {spdx} is not on the approved licence list. "
                 "Raise it as an open question rather than adding it."
+            )
+
+        if spdx in DATA_ONLY_SPDX and isolation != "data":
+            problems.append(
+                f"{name}: {spdx} is approved for data sources only, not for "
+                f"{isolation!r} (ADR-003 amendment, 2026-10-28). The approval "
+                "rests on reasoning about reporting facts and redistributing a "
+                "verbatim cache; code is outside it."
+            )
+
+        if spdx in ATTRIBUTION_REQUIRED_SPDX and not str(entry.get("attribution", "")).strip():
+            problems.append(
+                f"{name}: {spdx} requires attribution, so the entry must carry an "
+                "`attribution` field naming where in a report it has to appear. "
+                "Recording the licence without the obligation is how the "
+                "obligation gets discovered after a report ships."
             )
 
         if isolation not in ISOLATED_MODES | {"library", "data"}:
