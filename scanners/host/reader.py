@@ -33,6 +33,9 @@ from typing import Any
 
 from scanners.host.render import visible
 
+SnapshotPath = Path
+"""The operator's own path argument; the only path this package ever opens."""
+
 # --- the pre-parse limits (spec 13.1): named, with their reasons -------------------------
 
 MAX_BYTES = 16 * 1024 * 1024
