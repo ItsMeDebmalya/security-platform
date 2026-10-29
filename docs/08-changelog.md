@@ -737,6 +737,17 @@ Then restore the entry-point lines in `CLAUDE.md` and `SPEC.md`, and the revert 
 
 **Revert.** Revert the merge commit.
 
+## v4.0-pre.28 — The evidence-contract migration (ADR-037) (2026-10-29)
+
+**What changed. Additive only; no scanner version and no corpus number moved.**
+- **`contracts/evidence.schema.json`:** `command_output` and `access_matrix` kinds added; `file_excerpt` specified (out of `reserved`, which now holds `screenshot` only); the pre-migration `file_excerpt` shape kept valid as `file_excerpt_derived`, because `core/correlation.py` and `scanners/tls` emit it. All three new kinds require `receipt_ref`, `host_ref` and `control_rationale`. Three schema examples added.
+- **`contracts/scanresult.schema.json`:** `telemetry.counts` (`http_sends`, `dns_queries`, `tls_handshakes`, `testssl_budget`, `other`) beside an unchanged `requests` (D65).
+- **`core/models.py`:** the matching models; the evidence union dispatches `file_excerpt` by whether `data` names host-observation fields; `Telemetry.counts`, with `requests` equal to their sum when set.
+- **`docs/02-decisions.md` (ADR-037)**; **`docs/01-architecture.md`** lists the new kinds.
+- **Tests:** `tests/contract/test_host_evidence_migration.py`, written first.
+
+**Revert.** Revert the merge commit. Safe while nothing emits the new kinds; after the host scanner ships, stored artefacts carrying them would be stranded.
+
 ## v4.0-pre.27 — What a run counted: the live/replay divergence, domscout's broad handlers, the web figure (2026-10-13)
 
 **What changed. No scanner version changed; no `core/` file changed; no gate number moved.**
