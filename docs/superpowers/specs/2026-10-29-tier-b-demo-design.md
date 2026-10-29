@@ -142,8 +142,12 @@ built to the parent plan's A6 in full; this document only records which parts th
   - `host-kernel-reboot-pending`: newest installed kernel package version > running kernel version.
     Control-vs-test: running vs installed, both from the snapshot, with `collected_at` and clock skew
     stated (spec §4 — no wall-clock arithmetic). When the snapshot shows the box shares a kernel it
-    does not own (a container), this check returns `not_applicable`, never a pass and never a
-    spurious positive.
+    does not own (a container, `kernel_ownership` `shared` or `unknown`), this check returns
+    `inconclusive` with a reason naming the shared kernel — never a pass and never a spurious
+    positive. (Decided 2026-10-29: ADR-032 closes the `not_applicable` reason set to
+    `special-use-name`; a true `not_applicable: shared-kernel` would need an ADR-032 amendment and a
+    `core/` review, out of demo scope. `inconclusive` naming the reason is the honest, in-scope
+    state.)
 - **F3** — evidence: each finding cites its section and receipt line; `detection_methods[]` with
   honest single-method independence classes (spec §9).
 - **F4 is explicitly excluded** (the distro security matcher, gated on A2's licence sign-off).
