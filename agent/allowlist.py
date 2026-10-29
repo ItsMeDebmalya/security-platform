@@ -34,7 +34,7 @@ class FileEntry(NamedTuple):
     reason: str
     judged_from: str  # what the platform will judge from it
     keys: Tuple[str, ...]  # the only keys that may be extracted
-    fmt: str  # "space" (key value) or "equals" (key=value)
+    fmt: str  # "space" (key value), "equals" (key=value) or "bare" (first line, kept as keys[0])
     max_bytes: int
     needs_root: bool = False
 
@@ -47,7 +47,7 @@ COMMANDS = (
         "kernel.uname",
         ("uname", "-srvm"),
         "Kernel release and architecture.",
-        ("os_release",),
+        ("kernel",),
         5,
         4 * KB,
     ),
@@ -100,6 +100,42 @@ COMMANDS = (
 )
 
 FILES = (
+    FileEntry(
+        "host.machine_id",
+        "/etc/machine-id",
+        "Host identity, kept only as a one-way fingerprint (never the raw id).",
+        "which host a snapshot came from",
+        ("machine_id",),
+        "bare",
+        256,
+    ),
+    FileEntry(
+        "container.dockerenv",
+        "/.dockerenv",
+        "Marker that the host is a container (a container shares its host's kernel).",
+        "whether the running kernel is the box's own",
+        ("marker",),
+        "bare",
+        4 * KB,
+    ),
+    FileEntry(
+        "container.podman",
+        "/run/.containerenv",
+        "Marker that the host is a container (a container shares its host's kernel).",
+        "whether the running kernel is the box's own",
+        ("marker",),
+        "bare",
+        4 * KB,
+    ),
+    FileEntry(
+        "container.systemd",
+        "/run/systemd/container",
+        "Container type recorded by systemd (a container shares its host's kernel).",
+        "whether the running kernel is the box's own",
+        ("marker",),
+        "bare",
+        256,
+    ),
     FileEntry(
         "os.release",
         "/etc/os-release",

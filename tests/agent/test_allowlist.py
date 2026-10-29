@@ -60,7 +60,7 @@ def test_command_has_reason_and_limits(e):
 @pytest.mark.parametrize("e", al.FILES, ids=lambda e: e.reason_id)
 def test_file_has_reason_and_keys(e):
     assert e.reason.strip() and e.judged_from.strip() and e.reason_id.strip()
-    assert e.keys and e.max_bytes > 0 and e.fmt in ("space", "equals")
+    assert e.keys and e.max_bytes > 0 and e.fmt in ("space", "equals", "bare")
 
 
 def test_reason_ids_unique():

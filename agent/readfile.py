@@ -45,6 +45,9 @@ def parse_keys(text: str, keys: Sequence[str], fmt: str) -> Dict[str, str]:
         line = line.strip()
         if not line or line.startswith("#"):
             continue
+        if fmt == "bare":  # a one-value file: the first line, stored under the one key
+            out[keys[0]] = line
+            break
         if fmt == "equals":
             if "=" not in line:
                 continue

@@ -11,7 +11,7 @@ SCHEMA = "security-platform/host-snapshot"
 COLLECTOR_VERSION = "0.1.0"
 
 # Sections the manifest declares. Later tasks extend this tuple.
-SECTIONS = ("os_release", "packages", "listening", "accounts")
+SECTIONS = ("os_release", "kernel", "host_identity", "packages", "ssh")
 
 # Where an interpreter may be looked for (recorded in an unsupported-runtime snapshot).
 SEARCHED = ("/usr/bin/python3", "/usr/libexec/platform-python", "/usr/bin/python")
