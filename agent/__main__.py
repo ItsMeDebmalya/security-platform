@@ -104,11 +104,8 @@ def main():
             fh.write(text if not isinstance(text, bytes) else text.decode("utf-8"))
         sys.stderr.write("unsupported Python %s; wrote unsupported_runtime snapshot\n" % found)
         return 3
-    try:
-        from agent import collect  # the real collector arrives in a later task
-    except ImportError:
-        sys.stderr.write("collector not installed in this build\n")
-        return 4
+    from agent import collect
+
     return collect.main()
 
 

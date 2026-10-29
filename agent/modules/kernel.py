@@ -24,7 +24,7 @@ def collect(runner: Runner, reader: FileReader) -> Outcome:
     tokens = line.split()
     if len(tokens) < 3:
         return modules.failed("unparseable_uname")
-    present = []  # type: List[str]
+    present: List[str] = []
     unreadable = False
     for reason_id in MARKERS:
         got = reader.read_entry(modules.file_entry(reader, reason_id))[0]

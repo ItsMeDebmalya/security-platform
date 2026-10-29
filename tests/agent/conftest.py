@@ -40,7 +40,7 @@ class FakeHost:
         data = self.root / "out" / name
         data.write_text(stdout)
         script = self.bin / name
-        script.write_text("#!/bin/sh\n/bin/cat %s\nexit %d\n" % (shlex.quote(str(data)), code))
+        script.write_text(f"#!/bin/sh\n/bin/cat {shlex.quote(str(data))}\nexit {code}\n")
         script.chmod(0o755)
 
     def remove_command(self, name):

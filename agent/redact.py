@@ -56,11 +56,19 @@ def redact_text(text: Any) -> Tuple[Any, Dict[str, int]]:
     return text, counts
 
 
-def redact_data(value: Any) -> Any:
+def redact_tree(value: Any, counts: Dict[str, int]) -> Any:
+    """Redact every string (keys and values) in a JSON-shaped tree, tallying by family."""
     if isinstance(value, str):
-        return redact_text(value)[0]
+        new, found = redact_text(value)
+        for name, n in found.items():
+            counts[name] = counts.get(name, 0) + n
+        return new
     if isinstance(value, dict):
-        return {redact_data(k): redact_data(v) for k, v in value.items()}
+        return {redact_tree(k, counts): redact_tree(v, counts) for k, v in value.items()}
     if isinstance(value, list):
-        return [redact_data(v) for v in value]
+        return [redact_tree(v, counts) for v in value]
     return value
+
+
+def redact_data(value: Any) -> Any:
+    return redact_tree(value, {})

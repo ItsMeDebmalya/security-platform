@@ -25,7 +25,7 @@ def collect(runner: Runner, reader: FileReader) -> Outcome:
         return problem
     if res.exit_status != 0:
         return modules.failed("command_failed:%s:%s" % (res.reason_id, res.exit_status))
-    found = {}  # type: Dict[str, str]
+    found: Dict[str, str] = {}
     for line in res.stdout.splitlines():
         parts = line.strip().split(None, 1)
         if len(parts) == 2 and parts[0].lower() in KEYS and parts[0].lower() not in found:
@@ -33,6 +33,6 @@ def collect(runner: Runner, reader: FileReader) -> Outcome:
     for key in REQUIRED:
         if key not in found:
             return modules.failed("key_missing_from_output:%s" % key)
-    body = {"source": "sshd -T"}  # type: Dict[str, str]
+    body: Dict[str, str] = {"source": "sshd -T"}
     body.update(found)
     return modules.collected(body)
