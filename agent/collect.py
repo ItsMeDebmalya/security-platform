@@ -9,12 +9,13 @@ section too. Nothing is a silent pass. 3.6 floor, stdlib only.
 """
 
 import argparse
+import json
 import os
 import sys
 import time
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
-from agent import snapshot, version
+from agent import explain, snapshot, version
 from agent.modules import Outcome, failed, host_identity, kernel, os_release, packages, ssh
 from agent.readfile import FileReader
 from agent.receipt import Receipt
@@ -118,10 +119,32 @@ def _write(path: str, text: str) -> None:
         raise
 
 
+def _explain(path: str) -> int:
+    """Render a written snapshot's receipt as plain text. Reads that one file only."""
+    try:
+        with open(path, encoding="utf-8") as fh:
+            snap = json.load(fh)
+        receipt = snap["receipt"]
+        if not isinstance(receipt, dict) or "commands" not in receipt:
+            raise KeyError("receipt")
+    except (OSError, ValueError, KeyError, TypeError):
+        sys.stderr.write("%s is not a collector snapshot with a receipt\n" % path)
+        return 1
+    sys.stdout.write(explain.render_receipt(receipt))
+    return 0
+
+
 def main(argv: Optional[Sequence[str]] = None, tools: Optional[Callable[[], Tools]] = None) -> int:
     parser = argparse.ArgumentParser(prog="agent", add_help=False)
     parser.add_argument("--output")
+    parser.add_argument("--explain", metavar="SNAPSHOT")
+    parser.add_argument("--explain-plan", action="store_true")
     args, _unknown = parser.parse_known_args(sys.argv[1:] if argv is None else list(argv))
+    if args.explain_plan:  # prints the allowlists; runs nothing, opens nothing
+        sys.stdout.write(explain.render_plan())
+        return 0
+    if args.explain:
+        return _explain(args.explain)
     if not args.output:
         sys.stderr.write("no output path; pass --output PATH (nothing is written to stdout)\n")
         return 2
