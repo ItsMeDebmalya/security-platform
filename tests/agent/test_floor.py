@@ -48,3 +48,45 @@ def test_stdlib_only(path):
             module,
         )
         assert top not in ("core", "contracts", "scanners", "cli"), (path.name, module)
+
+
+_BUILTIN_GENERICS = {"list", "dict", "tuple", "set", "frozenset", "type"}
+
+
+def runtime_syntax_problems(source):
+    """3.9+ constructs that ast.parse(feature_version=(3, 6)) does not reject:
+    subscripted builtin generics and `|` unions inside annotations."""
+    tree = ast.parse(source)
+    annotations = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.arg) and node.annotation is not None:
+            annotations.append(node.annotation)
+        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.returns:
+            annotations.append(node.returns)
+        elif isinstance(node, ast.AnnAssign):
+            annotations.append(node.annotation)
+    problems = []
+    for annotation in annotations:
+        for n in ast.walk(annotation):
+            if (
+                isinstance(n, ast.Subscript)
+                and isinstance(n.value, ast.Name)
+                and n.value.id in _BUILTIN_GENERICS
+            ):
+                problems.append("builtin generic " + n.value.id)
+            if isinstance(n, ast.BinOp) and isinstance(n.op, ast.BitOr):
+                problems.append("| between annotations")
+    return problems
+
+
+def test_detector_catches_the_constructs():
+    assert runtime_syntax_problems("def f(x: list[str]): pass")
+    assert runtime_syntax_problems("def f() -> dict[str, int]: pass")
+    assert runtime_syntax_problems("def f(x: int | None): pass")
+    assert runtime_syntax_problems("y: tuple[int, ...] = ()")
+    assert not runtime_syntax_problems("from typing import List\ndef f(x: List[str]): pass")
+
+
+@pytest.mark.parametrize("path", FILES, ids=lambda p: p.name)
+def test_no_runtime_evaluated_39_plus_annotations(path):
+    assert runtime_syntax_problems(path.read_text()) == []

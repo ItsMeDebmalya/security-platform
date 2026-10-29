@@ -2,6 +2,10 @@
 
 agent/ cannot import core/, so the token families are duplicated deliberately.
 tests/agent/test_redact.py asserts this set is a superset of core/redaction.py's.
+
+NOT YET IMPLEMENTED, and owed to the spec 6.3 collection task: the value-level base64
+deny-list (bare base64 runs over a length threshold, as core's heuristics do). A later
+task must not assume that coverage exists; test_redact.py pins the difference.
 """
 
 import re
@@ -18,7 +22,7 @@ SECRET_PATTERNS = (
     ("google_api_key", re.compile(r"\bAIza[0-9A-Za-z_\-]{35}\b")),
 )
 
-_LABEL = r"(?:[A-Za-z0-9_]|[ \t])*?PRIVATE[ \t_-]?KEY(?:[ \t]+BLOCK)?"
+_LABEL = r"(?:[A-Za-z0-9_]|[ \t]){0,40}?PRIVATE[ \t_-]?KEY(?:[ \t]+BLOCK)?"
 _BEGIN = re.compile(r"-{4,5}[ \t]*BEGIN[ \t]+" + _LABEL + r"[ \t]*-{4,5}", re.IGNORECASE)
 _END = re.compile(r"-{4,5}[ \t]*END[ \t]+" + _LABEL + r"[ \t]*-{4,5}", re.IGNORECASE)
 

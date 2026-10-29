@@ -86,6 +86,9 @@ def unsupported_snapshot(found, executable):
 def main():
     found = _arg("--simulate-version") or ".".join(str(p) for p in sys.version_info[:3])
     platform = _arg("--simulate-platform") or sys.platform
+    if not platform.startswith("linux"):
+        sys.stderr.write("the collector supports Linux only; no snapshot written\n")
+        return 2
     parts = [int(p) for p in found.split(".")[:2]]
     if tuple(parts) < tuple(version.FLOOR):
         out = _arg("--output")
@@ -101,9 +104,6 @@ def main():
             fh.write(text if not isinstance(text, bytes) else text.decode("utf-8"))
         sys.stderr.write("unsupported Python %s; wrote unsupported_runtime snapshot\n" % found)
         return 3
-    if not platform.startswith("linux"):
-        sys.stderr.write("the collector supports Linux only; no snapshot written\n")
-        return 2
     try:
         from agent import collect  # the real collector arrives in a later task
     except ImportError:

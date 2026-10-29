@@ -55,8 +55,8 @@ def make_counts(manifest: List[Dict[str, Any]], given: Dict[str, Any]) -> Dict[s
     for key, value in given.items():
         if key not in COUNT_FIELDS:
             raise ValueError("unknown count: %r" % (key,))
-        if not isinstance(value, int) or isinstance(value, bool):
-            raise ValueError("count %r must be an int" % (key,))
+        if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+            raise ValueError("count %r must be a non-negative int" % (key,))
     counts = {k: 0 for k in COUNT_FIELDS}
     counts.update(given)
     for key, status in _DERIVED.items():
@@ -78,7 +78,7 @@ def _check(manifest: List[Dict[str, Any]], sections: Dict[str, Any]) -> None:
     for name in sections:
         if name not in names:
             raise ValueError("section not declared in manifest: %s" % name)
-        status = [m for m in manifest if m["section"] == name][0]["status"]
+        status = next(m for m in manifest if m["section"] == name)["status"]
         if status != "collected":
             raise ValueError("section body present but status is %s: %s" % (status, name))
 

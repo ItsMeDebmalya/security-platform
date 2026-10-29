@@ -65,7 +65,8 @@ def _run(*args, **kw):
 def test_unsupported_interpreter_writes_valid_snapshot(tmp_path):
     out = tmp_path / "s.json"
     proc = _run("--output", str(out), "--simulate-version", "2.7.5")
-    assert proc.returncode != 0 or out.exists()
+    assert proc.returncode == 3
+    assert out.exists()
     snap = json.loads(out.read_text())
     assert snapshot.verify(snap)
     assert snap["snapshot_version"] == version.SNAPSHOT_VERSION
@@ -98,3 +99,12 @@ def test_supported_runtime_on_linux_does_not_report_unsupported(tmp_path):
     # the real collector arrives in a later task; the shim must not claim unsupported
     assert not out.exists() or "runtime" not in json.loads(out.read_text())
     assert "unsupported_runtime" not in proc.stdout
+
+
+def test_non_linux_wins_over_old_interpreter(tmp_path):
+    out = tmp_path / "s.json"
+    proc = _run(
+        "--output", str(out), "--simulate-version", "2.7.5", "--simulate-platform", "darwin"
+    )
+    assert proc.returncode == 2
+    assert not out.exists()

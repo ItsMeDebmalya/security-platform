@@ -50,7 +50,7 @@ select = ["E", "F", "I", "UP", "B", "SIM", "N", "RUF"]
 # agent/ is written to a Python 3.6 syntax floor (spec 3.1, agent/version.py). UP would
 # rewrite typing.List[str] to list[str] and drop the 3.6-valid idioms (3.9+ syntax);
 # the floor test in tests/agent enforces the dialect instead. Shim: 2.7 syntax.
-"agent/**" = ["UP", "SIM", "RUF"]
+"agent/**" = ["UP"]
 # typer declares CLI options as function-call defaults; that is its whole API.
 "cli/main.py" = ["B008"]
 

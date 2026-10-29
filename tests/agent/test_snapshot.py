@@ -85,6 +85,8 @@ def test_counts_are_named_derived_and_have_no_requests():
         _build(counts={"sections_collected": 9})
     with pytest.raises(ValueError):
         _build(counts={"commands_run": "11"})
+    with pytest.raises(ValueError):
+        _build(counts={"bytes_read": -1})
 
 
 def test_self_hash_recompute_matches():
