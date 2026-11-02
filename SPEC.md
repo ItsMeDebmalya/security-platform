@@ -323,7 +323,7 @@ One-line: takes a network (not a domain), inventories devices, and reports expos
 
 ---
 
-### A20. Host / Server Assessment — the Linux agent (`host`), **PLANNED, not built** *(new in Alpha, [ADR-033](docs/02-decisions.md#adr-033--mvp-alpha-scope-one-combined-release-the-linux-agent-moves-into-alpha-tool-4b-deferred) and [ADR-035](docs/02-decisions.md#adr-035--the-host-agent-a-thin-one-shot-collector-an-artefact-the-platform-replays-and-judgements-made-platform-side))*
+### A20. Host / Server Assessment — the Linux agent (`host`), **SHIPPED as a Tier-B demo (two checks); the rest PLANNED** *(new in Alpha, [ADR-033](docs/02-decisions.md#adr-033--mvp-alpha-scope-one-combined-release-the-linux-agent-moves-into-alpha-tool-4b-deferred) and [ADR-035](docs/02-decisions.md#adr-035--the-host-agent-a-thin-one-shot-collector-an-artefact-the-platform-replays-and-judgements-made-platform-side))*
 
 One-line: a read-only collector runs once on a Linux host and writes one snapshot; the platform replays that snapshot into findings through a `host` scanner. **It is not an external scanner** — Alpha adds none (docs/24 §6). New value goes here.
 
@@ -334,8 +334,8 @@ One-line: a read-only collector runs once on a Linux host and writes one snapsho
 - **Package findings cap at `highly_likely`** (ADR-035 decision 9): the available second detection method would need an argument derived from collected data, which the allowlist forbids, so the independence `confirmed` requires is not available in Alpha. Vulnerability matching uses the distribution's own fixed-version-per-release data and **refuses CVE-range matching**; an uncovered package is `inconclusive`, never a pass.
 - **Modules:** the seven in [docs/24 §5](docs/24-alpha-scope.md), plus **module 8, the Part E3 access half** (scheduled after modules 1–4 and before the fleet view). Each module must fire on a real positive on a lab box before it reaches the fleet.
 - **Blocked on one additive contract migration** (ADR-035 decision 12, ledger D75): host findings land on the evidence side of the frozen contract, which has no kind for command output. Nothing may construct evidence before that migration lands.
-- **Status: PLANNED, nothing built.** Phase A (the decisions) is complete except the vulnerability-data licence sign-off, which is the operator's.
-- **Gate: not yet set, and no number is published before one exists.** The fleet is ~50 of our own servers under one internal written authorisation, so its first evidence is internal; that is a weaker independence claim than a customer corpus and the gate has to say so when it is written.
+- **Status: two checks shipped (`host-ssh-root-login`, `host-kernel-reboot-pending`) as the Tier-B demo; the seven modules are otherwise PLANNED.** Phase A (the decisions) is complete except the vulnerability-data licence sign-off, which is the operator's.
+- **Gate (corpus, `make corpus`): precision 1.000 over 1 claim, recall 1.000, inconclusive rate 0.0%** (3 recorded snapshot cases: clean, positive, shared-kernel; 4 checks run). Read the claim count with the number: only `host-kernel-reboot-pending` is `highly_likely`; `host-ssh-root-login` is `suspected` (25% of checks), so it is not a precision claim. The `shared-kernel` case (a container) is `expect_inconclusive` and excluded from the rate; the harness asserts its snapshot holds the sections the declines trace to (D67). The three snapshots are real, recorded from one Ubuntu VM and one container, so this is **not** fleet evidence and the independence claim is weak: the fleet of ~50 servers is still to come, and each module must fire on a real positive on a lab box first.
 
 ---
 

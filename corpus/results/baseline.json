@@ -1122,6 +1122,149 @@
         "expected": [],
         "fn": 0,
         "fp": 0,
+        "id": "clean",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "not_applicable": 0,
+        "tier": "known_good",
+        "tp": 0
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [
+          {
+            "check_id": "host-ssh-root-login",
+            "location": "$"
+          },
+          {
+            "check_id": "host-kernel-reboot-pending",
+            "location": "$"
+          }
+        ],
+        "fn": 0,
+        "fp": 0,
+        "id": "positive",
+        "inconclusive": 0,
+        "inconclusive_delivered": false,
+        "not_applicable": 0,
+        "tier": "vulnerable",
+        "tp": 1
+      },
+      {
+        "errors": [],
+        "expect_inconclusive": true,
+        "expected": [],
+        "fn": 0,
+        "fp": 0,
+        "id": "shared-kernel",
+        "inconclusive": 0,
+        "inconclusive_delivered": true,
+        "not_applicable": 0,
+        "tier": "vulnerable",
+        "tp": 0
+      }
+    ],
+    "false_positives_on_known_good": 0,
+    "gate": {
+      "inconclusive_max": 0.15,
+      "precision": 0.99,
+      "recall": 0.95,
+      "recall_definition": "absolute",
+      "recall_label": "absolute (the true set is knowable for this scanner)"
+    },
+    "overall": {
+      "cases": 3,
+      "checks_run": 4,
+      "claims": {
+        "derived": {
+          "fp": 0,
+          "precision": null,
+          "tp": 0
+        },
+        "detected": {
+          "fp": 0,
+          "precision": 1.0,
+          "tp": 1
+        }
+      },
+      "false_positives_on_known_good": 0,
+      "fn": 0,
+      "fp": 0,
+      "inconclusive_rate": 0.0,
+      "not_applicable": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "suspected_rate": 0.25,
+      "tier": "all",
+      "tp": 1
+    },
+    "passed": true,
+    "reason": "pass",
+    "scanner": "host",
+    "tiers": {
+      "known_good": {
+        "cases": 1,
+        "checks_run": 2,
+        "claims": {
+          "derived": {
+            "fp": 0,
+            "precision": null,
+            "tp": 0
+          },
+          "detected": {
+            "fp": 0,
+            "precision": null,
+            "tp": 0
+          }
+        },
+        "false_positives_on_known_good": 0,
+        "fn": 0,
+        "fp": 0,
+        "inconclusive_rate": 0.0,
+        "not_applicable": 0,
+        "precision": null,
+        "recall": null,
+        "suspected_rate": 0.0,
+        "tier": "known_good",
+        "tp": 0
+      },
+      "vulnerable": {
+        "cases": 2,
+        "checks_run": 2,
+        "claims": {
+          "derived": {
+            "fp": 0,
+            "precision": null,
+            "tp": 0
+          },
+          "detected": {
+            "fp": 0,
+            "precision": 1.0,
+            "tp": 1
+          }
+        },
+        "false_positives_on_known_good": 0,
+        "fn": 0,
+        "fp": 0,
+        "inconclusive_rate": 0.0,
+        "not_applicable": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "suspected_rate": 0.5,
+        "tier": "vulnerable",
+        "tp": 1
+      }
+    }
+  },
+  {
+    "cases": [
+      {
+        "errors": [],
+        "expect_inconclusive": false,
+        "expected": [],
+        "fn": 0,
+        "fp": 0,
         "id": "healthy",
         "inconclusive": 4,
         "inconclusive_delivered": true,
