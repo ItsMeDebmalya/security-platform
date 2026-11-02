@@ -83,9 +83,15 @@ def _case_context(
 ) -> tuple[BaseScanner, Asset, ScanContext]:
     """The scanner, target and replay context for one case (the ADR-029 contract
     test reads the context's exposure log after the run)."""
-    scanner = discover().get(scanner_name)()
+    scanner_cls = discover().get(scanner_name)
     target = Asset(**case["target"])
     fixtures = ROOT / case["fixtures"]
+    # A snapshot scanner (host) reads one recorded artefact and makes no network
+    # call; the replay backends below are built for the signature and never used.
+    if getattr(scanner_cls, "takes_snapshot", False):
+        scanner = scanner_cls(snapshot_path=fixtures / "snapshot.json")  # type: ignore[call-arg]
+    else:
+        scanner = scanner_cls()
     testssl_fixtures = case.get("testssl_fixtures")
     # The HTTP scope is the target host unioned with the scanner's service hosts
     # for this target (crt.sh and the target's registry for domscout; empty for
@@ -121,6 +127,37 @@ def _case_context(
         progress=lambda message, fraction: None,
     )
     return scanner, target, ctx
+
+
+def declined_judgement_gaps(fixtures: Path) -> list[str]:
+    """D67: a case whose correct answer is a declined judgement must be
+    traceable to what the snapshot actually holds. Returns the reasons it is
+    not (empty means traceable). A decline backed by an omission, or by a host
+    the artefact shows to be decidable, is a gap: it would read as a clean host.
+    """
+    path = fixtures / "snapshot.json"
+    if not path.exists():
+        return []  # not a snapshot case
+    snap = json.loads(path.read_text())
+    manifest = {m.get("section"): m for m in snap.get("manifest") or []}
+    sections = snap.get("sections") or {}
+    gaps: list[str] = []
+    declines = 0
+    kernel = manifest.get("kernel")
+    if kernel is None:
+        gaps.append("manifest does not list the kernel section (an omission, not a decline)")
+    elif kernel.get("status") == "collected" and (sections.get("kernel") or {}).get(
+        "kernel_ownership"
+    ) not in (None, "own"):
+        declines += 1
+    ssh = manifest.get("ssh")
+    if ssh is None:
+        gaps.append("manifest does not list the ssh section (an omission, not a decline)")
+    elif ssh.get("status") in ("unavailable", "error"):
+        declines += 1
+    if not declines:
+        gaps.append("the artefact shows a decidable host: no section the decline traces to")
+    return gaps
 
 
 def _score(
@@ -179,6 +216,9 @@ def run_scanner_corpus(
             )
             continue
         expects_inconclusive = bool(case.get("expect_inconclusive"))
+        traceability = (
+            declined_judgement_gaps(ROOT / case["fixtures"]) if expects_inconclusive else []
+        )
         expected_by_case_id[case["id"]] = expected_by_case.get(case["id"], []) or []
         score = _score(result, expected_by_case_id[case["id"]], enumeration_check_ids)
         delivered = any(f.state == "inconclusive" for f in result.findings)
@@ -210,7 +250,7 @@ def run_scanner_corpus(
                 score=score,
                 inconclusive_expected=expects_inconclusive,
                 inconclusive_delivered=delivered,
-                errors=[e.message for e in result.errors],
+                errors=[e.message for e in result.errors] + [f"D67: {g}" for g in traceability],
             )
         )
 

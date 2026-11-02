@@ -18,7 +18,9 @@
         "dns_answer",
         "tls_handshake",
         "screenshot",
-        "file_excerpt"
+        "file_excerpt",
+        "command_output",
+        "access_matrix"
       ]
     },
     "label": {
@@ -59,6 +61,18 @@
     },
     {
       "$ref": "#/$defs/tls_handshake"
+    },
+    {
+      "$ref": "#/$defs/command_output"
+    },
+    {
+      "$ref": "#/$defs/file_excerpt"
+    },
+    {
+      "$ref": "#/$defs/access_matrix"
+    },
+    {
+      "$ref": "#/$defs/file_excerpt_derived"
     },
     {
       "$ref": "#/$defs/reserved"
@@ -384,12 +398,11 @@
       ]
     },
     "reserved": {
-      "description": "screenshot and file_excerpt are reserved. Their shapes are specified when the first scanner needs them; until then they carry the base fields and a stated rationale for their control.",
+      "description": "screenshot is reserved: nothing needs it, and specifying a shape no scanner uses is how a contract acquires dead weight. Its shape is specified when the first scanner needs it; until then it carries the base fields and a stated rationale for its control. (file_excerpt left this block in ADR-037.)",
       "properties": {
         "kind": {
           "enum": [
-            "screenshot",
-            "file_excerpt"
+            "screenshot"
           ]
         },
         "control_rationale": {
@@ -543,6 +556,492 @@
         "where"
       ],
       "additionalProperties": false
+    },
+    "command_output": {
+      "description": "ADR-037. A fact derived from a command the host agent ran. argv is the exact argv the allowlist declared and the receipt recorded, never a shell string. output is the RELEVANT output and output_selection says how it was reduced from what was captured. A non-zero exit_status is legitimate evidence. The control is the allowlist entry's declared expectation; control_rationale states the pair in words.",
+      "properties": {
+        "kind": {
+          "const": "command_output"
+        },
+        "control_rationale": {
+          "type": "string",
+          "minLength": 1
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "argv",
+            "exit_status",
+            "output",
+            "output_selection",
+            "receipt_ref",
+            "collected_at",
+            "host_ref"
+          ],
+          "properties": {
+            "argv": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1
+            },
+            "exit_status": {
+              "type": "integer"
+            },
+            "output": {
+              "type": "string"
+            },
+            "output_selection": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "method",
+                "detail",
+                "captured_bytes",
+                "truncated"
+              ],
+              "properties": {
+                "method": {
+                  "enum": [
+                    "lines_matching",
+                    "whole",
+                    "first_n_bytes"
+                  ]
+                },
+                "detail": {
+                  "type": "string"
+                },
+                "captured_bytes": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "truncated": {
+                  "type": "boolean"
+                }
+              }
+            },
+            "receipt_ref": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "reason_id",
+                "command_index"
+              ],
+              "properties": {
+                "reason_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "command_index": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "description": "Ties this evidence to the receipt line that produced it. Evidence that cites no receipt line is evidence for something the snapshot does not record."
+            },
+            "collected_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "host_ref": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{16}$",
+              "description": "The first 16 hex digits of the snapshot's machine_id fingerprint. Never a hostname-only link."
+            }
+          }
+        }
+      },
+      "required": [
+        "kind",
+        "control_rationale",
+        "data"
+      ]
+    },
+    "file_excerpt": {
+      "description": "ADR-037. A fact derived from a file on a host, moved out of `reserved` and specified. keys carries only what the file allowlist entry declared it may extract: a file is read, a file is not stored. stat is here because for several checks the mode is the finding. Distinguished from file_excerpt_derived by its host-observation fields; one that names any of them must carry all the required ones, receipt_ref included.",
+      "properties": {
+        "kind": {
+          "const": "file_excerpt"
+        },
+        "control_rationale": {
+          "type": "string",
+          "minLength": 1
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "keys",
+            "excerpt",
+            "receipt_ref",
+            "collected_at",
+            "host_ref"
+          ],
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "keys": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "excerpt": {
+              "type": "string"
+            },
+            "line_numbers": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "stat": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "mode"
+                  ],
+                  "properties": {
+                    "mode": {
+                      "type": "string",
+                      "pattern": "^[0-7]{3,4}$"
+                    },
+                    "owner_uid": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ],
+                      "minimum": 0
+                    },
+                    "owner_group_gid": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ],
+                      "minimum": 0
+                    },
+                    "size_bytes": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ],
+                      "minimum": 0
+                    }
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "receipt_ref": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "reason_id",
+                "file_index"
+              ],
+              "properties": {
+                "reason_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "file_index": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "description": "Ties this evidence to the receipt line that produced it. Evidence that cites no receipt line is evidence for something the snapshot does not record."
+            },
+            "collected_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "host_ref": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{16}$",
+              "description": "The first 16 hex digits of the snapshot's machine_id fingerprint. Never a hostname-only link."
+            }
+          }
+        }
+      },
+      "required": [
+        "kind",
+        "control_rationale",
+        "data"
+      ]
+    },
+    "file_excerpt_derived": {
+      "description": "ADR-037: the file_excerpt shape that existed while the kind was reserved, kept valid. core/correlation.py and scanners/tls use it for evidence that is not a file at all (a composition rule, a testssl.sh probe), with a stated rationale for having no control. Valid only while `data` names none of the host-observation fields, so a host excerpt cannot shed its receipt_ref and slip in here. New code should not use it; a real kind for derived evidence is a follow-up.",
+      "properties": {
+        "kind": {
+          "const": "file_excerpt"
+        },
+        "control_rationale": {
+          "type": "string",
+          "minLength": 1
+        },
+        "data": {
+          "type": "object",
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "path"
+                ]
+              },
+              {
+                "required": [
+                  "keys"
+                ]
+              },
+              {
+                "required": [
+                  "excerpt"
+                ]
+              },
+              {
+                "required": [
+                  "line_numbers"
+                ]
+              },
+              {
+                "required": [
+                  "stat"
+                ]
+              },
+              {
+                "required": [
+                  "receipt_ref"
+                ]
+              },
+              {
+                "required": [
+                  "host_ref"
+                ]
+              },
+              {
+                "required": [
+                  "collected_at"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "kind",
+        "control_rationale",
+        "data"
+      ]
+    },
+    "access_matrix": {
+      "description": "ADR-037. Who can read, write, export or delete a file, per principal. basis says where each principal's rights came from and derivation how the matrix was derived, because delete rights come from the PARENT directory, not the file: an unexplained can-delete would be an assertion dressed as an observation. acl null means no ACL support was observed, never that no ACL exists. members_observed is what the collector could read, not the group's whole membership.",
+      "properties": {
+        "kind": {
+          "const": "access_matrix"
+        },
+        "control_rationale": {
+          "type": "string",
+          "minLength": 1
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "subject_kind",
+            "path",
+            "stat",
+            "principals",
+            "derivation",
+            "receipt_ref",
+            "collected_at",
+            "host_ref"
+          ],
+          "properties": {
+            "subject_kind": {
+              "enum": [
+                "file",
+                "directory"
+              ]
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "stat": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "mode"
+              ],
+              "properties": {
+                "mode": {
+                  "type": "string",
+                  "pattern": "^[0-7]{3,4}$"
+                },
+                "owner_uid": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0
+                },
+                "owner_group_gid": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0
+                },
+                "size_bytes": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0
+                }
+              }
+            },
+            "parent_stat": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "mode"
+                  ],
+                  "properties": {
+                    "mode": {
+                      "type": "string",
+                      "pattern": "^[0-7]{3,4}$"
+                    },
+                    "owner_uid": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ],
+                      "minimum": 0
+                    },
+                    "owner_group_gid": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ],
+                      "minimum": 0
+                    },
+                    "size_bytes": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ],
+                      "minimum": 0
+                    }
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "acl": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "object"
+              }
+            },
+            "principals": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "principal",
+                  "members_observed",
+                  "read",
+                  "write",
+                  "delete",
+                  "basis"
+                ],
+                "properties": {
+                  "principal": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "members_observed": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "read": {
+                    "type": "boolean"
+                  },
+                  "write": {
+                    "type": "boolean"
+                  },
+                  "delete": {
+                    "type": "boolean"
+                  },
+                  "basis": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            },
+            "derivation": {
+              "type": "string",
+              "minLength": 1
+            },
+            "receipt_ref": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "reason_id",
+                "file_index"
+              ],
+              "properties": {
+                "reason_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "file_index": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "description": "Ties this evidence to the receipt line that produced it. Evidence that cites no receipt line is evidence for something the snapshot does not record."
+            },
+            "collected_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "host_ref": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{16}$",
+              "description": "The first 16 hex digits of the snapshot's machine_id fingerprint. Never a hostname-only link."
+            }
+          }
+        }
+      },
+      "required": [
+        "kind",
+        "control_rationale",
+        "data"
+      ]
     }
   },
   "examples": [
@@ -694,6 +1193,98 @@
         "verify_message": "certificate has expired"
       },
       "control_rationale": "the verdict of a strictly-configured client against the same server; the observation above was taken permissively so the handshake could complete at all"
+    },
+    {
+      "kind": "command_output",
+      "label": "dpkg-query openssl",
+      "captured_at": "2026-10-13T09:14:22Z",
+      "control_rationale": "the allowlist entry declares exit 0 and one line per package; this is the test",
+      "data": {
+        "argv": [
+          "/usr/bin/dpkg-query",
+          "-W",
+          "-f=${Package}\t${Version}\n"
+        ],
+        "exit_status": 0,
+        "output": "openssl\t3.0.2-0ubuntu1.10\n",
+        "output_selection": {
+          "method": "lines_matching",
+          "detail": "package name == 'openssl'",
+          "captured_bytes": 41233,
+          "truncated": false
+        },
+        "receipt_ref": {
+          "reason_id": "packages.debian",
+          "command_index": 3
+        },
+        "collected_at": "2026-10-13T09:14:22Z",
+        "host_ref": "sha256:ab12cd34ef56ab78"
+      }
+    },
+    {
+      "kind": "file_excerpt",
+      "label": "sshd_config",
+      "captured_at": "2026-10-13T09:14:22Z",
+      "control_rationale": "the allowlist entry names PermitRootLogin as the only key read",
+      "data": {
+        "path": "/etc/ssh/sshd_config",
+        "keys": {
+          "PermitRootLogin": "yes"
+        },
+        "excerpt": "PermitRootLogin yes",
+        "line_numbers": [
+          34
+        ],
+        "stat": {
+          "mode": "0644",
+          "owner_uid": 0,
+          "size_bytes": 3321
+        },
+        "receipt_ref": {
+          "reason_id": "ssh.config",
+          "file_index": 1
+        },
+        "collected_at": "2026-10-13T09:14:22Z",
+        "host_ref": "sha256:ab12cd34ef56ab78"
+      }
+    },
+    {
+      "kind": "access_matrix",
+      "label": "who can delete app.log",
+      "captured_at": "2026-10-13T09:14:22Z",
+      "control_rationale": "rights derived from mode, group and the parent directory's write bit",
+      "data": {
+        "subject_kind": "file",
+        "path": "/var/log/app.log",
+        "stat": {
+          "mode": "0644",
+          "owner_uid": 0,
+          "owner_group_gid": 4
+        },
+        "parent_stat": {
+          "mode": "0775",
+          "owner_uid": 0,
+          "owner_group_gid": 4
+        },
+        "acl": null,
+        "principals": [
+          {
+            "principal": "group:adm",
+            "members_observed": 7,
+            "read": true,
+            "write": false,
+            "delete": true,
+            "basis": "parent_directory_write"
+          }
+        ],
+        "derivation": "mode+group+acl",
+        "receipt_ref": {
+          "reason_id": "logs.perms",
+          "file_index": 2
+        },
+        "collected_at": "2026-10-13T09:14:22Z",
+        "host_ref": "sha256:ab12cd34ef56ab78"
+      }
     }
   ]
 }

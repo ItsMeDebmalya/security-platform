@@ -1,0 +1,12 @@
+# The known-correct answers, as check_id + location pairs per case.
+
+clean: []
+
+positive:
+  - { check_id: host-ssh-root-login, location: "$" }
+  - { check_id: host-kernel-reboot-pending, location: "$" }
+
+# shared-kernel is declared expect_inconclusive in corpus/targets/host.yaml:
+# a container cannot be judged on reboot or sshd, so the answer is "we could
+# not tell".
+shared-kernel: []

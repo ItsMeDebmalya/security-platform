@@ -21,7 +21,16 @@ from collections.abc import Mapping
 from datetime import date, datetime
 from typing import Annotated, Any, ClassVar, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Discriminator,
+    Field,
+    Tag,
+    TypeAdapter,
+    field_validator,
+    model_validator,
+)
 
 from core.ids import TARGET_LEVEL, finding_id
 from core.redaction import redact_data, redact_evidence, redact_text
@@ -284,30 +293,189 @@ class TlsHandshakeEvidence(EvidenceBase):
         return self.control is not None
 
 
-class ReservedEvidence(EvidenceBase):
-    """screenshot and file_excerpt.
+HOST_REF = r"^sha256:[0-9a-f]{16}$"
 
-    Their shapes are specified when the first scanner needs them. Until then
-    they carry the base fields and a stated rationale for their control, so
-    nobody ships one without answering the control question.
+
+class ReceiptRef(Strict):
+    """ADR-037: the receipt line that produced this evidence (design section 8).
+
+    Evidence that cites no receipt line is evidence for something the snapshot does not
+    record, so every host-observation kind requires one.
+    """
+
+    reason_id: str = Field(min_length=1)
+
+
+class CommandReceiptRef(ReceiptRef):
+    command_index: int = Field(ge=0)
+
+
+class FileReceiptRef(ReceiptRef):
+    file_index: int = Field(ge=0)
+
+
+class OutputSelection(Strict):
+    """R1: how `output` was reduced from what was captured."""
+
+    method: Literal["lines_matching", "whole", "first_n_bytes"]
+    detail: str
+    captured_bytes: int = Field(ge=0)
+    truncated: bool
+
+
+class CommandOutputData(Strict):
+    argv: list[str] = Field(min_length=1)
+    exit_status: int
+    output: str
+    output_selection: OutputSelection
+    receipt_ref: CommandReceiptRef
+    collected_at: datetime
+    host_ref: str = Field(pattern=HOST_REF)
+
+
+class CommandOutputEvidence(EvidenceBase):
+    """ADR-037: a fact derived from a command the host agent ran.
+
+    The control is the allowlist entry's declared expectation; `control_rationale`
+    states the pair in words, as every kind must.
+    """
+
+    kind: Literal["command_output"]
+    control_rationale: str = Field(min_length=1)
+    data: CommandOutputData
+
+    def has_control(self) -> bool:
+        return True
+
+
+class FileStat(Strict):
+    mode: str = Field(pattern=r"^[0-7]{3,4}$")
+    owner_uid: int | None = Field(default=None, ge=0)
+    owner_group_gid: int | None = Field(default=None, ge=0)
+    size_bytes: int | None = Field(default=None, ge=0)
+
+
+class FileExcerptData(Strict):
+    path: str = Field(min_length=1)
+    keys: dict[str, str]
+    excerpt: str
+    line_numbers: list[int] | None = None
+    stat: FileStat | None = None
+    receipt_ref: FileReceiptRef
+    collected_at: datetime
+    host_ref: str = Field(pattern=HOST_REF)
+
+    @field_validator("line_numbers")
+    @classmethod
+    def _lines_are_one_based(cls, value: list[int] | None) -> list[int] | None:
+        if value is not None and any(n < 1 for n in value):
+            raise ValueError("line numbers start at 1")
+        return value
+
+
+class FileExcerptEvidence(EvidenceBase):
+    """ADR-037: a fact derived from a file on a host. A file is read, not stored."""
+
+    kind: Literal["file_excerpt"]
+    control_rationale: str = Field(min_length=1)
+    data: FileExcerptData
+
+    def has_control(self) -> bool:
+        return True
+
+
+class AccessPrincipal(Strict):
+    principal: str = Field(min_length=1)
+    members_observed: int = Field(ge=0)
+    read: bool
+    write: bool
+    delete: bool
+    basis: str = Field(min_length=1)
+
+
+class AccessMatrixData(Strict):
+    subject_kind: Literal["file", "directory"]
+    path: str = Field(min_length=1)
+    stat: FileStat
+    parent_stat: FileStat | None = None
+    acl: list[dict[str, Any]] | None = None
+    """None means no ACL support was observed, never that no ACL exists."""
+    principals: list[AccessPrincipal]
+    derivation: str = Field(min_length=1)
+    receipt_ref: FileReceiptRef
+    collected_at: datetime
+    host_ref: str = Field(pattern=HOST_REF)
+
+
+class AccessMatrixEvidence(EvidenceBase):
+    """ADR-037: who can read, write or delete a file, with where each right came from."""
+
+    kind: Literal["access_matrix"]
+    control_rationale: str = Field(min_length=1)
+    data: AccessMatrixData
+
+    def has_control(self) -> bool:
+        return True
+
+
+# A file_excerpt whose data names any of these is a host observation and must be a complete
+# one, receipt_ref included; anything else is the shape that existed while the kind was
+# reserved (ADR-037). Mirrors `file_excerpt_derived` in contracts/evidence.schema.json.
+HOST_EXCERPT_FIELDS = frozenset(
+    {"path", "keys", "excerpt", "line_numbers", "stat", "receipt_ref", "host_ref", "collected_at"}
+)
+
+
+class ReservedEvidence(EvidenceBase):
+    """`screenshot`, and `file_excerpt` as it was while reserved.
+
+    `screenshot` stays reserved: nothing needs it, and specifying a shape no scanner uses
+    is how a contract acquires dead weight. The reserved `file_excerpt` shape is kept valid
+    (ADR-037) because core/correlation.py and scanners/tls emit it for evidence that is
+    not a file at all. `_evidence_tag` sends anything whose `data` names a host-observation
+    field to FileExcerptEvidence instead, so a host excerpt cannot shed its receipt_ref and
+    land here.
     """
 
     kind: Literal["screenshot", "file_excerpt"]
     control_rationale: str = Field(min_length=1)
     data: dict[str, Any] = Field(default_factory=dict)
 
+    @model_validator(mode="after")
+    def _host_excerpts_are_specified(self) -> Self:
+        if self.kind == "file_excerpt" and HOST_EXCERPT_FIELDS & set(self.data):
+            raise ValueError("a file_excerpt naming host-observation fields is FileExcerptEvidence")
+        return self
+
     def has_control(self) -> bool:
         return False
 
 
+def _evidence_tag(value: Any) -> str | None:
+    """Which evidence model a raw value is, by `kind` (ADR-037 splits file_excerpt in two)."""
+    if isinstance(value, ReservedEvidence) and value.kind == "file_excerpt":
+        return "file_excerpt_reserved"
+    kind = value.get("kind") if isinstance(value, dict) else getattr(value, "kind", None)
+    if kind != "file_excerpt":
+        return str(kind) if kind is not None else None
+    data = value.get("data") if isinstance(value, dict) else getattr(value, "data", None)
+    if isinstance(data, dict) and not (HOST_EXCERPT_FIELDS & set(data)):
+        return "file_excerpt_reserved"
+    return "file_excerpt"
+
+
 EvidenceItem = Annotated[
-    HttpPairEvidence
-    | OobCallbackEvidence
-    | TimingEvidence
-    | DnsAnswerEvidence
-    | TlsHandshakeEvidence
-    | ReservedEvidence,
-    Field(discriminator="kind"),
+    Annotated[HttpPairEvidence, Tag("http_pair")]
+    | Annotated[OobCallbackEvidence, Tag("oob_callback")]
+    | Annotated[TimingEvidence, Tag("timing")]
+    | Annotated[DnsAnswerEvidence, Tag("dns_answer")]
+    | Annotated[TlsHandshakeEvidence, Tag("tls_handshake")]
+    | Annotated[CommandOutputEvidence, Tag("command_output")]
+    | Annotated[AccessMatrixEvidence, Tag("access_matrix")]
+    | Annotated[FileExcerptEvidence, Tag("file_excerpt")]
+    | Annotated[ReservedEvidence, Tag("screenshot")]
+    | Annotated[ReservedEvidence, Tag("file_excerpt_reserved")],
+    Discriminator(_evidence_tag),
 ]
 
 
@@ -766,12 +934,41 @@ class CheckRun(Strict):
         return self
 
 
+class TelemetryCounts(Strict):
+    """ADR-037 (D65): `Telemetry.requests` read apart. All five are always stated."""
+
+    http_sends: int = Field(ge=0)
+    dns_queries: int = Field(ge=0)
+    tls_handshakes: int = Field(ge=0)
+    testssl_budget: int = Field(ge=0)
+    other: int = Field(ge=0)
+
+    def total(self) -> int:
+        return (
+            self.http_sends
+            + self.dns_queries
+            + self.tls_handshakes
+            + self.testssl_budget
+            + self.other
+        )
+
+
 class Telemetry(Strict):
     checks_run: list[CheckRun] = Field(default_factory=list)
     suppressed: list[Suppressed] = Field(default_factory=list)
     requests: int = 0
+    """Unchanged in meaning: the cost meter's running total. When `counts` is present it
+    is their sum (checked below); the JSON Schema cannot express that, so it says so."""
+    counts: TelemetryCounts | None = None
+    """None means not recorded, which is every result before ADR-037. Never backfilled."""
     wall_ms: int = 0
     ai_tokens: int = 0
+
+    @model_validator(mode="after")
+    def _requests_is_the_sum_of_counts(self) -> Self:
+        if self.counts is not None and self.counts.total() != self.requests:
+            raise ValueError("telemetry.requests is the sum of telemetry.counts when counts is set")
+        return self
 
 
 class ScanResult(Strict):

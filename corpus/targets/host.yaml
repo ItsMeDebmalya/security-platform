@@ -1,0 +1,38 @@
+# Corpus for the host scanner (A20). Each case is a RECORDED snapshot from a
+# real Linux host (ADR-027: hostile input, copied byte-for-byte, never edited).
+# The scanner makes no network call; the harness hands it the fixture's
+# snapshot.json. The target value must equal the snapshot's host.hostname.
+#
+# shared-kernel is a container snapshot: the kernel is not the host's own, so
+# the reboot check cannot judge, and there is no sshd, so the ssh check cannot
+# judge. Both must say inconclusive, and the harness asserts the snapshot holds
+# the sections those declines trace to (D67).
+
+gate:
+  precision: 0.99
+  recall: 0.95
+  inconclusive_max: 0.15
+  recall_definition: absolute  # the host check set is finite
+
+cases:
+  - id: clean
+    tier: known_good
+    source: frozen
+    mode: light
+    target: { type: host, value: ubuntu-virtual-machine }
+    fixtures: corpus/fixtures/host/clean
+
+  - id: positive
+    tier: vulnerable
+    source: frozen
+    mode: light
+    target: { type: host, value: ubuntu-virtual-machine }
+    fixtures: corpus/fixtures/host/positive
+
+  - id: shared-kernel
+    tier: vulnerable
+    source: frozen
+    mode: light
+    expect_inconclusive: true
+    target: { type: host, value: 19d46a1420a9 }
+    fixtures: corpus/fixtures/host/shared-kernel

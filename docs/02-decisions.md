@@ -1342,3 +1342,31 @@ The shape of the problem is not "write an agent". It is that **a host snapshot i
 - **Calling the result "SSRF-proof":** it covers addresses, and saying more would read as a protection the code does not provide.
 
 **Reversal cost.** Low in code: one module and its callers. High in meaning: reverting it restores a real request-forgery path into our own infrastructure, so a revert must be paired with another way to keep that path closed.
+
+
+## ADR-037 — The evidence-contract migration: `command_output`, `file_excerpt` specified, `access_matrix`, and `Telemetry.counts` (D65)
+
+**Status.** Proposed 2026-10-29 (Tier-B demo, plan task A6). Authority: [the host-agent design, section 12](superpowers/specs/2026-10-13-host-agent-design.md) (D75, folding in D65). `contracts/` is frozen, so this is a deliberate additive migration with an ADR, and it gets an independent review before merge to the `core/` bar or higher. **Nothing in Phase B may construct evidence before it lands.**
+
+**Context.** Host findings must carry evidence and the contract has nowhere for it: no kind exists for a fact derived from a command, `file_excerpt` sat in a `reserved` block with no shape, and an access matrix (module 8, D70) would otherwise be retrofitted later. `Telemetry.requests` also conflates HTTP sends, DNS queries, TLS handshakes and testssl.sh's fixed budget (D65), and `Telemetry` is frozen too. One migration, not two.
+
+**Decision. Additive only.** No existing kind changes shape, no field is removed or re-typed, no enum value is withdrawn.
+
+1. **`command_output` (new kind).** `data` holds the exact `argv` (a non-empty list, never a shell string), `exit_status` (non-zero is legitimate evidence), the relevant `output`, an `output_selection` (`method` one of `lines_matching | whole | first_n_bytes`, `detail`, `captured_bytes`, `truncated`) saying how `output` was reduced, `receipt_ref {reason_id, command_index}`, `collected_at` and `host_ref`. Output goes through redaction like every kind.
+2. **`file_excerpt` (specified, out of `reserved`).** `data`: `path`, `keys` (named keys only: a file is read, not stored), `excerpt`, optional `line_numbers` and `stat`, `receipt_ref {reason_id, file_index}`, `collected_at`, `host_ref`.
+3. **`access_matrix` (new kind).** `data`: `subject_kind`, `path`, `stat`, optional `parent_stat`, `acl` (null means no ACL support was **observed**, never that no ACL exists), `principals[]` each with `members_observed` (not `members`), `read`, `write`, `delete` and a `basis`, a `derivation` for the matrix, `receipt_ref {reason_id, file_index}`, `collected_at`, `host_ref`. The spec left `receipt_ref`'s shape open here; it is `file_index` because the matrix is derived from file stats. **Flagged for review.**
+4. **`receipt_ref` is required on all three,** and so is `host_ref` (`sha256:` plus 16 hex digits) and `control_rationale`. Each `data` object refuses fields it does not name. Evidence that cites no receipt line is evidence for something the snapshot does not record.
+5. **`Telemetry.counts` (D65).** Optional `{http_sends, dns_queries, tls_handshakes, testssl_budget, other}`, all five required when present, each at least 0. **`requests` is unchanged in meaning**: it stays the cost meter's running total, and its definition is now written down as the sum of `counts` when `counts` is set. The model enforces that sum; the schema cannot, and says so. `counts` null means not recorded, and no result is backfilled. The host scanner reports `requests: 0`. `CostMeter` is not changed by this ADR: nothing populates `counts` yet.
+6. **`screenshot` stays reserved.** Nothing needs it, and specifying a shape no scanner uses is how a contract acquires dead weight.
+
+**A conflict the spec did not know about, resolved without breaking the additive rule.** `file_excerpt` was never unused: `core/correlation.py` (composition rules) and `scanners/tls` (the testssl.sh probe and the BEAST inference) emit it for evidence that is not a file, with arbitrary `data` and a rationale for having no control. Requiring `receipt_ref` of every `file_excerpt` would invalidate them. So the reserved shape is kept as `file_excerpt_derived` in the schema (and `ReservedEvidence` in the model), valid **only while `data` names none of** `path, keys, excerpt, line_numbers, stat, receipt_ref, host_ref, collected_at`. A host excerpt that drops its `receipt_ref` therefore cannot slip into the legacy shape: it still names `path` or `keys`, and is refused. The residual narrowing, stated plainly: a legacy `file_excerpt` whose `data` happens to use one of those eight names is no longer valid. No emitter, recorded fixture or schema example does. A real kind for derived evidence, so the legacy shape can be retired, is a follow-up and not decided here.
+
+**Tests (written before the schema change, `tests/contract/test_host_evidence_migration.py`).** A conformance case per new kind; every new kind rejects evidence with no `receipt_ref` (by schema and by model); every `file_excerpt` shipped scanners emit stays valid; the kind enum only grew; `requests` equals what it equalled before, with and without `counts`; the existing drift and round-trip suite runs the three new schema examples. No corpus number moved.
+
+**Rejected.**
+- **Requiring `receipt_ref` on every `file_excerpt` outright:** breaks shipped scanners, and `contracts/` migrations are additive.
+- **Splitting the legacy emitters onto a new kind in this migration:** changes scanner output and versions, which is a separate, reviewable change.
+- **Making `requests` a computed field or removing it:** every reader and recorded fixture reads it.
+- **One migration per kind:** `access_matrix` retrofitted onto a kind specified without it is the retrofit this avoids.
+
+**Reversal cost.** Low while nothing emits the new kinds: remove the three `$defs`, the `counts` property and their models. Once the host scanner ships and stored artefacts carry them, reverting would strand those artefacts, so after that point only further additive change is available.

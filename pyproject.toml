@@ -47,16 +47,25 @@ extend-exclude = ["docs", "corpus/crosscheck/email-live"]
 select = ["E", "F", "I", "UP", "B", "SIM", "N", "RUF"]
 
 [tool.ruff.lint.per-file-ignores]
+# agent/ is written to a Python 3.6 syntax floor (spec 3.1, agent/version.py). UP would
+# rewrite typing.List[str] to list[str] and drop the 3.6-valid idioms (3.9+ syntax);
+# the floor test in tests/agent enforces the dialect instead. Shim: 2.7 syntax.
+"agent/**" = ["UP"]
 # typer declares CLI options as function-call defaults; that is its whole API.
 "cli/main.py" = ["B008"]
 
 [tool.mypy]
 python_version = "3.13"
 strict = true
+# Spec 3.2 asks for python_version 3.8 on agent/, but the installed mypy refuses anything
+# below 3.10 and python_version is not a per-module option; the 3.6 floor is the AST test.
+# The entry shim is Python 2.7 syntax by design (no annotations), so it is not type-checked.
+exclude = ["agent/__main__\\.py$"]
 files = [
     "core",
     "cli",
     "scanners",
+    "agent",
     "corpus/lab/tls_capture.py",
     "corpus/lab/testssl_capture.py",
     "corpus/lab/scan.py",

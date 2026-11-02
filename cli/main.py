@@ -142,7 +142,14 @@ def run(
     scanner_name: str = typer.Argument(..., metavar="SCANNER"),
     target: str = typer.Option(..., "--target", "-t"),
     mode: str = typer.Option("light", "--mode", "-m"),
-    target_type: str = typer.Option("domain", "--target-type"),
+    target_type: str | None = typer.Option(
+        None, "--target-type", help="Default: domain, or host for a scanner that reads a snapshot"
+    ),
+    snapshot: Path | None = typer.Option(
+        None,
+        "--snapshot",
+        help="A host snapshot file to read (the host scanner; nothing is scanned)",
+    ),
     out: Path | None = typer.Option(None, "--out", "-o", help="Write the ScanResult here"),
     output_format: str = typer.Option("table", "--format", help="json or table"),
     record: Path | None = typer.Option(None, "--record", help="Record traffic into this directory"),
@@ -162,6 +169,9 @@ def run(
         _refuse_read_only_store(store, "scan run --store")
     counts = Counts()
     try:
+        if target_type is None:
+            reads_snapshot = getattr(discover().get(scanner_name), "takes_snapshot", False)
+            target_type = "host" if reads_snapshot else "domain"
         result = _execute(
             scanner_name=scanner_name,
             target=Asset(type=_as_target_type(target_type), value=target),
@@ -170,6 +180,7 @@ def run(
             replay=replay,
             scope_file=scope_file,
             counts=counts,
+            snapshot=snapshot,
         )
     except KeyError as exc:
         _echo(str(exc).strip('"'), err=False)
@@ -220,6 +231,13 @@ def run(
     if store is not None:
         with FindingStore(store) as fstore:
             fstore.ingest(result.findings)
+
+    # A scan of a recording that cannot be read did not run: exit 1, like any scan that could not
+    # run. Only a snapshot scanner can end `errored` with nothing else to tell the caller.
+    if result.outcome == "errored" and getattr(
+        discover().get(scanner_name), "takes_snapshot", False
+    ):
+        raise typer.Exit(1)
 
     if fail_on and _breaches(result, fail_on):
         raise typer.Exit(2)
@@ -503,6 +521,7 @@ def _execute(
     address_policy: AddressPolicy | None = None,
     wrap_resolver: Callable[[Resolver], Resolver] | None = None,
     counts: Counts | None = None,
+    snapshot: Path | None = None,
 ) -> ScanResult:
     """Build one scan's context and run it.
 
@@ -519,7 +538,15 @@ def _execute(
     silently disagreeing about one total (D64, `cli/replay_counts.py`).
     """
     registry = discover()
-    scanner = registry.get(scanner_name)()
+    scanner_cls = registry.get(scanner_name)
+    if snapshot is not None:
+        # spec 9: the snapshot is the scanner's recording, as --replay's fixtures are. A scanner
+        # that does not declare it reads one must not be handed a path it would ignore.
+        if not getattr(scanner_cls, "takes_snapshot", False):
+            raise ValueError(f"{scanner_name} does not take a snapshot; --snapshot is for host")
+        scanner = scanner_cls(snapshot_path=snapshot)  # type: ignore[call-arg]
+    else:
+        scanner = scanner_cls()
 
     scope = AuthorisedScope.load(scope_file)
     # docs/03-roadmap.md 0b.6: ask the scanner what its own checks declare

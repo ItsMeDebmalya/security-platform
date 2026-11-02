@@ -80,7 +80,24 @@
             }
           }
         },
-        "requests": { "type": "integer", "minimum": 0 },
+        "requests": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Unchanged in meaning (ADR-037, D65): the cost meter's running total of what a scan charged. When `counts` is present it is the sum of the five counters, so a figure that conflated HTTP sends, DNS queries, TLS handshakes and testssl.sh's fixed connection budget can now be read apart. The host scanner performs no requests and reports 0."
+        },
+        "counts": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["http_sends", "dns_queries", "tls_handshakes", "testssl_budget", "other"],
+          "description": "ADR-037 (additive, D65): `requests` broken down by what was counted. Null means not recorded, which is every result before this ADR; nothing is backfilled. testssl_budget is the fixed charge testssl.sh is given rather than a counted call. other is anything the meter charged that no counter attributes.",
+          "properties": {
+            "http_sends": { "type": "integer", "minimum": 0 },
+            "dns_queries": { "type": "integer", "minimum": 0 },
+            "tls_handshakes": { "type": "integer", "minimum": 0 },
+            "testssl_budget": { "type": "integer", "minimum": 0 },
+            "other": { "type": "integer", "minimum": 0 }
+          }
+        },
         "wall_ms": { "type": "integer", "minimum": 0 },
         "ai_tokens": { "type": "integer", "minimum": 0 }
       }

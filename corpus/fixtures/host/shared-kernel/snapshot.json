@@ -1,0 +1,527 @@
+{
+  "clock": {
+    "monotonic_ms": 23587774972,
+    "source": "host",
+    "tz_offset_minutes": 0
+  },
+  "collected_at": "2026-11-02T11:01:12Z",
+  "collector_version": "0.1.0",
+  "counts": {
+    "bytes_read": 0,
+    "commands_failed": 1,
+    "commands_refused": 0,
+    "commands_run": 3,
+    "files_read": 1,
+    "files_refused": 1,
+    "sections_collected": 3,
+    "sections_error": 0,
+    "sections_unavailable": 2
+  },
+  "host": {
+    "hostname": "19d46a1420a9",
+    "machine_id_fingerprint": null
+  },
+  "manifest": [
+    {
+      "reason": "symlink",
+      "section": "os_release",
+      "status": "unavailable"
+    },
+    {
+      "section": "kernel",
+      "status": "collected"
+    },
+    {
+      "section": "host_identity",
+      "status": "collected"
+    },
+    {
+      "section": "packages",
+      "status": "collected"
+    },
+    {
+      "reason": "sshd_not_installed",
+      "section": "ssh",
+      "status": "unavailable"
+    }
+  ],
+  "receipt": {
+    "collector_version": "0.1.0",
+    "commands": [
+      {
+        "argv": [
+          "/usr/bin/uname",
+          "-srvm"
+        ],
+        "duration_ms": 1,
+        "exit_status": 0,
+        "failed": false,
+        "read_for": [
+          "kernel"
+        ],
+        "reason_id": "kernel.uname",
+        "status": "ran",
+        "stderr_bytes": 0,
+        "stdout_bytes": 90,
+        "stdout_truncated": false
+      },
+      {
+        "argv": [
+          "/usr/bin/dpkg-query",
+          "-W",
+          "-f=${Package}\t${Version}\n"
+        ],
+        "duration_ms": 1,
+        "exit_status": 0,
+        "failed": false,
+        "read_for": [
+          "packages"
+        ],
+        "reason_id": "packages.debian",
+        "status": "ran",
+        "stderr_bytes": 0,
+        "stdout_bytes": 1985,
+        "stdout_truncated": false
+      },
+      {
+        "argv": [
+          "?"
+        ],
+        "duration_ms": 0,
+        "exit_status": null,
+        "failed": true,
+        "problem": "binary_not_found",
+        "read_for": [
+          "ssh"
+        ],
+        "reason_id": "ssh.effective",
+        "status": "missing_binary",
+        "stderr_bytes": 0,
+        "stdout_bytes": 0,
+        "stdout_truncated": false
+      }
+    ],
+    "commands_refused": [],
+    "effective_uid": 0,
+    "effective_user": "root",
+    "files": [
+      {
+        "bytes_read": 0,
+        "keys_extracted": [],
+        "mode": "0755",
+        "owner_uid": 0,
+        "path": "/.dockerenv",
+        "present": true,
+        "reason_id": "container.dockerenv",
+        "truncated": false
+      },
+      {
+        "bytes_read": 0,
+        "keys_extracted": [],
+        "path": "/run/.containerenv",
+        "present": false,
+        "reason_id": "container.podman",
+        "truncated": false
+      },
+      {
+        "bytes_read": 0,
+        "keys_extracted": [],
+        "path": "/run/systemd/container",
+        "present": false,
+        "reason_id": "container.systemd",
+        "truncated": false
+      },
+      {
+        "bytes_read": 0,
+        "keys_extracted": [],
+        "path": "/etc/machine-id",
+        "present": false,
+        "reason_id": "host.machine_id",
+        "truncated": false
+      }
+    ],
+    "files_refused": [
+      {
+        "path": "/etc/os-release",
+        "reason_id": "os.release",
+        "refused_because": "symlink"
+      }
+    ],
+    "finished_at": "2026-11-02T11:01:12Z",
+    "receipt_version": 1,
+    "redactions": {},
+    "started_at": "2026-11-02T11:01:12Z"
+  },
+  "schema": "security-platform/host-snapshot",
+  "sections": {
+    "host_identity": {
+      "hostname": "19d46a1420a9",
+      "machine_id_fingerprint": null
+    },
+    "kernel": {
+      "architecture": "x86_64",
+      "kernel_ownership": "shared",
+      "ownership_basis": [
+        "container.dockerenv"
+      ],
+      "running_release": "6.8.0-90-generic",
+      "running_version_string": "Linux 6.8.0-90-generic #91-Ubuntu SMP PREEMPT_DYNAMIC Tue Nov 18 14:14:30 UTC 2025 x86_64"
+    },
+    "packages": {
+      "items": [
+        {
+          "name": "adduser",
+          "version": "3.152"
+        },
+        {
+          "name": "apt",
+          "version": "3.0.3"
+        },
+        {
+          "name": "base-files",
+          "version": "13.8+deb13u7"
+        },
+        {
+          "name": "base-passwd",
+          "version": "3.6.7"
+        },
+        {
+          "name": "bash",
+          "version": "5.2.37-2+b10"
+        },
+        {
+          "name": "bsdutils",
+          "version": "1:2.41.5-0+deb13u1"
+        },
+        {
+          "name": "ca-certificates",
+          "version": "20250419+deb13u1"
+        },
+        {
+          "name": "coreutils",
+          "version": "9.7-3"
+        },
+        {
+          "name": "dash",
+          "version": "0.5.12-12"
+        },
+        {
+          "name": "debconf",
+          "version": "1.5.91"
+        },
+        {
+          "name": "debian-archive-keyring",
+          "version": "2025.1"
+        },
+        {
+          "name": "debianutils",
+          "version": "5.23.2"
+        },
+        {
+          "name": "diffutils",
+          "version": "1:3.10-4"
+        },
+        {
+          "name": "dpkg",
+          "version": "1.22.22"
+        },
+        {
+          "name": "findutils",
+          "version": "4.10.0-3"
+        },
+        {
+          "name": "gcc-14-base",
+          "version": "14.2.0-19"
+        },
+        {
+          "name": "grep",
+          "version": "3.11-4"
+        },
+        {
+          "name": "gzip",
+          "version": "1.13-1+deb13u1"
+        },
+        {
+          "name": "hostname",
+          "version": "3.25"
+        },
+        {
+          "name": "init-system-helpers",
+          "version": "1.69~deb13u1"
+        },
+        {
+          "name": "libacl1",
+          "version": "2.3.2-2+b1"
+        },
+        {
+          "name": "libapt-pkg7.0",
+          "version": "3.0.3"
+        },
+        {
+          "name": "libattr1",
+          "version": "1:2.5.2-3"
+        },
+        {
+          "name": "libaudit-common",
+          "version": "1:4.0.2-2+deb13u1"
+        },
+        {
+          "name": "libaudit1",
+          "version": "1:4.0.2-2+deb13u1"
+        },
+        {
+          "name": "libblkid1",
+          "version": "2.41.5-0+deb13u1"
+        },
+        {
+          "name": "libbsd0",
+          "version": "0.12.2-2"
+        },
+        {
+          "name": "libbz2-1.0",
+          "version": "1.0.8-6"
+        },
+        {
+          "name": "libc-bin",
+          "version": "2.41-12+deb13u4"
+        },
+        {
+          "name": "libc6",
+          "version": "2.41-12+deb13u4"
+        },
+        {
+          "name": "libcap-ng0",
+          "version": "0.8.5-4+b1"
+        },
+        {
+          "name": "libcap2",
+          "version": "1:2.75-10+deb13u1+b3"
+        },
+        {
+          "name": "libcrypt1",
+          "version": "1:4.4.38-1"
+        },
+        {
+          "name": "libdb5.3t64",
+          "version": "5.3.28+dfsg2-9"
+        },
+        {
+          "name": "libdebconfclient0",
+          "version": "0.280"
+        },
+        {
+          "name": "libffi8",
+          "version": "3.4.8-2"
+        },
+        {
+          "name": "libgcc-s1",
+          "version": "14.2.0-19"
+        },
+        {
+          "name": "libgdbm6t64",
+          "version": "1.24-2"
+        },
+        {
+          "name": "libgmp10",
+          "version": "2:6.3.0+dfsg-3"
+        },
+        {
+          "name": "libhogweed6t64",
+          "version": "3.10.1-1"
+        },
+        {
+          "name": "liblastlog2-2",
+          "version": "2.41.5-0+deb13u1"
+        },
+        {
+          "name": "liblz4-1",
+          "version": "1.10.0-4"
+        },
+        {
+          "name": "liblzma5",
+          "version": "5.8.1-1+deb13u2"
+        },
+        {
+          "name": "libmd0",
+          "version": "1.1.0-2+b1"
+        },
+        {
+          "name": "libmount1",
+          "version": "2.41.5-0+deb13u1"
+        },
+        {
+          "name": "libncursesw6",
+          "version": "6.5+20250216-2"
+        },
+        {
+          "name": "libnettle8t64",
+          "version": "3.10.1-1"
+        },
+        {
+          "name": "libpam-modules",
+          "version": "1.7.0-5"
+        },
+        {
+          "name": "libpam-modules-bin",
+          "version": "1.7.0-5"
+        },
+        {
+          "name": "libpam-runtime",
+          "version": "1.7.0-5"
+        },
+        {
+          "name": "libpam0g",
+          "version": "1.7.0-5"
+        },
+        {
+          "name": "libpcre2-8-0",
+          "version": "10.46-1~deb13u3"
+        },
+        {
+          "name": "libreadline8t64",
+          "version": "8.2-6"
+        },
+        {
+          "name": "libseccomp2",
+          "version": "2.6.0-2"
+        },
+        {
+          "name": "libselinux1",
+          "version": "3.8.1-1"
+        },
+        {
+          "name": "libsemanage-common",
+          "version": "3.8.1-1"
+        },
+        {
+          "name": "libsemanage2",
+          "version": "3.8.1-1"
+        },
+        {
+          "name": "libsepol2",
+          "version": "3.8.1-1"
+        },
+        {
+          "name": "libsmartcols1",
+          "version": "2.41.5-0+deb13u1"
+        },
+        {
+          "name": "libsqlite3-0",
+          "version": "3.46.1-7+deb13u2"
+        },
+        {
+          "name": "libssl3t64",
+          "version": "3.5.7-1~deb13u3"
+        },
+        {
+          "name": "libstdc++6",
+          "version": "14.2.0-19"
+        },
+        {
+          "name": "libsystemd0",
+          "version": "257.13-1~deb13u1"
+        },
+        {
+          "name": "libtinfo6",
+          "version": "6.5+20250216-2"
+        },
+        {
+          "name": "libudev1",
+          "version": "257.13-1~deb13u1"
+        },
+        {
+          "name": "libuuid1",
+          "version": "2.41.5-0+deb13u1"
+        },
+        {
+          "name": "libxxhash0",
+          "version": "0.8.3-2"
+        },
+        {
+          "name": "libzstd1",
+          "version": "1.5.7+dfsg-1"
+        },
+        {
+          "name": "login",
+          "version": "1:4.16.0-2+really2.41.5-0+deb13u1"
+        },
+        {
+          "name": "login.defs",
+          "version": "1:4.17.4-2"
+        },
+        {
+          "name": "mawk",
+          "version": "1.3.4.20250131-1"
+        },
+        {
+          "name": "mount",
+          "version": "2.41.5-0+deb13u1"
+        },
+        {
+          "name": "ncurses-base",
+          "version": "6.5+20250216-2"
+        },
+        {
+          "name": "ncurses-bin",
+          "version": "6.5+20250216-2"
+        },
+        {
+          "name": "netbase",
+          "version": "6.5"
+        },
+        {
+          "name": "openssl",
+          "version": "3.5.7-1~deb13u3"
+        },
+        {
+          "name": "openssl-provider-legacy",
+          "version": "3.5.7-1~deb13u3"
+        },
+        {
+          "name": "passwd",
+          "version": "1:4.17.4-2"
+        },
+        {
+          "name": "perl-base",
+          "version": "5.40.1-6+deb13u1"
+        },
+        {
+          "name": "readline-common",
+          "version": "8.2-6"
+        },
+        {
+          "name": "sed",
+          "version": "4.9-2+deb13u1"
+        },
+        {
+          "name": "sqv",
+          "version": "1.3.0-3+b2"
+        },
+        {
+          "name": "sysvinit-utils",
+          "version": "3.14-4"
+        },
+        {
+          "name": "tar",
+          "version": "1.35+dfsg-3.1"
+        },
+        {
+          "name": "tzdata",
+          "version": "2026e-0+deb13u1"
+        },
+        {
+          "name": "util-linux",
+          "version": "2.41.5-0+deb13u1"
+        },
+        {
+          "name": "zlib1g",
+          "version": "1:1.3.dfsg+really1.3.1-1+b1"
+        }
+      ],
+      "manager": "dpkg",
+      "truncated": false
+    }
+  },
+  "self_hash": "sha256:05cd117aeb4ffd85d985d683c655d2a5797a6e8d7add6ab39de3b33e23e8f58a",
+  "snapshot_version": 1
+}

@@ -324,7 +324,7 @@ Evidence is what makes the product defensible. Structure it; never store a blob 
   "n": 12, "delta_ms": 5000, "method": "welch_t", "p_value": 0.0001 }
 ```
 
-Other kinds: `dns_answer`, `tls_handshake`, `screenshot`, `file_excerpt`.
+Other kinds: `dns_answer`, `tls_handshake`, and, since [ADR-037](02-decisions.md#adr-037--the-evidence-contract-migration-command_output-file_excerpt-specified-access_matrix-and-telemetrycounts-d65), the host kinds `command_output`, `file_excerpt` and `access_matrix` (each requires a `receipt_ref`). `screenshot` stays reserved.
 
 **Rules:**
 - Always capture a **control** alongside the **test**, in whatever form the kind allows. "The server returned an error" is not evidence.
