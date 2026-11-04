@@ -3195,6 +3195,18 @@ later session does not mistake continuity for coincidence:
 - **The transfer had no effect on CI triggers.** This is the important part and it corrects a hypothesis
   that was in the air: see the D85 correction below.
 
+**A push failure followed the transfer and resolved on its own; the cause was not established.**
+Recorded as it happened rather than tidied into a cleaner story. For roughly **half an hour after the
+ownership transfer**, every `git push` over HTTPS to the new remote was rejected with
+**`fatal error in commit_refs_rules`** and **`Internal Server Error`** — including a branch update that
+had pushed cleanly minutes earlier. Checked at the time: **no rulesets and no branch protection were
+configured** (`gh api .../rulesets` empty; `main` "Branch not protected"), so nothing we could see
+explained it. It then **cleared with no action taken** — a later push, new-branch push and delete all
+succeeded, verified by `ls-remote`. An attempted **SSH workaround was a dead end**: the box's key is
+registered on the *old* account, so SSH never authenticated to the new one; **one push that appeared to
+succeed over SSH remains unexplained** and is not relied upon. **We did not establish the cause.** Most
+likely transfer propagation on GitHub's side, but that is a guess, not a finding — stated as a guess.
+
 **Dependabot churn found during verification, recorded so the Stage 0 batch plan matches reality:**
 **#71** (pydantic → 2.14.2) now **supersedes #64** (pydantic → 2.14.1); **#64 and #61 auto-closed** as
 superseded (#61's dev-tooling group was replaced by **#70**). So the current runtime-dep set is
