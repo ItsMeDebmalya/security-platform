@@ -3166,3 +3166,151 @@ itself the finding, and the most important row in such a table.
 down, not to answer it. **The reason it must eventually be answered deliberately is in the closing
 observation that prompted this entry: every instance so far was caught by surprise, and surprise does
 not scale.**
+
+---
+
+## 2026-11-04 — Repository ownership transfer, and what its CI history revealed
+
+The repository was **transferred** from `github.com/ItsMeDebmalya/security-platform` to
+`github.com/debmalya-dey/security-platform`. GitHub's **ownership transfer**, not a re-push, a mirror,
+or a recreated repository. The distinction is the whole point and has consequences worth stating so a
+later session does not mistake continuity for coincidence:
+
+- **History is continuous.** Every commit SHA is unchanged; `main` is still `a7240c5`; both tags
+  (`pre-v4-migration`, `tool-4a-web-light-history` at `13d75c0`, 131 commits reachable) are present and
+  unchanged. Nothing was rewritten.
+- **PR numbering is continuous.** #68, #69 and the Dependabot set keep their original numbers, and
+  **every pre-transfer PR reference in this ledger, in commit messages, and in the docs remains valid** —
+  #22–#52, #53–#57, #66, #67 all still resolve. Do not "renumber" or "fix" any historical PR reference.
+- **The old URL redirects.** Existing clones and links continue to work; the new canonical URL is the
+  `debmalya-dey` one, and the two operational references to it in the docs (clone command in
+  [docs/13](13-test-targets.md), the Actions URL in [docs/17](17-testing-runbook.md)) are updated in
+  this same PR. **Deliberately *not* changed:** the `itsmedebmalya.github.io/sp-canary/` references and
+  the `ItsMeDebmalya/sp-canary` repo (ledger entries, `corpus/targets/web.yaml`,
+  `corpus/crosscheck/canary-2026-10-10/`). Those are a **live canary test target and recorded evidence
+  (ADR-027)**, not the code repository; the code transfer does not move the canary, and rewriting those
+  paths would break the corpus target and misattribute recorded fixtures. The historical
+  repo-creation line above (`ItsMeDebmalya/security-platform` created 2026-10-02) is **true history and
+  stays** — this entry records the move, it does not erase where the repo began.
+- **The transfer had no effect on CI triggers.** This is the important part and it corrects a hypothesis
+  that was in the air: see the D85 correction below.
+
+**Dependabot churn found during verification, recorded so the Stage 0 batch plan matches reality:**
+**#71** (pydantic → 2.14.2) now **supersedes #64** (pydantic → 2.14.1); **#64 and #61 auto-closed** as
+superseded (#61's dev-tooling group was replaced by **#70**). So the current runtime-dep set is
+#62 (idna), #63 (cryptography), #65 (typer) and **#71** (pydantic, not #64); the CI-action set is
+#58/#59/#60; dev-tooling is #70. The runtime-dep PRs fail CI on the registry-versus-lockfile drift
+guard **by design** (D92's `test_registry_versions_match_the_lockfile`): a lock bump without the
+matching `tools/registry.yaml` pin is drift, and the guard is working as intended. When Batch B is
+taken, the registry pin is bumped **in the same commit** as the lock.
+
+### D95-collision note
+
+This entry and the two below (D99, and corrections to D85/D86/D94) were written on a branch off `main`,
+whose highest D-number is D94. **PR #68 (unmerged) introduces D95–D98.** New findings here are numbered
+from **D99** deliberately, to avoid colliding with #68 whichever merges first.
+
+---
+
+### D99 — A PR body asserted a gate status the gate disagreed with. The discrepancy is its own finding, separate from the lint error it concerns.
+
+**PR #69's body states "lint/typecheck/pytest/corpus all green" and "a final whole-branch review:
+0 Critical, 0 Important."** On the PR's current head (`259a429`), the `pull_request` CI run concluded
+**failure at the Lint step**. So one of those asserted statuses is false on the record. **A PR body
+claiming a status the gate contradicts is a false claim sitting in the project record — the exact
+category this project spent a month removing from *findings* (fabricated quotes, checks that cannot
+fail), now found in our own process artefact.** It is logged separately from the lint error itself
+(which is a one-line fix) because the defect is the *claim*, not the import order.
+
+**Which of the three possibilities it was — established, not guessed:**
+
+- **Not "true when written, head changed after."** The offending lines
+  (`tests/scanners/host/host_snapshots.py:136`, an unsorted import block, ruff **I001**) were introduced
+  in commit **`dd3964b`**, several commits *before* the head, and have been present on every commit
+  since. The claim was false for the whole visible life of the branch, not just the final push.
+- **Not "true locally, false in CI" via a version skew** — which was the standing hypothesis (Dependabot
+  is trying to bump ruff in the dev-tooling group, so a lockfile/CI ruff mismatch would have explained
+  it exactly). **Disproven on the facts:** `make lint` in a clean worktree on `259a429` **fails
+  identically** (`exit 2`, the same I001 on the same line), using **ruff 0.16.4** — and 0.16.4 is the
+  version pinned in `uv.lock` since the repository's first toolchain commit (`c46e6e5`), unchanged on
+  this branch and on `main`. CI and local run the *same* ruff and *agree*. The Dependabot ruff bump is
+  not even in #69's lock, so it cannot be the cause.
+- **Therefore: "never verified under the project toolchain."** The green claim was asserted without
+  running the project's own `make lint` against the final tree (or it was run with a ruff other than the
+  pinned one). The error is a plain, deterministic I001 that the pinned gate catches every time.
+
+**The one genuinely positive reading, stated plainly rather than buried:** this is **the first real
+defect that PR-triggered CI caught which a hand-written "green" claim had missed.** An independent gate
+reporting on the actual head found what a prose assertion by the author got wrong — which is the entire
+argument for having CI connected to PRs. The value showed up not as a version-skew catch but as a
+contradiction of an unverified claim, which is arguably the stronger demonstration.
+
+**What stops it recurring — proposed, not built (operator's call):**
+
+> **A PR body must cite the run id and the commit SHA for any status it claims, not assert the status in
+> prose.** "CI green" becomes "run `<id>` on `<sha>`: lint/typecheck/test/corpus pass" — the *same rule
+> already applied to dispatch certifications* in D85 item 2. A status that names the run and the commit
+> can be checked by anyone in one click; a status asserted in prose can only be believed. Now that
+> `pull_request` CI fires (below), the run to cite exists automatically for every PR, so the cost of the
+> rule is near zero.
+
+**Status of #69 itself: HELD** (operator, this session), untouched, lint-red on the record, pending the
+one-line import-order fix and a clean PR-triggered run before it goes near `main`.
+
+---
+
+### D85 correction (2026-11-04) — the finding was true when written and was resolved the same day; the transfer did not fix it, and we believed a solved problem was live for a week.
+
+**D85 (2026-10-28) recorded that neither `push` nor `pull_request` had ever triggered a run** — true,
+and correctly evidenced, *at the moment it was written* that morning. What was never re-checked is what
+happened next.
+
+**The evidence, queried 2026-11-04:** `pull_request` runs have fired since
+**2026-10-28T08:46:10Z**, the oldest on branch `chore/dependency-cve-scanning` (**PR #57**), and every
+PR since — #66, #67, #68, #69, the whole Dependabot set — carries its own `pull_request` run. So:
+
+- D85's finding was **true when written** on 2026-10-28.
+- It was **resolved the same day**, almost certainly by the workflow/Actions work in the **#55/#56/#57**
+  window (the first `pull_request` run appears minutes after #57's activity), and **nobody noticed** it
+  had started working.
+- **The transfer did not fix it.** PR CI had been firing for a week *before* the 2026-11-04 transfer.
+  This entry must not, and does not, credit the transfer. The earlier session's hypothesis — "if PR CI
+  now fires, D85's cause was account-level" — is **wrong**: the cause was resolved on 2026-10-28, not by
+  the account change, which is orthogonal.
+- **Consequently, from 2026-10-28 onward the dispatch-certification discipline (D85 item 2) was
+  unnecessary.** Everything done under it remains valid — a dispatched green run is still a real green
+  run — we simply **believed a resolved problem was still live for a week** and paid the small tax of
+  certifying by hand what PRs were already certifying automatically.
+
+**This is the same family as [D94](#d94), in its second half rather than its first.** Not "a check that
+cannot fail" — the check worked — but **"a conclusion we never re-tested."** D85 was a point-in-time
+finding that silently went stale; we carried it forward because re-querying it was never prompted. The
+cheap habit that would have caught it is the one D94 is already about: **re-check a finding's premise
+before acting on it again.** Before certifying PR #66 (or #67, #68…) by hand under D85 item 2, a single
+`gh run list --event pull_request` would have shown the premise had dissolved. Recorded against D94 as a
+concrete instance of its pattern rather than spun up as a new practice.
+
+### D86 update (2026-11-04) — the precondition is met: PR-triggered runs exist, so the required status check is now available.
+
+D86 set the order: do not make the check required until a `pull_request` run is **observed** on a real
+PR (step 2). **That is now satisfied** — the observation is the run history above, confirmed on #69
+(`41436982237`) and every other recent PR. The deadlock D86 guarded against (a required check that can
+never report) cannot occur: the check reports on every PR.
+
+**What to require, and the evidence for it rather than the principle:** the workflow defines a single
+job, the **`CI` check** (lint → typecheck → pytest → corpus, in one job). Require **`CI`** on `main`.
+What requiring it over the last month *would* have done, read from the actual `pull_request` run
+history:
+
+- **Would have correctly blocked** the merge of **#69** (lint-red, D99) before it could put an I001
+  error on `main`; and it correctly red-flags each runtime-dep Dependabot PR (#62/#63/#65/#71) until its
+  registry pin is bumped (the drift guard, by design).
+- **Would have falsely blocked nothing that actually merged.** Every PR merged under PR-CI in the last
+  month — #57, #66, #67 — has a **green** `pull_request` run, so a required `CI` check would have cost
+  those merges nothing. (#55/#56 predate the first `pull_request` run by minutes and merged before PR CI
+  existed; they are outside the window.)
+
+So the required check is **all upside on this month's evidence**: it would have caught the one real
+pre-merge defect and obstructed no legitimate merge. **The operator sets it in repository settings
+(Settings → Branches → branch protection for `main` → require status check `CI`);** this ledger entry
+is the evidence he asked for to decide, not the switch itself.

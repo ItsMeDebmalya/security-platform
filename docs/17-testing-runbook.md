@@ -263,7 +263,7 @@ A workflow that has never run is indistinguishable from one that does not work �
 git push origin main
 ```
 
-Then open **`github.com/ItsMeDebmalya/security-platform` → Actions**, and watch the run. Or trigger without pushing: **Actions → CI → Run workflow** (the `workflow_dispatch` trigger exists for exactly this).
+Then open **`github.com/debmalya-dey/security-platform` → Actions**, and watch the run. Or trigger without pushing: **Actions → CI → Run workflow** (the `workflow_dispatch` trigger exists for exactly this).
 
 With the GitHub CLI:
 

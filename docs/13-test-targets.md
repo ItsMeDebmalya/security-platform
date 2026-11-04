@@ -88,7 +88,7 @@ A WSL2 distro is a good place for both. Docker and the scanner live inside the d
 sudo apt update && sudo apt install -y python3.12 python3.12-venv git curl
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-git clone git@github.com:ItsMeDebmalya/security-platform.git
+git clone git@github.com:debmalya-dey/security-platform.git
 cd security-platform
 make install
 make test          # 480+ tests, no network needed
