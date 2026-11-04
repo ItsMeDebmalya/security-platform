@@ -3169,6 +3169,208 @@ not scale.**
 
 ---
 
+## 2026-10-28 — Direction refinement for the host agent: three assessments and one planned document
+
+Raised by the operator after Phase A merged. **Items 1 and 2 touch merged decisions and are recorded
+as assessments, not implemented.** Nothing below changes ADR-035.
+
+### D95 — Distribution-agnostic: Options A, B and C with their costs. Not decided; the fleet probe decides it.
+
+**The objective, in the operator's terms:** one artefact that runs on any Linux server with no
+per-distribution configuration. Where a prerequisite genuinely cannot be avoided, the server admin
+installs it on our behalf — acceptable internally.
+
+**First, a factual correction, because the proposal reasons from it.** The operator cited "the
+agent-free self-service property for external customers (docs/23 item 11)". **docs/23 item 11 is
+"Service account scope"**, and there is **no agentless or self-service claim anywhere** in docs/22,
+docs/23 or docs/18. The property he is protecting is real and worth protecting; it is simply **not
+recorded**, which is why it was citable only by pointing at the wrong row. **That is itself the
+finding** — an unrecorded property cannot be traded away deliberately, because nobody can see what is
+being traded. docs/22 is the right home (a claim with no evidence link stays out, so it would enter as
+PENDING). Not added here: it is the operator's claim to make, not mine to assert on his behalf.
+
+**What is actually at stake.** ADR-035 decision 5 chose stdlib Python. The question is not "which
+language is better" but **what "universal" means**, and the two options answer different questions:
+
+| | **Option A — stdlib Python, packaged as one file** | **Option B — one statically linked binary (Go or similar)** |
+|---|---|---|
+| Universal in what sense | Every host that has a usable `python3` at or above the floor | Every host, full stop. No runtime prerequisite at all |
+| Prerequisite | The host's own Python. A host without one, or below the floor, needs the admin to install it | None |
+| Supply chain on the host | **None beyond what the host already runs** | The binary itself, which we built |
+| Auditable before running | **Yes — it is source. The admin can read it.** | **No. It is a binary.** This is the cost the operator named and it is the heaviest one |
+| Build step | Today: none (ADR-035 decision 5 says "no build step, no compiled artefact") — packaging as one file **introduces one**, see below | Yes, and per CPU architecture |
+| CPU architectures | Irrelevant — Python is interpreted | **A real cost.** x86-64 and aarch64 at minimum; every build is a separate artefact to ship, hash and register |
+| Second language and toolchain | No | **Yes**, in a repository that is Python end to end, with its own lint, type, test and licence tooling to add |
+| Licence review | Only the stdlib | **Everything the binary links**, statically, into an artefact we distribute — a new and non-trivial ADR-003 surface |
+| 3.6 floor problem | **This is the whole problem.** §3.1's ugly dialect, and nothing has ever executed on 3.6 here (D89) | **Dissolves entirely.** No floor, no `ast.parse` check, no 3.6 dialect, no unsupported-runtime shim |
+| Unsupported-runtime case (ADR-035 decision 14) | Needed, and already specified | **Becomes unnecessary** — there is no interpreter to be unsupported |
+
+**On whether `--explain-plan` and the receipt preserve the transparency position under Option B — the
+operator's specific question. Partially, and the gap is precise.**
+
+- **What they preserve:** `--explain-plan` prints the complete allowlist and executes nothing, and the
+  receipt records what actually ran. Both work identically in a binary. An admin can therefore see
+  **what it says it will do** and, afterwards, **what it says it did**.
+- **What is lost, and it cannot be recovered by any amount of output:** with source, the admin
+  verifies that the allowlist *is* the whole allowlist — that nothing outside it is reachable. With a
+  binary, `--explain-plan` is **the program's own claim about itself**, and a program that lied about
+  its allowlist would print the same output. **This is D94 exactly: a check that cannot fail.** The
+  receipt has the same shape — it is written by the thing it describes.
+- **Partial mitigations, worth stating because they are not nothing:** publish the source and a
+  reproducible build, so a sufficiently motivated admin can rebuild and compare hashes; ship the
+  source alongside the binary. Both move the verification from "read it" to "trust our build process
+  or replicate it", which is a materially weaker ask of a customer than reading one directory.
+- **Honest counterweight:** almost nobody reads the source either. The property is real but its
+  practical exercise is rare, and that should be said rather than used to win the argument in one
+  direction.
+
+**Option C — hybrid. One exists, and it is worth considering, but it is probably worse than A.**
+Ship the stdlib collector *and* a small static binary whose only job is to run on hosts with no usable
+Python. Cost: **two collectors to keep behaviourally identical**, which means two implementations of
+the allowlists, the receipt, the snapshot format and the redaction patterns. D90 already records that
+the redaction patterns will exist twice (`core/` and `agent/`) and names the obligation that creates;
+a third copy in a second language triples it. **Two artefacts that must agree about what a snapshot
+means is a worse problem than one artefact with a prerequisite.** Recorded as considered and
+disfavoured, not dismissed.
+
+**The packaging question Option A leaves open, which is ours either way.** `zipapp` is stdlib and
+produces one file, and it is **the obvious answer** — but note it contradicts the spec's current words
+"no build step, no compiled artefact". A `.pyz` is not compiled, but building one *is* a build step,
+and the artefact the admin receives is then a zip rather than readable source **unless we also ship
+the source or the `.pyz` is left uncompressed**. So choosing zipapp **re-opens the transparency
+property in a smaller way**, and the resolution is to ship it such that the admin can still read it.
+That needs deciding explicitly, not by default, and it is the thing to settle under Option A.
+
+**The decision rule, as the operator set it — and it is the right one because the data is arriving:**
+
+- **If the fleet probe reports every host at or above the floor**, Option A is already universal in the
+  sense he means. **Nothing changes**, and the only open item is the packaging question.
+- **If hosts without Python, or below the floor, exist**, that is the real argument for Option B — and
+  the relevant number is not "do any exist" but **how many, and are they the hosts that matter**. One
+  legacy box the admin can install Python on is not an architecture change. Fifteen are.
+- **Either way the decision lands as a numbered amendment to ADR-035** with the reversal recorded,
+  not as a quiet edit. **Status: OPEN, awaiting the probe.**
+
+### D96 — CVE work first: what the resequencing does and does not change, plus two defects it exposed in docs/26
+
+**The operator's direction:** module 1 — identify known CVEs, assess them accurately, deliver
+actionable remediation — is the product; everything else is **deferred in sequence, not removed**. SSH
+and access, services and firewall, CERT-In readiness, web root cause, module 8's access review and the
+fleet view all remain approved. **Module 8 in particular came from sir's own review question and is not
+the operator's to drop.**
+
+**The quality bars he named are already the decided position**, which is worth confirming rather than
+re-deciding: vendor data only with fixed-version-per-release and **no CVE-range matching**
+(ADR-035 decision 10); an uncovered package reported **`inconclusive` with that reason, never silently
+clean** (decision 10, R2); remediation as the exact command for that distribution and package, which we
+can give **because we read the real package database**; and **we never run it** (decision 3, ADR-004).
+No change needed to any of them — the direction and the ADR agree.
+
+**Does the resequencing change dates? Reordering does not change the total. It changes three things,
+and the first is the one that matters.**
+
+1. **It makes the vulnerability-data licence sign-off the critical path immediately.** Step 5's module 1
+   bullet already carries "data feed licence signed off" as a condition. Previously that condition had
+   weeks of other module work in front of it; putting module 1 first means **the PENDING sign-offs
+   (D92) and the unresolved Debian licence question become blocking on day one of Step 5**, not in week
+   three. Nothing else on the critical path has that property. **This is the date effect worth acting
+   on**, and it argues for the Debian enquiry going now rather than when Step 5's matcher needs it.
+2. **It improves the fallback position, and matches what docs/26 already says.** The documented
+   "fallback if time runs short: modules 1, 2 and 4" is already consistent with this priority, so the
+   direction is not in tension with the plan — it makes an existing contingency into the primary order.
+3. **It does not change Step 5's total**, and it does not change Step 6's overlap. The real deadline
+   pressure on the agent remains the internal written authorisation (Step 6, unstarted, longest human
+   latency), which no sequencing touches.
+
+**Two defects in docs/26 found by costing this, and they are the kind this ledger exists for.**
+
+- **Module 8 is in docs/24 §5 and absent from docs/26 Step 5.** The docs/24 edit on 2026-10-28 added it
+  to the scope document; **Step 5, which is the working build plan and the thing actually ticked, never
+  gained it.** That is the identical failure the docs/24 edit was made to correct — *the engineering was
+  not the failure, invisibility was* — surviving one document further along. **Fixed here:** module 8 is
+  added to Step 5 as an explicitly **unestimated** row, in its decided position (after modules 1–4,
+  before the fleet view). Unestimated rather than guessed, because its cost was assessed as **M** in
+  D70 without a week figure, and inventing one now would be a number with nothing behind it.
+- **Step 5's stated range is smaller than the sum of its own modules.** Stated: **6–9 weeks**. The seven
+  module estimates sum to **7.5–9.9 weeks** (2–3 + 0.4–0.6 + 1 + 1–1.5 + 0.6–0.8 + 1 + 1.5–2). So the
+  low end of the headline is **1.5 weeks below** the low end of its parts, before module 8 is counted at
+  all. **Not silently corrected**, because changing a headline estimate in an approved plan is the
+  operator's call: the arithmetic is recorded in Step 5 itself so the next reader sees it, and the range
+  is left as approved. With module 8 at a plausible 1–1.5 weeks the parts come to roughly **8.5–11.4
+  weeks**.
+
+### D97 — Lab environments: three sources confirmed, and what the VulnHub images cost
+
+The operator confirmed testing across **existing internal Linux servers, dedicated VulnHub machines,
+and containers**, with written authorisation for every environment before any scan runs, and set three
+conditions on the VulnHub images because **they are untrusted third-party software from the public
+internet**: pinned by digest and entered in the licence register with their source; run on an isolated
+network segment that nothing else can reach and that is never routable to production; and their package
+databases treated as **potentially unrepresentative**, so a check that works there is not thereby
+proven and anything derived from them is corroborated on a clean distribution image.
+
+**Recorded in docs/26 Step 3.** Two observations worth keeping with it:
+
+- **Their age is the point, and it is the single most useful property available to us right now.** They
+  are the most convenient way to exercise **very old Python and old package managers**, which is exactly
+  the floor question D95 turns on — and the only way to exercise ADR-035 decision 14's
+  **unsupported-runtime path** against a real old interpreter rather than a fabricated one.
+- **The third condition is the one that will be inconvenient later.** "A check that works there is not
+  thereby proven" means a VulnHub positive is **not** a real positive for the purposes of docs/24 §5's
+  rule that every module must fire on a real positive before it reaches the fleet. It is a positive that
+  proves the code path runs. **The corroborating clean-image case is the evidence**, and the two must not
+  be conflated when a module is called done — which is ADR-017's warning about corpora written by the
+  scanner's author, arriving by a different route.
+- **The real-VM requirement is unchanged**, and not by preference: containers share the host kernel, so
+  modules 2, 4, 5 and module 8's real positive cannot be produced in one. A VulnHub image is usually a
+  VM, which helps — but an *old* VM is not a substitute for a *representative* one.
+
+### D98 — The end-to-end operational flow document: planned, not written, and CLAUDE.md forbids the obvious version of it
+
+**Requested by the operator, 2026-10-28:** one document in `docs/`, written for a reader who has not
+read the ADRs — his manager should be able to follow it — covering deployment through remediation, with
+one worked example followed end to end. He asked for it to be **planned before written**. The plan is
+[docs/superpowers/plans/2026-10-28-agent-operational-flow.md](superpowers/plans/2026-10-28-agent-operational-flow.md).
+
+**The problem settled before writing rather than discovered in review.** CLAUDE.md rule 3 says *"Do not
+add a new status or summary document… A third view of the same thing is how this happened before"*, and
+the same section says **each fact has exactly one home**. A narrative of the agent's operation touches
+facts owned by ADR-035, `SPEC.md`, docs/24, docs/25 and docs/26. Written the obvious way it becomes the
+fourth view — correct on the day it ships and wrong within a month.
+
+**The resolution, which is a constraint on every section:** the document **owns exactly one thing, the
+narrative** — the order in which things happen and why each step exists — which no document owns today,
+and that is what makes it not a duplicate. **It carries no number it owns**: no check counts, no gate
+figures, no timings, no status words. Every such fact is a link in the sentence that needs it, so a
+reader has one hop to authority and an editor has one place to change.
+
+**The two risks that are really the same risk.**
+
+1. **It will read as a description of something that exists.** The agent is PLANNED and nothing has run.
+   A fluent operational narrative written for a non-technical reader is **indistinguishable from a
+   description of a working system unless it says otherwise on every page** — and the reader is deciding
+   whether to trust this on fifty servers, so the misreading is consequential rather than cosmetic.
+2. **Invented figures.** The operator asked what it costs in CPU, memory and time. **Nothing has
+   executed, so there is no measurement**, and writing a plausible "typically under five seconds" would
+   be **D94's defect in prose** — a statement that cannot be wrong because nothing was measured. The plan
+   states design bounds, names the gap, and points at where the real figures will land from Step 4.
+
+**What is blocked and would be invented if written now:** timings and resource cost (Step 4); the real
+worked-example transcript (Steps 3 and 4 — the hand-written version is to be **replaced** by a real one,
+recorded as a to-do rather than an intention); packaging and how the admin receives the artefact (D95,
+which waits on the fleet probe); and the report's exact remediation layout, which docs/25 owns.
+
+**Recommendation, for the operator to accept or reject:** write it now with the gaps named and visible
+rather than waiting. A document saying "measured cost: to be filled in from Step 4" is useful today and
+honest; one that waits until everything is known arrives after the decision it was meant to inform. The
+named gaps then double as a Step 4 checklist. **Placement recommendation: a new file, `docs/27`, not a
+section inside docs/24** — docs/24 is a signed-off scope document with a date and a sign-off line, and
+growing a narrative inside it damages what it is.
+
+**Status: planned, awaiting the operator's go-ahead on the recommendation above.**
+
+---
+
 ## 2026-11-04 — Repository ownership transfer, and what its CI history revealed
 
 The repository was **transferred** from `github.com/ItsMeDebmalya/security-platform` to
@@ -3218,9 +3420,10 @@ taken, the registry pin is bumped **in the same commit** as the lock.
 
 ### D95-collision note
 
-This entry and the two below (D99, and corrections to D85/D86/D94) were written on a branch off `main`,
-whose highest D-number is D94. **PR #68 (unmerged) introduces D95–D98.** New findings here are numbered
-from **D99** deliberately, to avoid colliding with #68 whichever merges first.
+The 2026-11-04 findings (D99, D100, and corrections to D85/D86/D94) were written on a branch off `main`
+whose highest D-number was D94, while **PR #68 (D95–D98) was still open**. They were numbered from
+**D99** deliberately to avoid colliding with #68. #68 merged first (2026-11-04), so D95–D98 appear
+above this point and the numbering is continuous.
 
 ---
 
@@ -3266,27 +3469,45 @@ contradiction of an unverified claim, which is arguably the stronger demonstrati
 > `pull_request` CI fires (below), the run to cite exists automatically for every PR, so the cost of the
 > rule is near zero.
 
-**Status of #69 itself: HELD** (operator, this session), untouched, lint-red on the record, pending the
-one-line import-order fix and a clean PR-triggered run before it goes near `main`.
+**The four claims, as the full sequence rather than a single conclusion (corrected 2026-11-04 after
+the fix, because the first telling was itself wrong).** The lint fix was applied (import sort, pushed
+as `49f828f`) and then the PR's CI was run on the fixed head — and that run surfaced more than the lint
+claim had. Taking the four asserted results one at a time, and being honest about what each *depended
+on*:
 
-**The other three claims, verified before the fix (operator's instruction, 2026-11-04).** The reasoning
-was: if one asserted gate result of four was written without running the gate, the other three are
-unverified by default. So typecheck, the full suite and `make corpus` were each run independently in a
-clean worktree on `259a429`:
-
-| PR body claims | Independent re-run on `259a429` | Verdict |
+| PR body claims | What is actually true | Verdict |
 |---|---|---|
-| lint green | `make lint` → **exit 2**, ruff I001 at `tests/scanners/host/host_snapshots.py:136` | **false — not run** |
-| typecheck green | `make typecheck` → exit 0, "no issues found in 92 source files" | true |
-| pytest green | `make test` → exit 0, **3097 passed, 3 skipped** | true |
-| corpus green | `make corpus` → exit 0, all six scanners PASS (`host` 1.000 / 1 claim) | true |
+| lint green | **Not run.** `make lint` fails `exit 2` with ruff I001 on `259a429`, same ruff (0.16.4) locally and in CI. Fixed in `49f828f`; green in CI thereafter. | **false — not run** |
+| typecheck green | **Genuinely green**, locally *and* in CI (CI Typecheck step: success). | true, unconditionally |
+| pytest green | **Green only under an unstated assumption — that the test process is root.** The agent file-collection tests simulate the collector as root (`euid=0`) but read fixture files owned by *whoever runs pytest*; `agent/readfile.py`'s owner check then demands root-owned files. On a root box (this dev box) they pass; on CI's non-root `runner` they are refused `bad_owner` and the tests fail. **Red in CI.** | **green only as root, red in CI** |
+| corpus green | **Never ran in CI.** CI runs steps sequentially; `make corpus` is the step *after* Unit tests, which failed, so Corpus was **skipped**. It passed locally, but in CI it is **unverified, not verified**. | **unverified in CI** |
 
-**So N = 1: of four asserted gate results, exactly one (lint) had not been run; the other three are
-true on independent re-run.** That is the finding's substance, and it is the reassuring shape rather
-than the alarming one — the miss was a single un-run gate, not a habit of asserting results wholesale.
-It does not soften the rule (a false "green" is a false "green"), and it is precisely what the
-run-id-plus-sha proposal above makes impossible to repeat: a cited run covers all four checks at once,
-so "three of four happened to be true" stops being a thing anyone has to verify after the fact.
+**My earlier account — "N = 1, the other three genuinely green" — was wrong, and wrong in the same way
+the PR body was.** I re-ran typecheck, pytest and corpus *on a root box*, saw them pass, and reported
+them green **without asking what that pass depended on**. Two of the three depended on the test runner
+being root: pytest passes only there, and corpus only ran at all because pytest did. I accepted three
+results without interrogating their premise — the exact error this entry is about — and **it was the
+gate that corrected me, on the non-root CI runner, not a second review.** Recorded rather than quietly
+fixed, because an un-recorded correction is how the first wrong telling would have stood.
+
+**Two patterns to carry, both general:**
+
+- **This is [D94](#d94) exactly — a gate passing under an unstated assumption.** There the assumptions
+  were "the audit points at our tree", "the trigger fires"; here it is "the test process is root". The
+  check's output was true *of the environment it ran in* and read as true of the environment we cared
+  about. Linked to D94 as another instance; see also [D100](#d100-the-os_release-section-may-never-collect-on-a-standard-systemd-host-a-check-that-cannot-fire-caught-before-it-is-built), which the same CI run exposed.
+- **A failing early step conceals every step behind it.** The original #69 run stopped at Lint and
+  never reached Unit tests, so the trivial, deterministic failure (I001) was *hiding* the real one (the
+  root-only test suite). **A red build reports its first failure, not the state of the build.** This
+  will recur with any sequential pipeline: when an early gate is red, treat every later gate as
+  *unknown*, not as "would have passed" — fix the early one and re-run before drawing any conclusion
+  about the rest. The run-id-plus-sha rule above does not fix this on its own; the discipline is to
+  read a red run as "stopped here", never "failed only here".
+
+**Status of #69: HELD.** The lint fix is in (`49f828f`, green in CI). The root-only test suite is a
+real CI failure (D-this-entry's third row) and gets its own harness fix — the collector's own owner
+check is correct and does **not** change; the defect is the test depending on who runs it. #69 does not
+go near `main` until that fix lands and the PR's own run is green on every step, Corpus included.
 
 ---
 
@@ -3329,7 +3550,9 @@ PR (step 2). **That is now satisfied** — the observation is the run history ab
 never report) cannot occur: the check reports on every PR.
 
 **What to require, and the evidence for it rather than the principle:** the workflow defines a single
-job, the **`CI` check** (lint → typecheck → pytest → corpus, in one job). Require **`CI`** on `main`.
+job named `check` (lint → typecheck → licence → dep-vulns → pytest → corpus, in one job). The status
+check appears in the settings UI as **`check`** (lowercase — the workflow is `name: CI` but the job has
+no `name:`, so GitHub uses the job id). Require **`check`** on `main`.
 What requiring it over the last month *would* have done, read from the actual `pull_request` run
 history:
 
@@ -3343,5 +3566,48 @@ history:
 
 So the required check is **all upside on this month's evidence**: it would have caught the one real
 pre-merge defect and obstructed no legitimate merge. **The operator sets it in repository settings
-(Settings → Branches → branch protection for `main` → require status check `CI`);** this ledger entry
+(Settings → Branches → branch protection for `main` → require status check `check`);** this ledger entry
 is the evidence he asked for to decide, not the switch itself.
+
+---
+
+### D100 — The `os_release` section may never collect on a standard systemd host: a check that cannot fire, caught before it is built.
+
+**Surfaced by the same CI run that exposed D99's root-only test suite, 2026-11-04. Not speculation —
+the committed fixtures already show it.** All three recorded `host` snapshots
+(`corpus/fixtures/host/{clean,positive,shared-kernel}/snapshot.json`) carry, in their manifest:
+
+```
+{"section": "os_release", "status": "unavailable", "reason": "symlink"}
+```
+
+**The mechanism, and why it is a design question not a bug.** On systemd distributions `/etc/os-release`
+is conventionally a **symlink** to `/usr/lib/os-release`. The collector reads files with `O_NOFOLLOW`
+(`agent/readfile.py`) and **refuses any final-component symlink by design** — a correct, deliberate
+anti-symlink-attack control (ADR-035; it is what keeps a planted symlink from redirecting a privileged
+read). The two are in direct tension: the safe read refuses exactly the file the module needs, on the
+*normal* configuration of the target OS. The operator's own VM, from which the fixtures were recorded,
+is such a host — hence `unavailable: symlink`, not a one-off.
+
+**Why it matters, stated as the shape it is.** **Module 2 (OS, kernel & reboot — end-of-life
+distribution detection) depends on the `os_release` section** for the distribution id and version. If
+that section is `unavailable` on every standard systemd host, the EOL-distro check has nothing to read
+and **can never fire** — it would sit at `inconclusive` forever while *looking* like coverage. **That is
+[D28](#d-deferred-register) and [D31](#d-deferred-register)'s shape — a check that cannot fire — except
+caught *before* module 2 is built rather than after it ships a false green.** Catching it here is the
+D94 discipline working as intended: ask whether a check *can* fail (or fire) before trusting it.
+
+**The open question — numbered and visible, deliberately not answered now (operator, 2026-11-04):**
+how should `os_release` be sourced so the module can fire without weakening the anti-symlink control?
+Two candidate directions, neither decided:
+
+- **A narrow allowlisted symlink exception:** permit following a symlink *only* when its target is
+  itself on the file allowlist (e.g. `/etc/os-release` → `/usr/lib/os-release`, both allowlisted), so
+  the exception is bounded to known-safe pairs rather than opening symlink-following generally.
+- **Source `os_release` differently:** read `/usr/lib/os-release` directly (the symlink's usual target),
+  or obtain the distribution identity from another allowlisted source, so no symlink is followed at all.
+
+**Status: OPEN, numbered, and a prerequisite to be resolved before module 2 is scheduled** — not a
+blocker for the platform track (Stages 1–2), which does not touch `os_release`. Do not design the
+answer inside this entry; it is recorded so module 2 cannot be planned around a section that, as things
+stand, does not collect.

@@ -22,10 +22,10 @@ jobs:
     # than burn the month's minutes on it.
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
           python-version: "3.13.15"
@@ -63,7 +63,7 @@ jobs:
       # and hope you reproduced it.
       - name: Keep the corpus scores
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: corpus-results
           path: corpus/results/latest.json
