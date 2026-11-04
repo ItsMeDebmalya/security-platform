@@ -3257,6 +3257,25 @@ contradiction of an unverified claim, which is arguably the stronger demonstrati
 **Status of #69 itself: HELD** (operator, this session), untouched, lint-red on the record, pending the
 one-line import-order fix and a clean PR-triggered run before it goes near `main`.
 
+**The other three claims, verified before the fix (operator's instruction, 2026-11-04).** The reasoning
+was: if one asserted gate result of four was written without running the gate, the other three are
+unverified by default. So typecheck, the full suite and `make corpus` were each run independently in a
+clean worktree on `259a429`:
+
+| PR body claims | Independent re-run on `259a429` | Verdict |
+|---|---|---|
+| lint green | `make lint` → **exit 2**, ruff I001 at `tests/scanners/host/host_snapshots.py:136` | **false — not run** |
+| typecheck green | `make typecheck` → exit 0, "no issues found in 92 source files" | true |
+| pytest green | `make test` → exit 0, **3097 passed, 3 skipped** | true |
+| corpus green | `make corpus` → exit 0, all six scanners PASS (`host` 1.000 / 1 claim) | true |
+
+**So N = 1: of four asserted gate results, exactly one (lint) had not been run; the other three are
+true on independent re-run.** That is the finding's substance, and it is the reassuring shape rather
+than the alarming one — the miss was a single un-run gate, not a habit of asserting results wholesale.
+It does not soften the rule (a false "green" is a false "green"), and it is precisely what the
+run-id-plus-sha proposal above makes impossible to repeat: a cited run covers all four checks at once,
+so "three of four happened to be true" stops being a thing anyone has to verify after the fact.
+
 ---
 
 ### D85 correction (2026-11-04) — the finding was true when written and was resolved the same day; the transfer did not fix it, and we believed a solved problem was live for a week.
