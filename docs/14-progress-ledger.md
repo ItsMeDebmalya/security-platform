@@ -3166,3 +3166,205 @@ itself the finding, and the most important row in such a table.
 down, not to answer it. **The reason it must eventually be answered deliberately is in the closing
 observation that prompted this entry: every instance so far was caught by surprise, and surprise does
 not scale.**
+
+---
+
+## 2026-10-28 — Direction refinement for the host agent: three assessments and one planned document
+
+Raised by the operator after Phase A merged. **Items 1 and 2 touch merged decisions and are recorded
+as assessments, not implemented.** Nothing below changes ADR-035.
+
+### D95 — Distribution-agnostic: Options A, B and C with their costs. Not decided; the fleet probe decides it.
+
+**The objective, in the operator's terms:** one artefact that runs on any Linux server with no
+per-distribution configuration. Where a prerequisite genuinely cannot be avoided, the server admin
+installs it on our behalf — acceptable internally.
+
+**First, a factual correction, because the proposal reasons from it.** The operator cited "the
+agent-free self-service property for external customers (docs/23 item 11)". **docs/23 item 11 is
+"Service account scope"**, and there is **no agentless or self-service claim anywhere** in docs/22,
+docs/23 or docs/18. The property he is protecting is real and worth protecting; it is simply **not
+recorded**, which is why it was citable only by pointing at the wrong row. **That is itself the
+finding** — an unrecorded property cannot be traded away deliberately, because nobody can see what is
+being traded. docs/22 is the right home (a claim with no evidence link stays out, so it would enter as
+PENDING). Not added here: it is the operator's claim to make, not mine to assert on his behalf.
+
+**What is actually at stake.** ADR-035 decision 5 chose stdlib Python. The question is not "which
+language is better" but **what "universal" means**, and the two options answer different questions:
+
+| | **Option A — stdlib Python, packaged as one file** | **Option B — one statically linked binary (Go or similar)** |
+|---|---|---|
+| Universal in what sense | Every host that has a usable `python3` at or above the floor | Every host, full stop. No runtime prerequisite at all |
+| Prerequisite | The host's own Python. A host without one, or below the floor, needs the admin to install it | None |
+| Supply chain on the host | **None beyond what the host already runs** | The binary itself, which we built |
+| Auditable before running | **Yes — it is source. The admin can read it.** | **No. It is a binary.** This is the cost the operator named and it is the heaviest one |
+| Build step | Today: none (ADR-035 decision 5 says "no build step, no compiled artefact") — packaging as one file **introduces one**, see below | Yes, and per CPU architecture |
+| CPU architectures | Irrelevant — Python is interpreted | **A real cost.** x86-64 and aarch64 at minimum; every build is a separate artefact to ship, hash and register |
+| Second language and toolchain | No | **Yes**, in a repository that is Python end to end, with its own lint, type, test and licence tooling to add |
+| Licence review | Only the stdlib | **Everything the binary links**, statically, into an artefact we distribute — a new and non-trivial ADR-003 surface |
+| 3.6 floor problem | **This is the whole problem.** §3.1's ugly dialect, and nothing has ever executed on 3.6 here (D89) | **Dissolves entirely.** No floor, no `ast.parse` check, no 3.6 dialect, no unsupported-runtime shim |
+| Unsupported-runtime case (ADR-035 decision 14) | Needed, and already specified | **Becomes unnecessary** — there is no interpreter to be unsupported |
+
+**On whether `--explain-plan` and the receipt preserve the transparency position under Option B — the
+operator's specific question. Partially, and the gap is precise.**
+
+- **What they preserve:** `--explain-plan` prints the complete allowlist and executes nothing, and the
+  receipt records what actually ran. Both work identically in a binary. An admin can therefore see
+  **what it says it will do** and, afterwards, **what it says it did**.
+- **What is lost, and it cannot be recovered by any amount of output:** with source, the admin
+  verifies that the allowlist *is* the whole allowlist — that nothing outside it is reachable. With a
+  binary, `--explain-plan` is **the program's own claim about itself**, and a program that lied about
+  its allowlist would print the same output. **This is D94 exactly: a check that cannot fail.** The
+  receipt has the same shape — it is written by the thing it describes.
+- **Partial mitigations, worth stating because they are not nothing:** publish the source and a
+  reproducible build, so a sufficiently motivated admin can rebuild and compare hashes; ship the
+  source alongside the binary. Both move the verification from "read it" to "trust our build process
+  or replicate it", which is a materially weaker ask of a customer than reading one directory.
+- **Honest counterweight:** almost nobody reads the source either. The property is real but its
+  practical exercise is rare, and that should be said rather than used to win the argument in one
+  direction.
+
+**Option C — hybrid. One exists, and it is worth considering, but it is probably worse than A.**
+Ship the stdlib collector *and* a small static binary whose only job is to run on hosts with no usable
+Python. Cost: **two collectors to keep behaviourally identical**, which means two implementations of
+the allowlists, the receipt, the snapshot format and the redaction patterns. D90 already records that
+the redaction patterns will exist twice (`core/` and `agent/`) and names the obligation that creates;
+a third copy in a second language triples it. **Two artefacts that must agree about what a snapshot
+means is a worse problem than one artefact with a prerequisite.** Recorded as considered and
+disfavoured, not dismissed.
+
+**The packaging question Option A leaves open, which is ours either way.** `zipapp` is stdlib and
+produces one file, and it is **the obvious answer** — but note it contradicts the spec's current words
+"no build step, no compiled artefact". A `.pyz` is not compiled, but building one *is* a build step,
+and the artefact the admin receives is then a zip rather than readable source **unless we also ship
+the source or the `.pyz` is left uncompressed**. So choosing zipapp **re-opens the transparency
+property in a smaller way**, and the resolution is to ship it such that the admin can still read it.
+That needs deciding explicitly, not by default, and it is the thing to settle under Option A.
+
+**The decision rule, as the operator set it — and it is the right one because the data is arriving:**
+
+- **If the fleet probe reports every host at or above the floor**, Option A is already universal in the
+  sense he means. **Nothing changes**, and the only open item is the packaging question.
+- **If hosts without Python, or below the floor, exist**, that is the real argument for Option B — and
+  the relevant number is not "do any exist" but **how many, and are they the hosts that matter**. One
+  legacy box the admin can install Python on is not an architecture change. Fifteen are.
+- **Either way the decision lands as a numbered amendment to ADR-035** with the reversal recorded,
+  not as a quiet edit. **Status: OPEN, awaiting the probe.**
+
+### D96 — CVE work first: what the resequencing does and does not change, plus two defects it exposed in docs/26
+
+**The operator's direction:** module 1 — identify known CVEs, assess them accurately, deliver
+actionable remediation — is the product; everything else is **deferred in sequence, not removed**. SSH
+and access, services and firewall, CERT-In readiness, web root cause, module 8's access review and the
+fleet view all remain approved. **Module 8 in particular came from sir's own review question and is not
+the operator's to drop.**
+
+**The quality bars he named are already the decided position**, which is worth confirming rather than
+re-deciding: vendor data only with fixed-version-per-release and **no CVE-range matching**
+(ADR-035 decision 10); an uncovered package reported **`inconclusive` with that reason, never silently
+clean** (decision 10, R2); remediation as the exact command for that distribution and package, which we
+can give **because we read the real package database**; and **we never run it** (decision 3, ADR-004).
+No change needed to any of them — the direction and the ADR agree.
+
+**Does the resequencing change dates? Reordering does not change the total. It changes three things,
+and the first is the one that matters.**
+
+1. **It makes the vulnerability-data licence sign-off the critical path immediately.** Step 5's module 1
+   bullet already carries "data feed licence signed off" as a condition. Previously that condition had
+   weeks of other module work in front of it; putting module 1 first means **the PENDING sign-offs
+   (D92) and the unresolved Debian licence question become blocking on day one of Step 5**, not in week
+   three. Nothing else on the critical path has that property. **This is the date effect worth acting
+   on**, and it argues for the Debian enquiry going now rather than when Step 5's matcher needs it.
+2. **It improves the fallback position, and matches what docs/26 already says.** The documented
+   "fallback if time runs short: modules 1, 2 and 4" is already consistent with this priority, so the
+   direction is not in tension with the plan — it makes an existing contingency into the primary order.
+3. **It does not change Step 5's total**, and it does not change Step 6's overlap. The real deadline
+   pressure on the agent remains the internal written authorisation (Step 6, unstarted, longest human
+   latency), which no sequencing touches.
+
+**Two defects in docs/26 found by costing this, and they are the kind this ledger exists for.**
+
+- **Module 8 is in docs/24 §5 and absent from docs/26 Step 5.** The docs/24 edit on 2026-10-28 added it
+  to the scope document; **Step 5, which is the working build plan and the thing actually ticked, never
+  gained it.** That is the identical failure the docs/24 edit was made to correct — *the engineering was
+  not the failure, invisibility was* — surviving one document further along. **Fixed here:** module 8 is
+  added to Step 5 as an explicitly **unestimated** row, in its decided position (after modules 1–4,
+  before the fleet view). Unestimated rather than guessed, because its cost was assessed as **M** in
+  D70 without a week figure, and inventing one now would be a number with nothing behind it.
+- **Step 5's stated range is smaller than the sum of its own modules.** Stated: **6–9 weeks**. The seven
+  module estimates sum to **7.5–9.9 weeks** (2–3 + 0.4–0.6 + 1 + 1–1.5 + 0.6–0.8 + 1 + 1.5–2). So the
+  low end of the headline is **1.5 weeks below** the low end of its parts, before module 8 is counted at
+  all. **Not silently corrected**, because changing a headline estimate in an approved plan is the
+  operator's call: the arithmetic is recorded in Step 5 itself so the next reader sees it, and the range
+  is left as approved. With module 8 at a plausible 1–1.5 weeks the parts come to roughly **8.5–11.4
+  weeks**.
+
+### D97 — Lab environments: three sources confirmed, and what the VulnHub images cost
+
+The operator confirmed testing across **existing internal Linux servers, dedicated VulnHub machines,
+and containers**, with written authorisation for every environment before any scan runs, and set three
+conditions on the VulnHub images because **they are untrusted third-party software from the public
+internet**: pinned by digest and entered in the licence register with their source; run on an isolated
+network segment that nothing else can reach and that is never routable to production; and their package
+databases treated as **potentially unrepresentative**, so a check that works there is not thereby
+proven and anything derived from them is corroborated on a clean distribution image.
+
+**Recorded in docs/26 Step 3.** Two observations worth keeping with it:
+
+- **Their age is the point, and it is the single most useful property available to us right now.** They
+  are the most convenient way to exercise **very old Python and old package managers**, which is exactly
+  the floor question D95 turns on — and the only way to exercise ADR-035 decision 14's
+  **unsupported-runtime path** against a real old interpreter rather than a fabricated one.
+- **The third condition is the one that will be inconvenient later.** "A check that works there is not
+  thereby proven" means a VulnHub positive is **not** a real positive for the purposes of docs/24 §5's
+  rule that every module must fire on a real positive before it reaches the fleet. It is a positive that
+  proves the code path runs. **The corroborating clean-image case is the evidence**, and the two must not
+  be conflated when a module is called done — which is ADR-017's warning about corpora written by the
+  scanner's author, arriving by a different route.
+- **The real-VM requirement is unchanged**, and not by preference: containers share the host kernel, so
+  modules 2, 4, 5 and module 8's real positive cannot be produced in one. A VulnHub image is usually a
+  VM, which helps — but an *old* VM is not a substitute for a *representative* one.
+
+### D98 — The end-to-end operational flow document: planned, not written, and CLAUDE.md forbids the obvious version of it
+
+**Requested by the operator, 2026-10-28:** one document in `docs/`, written for a reader who has not
+read the ADRs — his manager should be able to follow it — covering deployment through remediation, with
+one worked example followed end to end. He asked for it to be **planned before written**. The plan is
+[docs/superpowers/plans/2026-10-28-agent-operational-flow.md](superpowers/plans/2026-10-28-agent-operational-flow.md).
+
+**The problem settled before writing rather than discovered in review.** CLAUDE.md rule 3 says *"Do not
+add a new status or summary document… A third view of the same thing is how this happened before"*, and
+the same section says **each fact has exactly one home**. A narrative of the agent's operation touches
+facts owned by ADR-035, `SPEC.md`, docs/24, docs/25 and docs/26. Written the obvious way it becomes the
+fourth view — correct on the day it ships and wrong within a month.
+
+**The resolution, which is a constraint on every section:** the document **owns exactly one thing, the
+narrative** — the order in which things happen and why each step exists — which no document owns today,
+and that is what makes it not a duplicate. **It carries no number it owns**: no check counts, no gate
+figures, no timings, no status words. Every such fact is a link in the sentence that needs it, so a
+reader has one hop to authority and an editor has one place to change.
+
+**The two risks that are really the same risk.**
+
+1. **It will read as a description of something that exists.** The agent is PLANNED and nothing has run.
+   A fluent operational narrative written for a non-technical reader is **indistinguishable from a
+   description of a working system unless it says otherwise on every page** — and the reader is deciding
+   whether to trust this on fifty servers, so the misreading is consequential rather than cosmetic.
+2. **Invented figures.** The operator asked what it costs in CPU, memory and time. **Nothing has
+   executed, so there is no measurement**, and writing a plausible "typically under five seconds" would
+   be **D94's defect in prose** — a statement that cannot be wrong because nothing was measured. The plan
+   states design bounds, names the gap, and points at where the real figures will land from Step 4.
+
+**What is blocked and would be invented if written now:** timings and resource cost (Step 4); the real
+worked-example transcript (Steps 3 and 4 — the hand-written version is to be **replaced** by a real one,
+recorded as a to-do rather than an intention); packaging and how the admin receives the artefact (D95,
+which waits on the fleet probe); and the report's exact remediation layout, which docs/25 owns.
+
+**Recommendation, for the operator to accept or reject:** write it now with the gaps named and visible
+rather than waiting. A document saying "measured cost: to be filled in from Step 4" is useful today and
+honest; one that waits until everything is known arrives after the decision it was meant to inform. The
+named gaps then double as a Step 4 checklist. **Placement recommendation: a new file, `docs/27`, not a
+section inside docs/24** — docs/24 is a signed-off scope document with a date and a sign-off line, and
+growing a narrative inside it damages what it is.
+
+**Status: planned, awaiting the operator's go-ahead on the recommendation above.**

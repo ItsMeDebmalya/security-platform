@@ -97,11 +97,47 @@ Also delivered in Step 2, beyond the list above: the **artefact rule (R1/R2)** a
 
 - [ ] Containers for package and config modules (e.g. Ubuntu 20.04/22.04/24.04, Debian, a RHEL-family distro)
 - [ ] At least one real VM for kernel, service and firewall modules (containers share the host kernel)
+- [ ] **VulnHub images** for very old Python and old package managers — under the three conditions below
 - [ ] Each box deliberately misconfigured to give real positives: root SSH login, password auth, autoindex on, database bound publicly, outdated package, pending reboot
 - [ ] A matching **clean** box for negatives
 - [ ] Lab images pinned by digest and in the licence registry
 
 **Exit:** lab boxes reproducible from the repo.
+
+### The three lab sources, confirmed 2026-10-28 (ledger D97)
+
+The operator confirmed testing across **existing internal Linux servers, dedicated VulnHub machines and
+containers**, covering a range of kernel versions and package managers, and **will secure written
+authorisation for every environment before any scan runs**.
+
+**The real-VM requirement is unchanged and is not a preference.** Containers share the host kernel, so
+modules **2** (kernel, reboot), **4** (firewall), **5** (time sync) and module **8**'s real positive
+cannot be produced in one — the state does not exist to collect. A VulnHub image is usually a VM, which
+helps; but an *old* VM is not a substitute for a *representative* one.
+
+**Conditions on the VulnHub images, because they are untrusted third-party software from the public
+internet** (operator, 2026-10-28):
+
+1. **Pinned by digest or hash and entered in `tools/registry.yaml`** with its source, like any other
+   third-party component.
+2. **Run on an isolated network segment that nothing else can reach, never routable to production.**
+   Note this interacts with [ADR-036](02-decisions.md#adr-036--one-address-policy-no-connection-to-a-non-global-address-and-the-address-checked-is-the-address-connected-to)
+   decision 10: that segment's network must be named in `core.addresses.LAB_NETWORKS` by the reviewed
+   `core/` change this step already requires, and a fleet-shaped range is refused by design.
+3. **Treat their package databases as potentially unrepresentative.** Several are old or hand-modified,
+   so **a check that works there is not thereby proven**, and anything derived from them is corroborated
+   on a clean distribution image.
+
+**What condition 3 means for "done", stated now because it will be inconvenient later.** docs/24 §5
+requires every module to fire on a **real positive** before it reaches the fleet. A VulnHub positive is
+**not** that: it proves the code path runs. **The corroborating clean-image case is the evidence**, and
+the two must not be conflated when a module is called done — ADR-017's warning about corpora that
+encode their author's assumptions, arriving by a different route.
+
+**Why they are worth the conditions:** their age is the point. They are the most convenient way to
+exercise **very old Python and old package managers** — the floor question in D95 — and the only way to
+exercise ADR-035 decision 14's **unsupported-runtime path** against a real old interpreter rather than a
+fabricated one.
 
 ### What Step 3 needs from the operator, beyond the probe output
 
@@ -174,10 +210,26 @@ Each module: spec section → tests first → collector fields → checks → la
 - [ ] **4. Services, firewall & correlation** (1–1.5 weeks): listening port → process; public vs local; host firewall; linked to external TLS/web findings for the same host
 - [ ] **5. CERT-In readiness** (3–4 days): logging and audit enabled; retention vs 180 days; time sync against NIC/NPL servers
 - [ ] **6. Web root cause** (~1 week): web server and PHP settings on disk, linked to the matching external web finding
+- [ ] **8. Access review** (**unestimated** — see the note below): per-path read, write and delete rights on sensitive files and log directories, with the **basis** for each right and whether an ACL was observed. **Built after modules 1–4 and before module 7** (docs/24 §5, ledger D70)
 - [ ] **7. Fleet view** (1.5–2 weeks): patch compliance %, hosts needing reboot, drift from fleet baseline, fleet-wide "fix this first"
 - [ ] *If capacity:* Docker host posture; database/cache exposure (config only)
 
+**Priority order (operator, 2026-10-28; ledger D96).** **Module 1 is the product**: known CVEs on the
+host, assessed accurately, with actionable remediation. The rest are **deferred in sequence, not
+removed** — all remain approved scope, and module 8 came from sir's own review question. This makes the
+existing fallback the primary order rather than a contingency. **The one real date effect:** module 1's
+"data feed licence signed off" condition moves to **day one** of this step, so the PENDING sign-offs and
+the unresolved Debian licence question (D92) become blocking immediately rather than in week three.
+
 **Fallback if time runs short:** modules 1, 2 and 4.
+
+> **Note on this step's estimate, added 2026-10-28 (D96), range deliberately left as approved.** The
+> seven original module estimates **sum to 7.5–9.9 weeks**, while the heading says **6–9 weeks** — so the
+> low end of the heading is about 1.5 weeks below the low end of its own parts. Module **8** is
+> **unestimated** rather than guessed: D70 assessed its cost as **M** without a week figure, and
+> inventing one here would be a number with nothing behind it. At a plausible 1–1.5 weeks the parts come
+> to roughly **8.5–11.4 weeks**. Changing an approved headline estimate is the operator's call, so the
+> arithmetic is recorded here rather than applied.
 
 **Exit:** every Alpha module WORKING on lab boxes; catalogue updated.
 
