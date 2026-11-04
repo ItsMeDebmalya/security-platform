@@ -133,9 +133,8 @@ def edited(snap: dict[str, Any], mutate) -> dict[str, Any]:
 
 def assess(snap: dict[str, Any]):
     """The ScanResult for a synthetic snapshot, through the real reader."""
-    from scanners.host.scanner import HostScanner
-
     from scanners.host import reader
+    from scanners.host.scanner import HostScanner
 
     return HostScanner().assess(reader.parse(to_bytes(snap)))
 
